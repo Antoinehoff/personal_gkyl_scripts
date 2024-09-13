@@ -1,6 +1,10 @@
 import sys
 import postgkyl as pg
 
+
+def getgrid_index(s):
+    return  (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'vpar') + 5*(s == 'mu'))-1
+
 class Frame:
     def __init__(self,simulation,name,tf):
         """
@@ -62,7 +66,7 @@ class Frame:
 
     def slice_1D(self,cutdirection,ccoords):
         # Select the specific slice
-        icut = 0*(cutdirection == 'x') + 1*(cutdirection == 'y') + 2*(cutdirection == 'z')
+        icut = getgrid_index(cutdirection)
         i0 = icut
         i1 = (icut+1)%self.ndims
         i2 = (icut+2)%self.ndims
@@ -82,24 +86,35 @@ class Frame:
         self.slicecoords = [c1,c2]
         self.refresh()
 
+    def compress(self,direction,type='cut',cut=0):
+        if direction == 'x':
+            pg.data.select(self.Gdata, z0=cut, overwrite=True)
+        elif direction == 'y':
+            pg.data.select(self.Gdata, z1=cut, overwrite=True)
+        elif direction == 'z':
+            pg.data.select(self.Gdata, z2=cut, overwrite=True)
+        self.refresh()
+
     def slice_2D(self,plane,ccoord):
         # Select the specific slice
-        if plane == 'xy':
-            self.gsymbols = [self.gsymbols[0],self.gsymbols[1]]
-            self.gunits   = [self.gunits[0],  self.gunits[1]]
-            x1  = (self.grids[0][:-1]+self.grids[0][1:])/2
-            x2  = (self.grids[1][:-1]+self.grids[1][1:])/2
+        i1 = getgrid_index(plane[0])
+        i2 = getgrid_index(plane[1])
+        if plane == ['x','y']:
+            self.gsymbols = [self.gsymbols[i1],self.gsymbols[i2]]
+            self.gunits   = [self.gunits[i1],  self.gunits[i2]]
+            x1  = (self.grids[i1][:-1]+self.grids[i1][1:])/2
+            x2  = (self.grids[i2][:-1]+self.grids[i2][1:])/2
             pg.data.select(self.Gdata, z2=ccoord, overwrite=True)
             cc = (self.Gdata.ctx['lower'][2]+self.Gdata.ctx['upper'][2])/2.
             self.slicetitle = "$z=%2.2f$"%(cc)
-        elif plane == 'xz':
+        elif plane == ['x','z']:
             self.gsymbols = [self.gsymbols[0],self.gsymbols[2]]
             self.grids  = (self.grids[1][:-1]+self.grids[1][1:])/2
             pg.data.select(self.Gdata, z0=ccoords[0], z2=ccoords[1], overwrite=True) 
             c1 = (self.Gdata.ctx['lower'][0]+self.Gdata.ctx['upper'][0])/2.
             c2 = (self.Gdata.ctx['lower'][2]+self.Gdata.ctx['upper'][2])/2.     
             self.slicetitle = "$x=%2.2f$ (m), $z=%2.2f$"%(c1,c2)
-        elif plane == 'yz':
+        elif plane == ['y','z']:
             self.gsymbols = [self.gsymbols[1],self.gsymbols[2]]
             self.grids  = (self.grids[2][:-1]+self.grids[2][1:])/2
             pg.data.select(self.Gdata, z0=ccoords[0], z1=ccoords[1], overwrite=True)

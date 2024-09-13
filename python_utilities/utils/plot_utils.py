@@ -81,7 +81,7 @@ def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
         plt.close()
 
 
-    moviename = 'movie_'+fieldname+'_'+cdirection+'='+('%2.2f'%ccoord)
+    moviename = 'movie_'+fieldname+'_'+cdirection[0]+cdirection[1]+'='+('%2.2f'%ccoord)
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
@@ -129,8 +129,6 @@ def plot_1D_time_evolution(simulation,fieldname,cdirection,ccoords,
     else:
         norm = plt.Normalize(min(t)*1000, max(t)*1000)
         colormap = cm.viridis  # You can choose any colormap, e.g., 'plasma', 'inferno', etc.
-        print(len(data['values'][:]))
-        print(len(t))
         for it in range(len(t)-1):
             ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(1000*t[it]),
                     color=colormap(norm(t[it]*1000)))
