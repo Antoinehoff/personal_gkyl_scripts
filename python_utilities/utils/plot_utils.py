@@ -46,8 +46,8 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
     frame.free_values() # remove values to free memory
     x = frame.grids
 
-    return {'x':x,'t':t,'values':vv,'frame':frame.name,
-            'xsymbol':frame.gsymbols, 'xunits':frame.gunits, 
+    return {'x':x,'t':t,'values':vv,'name':frame.name,
+            'xsymbol':frame.gsymbols[0], 'xunits':frame.gunits[0], 
             'vsymbol':frame.vsymbol, 'vunits':frame.vunits,
             'slicecoords':frame.slicecoords, 'slicetitle':frame.slicetitle}
 

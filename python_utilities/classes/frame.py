@@ -46,10 +46,23 @@ class Frame:
 
     def refresh(self):
         self.cells  = self.Gdata.ctx['cells']
-        self.dims   = [n for n in self.Gdata.ctx['cells'] if n > 1]
-        self.ndims  = len(self.dims)
-        self.values = self.Gdata.get_values()
-        self.values = self.values.reshape(self.dims)
+        new_dims     = []
+        new_gnames   = []
+        new_gsymbols = []
+        new_gunits   = []
+        for i in range(len(self.cells)):
+            if self.cells[i] > 1:
+                new_dims.append(self.cells[i])
+                new_gnames.append(self.gnames[i])
+                new_gsymbols.append(self.gsymbols[i])
+                new_gunits.append(self.gunits[i])
+        self.dims     = new_dims
+        self.gnames   = new_gnames
+        self.gsymbols = new_gsymbols
+        self.gunits   = new_gunits
+        self.ndims    = len(self.dims)
+        self.values   = self.Gdata.get_values()
+        self.values   = self.values.reshape(self.dims)
 
     def normalize(self):
         # Normalize the grids
