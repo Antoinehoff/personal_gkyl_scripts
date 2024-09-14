@@ -46,16 +46,14 @@ class Frame:
 
     def refresh(self):
         self.cells  = self.Gdata.ctx['cells']
-        new_dims     = []
         new_gnames   = []
         new_gsymbols = []
         new_gunits   = []
-        for i in range(len(self.cells)):
-            if self.cells[i] > 1:
-                new_dims.append(self.cells[i])
-                new_gnames.append(self.gnames[i])
-                new_gsymbols.append(self.gsymbols[i])
-                new_gunits.append(self.gunits[i])
+        new_dims     = [c_ for c_ in self.cells if c_ > 1]
+        for i in range(len(new_dims)):
+            new_gnames.append(self.gnames[i])
+            new_gsymbols.append(self.gsymbols[i])
+            new_gunits.append(self.gunits[i])
         self.dims     = new_dims
         self.gnames   = new_gnames
         self.gsymbols = new_gsymbols
