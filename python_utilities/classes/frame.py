@@ -92,8 +92,8 @@ class Frame:
         c2 = (self.Gdata.ctx['lower'][i2]+self.Gdata.ctx['upper'][i2])/2.
         self.slicetitle = self.gsymbols[i1]+'=%2.2f'%c1+self.gunits[i1] \
             +', '+ self.gsymbols[i2]+'=%2.2f'%c2+self.gunits[i2]
-        self.gsymbols = self.gsymbols[i0]
-        self.gunits   = self.gunits[i0]
+        self.gsymbols = [self.gsymbols[i0]]
+        self.gunits   = [self.gunits[i0]]
         self.slicecoords = [c1,c2]
         self.refresh()
 
