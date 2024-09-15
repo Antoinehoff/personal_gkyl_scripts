@@ -22,8 +22,8 @@ class Simulation:
     def set_geom_param(self, R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta):
         self.geom_param = GeomParam(R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta)
 
-    def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, wkdir):
-        self.data_param = DataParam(expdatadir, g0simdir, simname, simdir, fileprefix, wkdir)
+    def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, wkdir, BiMaxwellian=True):
+        self.data_param = DataParam(expdatadir, g0simdir, simname, simdir, fileprefix, wkdir, BiMaxwellian)
         self.set_num_param()
 
     def set_num_param(self):
