@@ -39,7 +39,10 @@ class Simulation:
         s_ = Species(name, m, q, T0, n0)
         s_.set_gyromotion(self.phys_param.B_axis)
         self.species[name] = s_
-    
+    def add_species(self,species):
+        species.set_gyromotion(self.phys_param.B_axis)
+        self.species[species.name] = species
+        
     def set_normalization(self,key,scale,shift,symbol,units):
         self.normalization[key+'scale']  = scale
         self.normalization[key+'shift']  = shift
@@ -50,19 +53,26 @@ class Simulation:
         keys = [
             'x','y','z','vpar','mu','phi',
             'ne','ni','upare','upari',
-            'Tpare','Tpari','Tperpe','Tperpi'
+            'Tpare','Tpari','Tperpe','Tperpi',
+            'fe','fi'
             ]
         defaultsymbols = [
             r'$x$',r'$y$',r'$z$',r'$v_\parallel$',r'$\mu$',r'$\phi$',
             r'$n_e$',r'$n_i$',r'$u_{\parallel e}$',r'$u_{\parallel i}$',
-            r'$T_{\parallel e}$',r'$T_{\parallel i}$',r'$T_{\perp e}$',r'$T_{\perp i}$'
+            r'$T_{\parallel e}$',r'$T_{\parallel i}$',r'$T_{\perp e}$',r'$T_{\perp i}$',
+            r'$f_e$', r'$f_i$'
             ]
         defaultunits = [
             '(m)', '(m)', '', '(m/s)', '(J/T)', '(V)',
             r'(m$^{-3}$)', r'(m$^{-3}$)', '(m/s)', '(m/s)',
-            '(J/kg)', '(J/kg)', '(J/kg)', 'J/kg' 
+            '(J/kg)', '(J/kg)', '(J/kg)', '(J/kg)',
+            '[f]','[f]'
         ]
         symbols = {keys[i]: defaultsymbols[i] for i in range(len(keys))}
         units   = {keys[i]: defaultunits[i]   for i in range(len(keys))}
 
         [self.set_normalization(key,1,0,symbols[key],units[key]) for key in keys]
+
+    def get_filename(self,fieldname,tf):
+        dataname = self.data_param.data_files_dict[fieldname+'file']
+        return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)

@@ -44,10 +44,10 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
         t.append(frame.time)
         vv.append(frame.values)
     frame.free_values() # remove values to free memory
-    x = frame.grids
+    x = frame.new_grids
 
     return {'x':x,'t':t,'values':vv,'name':frame.name,
-            'xsymbol':frame.gsymbols[0], 'xunits':frame.gunits[0], 
+            'xsymbol':frame.new_gsymbols[0], 'xunits':frame.new_gunits[0], 
             'vsymbol':frame.vsymbol, 'vunits':frame.vunits,
             'slicecoords':frame.slicecoords, 'slicetitle':frame.slicetitle}
 
@@ -62,12 +62,12 @@ def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
     # Get a first frame to compute meshgrids
     os.makedirs('gif_tmp', exist_ok=True)
     frame = get_2D_slice(simulation, fieldname, cdirection, ccoord, tfs[0])
-    YY,XX = np.meshgrid(frame.grids[1],frame.grids[0])
+    YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
     for tf in tfs:
         frame = get_2D_slice(simulation, fieldname, cdirection, ccoord, tf)
         fig,ax = plt.subplots()
         pcm = ax.pcolormesh(XX,YY,frame.values,cmap='inferno')
-        ax.set_xlabel(frame.gsymbols[0]); ax.set_ylabel(frame.gsymbols[1])
+        ax.set_xlabel(frame.new_gsymbols[0]); ax.set_ylabel(frame.new_gsymbols[1])
         ax.set_title((frame.slicetitle+", t=%2.2e (ms)")%(frame.time*1000))
         cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
         if xlim:
@@ -107,7 +107,6 @@ def plot_1D_time_evolution(simulation,fieldname,cdirection,ccoords,
     tlabel = "Time (ms)"
     xlabel = data['xsymbol']+(' ('+data['xunits']+')')*(1-(data['xunits']==''))
     vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
-
     if space_time:
         if data['name'] == 'phi':
                 cmap = 'bwr'
@@ -138,6 +137,23 @@ def plot_1D_time_evolution(simulation,fieldname,cdirection,ccoords,
         # Add a colorbar to the figure
         sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
         cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)  # Label for the colorbar
+    fig.tight_layout()
+
+def plot_2D_cut(simulation, fieldname, cdirection, ccoord, tf,
+                xlim=[], ylim=[], clim=[]):
+    frame = get_2D_slice(simulation, fieldname, cdirection, ccoord, tf)
+    YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
+    fig,ax = plt.subplots()
+    pcm = ax.pcolormesh(XX,YY,frame.values,cmap='inferno')
+    ax.set_xlabel(frame.gsymbols[0]); ax.set_ylabel(frame.gsymbols[1])
+    ax.set_title((frame.slicetitle+", t=%2.2e (ms)")%(frame.time*1000))
+    cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
+    if xlim:
+        ax.set_xlim(xlim)
+    if ylim:
+        ax.set_xlim(ylim)
+    if clim:
+        pcm.set_clim(clim)    
     fig.tight_layout()
 
 def label(label,units):
