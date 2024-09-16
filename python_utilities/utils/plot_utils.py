@@ -44,7 +44,7 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
         t.append(frame.time)
         vv.append(frame.values)
     frame.free_values() # remove values to free memory
-    x = frame.new_grids
+    x = frame.new_grids[0]
 
     return {'x':x,'t':t,'values':vv,'name':frame.name,
             'xsymbol':frame.new_gsymbols[0], 'xunits':frame.new_gunits[0], 
