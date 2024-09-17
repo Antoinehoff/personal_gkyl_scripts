@@ -128,7 +128,7 @@ def plot_1D_time_evolution(simulation,fieldname,cdirection,ccoords,
     else:
         norm = plt.Normalize(min(t)*1000, max(t)*1000)
         colormap = cm.viridis  # You can choose any colormap, e.g., 'plasma', 'inferno', etc.
-        for it in range(len(t)-1):
+        for it in range(len(t)):
             ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(1000*t[it]),
                     color=colormap(norm(t[it]*1000)))
         ax.set_xlabel(xlabel)
