@@ -95,48 +95,76 @@ def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
     images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
     print("movie "+moviename+" created.")
     
-def plot_1D_time_evolution(simulation,fieldname,cdirection,ccoords,
+def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                            twindow=[],space_time=False, cmap='inferno',
-                           xlim=[], ylim=[], clim=[]):
-    fig,ax = plt.subplots()
-
-    data = get_1xt_diagram(simulation, fieldname, cdirection, ccoords,tfs=twindow)
-
-    t   = data['t'] #get in ms
-    x   = data['x']
-    tlabel = "Time (ms)"
-    xlabel = data['xsymbol']+(' ('+data['xunits']+')')*(1-(data['xunits']==''))
-    vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
-    if space_time:
-        if data['name'] == 'phi':
-                cmap = 'bwr'
-        XX, TT = np.meshgrid(x,t)
-        vmax = np.max(np.abs(data['values'])); vmin = -vmax * (cmap=='bwr')
-
-        # Create a contour plot or a heatmap of the space-time diagram
-        pcm = ax.pcolormesh(XX,TT*1000,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
-        ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
-        ax.set_title(data['slicetitle']);
-        cbar = fig.colorbar(pcm,label=vlabel);
-        #-- to change window
-        if xlim:
-            ax.set_xlim(xlim)
-        if ylim:
-            ax.set_ylim(ylim)
-        if clim:
-            pcm.set_clim(clim)
+                           xlim=[], ylim=[], clim=[], time_avg=False, full_plot=False):
+    full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
+    if full_plot:
+        fig,axs = plt.subplots(2,2,figsize=(8,6))
+        axs    = axs.flatten()
+        fields = ['n','upar','Tpar','Tperp']
+        fields = [f_+spec for f_ in fields]
     else:
-        norm = plt.Normalize(min(t)*1000, max(t)*1000)
-        colormap = cm.viridis  # You can choose any colormap, e.g., 'plasma', 'inferno', etc.
-        for it in range(len(t)):
-            ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(1000*t[it]),
-                    color=colormap(norm(t[it]*1000)))
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(vlabel)
-        ax.set_title(data['slicetitle'])
-        # Add a colorbar to the figure
-        sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
-        cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)  # Label for the colorbar
+        fig,axs = plt.subplots(1,1)
+        axs    = [axs]
+        fields = [fieldname]
+
+    for ax,field in zip(axs,fields):
+
+        data = get_1xt_diagram(simulation, field, cdirection, ccoords,tfs=twindow)
+
+        t   = data['t'] #get in ms
+        x   = data['x']
+        tsymb = simulation.normalization['tsymbol']; tunit = simulation.normalization['tunits']
+        tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
+        xlabel = data['xsymbol']+(' ('+data['xunits']+')')*(1-(data['xunits']==''))
+        vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
+        if not time_avg:
+            if space_time:
+                if data['name'] == 'phi':
+                        cmap = 'bwr'
+                XX, TT = np.meshgrid(x,t)
+                vmax = np.max(np.abs(data['values'])); vmin = -vmax * (cmap=='bwr')
+
+                # Create a contour plot or a heatmap of the space-time diagram
+                pcm = ax.pcolormesh(XX,TT,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
+                ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
+                title = data['slicetitle']
+                cbar = fig.colorbar(pcm,label=vlabel);
+                #-- to change window
+                if xlim:
+                    ax.set_xlim(xlim)
+                if ylim:
+                    ax.set_ylim(ylim)
+                if clim:
+                    pcm.set_clim(clim)
+            else:
+                norm = plt.Normalize(min(t), max(t))
+                colormap = cm.viridis  # You can choose any colormap, e.g., 'plasma', 'inferno', etc.
+                for it in range(len(t)):
+                    ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(t[it]),
+                            color=colormap(norm(t[it])))
+                ax.set_xlabel(xlabel)
+                ax.set_ylabel(vlabel)
+                title = data['slicetitle']
+                # Add a colorbar to the figure
+                sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
+                cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)  # Label for the colorbar
+        else:
+            # Compute the average of data over the t-axis (axis=1)
+            average_data = np.mean(data['values'], axis=0)
+            # Compute the standard deviation of data over the t-axis (axis=1)
+            std_dev_data = np.std(data['values'], axis=0)
+            # Plot with error bars
+            ax.errorbar(x, average_data, yerr=std_dev_data, fmt='o', capsize=5, label=vlabel)
+            # Labels and title
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(vlabel)
+            title = data['slicetitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
+        if not full_plot:
+            ax.set_title(title)
+    if full_plot:
+        fig.suptitle(title)
     fig.tight_layout()
 
 def plot_2D_cut(simulation, fieldname, cdirection, ccoord, tf,

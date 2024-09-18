@@ -54,19 +54,19 @@ class Simulation:
             'x','y','z','vpar','mu','phi',
             'ne','ni','upare','upari',
             'Tpare','Tpari','Tperpe','Tperpi',
-            'fe','fi'
+            'fe','fi','t'
             ]
         defaultsymbols = [
             r'$x$',r'$y$',r'$z$',r'$v_\parallel$',r'$\mu$',r'$\phi$',
             r'$n_e$',r'$n_i$',r'$u_{\parallel e}$',r'$u_{\parallel i}$',
             r'$T_{\parallel e}$',r'$T_{\parallel i}$',r'$T_{\perp e}$',r'$T_{\perp i}$',
-            r'$f_e$', r'$f_i$'
+            r'$f_e$', r'$f_i$', r'$t$'
             ]
         defaultunits = [
-            '(m)', '(m)', '', '(m/s)', '(J/T)', '(V)',
-            r'(m$^{-3}$)', r'(m$^{-3}$)', '(m/s)', '(m/s)',
-            '(J/kg)', '(J/kg)', '(J/kg)', '(J/kg)',
-            '[f]','[f]'
+            'm', 'm', '', 'm/s', 'J/T', 'V',
+            r'm$^{-3}$', r'm$^{-3}$', 'm/s', 'm/s',
+            'J/kg', 'J/kg', 'J/kg', 'J/kg',
+            '[f]','[f]','s'
         ]
         symbols = {keys[i]: defaultsymbols[i] for i in range(len(keys))}
         units   = {keys[i]: defaultunits[i]   for i in range(len(keys))}

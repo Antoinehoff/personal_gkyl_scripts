@@ -23,6 +23,8 @@ class Frame:
         self.vunits         = None
         self.process_field_name() #this initializes the above attributes
         self.time           = None
+        self.tsymbol        = None
+        self.tunits         = None
         self.Gdata          = None
         self.dims           = None
         self.ndims          = None
@@ -74,8 +76,17 @@ class Frame:
             self.new_gunits.append(self.gunits[idx])
         self.values   = self.Gdata.get_values()
         self.values   = self.values.reshape(self.new_dims)
+        slicetitle = ''
+        norm = self.simulation.normalization
+        for k_,c_ in self.slicecoords.items():
+            slicetitle += norm[k_+'symbol']+'=%2.2f, '%c_ + norm[k_+'units']
+        self.slicetitle = slicetitle
 
     def normalize(self):
+        # Normalize time
+        self.time    /= self.simulation.normalization['tscale']
+        self.tsymbol  = self.simulation.normalization['tsymbol']
+        self.tunits   = self.simulation.normalization['tunits']
         # Normalize the grids
         for ig in range(len(self.grids)):
             self.grids[ig]   /= self.simulation.normalization[self.gnames[ig]+'scale']
