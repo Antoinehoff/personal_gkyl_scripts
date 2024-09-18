@@ -67,8 +67,12 @@ def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
         frame = get_2D_slice(simulation, fieldname, cdirection, ccoord, tf)
         fig,ax = plt.subplots()
         pcm = ax.pcolormesh(XX,YY,frame.values,cmap='inferno')
-        ax.set_xlabel(frame.new_gsymbols[0]); ax.set_ylabel(frame.new_gsymbols[1])
-        ax.set_title((frame.slicetitle+", t=%2.2e (ms)")%(frame.time*1000))
+        xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
+        ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
+        tlabel = label(frame.tsymbol+'=%2.2f'%frame.time,frame.tunits)
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        ax.set_title(tlabel)
         cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
         if xlim:
             ax.set_xlim(xlim)
@@ -167,23 +171,45 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
         fig.suptitle(title)
     fig.tight_layout()
 
-def plot_2D_cut(simulation, fieldname, cdirection, ccoord, tf,
-                xlim=[], ylim=[], clim=[]):
-    frame = get_2D_slice(simulation, fieldname, cdirection, ccoord, tf)
-    YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
-    fig,ax = plt.subplots()
-    pcm = ax.pcolormesh(XX,YY,frame.values,cmap='inferno')
-    ax.set_xlabel(frame.gsymbols[0]); ax.set_ylabel(frame.gsymbols[1])
-    ax.set_title((frame.slicetitle+", t=%2.2e (ms)")%(frame.time*1000))
-    cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
-    if xlim:
-        ax.set_xlim(xlim)
-    if ylim:
-        ax.set_xlim(ylim)
-    if clim:
-        pcm.set_clim(clim)    
-    fig.tight_layout()
+def plot_2D_cut(simulation,cdirection,ccoord,tf,
+                fieldname='',spec='e', cmap='inferno',
+                xlim=[], ylim=[], clim=[], full_plot=False):
+    full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
+    if full_plot:
+        fig,axs = plt.subplots(2,2,figsize=(8,6))
+        axs    = axs.flatten()
+        fields = ['n','upar','Tpar','Tperp']
+        fields = [f_+spec for f_ in fields]
+    else:
+        fig,axs = plt.subplots(1,1)
+        axs    = [axs]
+        fields = [fieldname]
 
+    for ax,field in zip(axs,fields):
+
+        frame = get_2D_slice(simulation, field, cdirection, ccoord, tf)
+        YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
+        pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap)
+        xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
+        ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
+        tlabel = label(frame.tsymbol+'=%2.2f'%frame.time,frame.tunits)
+        title  = frame.slicetitle + tlabel
+        ax.set_xlabel(xlabel)
+        ax.set_ylabel(ylabel)
+        cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
+        if xlim:
+            ax.set_xlim(xlim)
+        if ylim:
+            ax.set_xlim(ylim)
+        if clim:
+            pcm.set_clim(clim)    
+        if not full_plot:
+            ax.set_title(title)
+    if full_plot:
+        fig.suptitle(title)
+    
+    fig.tight_layout()
+        
 def label(label,units):
     if units:
         label += ' ('+units+')'
