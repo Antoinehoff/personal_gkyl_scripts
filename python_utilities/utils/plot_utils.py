@@ -70,9 +70,10 @@ def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
         xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
         ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
         tlabel = label(frame.tsymbol+'=%2.2f'%frame.time,frame.tunits)
+        title  = frame.slicetitle + tlabel
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        ax.set_title(tlabel)
+        ax.set_title(title)
         cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
         if xlim:
             ax.set_xlim(xlim)
@@ -83,8 +84,6 @@ def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
         fig.tight_layout()
         fig.savefig(f'gif_tmp/plot_{tf}.png')
         plt.close()
-
-
     moviename = 'movie_'+fieldname+'_'+cdirection[0]+cdirection[1]+'='+('%2.2f'%ccoord)
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
