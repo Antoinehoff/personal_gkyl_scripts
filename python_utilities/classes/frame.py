@@ -6,7 +6,7 @@ def getgrid_index(s):
     return  (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm'))-1
 
 class Frame:
-    def __init__(self,simulation,name,tf):
+    def __init__(self,simulation,name,tf,load=False,polytype='ms'):
         """
         Initialize a Frame instance with all attributes set to None.
         """
@@ -41,6 +41,9 @@ class Frame:
         self.sliceddim      = []
         self.slicecoords    = {}
         self.slicetitle     = ''
+        self.timetitle      = ''
+        if load:
+            self.load(polytype=polytype)
 
     def load(self,polytype='ms'):
         # Load the data from the file
@@ -76,11 +79,6 @@ class Frame:
             self.new_gunits.append(self.gunits[idx])
         self.values   = self.Gdata.get_values()
         self.values   = self.values.reshape(self.new_dims)
-        slicetitle = ''
-        norm = self.simulation.normalization
-        for k_,c_ in self.slicecoords.items():
-            slicetitle += norm[k_+'symbol']+'=%2.2f, '%c_ + norm[k_+'units']
-        self.slicetitle = slicetitle
 
     def normalize(self):
         # Normalize time
@@ -98,6 +96,12 @@ class Frame:
         self.values  -= self.simulation.normalization[self.name+'shift']
         self.vsymbol  = self.simulation.normalization[self.name+'symbol']
         self.vunits   = self.simulation.normalization[self.name+'units']
+        slicetitle = ''
+        norm = self.simulation.normalization
+        for k_,c_ in self.slicecoords.items():
+            slicetitle += norm[k_+'symbol']+'=%2.2f, '%c_ + norm[k_+'units']
+        self.slicetitle = slicetitle
+        self.timetitle  = self.tsymbol + '=%2.2f'%self.time+self.tunits
 
     def compress(self,direction,type='cut',cut=0):
         if direction == 'x':
