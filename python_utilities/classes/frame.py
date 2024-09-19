@@ -63,6 +63,7 @@ class Frame:
         self.time    = Gdata.ctx['time']
         self.refresh()
         self.normalize()
+        self.rename()
 
     def refresh(self):
         self.new_cells    = self.Gdata.ctx['cells']
@@ -96,12 +97,15 @@ class Frame:
         self.values  -= self.simulation.normalization[self.name+'shift']
         self.vsymbol  = self.simulation.normalization[self.name+'symbol']
         self.vunits   = self.simulation.normalization[self.name+'units']
+
+    def rename(self):
         slicetitle = ''
         norm = self.simulation.normalization
         for k_,c_ in self.slicecoords.items():
             slicetitle += norm[k_+'symbol']+'=%2.2f, '%c_ + norm[k_+'units']
         self.slicetitle = slicetitle
         self.timetitle  = self.tsymbol + '=%2.2f'%self.time+self.tunits
+        self.fulltitle  = self.slicetitle + self.timetitle
 
     def compress(self,direction,type='cut',cut=0):
         if direction == 'x':
@@ -123,6 +127,7 @@ class Frame:
         cc = (self.Gdata.ctx['lower'][ic]+self.Gdata.ctx['upper'][ic])/2.
         self.slicecoords[direction] = cc   
         self.refresh()
+        self.rename()
 
     def slice_1D(self,cutdirection,ccoords):
         axes = 'xyz'

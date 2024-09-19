@@ -46,11 +46,10 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
         vv.append(frame.values)
     frame.free_values() # remove values to free memory
     x = frame.new_grids[0]
-
     return {'x':x,'t':t,'values':vv,'name':frame.name,
             'xsymbol':frame.new_gsymbols[0], 'xunits':frame.new_gunits[0], 
             'vsymbol':frame.vsymbol, 'vunits':frame.vunits,
-            'slicecoords':frame.slicecoords, 'slicetitle':frame.slicetitle}
+            'slicecoords':frame.slicecoords, 'fulltitle':frame.fulltitle}
 
 def get_2D_slice(simulation, fieldname, cutdirection, ccoord, tf):
     frame = Frame(simulation,fieldname,tf)
@@ -70,8 +69,7 @@ def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
         pcm = ax.pcolormesh(XX,YY,frame.values,cmap='inferno')
         xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
         ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
-        tlabel = label(frame.tsymbol+'=%2.2f'%frame.time,frame.tunits)
-        title  = frame.slicetitle + tlabel
+        title  = frame.fulltitle
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         ax.set_title(title)
@@ -133,7 +131,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                 # Create a contour plot or a heatmap of the space-time diagram
                 pcm = ax.pcolormesh(XX,TT,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
                 ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
-                title = data['slicetitle']
+                title = data['fulltitle']
                 cbar = fig.colorbar(pcm,label=vlabel);
                 #-- to change window
                 if xlim:
@@ -150,7 +148,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                             color=colormap(norm(t[it])))
                 ax.set_xlabel(xlabel)
                 ax.set_ylabel(vlabel)
-                title = data['slicetitle']
+                title = data['fulltitle']
                 # Add a colorbar to the figure
                 sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
                 cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)  # Label for the colorbar
@@ -164,7 +162,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
             # Labels and title
             ax.set_xlabel(xlabel)
             ax.set_ylabel(vlabel)
-            title = data['slicetitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
+            title = data['fulltitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
         if not full_plot:
             ax.set_title(title)
     if full_plot:
@@ -192,8 +190,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap)
         xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
         ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
-        tlabel = label(frame.tsymbol+'=%2.2f'%frame.time,frame.tunits)
-        title  = frame.slicetitle + tlabel
+        title  = frame.fulltitle
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
         cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
