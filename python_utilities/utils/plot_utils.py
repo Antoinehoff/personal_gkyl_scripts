@@ -34,7 +34,8 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
     dataname = simulation.data_param.data_files_dict[fieldname+'file']
     if not tfs:
         tfs = find_available_frames(simulation, dataname)
-
+    if not isinstance(tfs, list):
+        tfs = [tfs]
     # to store iteratively times and values
     t  = []
     vv = []
@@ -208,6 +209,36 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         fig.suptitle(title)
     
     fig.tight_layout()
+
+def compare_GBsource(simulation,species,tf,ix=0):
+    simulation.geom_param.compute_bxgradBoB2()
+    y      = simulation.geom_param.grids[1]
+    Ly     = y[-1] - y[0]
+    z      = simulation.geom_param.grids[2]
+
+    vGBz_x = np.trapz(simulation.geom_param.bxgradBoB2[0,ix,:,:], x=y, axis=0)
+    tf     = 200
+    # build n*T product
+    nT_z = 1.0
+    for field in ['n','Tpar']:
+        field += species.name[0]
+        frame  = Frame(simulation,field,tf,load=True)
+        nT_z    *= np.trapz(frame.values[ix,:,:],x=y, axis=0)
+    # eV to Joules conversion
+    nT_z *= simulation.phys_param.eV
+    qs     = species.q
+    Gammaz = nT_z/qs * vGBz_x
+    plt.plot(z,Gammaz,label='Effective source at ' + frame.timetitle)
+
+    # the GB source model
+    vGBz_x = simulation.geom_param.GBflux_model()
+    n0      = species.n0
+    T0      = species.T0
+    fz      = n0*T0/qs * vGBz_x * Ly
+    plt.plot(z,-fz,label='GB source model')
+    plt.legend()
+    plt.xlabel(r'$z$')
+    plt.ylabel(r'$\Gamma_{\nabla B,x}$')
         
 def label(label,units):
     if units:
