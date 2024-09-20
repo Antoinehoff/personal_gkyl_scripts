@@ -101,70 +101,81 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                            twindow=[],space_time=False, cmap='inferno',
                            xlim=[], ylim=[], clim=[], time_avg=False, full_plot=False):
     full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
+    multi_species = isinstance(spec, list)
+    if not multi_species:
+        spec = [spec]
+    else:
+        time_avg = True
+        space_time = False
+
     if full_plot:
         fig,axs = plt.subplots(2,2,figsize=(8,6))
         axs    = axs.flatten()
         fields = ['n','upar','Tpar','Tperp']
-        fields = [f_+spec for f_ in fields]
     else:
         fig,axs = plt.subplots(1,1)
         axs    = [axs]
         fields = [fieldname]
 
-    for ax,field in zip(axs,fields):
+    for s_ in spec:
+        for ax,field in zip(axs,fields):
+            field += s_
+            data = get_1xt_diagram(simulation, field, cdirection, ccoords,tfs=twindow)
 
-        data = get_1xt_diagram(simulation, field, cdirection, ccoords,tfs=twindow)
+            t   = data['t'] #get in ms
+            x   = data['x']
+            tsymb = simulation.normalization['tsymbol']; tunit = simulation.normalization['tunits']
+            tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
+            xlabel = data['xsymbol']+(' ('+data['xunits']+')')*(1-(data['xunits']==''))
+            vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
+            if not time_avg:
+                if space_time:
+                    if data['name'] == 'phi':
+                            cmap = 'bwr'
+                    XX, TT = np.meshgrid(x,t)
+                    vmax = np.max(np.abs(data['values'])); vmin = -vmax * (cmap=='bwr')
 
-        t   = data['t'] #get in ms
-        x   = data['x']
-        tsymb = simulation.normalization['tsymbol']; tunit = simulation.normalization['tunits']
-        tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
-        xlabel = data['xsymbol']+(' ('+data['xunits']+')')*(1-(data['xunits']==''))
-        vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
-        if not time_avg:
-            if space_time:
-                if data['name'] == 'phi':
-                        cmap = 'bwr'
-                XX, TT = np.meshgrid(x,t)
-                vmax = np.max(np.abs(data['values'])); vmin = -vmax * (cmap=='bwr')
-
-                # Create a contour plot or a heatmap of the space-time diagram
-                pcm = ax.pcolormesh(XX,TT,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
-                ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
-                title = data['fulltitle']
-                cbar = fig.colorbar(pcm,label=vlabel);
-                #-- to change window
-                if xlim:
-                    ax.set_xlim(xlim)
-                if ylim:
-                    ax.set_ylim(ylim)
-                if clim:
-                    pcm.set_clim(clim)
+                    # Create a contour plot or a heatmap of the space-time diagram
+                    pcm = ax.pcolormesh(XX,TT,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
+                    ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
+                    title = data['fulltitle']
+                    cbar = fig.colorbar(pcm,label=vlabel);
+                    #-- to change window
+                    if xlim:
+                        ax.set_xlim(xlim)
+                    if ylim:
+                        ax.set_ylim(ylim)
+                    if clim:
+                        pcm.set_clim(clim)
+                else:
+                    norm = plt.Normalize(min(t), max(t))
+                    colormap = cm.viridis  # You can choose any colormap, e.g., 'plasma', 'inferno', etc.
+                    for it in range(len(t)):
+                        ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(t[it]),
+                                color=colormap(norm(t[it])))
+                    ax.set_xlabel(xlabel)
+                    ax.set_ylabel(vlabel)
+                    title = data['fulltitle']
+                    # Add a colorbar to the figure
+                    sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
+                    cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)  # Label for the colorbar
             else:
-                norm = plt.Normalize(min(t), max(t))
-                colormap = cm.viridis  # You can choose any colormap, e.g., 'plasma', 'inferno', etc.
-                for it in range(len(t)):
-                    ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(t[it]),
-                            color=colormap(norm(t[it])))
+                # Compute the average of data over the t-axis (axis=1)
+                average_data = np.mean(data['values'], axis=0)
+                # Compute the standard deviation of data over the t-axis (axis=1)
+                std_dev_data = np.std(data['values'], axis=0)
+                # Plot with error bars
+                ax.errorbar(x, average_data, yerr=std_dev_data, fmt='o', capsize=5, label=vlabel)
+                # Labels and title
                 ax.set_xlabel(xlabel)
-                ax.set_ylabel(vlabel)
-                title = data['fulltitle']
-                # Add a colorbar to the figure
-                sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
-                cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)  # Label for the colorbar
-        else:
-            # Compute the average of data over the t-axis (axis=1)
-            average_data = np.mean(data['values'], axis=0)
-            # Compute the standard deviation of data over the t-axis (axis=1)
-            std_dev_data = np.std(data['values'], axis=0)
-            # Plot with error bars
-            ax.errorbar(x, average_data, yerr=std_dev_data, fmt='o', capsize=5, label=vlabel)
-            # Labels and title
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(vlabel)
-            title = data['fulltitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
-        if not full_plot:
-            ax.set_title(title)
+                if multi_species:
+                    ax.set_ylabel(data['vunits'])
+                    ax.legend()
+                else:
+                    ax.set_ylabel(vlabel)
+                title = data['fulltitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
+            if not full_plot:
+                ax.set_title(title)
     if full_plot:
         fig.suptitle(title)
     fig.tight_layout()
@@ -207,7 +218,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     
     fig.tight_layout()
 
-def compare_GBsource(simulation,species,tf=0,ix=0):
+def compare_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     # Set up the simulation geometry and load useful data
     simulation.geom_param.compute_bxgradBoB2()
     y      = simulation.geom_param.grids[1]
@@ -229,16 +240,22 @@ def compare_GBsource(simulation,species,tf=0,ix=0):
     plt.plot(z,Gammaz,label='Effective source at ' + frame.timetitle)
 
     # Compare with the GB source model
-    vGBz_x = simulation.geom_param.GBflux_model()
+    vGBz_x = simulation.geom_param.GBflux_model(b=b)
     n0      = species.n0
     T0      = species.T0
     # y integration is done by Ly multiplication
-    fz      = n0*T0/qs * vGBz_x * Ly
-    plt.plot(z,-fz,label='GB source model')
+    fz      = -n0*T0/qs * vGBz_x * Ly
+    plt.plot(z,fz,label='GB source model')
     plt.legend()
     plt.xlabel(r'$z$')
     plt.ylabel(r'$\int \Gamma_{\nabla B,x} dy$')
         
+    Ssimul = np.trapz(Gammaz,x=z, axis=0)
+    Smodel = np.trapz(fz    ,x=z, axis=0)
+
+    plt.title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
+              %(Ssimul,Smodel))
+
 def label(label,units):
     if units:
         label += ' ('+units+')'

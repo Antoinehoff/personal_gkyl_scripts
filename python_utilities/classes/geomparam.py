@@ -1,13 +1,15 @@
 import postgkyl as pg
 import numpy as np
 class GeomParam:
-    def __init__(self, R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta):
+    def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, 
+                 a_shift=0.0, q0=1.6, kappa=1.0, delta=0.0, x_LCFS=0.0):
         self.R_axis     = R_axis
         self.a_shift    = a_shift
         self.Z_axis     = Z_axis
         self.kappa      = kappa
         self.delta      = delta
         self.q0         = q0
+        self.x_LCFS     = x_LCFS
         self.R_LCFSmid  = R_LCFSmid
         self.a_mid      = R_LCFSmid-R_axis
         self.g_ij       = None
@@ -20,6 +22,9 @@ class GeomParam:
         self.dBdy       = None
         self.dBdz       = None
         self.bxgradBoB2 = None
+        self.Lx         = None
+        self.Ly         = None
+        self.Lz         = None
 
     def load_metric(self,fileprefix):
         #-- load B (bmag)
@@ -32,7 +37,9 @@ class GeomParam:
         
         #-- load grid
         self.grids = [0.5*(g[1:]+g[:-1]) for g in Gdata.get_grid() if len(g) > 1]
-
+        self.Lx    = self.grids[0][-1]-self.grids[0][0]
+        self.Ly    = self.grids[1][-1]-self.grids[1][0]
+        self.Lz    = self.grids[2][-1]-self.grids[2][0]
         #-- compute associated derivatives
         self.dBdx = np.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
         self.dBdy = np.gradient(self.bmag, self.grids[1], axis=1)  # Derivative w.r.t y
@@ -79,3 +86,4 @@ class GeomParam:
     def GBflux_model(self,b=1.2):
         z = self.grids[2]
         return np.sin(z)*np.exp(-np.power(np.abs(z),1.5)/(2.*b))
+
