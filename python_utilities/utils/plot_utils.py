@@ -50,52 +50,6 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
             'xsymbol':frame.new_gsymbols[0], 'xunits':frame.new_gunits[0], 
             'vsymbol':frame.vsymbol, 'vunits':frame.vunits, 'slicetitle':frame.slicetitle,
             'slicecoords':frame.slicecoords, 'fulltitle':frame.fulltitle}
-
-def get_2D_slice(simulation, fieldname, cutdirection, ccoord, tf):
-    frame = Frame(simulation,fieldname,tf)
-    frame.load()
-    frame.slice_2D(cutdirection,ccoord)
-    return frame
-
-def make_2D_movie(simulation, fieldname, cdirection, ccoord, tfs,
-                  xlim=[], ylim=[], clim=[], fixed_cbar=False):
-    # Get a first frame to compute meshgrids
-    os.makedirs('gif_tmp', exist_ok=True)
-    frame = get_2D_slice(simulation, fieldname, cdirection, ccoord, tfs[0])
-    YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
-    for tf in tfs:
-        frame = get_2D_slice(simulation, fieldname, cdirection, ccoord, tf)
-        fig,ax = plt.subplots()
-        pcm = ax.pcolormesh(XX,YY,frame.values,cmap='inferno')
-        xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
-        ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
-        title  = frame.fulltitle
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
-        ax.set_title(title)
-        cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
-        if xlim:
-            ax.set_xlim(xlim)
-        if ylim:
-            ax.set_xlim(ylim)
-        if clim:
-            pcm.set_clim(clim)    
-        fig.tight_layout()
-        fig.savefig(f'gif_tmp/plot_{tf}.png')
-        plt.close()
-    moviename = 'movie_'+fieldname+'_'+cdirection[0]+cdirection[1]+'='+('%2.2f'%ccoord)
-    if xlim:
-        moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
-    if ylim:
-        moviename+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1])
-    if clim:
-        moviename+='_clim_%2.2d_%2.2d'%(clim[0],clim[1])
-    moviename += '.gif'
-    # Load images
-    images = [Image.open(f'gif_tmp/plot_{tf}.png') for tf in tfs]
-    # Save as gif
-    images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
-    print("movie "+moviename+" created.")
     
 def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                            twindow=[],space_time=False, cmap='inferno',
@@ -135,11 +89,14 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                 if space_time:
                     if data['name'] == 'phi' or data['name'][:-1] == 'upar':
                         cmap = 'bwr'
+                        vmax = np.max(np.abs(data['values'])) 
+                        vmin = -vmax
                     else:
                         cmap = cmap0
-                    XX, TT = np.meshgrid(x,t)
-                    vmax = np.max(np.abs(data['values'])); vmin = -vmax * (cmap=='bwr')
+                        vmax = np.max(np.abs(data['values'])) 
+                        vmin = 0.0
 
+                    XX, TT = np.meshgrid(x,t)
                     # Create a contour plot or a heatmap of the space-time diagram
                     pcm = ax.pcolormesh(XX,TT,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
                     ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
@@ -187,9 +144,10 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
     fig.tight_layout()
 
 def plot_2D_cut(simulation,cdirection,ccoord,tf,
-                fieldname='',spec='e', cmap='inferno',
+                fieldname='',spec='e', cmap='inferno', figout=[],
                 xlim=[], ylim=[], clim=[], full_plot=False):
     full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
+    cmap0 = cmap
     if full_plot:
         fig,axs = plt.subplots(2,2,figsize=(8,6))
         axs    = axs.flatten()
@@ -201,9 +159,21 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         fields = [fieldname]
 
     for ax,field in zip(axs,fields):
-        frame = get_2D_slice(simulation, field, cdirection, ccoord, tf)
+        frame = Frame(simulation,field,tf)
+        frame.load()
+        frame.slice_2D(cdirection,ccoord)
+
+        if field == 'phi' or field[:-1] == 'upar':
+            cmap = 'bwr'
+            vmax = np.max(np.abs(frame.values)) 
+            vmin = -vmax
+        else:
+            cmap = cmap0
+            vmax = np.max(np.abs(frame.values)) 
+            vmin = 0.0
+
         YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
-        pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap)
+        pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap,vmin=vmin,vmax=vmax)
         xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
         ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
         title  = frame.fulltitle
@@ -223,6 +193,36 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         fig.suptitle(title)
     
     fig.tight_layout()
+    # This allows to return the figure in the arguments line (used for movies)
+    figout.append(fig)
+
+def make_2D_movie(simulation,cdirection,ccoord,tfs,
+                      fieldname='',spec='e', cmap='inferno',
+                      xlim=[], ylim=[], clim=[], full_plot=False):
+    os.makedirs('gif_tmp', exist_ok=True)
+    for tf in tfs:
+        figout = []
+        plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldname=fieldname,
+                    spec=spec,cmap=cmap,full_plot=full_plot,figout=figout)
+        fig = figout[0]
+        fig.tight_layout()
+        fig.savefig(f'gif_tmp/plot_{tf}.png')
+        plt.close()
+    if not fieldname or full_plot:
+        fieldname = 'mom'+spec
+    moviename = 'movie_'+fieldname+'_'+cdirection[0]+cdirection[1]+'='+('%2.2f'%ccoord)
+    if xlim:
+        moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
+    if ylim:
+        moviename+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1])
+    if clim:
+        moviename+='_clim_%2.2d_%2.2d'%(clim[0],clim[1])
+    moviename += '.gif'
+    # Load images
+    images = [Image.open(f'gif_tmp/plot_{tf}.png') for tf in tfs]
+    # Save as gif
+    images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
+    print("movie "+moviename+" created.")
 
 def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
     
