@@ -83,7 +83,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
             vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
             if not time_avg:
                 if space_time:
-                    if data['name'] == 'phi' or data['name'][:-1] == 'upar':
+                    if (data['name'] == 'phi' or data['name'][:-1] == 'upar') or cmap0=='bwr':
                         cmap = 'bwr'
                         vmax = np.max(np.abs(data['values'])) 
                         vmin = -vmax
