@@ -22,8 +22,11 @@ class GeomParam:
         self.dBdy       = None
         self.dBdz       = None
         self.bxgradBoB2 = None
+        self.x          = None
         self.Lx         = None
+        self.y          = None
         self.Ly         = None
+        self.z          = None
         self.Lz         = None
 
     def load_metric(self,fileprefix):
@@ -37,6 +40,7 @@ class GeomParam:
         
         #-- load grid
         self.grids = [0.5*(g[1:]+g[:-1]) for g in Gdata.get_grid() if len(g) > 1]
+        self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
         self.Lx    = self.grids[0][-1]-self.grids[0][0]
         self.Ly    = self.grids[1][-1]-self.grids[1][0]
         self.Lz    = self.grids[2][-1]-self.grids[2][0]
@@ -87,3 +91,23 @@ class GeomParam:
         z = self.grids[2]
         return np.sin(z)*np.exp(-np.power(np.abs(z),1.5)/(2.*b))
 
+    def set_domain(self,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]],Ntheta=128):
+        if geom_type == 'Miller':
+            ## Miller geometry model
+            def RZ_rtheta(R_, theta, delta, kappa):
+                r = R_ - self.R_axis
+                R = (self.R_axis - self.a_shift * r**2 / (2.0 * self.R_axis) + 
+                        r * np.cos(theta + np.arcsin(delta) * np.sin(theta)))
+                Z = self.Z_axis + kappa*r*np.sin(theta)
+                return [R,Z]
+            
+            Rmid_min = self.R_LCFSmid - self.x_LCFS
+            Rmid_max = Rmid_min+self.Lx
+            theta = np.linspace(-np.pi,+np.pi,Ntheta)
+            self.RZ_min  = RZ_rtheta(Rmid_min,theta,self.delta,self.kappa)
+            self.RZ_max  = RZ_rtheta(Rmid_max,theta,self.delta,self.kappa),
+            self.RZ_lcfs = RZ_rtheta(self.R_LCFSmid,theta,self.delta,self.kappa)
+            self.vessel_corners = vessel_corners           
+        elif geom_type == 'efit':
+            a = 0
+            # one day... (09/20/2024)
