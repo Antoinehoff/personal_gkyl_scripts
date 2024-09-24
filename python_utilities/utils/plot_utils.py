@@ -23,12 +23,6 @@ def func_data_omp(field2d, comp):
     field1dValues = field2dValues[:,z_slice,0]
     return x_vals,field1dValues
 
-def get_1xt_slice(simulation, fieldname, cutdirection, ccoords, tf):
-    frame = Frame(simulation,fieldname,tf)
-    frame.load()
-    frame.slice_1D(cutdirection,ccoords)
-    return frame
-
 def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
     # Get available time frames
     dataname = simulation.data_param.data_files_dict[fieldname+'file']
@@ -41,7 +35,9 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
     vv = []
     # Fill ZZ with data for each time frame
     for it, tf in enumerate(tfs):
-        frame = get_1xt_slice(simulation,fieldname,cutdirection,ccoords,tf)
+        frame = Frame(simulation,fieldname,tf)
+        frame.load()
+        frame.slice_1D(cutdirection,ccoords)
         t.append(frame.time)
         vv.append(frame.values)
     frame.free_values() # remove values to free memory
@@ -144,8 +140,9 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
     fig.tight_layout()
 
 def plot_2D_cut(simulation,cdirection,ccoord,tf,
-                fieldname='',spec='e', cmap='inferno', figout=[],
-                xlim=[], ylim=[], clim=[], full_plot=False):
+                fieldname='',spec='e', cmap='inferno', full_plot=False,
+                xlim=[], ylim=[], clim=[], 
+                figout=[],cutout=[],):
     full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
     cmap0 = cmap
     if full_plot:
@@ -163,14 +160,14 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         frame.load()
         frame.slice_2D(cdirection,ccoord)
 
-        if field == 'phi' or field[:-1] == 'upar':
+        if (field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr':
             cmap = 'bwr'
             vmax = np.max(np.abs(frame.values)) 
             vmin = -vmax
         else:
             cmap = cmap0
-            vmax = np.max(np.abs(frame.values)) 
-            vmin = 0.0
+            vmax = np.max(frame.values)
+            vmin = np.min(frame.values)
 
         YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
         pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap,vmin=vmin,vmax=vmax)
@@ -195,22 +192,28 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     fig.tight_layout()
     # This allows to return the figure in the arguments line (used for movies)
     figout.append(fig)
+    cutout.append(frame.slicecoords)
 
 def make_2D_movie(simulation,cdirection,ccoord,tfs,
                       fieldname='',spec='e', cmap='inferno',
                       xlim=[], ylim=[], clim=[], full_plot=False):
     os.makedirs('gif_tmp', exist_ok=True)
     for tf in tfs:
-        figout = []
+        figout = []; cutout = []
         plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldname=fieldname,
-                    spec=spec,cmap=cmap,full_plot=full_plot,figout=figout)
+                    spec=spec,cmap=cmap,full_plot=full_plot,
+                    xlim=xlim,ylim=ylim,clim=clim,
+                    cutout=cutout,figout=figout)
         fig = figout[0]
         fig.tight_layout()
         fig.savefig(f'gif_tmp/plot_{tf}.png')
         plt.close()
+    # Naming
     if not fieldname or full_plot:
         fieldname = 'mom'+spec
-    moviename = 'movie_'+fieldname+'_'+cdirection[0]+cdirection[1]+'='+('%2.2f'%ccoord)
+    cutout=cutout[0]
+    cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
+    moviename = 'movie_'+fieldname+'_'+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
@@ -218,7 +221,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
     if clim:
         moviename+='_clim_%2.2d_%2.2d'%(clim[0],clim[1])
     moviename += '.gif'
-    # Load images
+    # Compiling the movie images
     images = [Image.open(f'gif_tmp/plot_{tf}.png') for tf in tfs]
     # Save as gif
     images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
