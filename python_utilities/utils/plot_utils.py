@@ -48,7 +48,7 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
     x = frame.new_grids[0]
     return {'x':x,'t':t,'values':vv,'name':frame.name,
             'xsymbol':frame.new_gsymbols[0], 'xunits':frame.new_gunits[0], 
-            'vsymbol':frame.vsymbol, 'vunits':frame.vunits,
+            'vsymbol':frame.vsymbol, 'vunits':frame.vunits, 'slicetitle':frame.slicetitle,
             'slicecoords':frame.slicecoords, 'fulltitle':frame.fulltitle}
 
 def get_2D_slice(simulation, fieldname, cutdirection, ccoord, tf):
@@ -124,7 +124,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
 
             t   = data['t'] #get in ms
             x   = data['x']
-            tsymb = simulation.normalization['tsymbol']; tunit = simulation.normalization['tunits']
+            tsymb = simulation.normalization['tsymbol'] 
+            tunit = simulation.normalization['tunits']
             tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
             xlabel = data['xsymbol']+(' ('+data['xunits']+')')*(1-(data['xunits']==''))
             vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
@@ -138,7 +139,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                     # Create a contour plot or a heatmap of the space-time diagram
                     pcm = ax.pcolormesh(XX,TT,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
                     ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
-                    title = data['fulltitle']
+                    title = data['slicetitle'][:-2]
                     cbar = fig.colorbar(pcm,label=vlabel);
                     #-- to change window
                     if xlim:
@@ -149,7 +150,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                         pcm.set_clim(clim)
                 else:
                     norm = plt.Normalize(min(t), max(t))
-                    colormap = cm.viridis  # You can choose any colormap, e.g., 'plasma', 'inferno', etc.
+                    colormap = cm.viridis  # You can choose any colormap
                     for it in range(len(t)):
                         ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(t[it]),
                                 color=colormap(norm(t[it])))
@@ -158,14 +159,15 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                     title = data['fulltitle']
                     # Add a colorbar to the figure
                     sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
-                    cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)  # Label for the colorbar
+                    cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)
             else:
                 # Compute the average of data over the t-axis (axis=1)
                 average_data = np.mean(data['values'], axis=0)
                 # Compute the standard deviation of data over the t-axis (axis=1)
                 std_dev_data = np.std(data['values'], axis=0)
                 # Plot with error bars
-                ax.errorbar(x, average_data, yerr=std_dev_data, fmt='o', capsize=5, label=vlabel)
+                ax.errorbar(x, average_data, yerr=std_dev_data, 
+                            fmt='o', capsize=5, label=vlabel)
                 # Labels and title
                 ax.set_xlabel(xlabel)
                 if multi_species:
@@ -195,7 +197,6 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         fields = [fieldname]
 
     for ax,field in zip(axs,fields):
-
         frame = get_2D_slice(simulation, field, cdirection, ccoord, tf)
         YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
         pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap)
@@ -213,31 +214,53 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
             pcm.set_clim(clim)    
         if not full_plot:
             ax.set_title(title)
+
     if full_plot:
         fig.suptitle(title)
     
     fig.tight_layout()
 
-def compare_GBsource(simulation,species,tf=0,ix=0,b=1.2):
+def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
+    
+    geometry.set_domain(geom_type,vessel_corners)
+
+    fig = plt.figure()#(figsize=(4, 3))
+    ax  = fig.add_subplot(111)
+    ax.plot(geometry.RZ_min[0], geometry.RZ_min[1],'-c')
+    ax.plot(geometry.RZ_max[0], geometry.RZ_max[1],'-c')
+    ax.plot(geometry.RZ_lcfs[0],geometry.RZ_lcfs[1],'--k')
+    vx1 = geometry.vessel_corners[0][0]            
+    vx2 = geometry.vessel_corners[0][1]            
+    vy1 = geometry.vessel_corners[1][0]            
+    vy2 = geometry.vessel_corners[1][1]            
+    ax.plot([vx1,vx1],[vy1,vy2],'-k')
+    ax.plot([vx2,vx2],[vy1,vy2],'-k')
+    ax.plot([vx1,vx2],[vy1,vy1],'-k')
+    ax.plot([vx1,vx2],[vy2,vy2],'-k')
+    ax.plot(geometry.R_axis,geometry.Z_axis,'x')
+
+    ax.set_xlabel('R (m)')
+    ax.set_ylabel('Z (m)')
+    ax.set_aspect('equal')
+
+def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     # Set up the simulation geometry and load useful data
     simulation.geom_param.compute_bxgradBoB2()
-    y      = simulation.geom_param.grids[1]
-    Ly     = y[-1] - y[0]
-    z      = simulation.geom_param.grids[2]
     vGBz_x = simulation.geom_param.bxgradBoB2[0,ix,:,:]
     qs     = species.q
-
+    ygrid  = simulation.geom_param.y
+    Ly     = simulation.geom_param.Ly
+    zgrid  = simulation.geom_param.z
     # build n*T product
     nT = 1.0
-    for field in ['n','Tpar']:
+    for field in ['n','Tperp']:
         field += species.name[0]
         frame  = Frame(simulation,field,tf,load=True)
         nT    *= frame.values[ix,:,:]
     # eV to Joules conversion
     nT *= simulation.phys_param.eV
     # assemble n*T/q*vgradB and integrate over y
-    Gammaz = np.trapz(nT*vGBz_x/qs,x=y, axis=0)
-    plt.plot(z,Gammaz,label='Effective source at ' + frame.timetitle)
+    Gammaz = np.trapz(nT*vGBz_x/qs,x=ygrid, axis=0)
 
     # Compare with the GB source model
     vGBz_x = simulation.geom_param.GBflux_model(b=b)
@@ -245,13 +268,15 @@ def compare_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     T0      = species.T0
     # y integration is done by Ly multiplication
     fz      = -n0*T0/qs * vGBz_x * Ly
-    plt.plot(z,fz,label='GB source model')
+
+    plt.plot(zgrid,Gammaz,label='Effective source at ' + frame.timetitle)
+    plt.plot(zgrid,fz,label='GB source model')
     plt.legend()
     plt.xlabel(r'$z$')
     plt.ylabel(r'$\int \Gamma_{\nabla B,x} dy$')
         
-    Ssimul = np.trapz(Gammaz,x=z, axis=0)
-    Smodel = np.trapz(fz    ,x=z, axis=0)
+    Ssimul = np.trapz(Gammaz,x=zgrid, axis=0)
+    Smodel = np.trapz(fz    ,x=zgrid, axis=0)
 
     plt.title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
               %(Ssimul,Smodel))
