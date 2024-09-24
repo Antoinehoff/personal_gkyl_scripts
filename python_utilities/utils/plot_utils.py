@@ -102,6 +102,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                            xlim=[], ylim=[], clim=[], time_avg=False, full_plot=False):
     full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
     multi_species = isinstance(spec, list)
+    cmap0 = cmap
     if not multi_species:
         spec = [spec]
     else:
@@ -119,7 +120,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
 
     for s_ in spec:
         for ax,field in zip(axs,fields):
-            field += s_
+            if not field == 'phi':
+                field += s_
             data = get_1xt_diagram(simulation, field, cdirection, ccoords,tfs=twindow)
 
             t   = data['t'] #get in ms
@@ -131,8 +133,10 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
             vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
             if not time_avg:
                 if space_time:
-                    if data['name'] == 'phi':
-                            cmap = 'bwr'
+                    if data['name'] == 'phi' or data['name'][:-1] == 'upar':
+                        cmap = 'bwr'
+                    else:
+                        cmap = cmap0
                     XX, TT = np.meshgrid(x,t)
                     vmax = np.max(np.abs(data['values'])); vmin = -vmax * (cmap=='bwr')
 
