@@ -102,7 +102,7 @@ class Frame:
         slicetitle = ''
         norm = self.simulation.normalization
         for k_,c_ in self.slicecoords.items():
-            slicetitle += norm[k_+'symbol']+'=%2.2f, '%c_ + norm[k_+'units']
+            slicetitle += norm[k_+'symbol']+'=%2.2f'%c_ + norm[k_+'units'] +', '
         self.slicetitle = slicetitle
         self.timetitle  = self.tsymbol + '=%2.2f'%self.time+self.tunits
         self.fulltitle  = self.slicetitle + self.timetitle
