@@ -228,9 +228,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
     print("movie "+moviename+" created.")
 
 def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
-    
     geometry.set_domain(geom_type,vessel_corners)
-
     fig = plt.figure()#(figsize=(4, 3))
     ax  = fig.add_subplot(111)
     ax.plot(geometry.RZ_min[0], geometry.RZ_min[1],'-c')
@@ -245,7 +243,6 @@ def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]
     ax.plot([vx1,vx2],[vy1,vy1],'-k')
     ax.plot([vx1,vx2],[vy2,vy2],'-k')
     ax.plot(geometry.R_axis,geometry.Z_axis,'x')
-
     ax.set_xlabel('R (m)')
     ax.set_ylabel('Z (m)')
     ax.set_aspect('equal')

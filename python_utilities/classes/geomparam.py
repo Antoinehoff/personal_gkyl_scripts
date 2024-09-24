@@ -1,8 +1,10 @@
 import postgkyl as pg
 import numpy as np
+import scipy.integrate as integrate
+
 class GeomParam:
-    def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, 
-                 a_shift=0.0, q0=1.6, kappa=1.0, delta=0.0, x_LCFS=0.0):
+    def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B0=1.4,
+                 a_shift=0.0, q0=1.6, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller'):
         self.R_axis     = R_axis
         self.a_shift    = a_shift
         self.Z_axis     = Z_axis
@@ -11,6 +13,8 @@ class GeomParam:
         self.q0         = q0
         self.x_LCFS     = x_LCFS
         self.R_LCFSmid  = R_LCFSmid
+        self.B0         = B0
+        self.geom_type  = geom_type
         self.a_mid      = R_LCFSmid-R_axis
         self.g_ij       = None
         self.gij        = None
@@ -96,7 +100,7 @@ class GeomParam:
             ## Miller geometry model
             def RZ_rtheta(R_, theta, delta, kappa):
                 r = R_ - self.R_axis
-                R = (self.R_axis - self.a_shift * r**2 / (2.0 * self.R_axis) + 
+                R = (self.R_axis - self.a_shift * r**2 / (2.0 * self.R_axis) + \
                         r * np.cos(theta + np.arcsin(delta) * np.sin(theta)))
                 Z = self.Z_axis + kappa*r*np.sin(theta)
                 return [R,Z]
@@ -105,9 +109,58 @@ class GeomParam:
             Rmid_max = Rmid_min+self.Lx
             theta = np.linspace(-np.pi,+np.pi,Ntheta)
             self.RZ_min  = RZ_rtheta(Rmid_min,theta,self.delta,self.kappa)
-            self.RZ_max  = RZ_rtheta(Rmid_max,theta,self.delta,self.kappa),
+            self.RZ_max  = RZ_rtheta(Rmid_max,theta,self.delta,self.kappa)
             self.RZ_lcfs = RZ_rtheta(self.R_LCFSmid,theta,self.delta,self.kappa)
             self.vessel_corners = vessel_corners           
         elif geom_type == 'efit':
             a = 0
             # one day... (09/20/2024)
+
+    #.Magnetic safety factor profile.
+    def qprofile(self,rIn):
+        qa = [497.3420166252413,-1408.736172826569,1331.4134861681464,-419.00692601227627]
+        return qa[0]*(rIn+self.R_axis)**3 + qa[1]*(rIn+self.R_axis)**2 + qa[2]*(rIn+self.R_axis) + qa[3]
+
+    ## Geometric relations for Miller geometry
+    def R_f(self, r, theta):
+        return self.R_axis + r*np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
+    def Z_f(self, r, theta):
+        return self.kappa*r*np.sin(theta)
+
+    #.Analytic derivatives.
+    def R_f_r(self, r,theta): 
+        return np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
+    def R_f_theta(self, r,theta): 
+        return -r*(np.arcsin(self.delta)*np.cos(theta)+1.)*np.sin(np.arcsin(self.delta)*np.sin(theta)+theta)
+    def Z_f_r(self, r,theta):
+        return self.kappa*np.sin(theta)
+    def Z_f_theta(self, r,theta):
+        return self.kappa*r*np.cos(theta)
+    
+    def Jr_f(self, r, theta):
+        return self.R_f(r,theta)*\
+            ( self.R_f_r(r,theta)*self.Z_f_theta(r,theta)-self.Z_f_r(r,theta)*self.R_f_theta(r,theta) )
+
+    def integrand(self, t, r):
+        return self.Jr_f(r,t)/np.power(self.R_f(r,t),2)
+
+    def dPsidr_f(self, r, theta):
+        integral, _ = integrate.quad(self.integrand, 0., 2.*np.pi, args=(r), epsabs=1.e-8)
+        return self.B0*self.R_axis/(2.*np.pi*self.qprofile(r))*integral
+
+    def alpha_f(self, r, theta, phi):
+        t = theta
+        while (t < -np.pi):
+            t = t+2.*np.pi
+
+        while ( np.pi < t):
+            t = t-2.*np.pi
+
+        if (0. < t):
+            intV, intE = integrate.quad(self.integrand, 0., t, args=(r), epsabs=1.e-8)
+            integral   = intV
+        else:
+            intV, intE = integrate.quad(self.integrand, t, 0., args=(r), epsabs=1.e-8)
+            integral   = -intV
+
+        return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r,theta)
