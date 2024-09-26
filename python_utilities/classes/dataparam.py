@@ -10,6 +10,7 @@ class DataParam:
         self.datadir = g0simdir + simdir + simname +'/' + wkdir
         self.fileprefix = self.datadir + fileprefix
         self.data_files_dict = {}
+        self.BiMaxwellian = BiMaxwellian
         self.set_data_field_dict(BiMaxwellian=BiMaxwellian)
 
     def info(self):

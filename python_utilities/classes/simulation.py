@@ -14,6 +14,7 @@ class Simulation:
         self.geom_param = None
         self.species    = {}
         self.normalization = {}
+        self.norm_str  = []
         self.init_normalization()
 
     def set_phys_param(self, eps0, eV, mp, me, B_axis):
@@ -44,12 +45,6 @@ class Simulation:
     def add_species(self,species):
         species.set_gyromotion(self.phys_param.B_axis)
         self.species[species.name] = species
-        
-    def set_normalization(self,key,scale,shift,symbol,units):
-        self.normalization[key+'scale']  = scale
-        self.normalization[key+'shift']  = shift
-        self.normalization[key+'symbol'] = symbol
-        self.normalization[key+'units']  = units
 
     def init_normalization(self):
         keys = [
@@ -78,3 +73,125 @@ class Simulation:
     def get_filename(self,fieldname,tf):
         dataname = self.data_param.data_files_dict[fieldname+'file']
         return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)
+    
+    def set_normalization(self,key,scale,shift,symbol,units):
+        self.normalization[key+'scale']  = scale
+        self.normalization[key+'shift']  = shift
+        self.normalization[key+'symbol'] = symbol
+        self.normalization[key+'units']  = units
+
+    def normalize(self, key, norm):
+        scale = 0
+        ion = self.species['ion']
+        elc = self.species['elc']
+        #-- Time scale
+        if norm == 'mus':
+            scale  = 1e-6
+            shift  = 0
+            symbol = 't'
+            units  = r'$\mu s$'
+        elif norm in ['t v_{ti}/R', 't*vti/R', 'vti/R']:
+            scale  = self.geom_param.R_axis / ion.vt
+            shift  = 0
+            symbol = r'$t v_{ti}/R$'
+            units  = ''
+        #-- Length scale
+        elif norm in ['rho', 'minor radius']:
+            scale  = self.geom_param.a_mid
+            shift  = (self.geom_param.x_LCFS - self.geom_param.a_mid) / scale
+            symbol = r'$\rho$'
+            units  = ''
+        elif norm in ['x/rho', 'rho_L', 'Larmor radius']:
+            scale  = ion.rho
+            shift  = 0
+            symbol = r'$%s/\rho_s$' % key
+            units  = ''
+        elif norm in ['R-Rlcfs', 'LCFS shift', 'LCFS']:
+            scale  = 1.0
+            shift  = self.geom_param.x_LCFS
+            symbol = r'$R-R_{LCFS}$'
+            units  = 'm'
+        #-- Velocity normalization
+        elif norm == 'vte' or (key == 'upare' and norm == 'thermal velocity'):
+            scale  = elc.vt
+            shift  = 0
+            symbol = r'$u_{\parallel e}/v_{te}$'
+            units  = ''
+        elif norm == 'vti' or (key == 'upari' and norm == 'thermal velocity'):
+            scale  = ion.vt
+            shift  = 0
+            symbol = r'$u_{\parallel i}/v_{ti}$'
+            units  = ''
+        #-- Temperature normalization
+        elif norm == 'eV':
+            if key == 'Tpare':
+                scale  = self.phys_param.eV / elc.m
+                symbol = r'$T_{\parallel e}$'
+            elif key == 'Tperpe':
+                scale  = self.phys_param.eV / elc.m
+                symbol = r'$T_{\perp e}$'
+            elif key == 'Tpari':
+                scale  = self.phys_param.eV / ion.m
+                symbol = r'$T_{\parallel i}$'
+            elif key == 'Tperpi':
+                scale  = self.phys_param.eV / ion.m
+                symbol = r'$T_{\perp i}$'
+            shift = 0
+            units = 'eV'
+            if not self.data_param.BiMaxwellian:
+                scale /= self.phys_param.eV / 3.0
+        #-- Grouped normalization
+        if key.lower() == 'temperatures':
+            self.normalize('Tpare', norm)
+            self.normalize('Tperpe', norm)
+            self.normalize('Tpari', norm)
+            self.normalize('Tperpi', norm)
+        elif key.lower() == 'fluid velocities':
+            self.normalize('upare', norm)
+            self.normalize('upari', norm)
+        else:
+            #-- Apply normalization or handle unknown norm
+            if scale != 0:
+                self.set_normalization(key=key, scale=scale, shift=shift, symbol=symbol, units=units)
+                self.norm_str.append(f'{key} is now normalized to {norm}')
+            else:
+                print(f"Warning: The normalization '{norm}' for '{key}' is not recognized. Please check the inputs or refer to the documentation for valid options.")
+        
+    def norm_help(self):
+        help_message = """
+        Available Normalizations:
+        
+        1. **Time Normalizations**:
+        - 'mus': Microseconds (µs)
+        - 'vti/R': Time normalized by ion thermal velocity over major radius (t v_{ti}/R)
+        
+        2. **Length Normalizations**:
+        - 'rho' or 'minor radius': Normalized to the minor radius (ρ)
+        - 'x/rho' or 'rho_L' or 'Larmor radius': Normalized to the Larmor radius (ρ_L)
+        - 'R-Rlcfs' or 'LCFS shift' or 'LCFS': Shift relative to the Last Closed Flux Surface (R - R_LCFS)
+        
+        3. **Velocity Normalizations**:
+        - 'vte': Electron thermal velocity (v_te)
+        - 'vti': Ion thermal velocity (v_ti)
+        - 'thermal velocity' (when key is 'upare' or 'upari'): Parallel velocities normalized by thermal velocity
+        
+        4. **Temperature Normalizations**:
+        - 'eV': Energy in electron volts (eV), applicable to various temperature components:
+            * 'Tpare': Parallel electron temperature (T_{\\parallel e})
+            * 'Tperpe': Perpendicular electron temperature (T_{\\perp e})
+            * 'Tpari': Parallel ion temperature (T_{\\parallel i})
+            * 'Tperpi': Perpendicular ion temperature (T_{\\perp i})
+        
+        **Grouped Normalizations**:
+        - 'temperatures': Normalizes all temperature components (Tpare, Tperpe, Tpari, Tperpi)
+        - 'fluid velocities': Normalizes both parallel electron and ion velocities (upare, upari)
+
+        Note: you can setup a custom normalization using the set_normalization routine, e.g.
+                simulation.set_normalization(key='ni', scale=ion.n0, shift=0, symbol=r'$n_i/n_0$', units='')
+              sets a normalization of the ion density to n0
+        """
+        print(help_message)
+
+    def norm_info(self):
+        for msg in self.norm_str:
+            print(msg)

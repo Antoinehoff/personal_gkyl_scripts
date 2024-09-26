@@ -2,4 +2,3 @@
 *.png
 *pycache*
 *.ipynb_checkpoints
-*.ipynb
