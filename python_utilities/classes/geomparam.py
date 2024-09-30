@@ -15,7 +15,9 @@ class GeomParam:
         self.R_LCFSmid  = R_LCFSmid
         self.B0         = B0
         self.geom_type  = geom_type
-        self.a_mid      = R_LCFSmid-R_axis
+        # self.a_mid      = R_LCFSmid-R_axis
+        self.a_mid      = \
+            R_axis/a_shift - np.sqrt(R_axis*(R_axis - 2*a_shift*R_LCFSmid + 2*a_shift*R_axis))/a_shift
         self.g_ij       = None
         self.gij        = None
         self.bmag       = None
