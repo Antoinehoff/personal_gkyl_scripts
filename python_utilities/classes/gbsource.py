@@ -133,7 +133,7 @@ class GBsource:
         """
         print(info_message)
 
-    def compute_GBloss(sim,species,tf,ix=0,compute_bxgradBoB2=True):
+    def compute_GBloss(self,sim,species,tf,ix=0,compute_bxgradBoB2=True):
         if compute_bxgradBoB2:
             sim.geom_param.compute_bxgradBoB2()
         # Initialize perpendicular pressure (build as a product of n and Tperp)
@@ -149,7 +149,7 @@ class GBsource:
         GBloss   = np.trapz(GBloss_z, x=sim.geom_param.z, axis=0)
         return GBloss, frame.time
 
-    def get_GBloss_t(sim, species, twindow, ix=0):
+    def get_GBloss_t(self,sim, species, twindow, ix=0):
         """
         Compute the grad-B (GB) particle loss over time for a given species.
         
@@ -168,7 +168,7 @@ class GBsource:
         sim.geom_param.compute_bxgradBoB2()
         # Loop over time frames in twindow
         for tf in twindow:
-            GBloss, t = compute_GBloss(sim,species,tf,ix=0,compute_bxgradBoB2=False)
+            GBloss, t = self.compute_GBloss(sim,species,tf,ix=0,compute_bxgradBoB2=False)
             # Append corresponding GBloss value and time
             GBloss_t.append(GBloss)
             time.append(t)
