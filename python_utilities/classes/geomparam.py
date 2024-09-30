@@ -30,8 +30,9 @@ class GeomParam:
         self.Lx         = None
         self.y          = None
         self.Ly         = None
-        self.z          = None
-        self.Lz         = None
+        self.z          = None # z-grid
+        self.Lz         = None # z box size
+        self.toroidal_mn= None # Toroidal mode number
 
     def load_metric(self,fileprefix):
         #-- load B (bmag)
@@ -48,6 +49,7 @@ class GeomParam:
         self.Lx    = self.grids[0][-1]-self.grids[0][0]
         self.Ly    = self.grids[1][-1]-self.grids[1][0]
         self.Lz    = self.grids[2][-1]-self.grids[2][0]
+        #self.toroidal_mn =  2.*np.pi*self.R_LCFSmid/self.q0/self.Ly
         #-- compute associated derivatives
         self.dBdx = np.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
         self.dBdy = np.gradient(self.bmag, self.grids[1], axis=1)  # Derivative w.r.t y
@@ -74,7 +76,6 @@ class GeomParam:
         self.Jacobian = Gdata.get_values()
         self.Jacobian = self.Jacobian[:,:,:,0]
 
-
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field
         gradB = np.array([self.dBdx, self.dBdy, self.dBdz])
@@ -88,13 +89,13 @@ class GeomParam:
         self.bxgradBoB2[0] = b_y * self.dBdz - b_z * self.dBdy  # x-component
         self.bxgradBoB2[1] = b_z * self.dBdx - b_x * self.dBdz  # y-component
         self.bxgradBoB2[2] = b_x * self.dBdy - b_y * self.dBdx  # z-component
-        # Now divide the cross product by Bmag^2
+        # Now divide the cross product by jacobian and Bmag^2
         self.bxgradBoB2 /= self.Jacobian * self.bmag**2
 
     def GBflux_model(self,b=1.2):
         z = self.grids[2]
         return np.sin(z)*np.exp(-np.power(np.abs(z),1.5)/(2.*b))
-
+    
     def set_domain(self,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]],Ntheta=128):
         if geom_type == 'Miller':
             ## Miller geometry model

@@ -5,6 +5,7 @@ from .physparam import PhysParam
 from .dataparam import DataParam
 from .species   import Species
 from .geomparam import GeomParam
+from .gbsource  import GBsource
 class Simulation:
     def __init__(self):
         # Initialize all attributes to None
@@ -12,6 +13,7 @@ class Simulation:
         self.num_param  = None
         self.data_param = None
         self.geom_param = None
+        self.GBsource   = None
         self.species    = {}
         self.normalization = {}
         self.norm_str  = []
@@ -20,13 +22,23 @@ class Simulation:
     def set_phys_param(self, eps0, eV, mp, me, B_axis):
         self.phys_param = PhysParam(eps0, eV, mp, me, B_axis)
     
-    def set_geom_param(self, R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta, x_LCFS,geom_type='Miller'):
-        self.geom_param = GeomParam(R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
-                                    a_shift=a_shift, q0=q0, kappa=kappa, delta=delta, x_LCFS=x_LCFS,
-                                    geom_type=geom_type,B0=self.phys_param.B_axis)
+    def set_geom_param(
+            self, R_axis, Z_axis, R_LCFSmid, a_shift, 
+            q0, kappa, delta, x_LCFS,geom_type='Miller'
+            ):
+        self.geom_param = GeomParam(
+            R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
+            a_shift=a_shift, q0=q0, kappa=kappa, delta=delta, 
+            x_LCFS=x_LCFS, geom_type=geom_type,B0=self.phys_param.B_axis
+            )
 
-    def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, wkdir, BiMaxwellian=True):
-        self.data_param = DataParam(expdatadir, g0simdir, simname, simdir, fileprefix, wkdir, BiMaxwellian)
+    def set_data_param(
+            self, expdatadir, g0simdir, simname, simdir, 
+            fileprefix, wkdir, BiMaxwellian=True
+            ):
+        self.data_param = DataParam(
+            expdatadir, g0simdir, simname, simdir, 
+            fileprefix, wkdir, BiMaxwellian)
         self.set_num_param()
 
     def set_num_param(self):
@@ -37,15 +49,31 @@ class Simulation:
         Ny = (normy.shape[0]-2)*2
         Nz = normz.shape[0]*4
         self.num_param = NumParam(Nx, Ny, Nz, Nvp=None, Nmu=None)  # Initialize the grid instance
+    
+    def set_GBsource(self,n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, 
+                     bfac_srcGB, temp_model="constant", dens_model="singaus"):
+        self.GBsource = GBsource(    
+            n_srcGB     = n_srcGB,
+            T_srcGB     = T_srcGB,
+            x_srcGB     = x_srcGB,
+            sigma_srcGB = sigma_srcGB,
+            bfac_srcGB  = bfac_srcGB,
+            temp_model  = temp_model,
+            dens_model  = dens_model
+        )
 
     def set_species(self,name, m, q, T0, n0):
         s_ = Species(name, m, q, T0, n0)
         s_.set_gyromotion(self.phys_param.B_axis)
         self.species[name] = s_
+
     def add_species(self,species):
         species.set_gyromotion(self.phys_param.B_axis)
         self.species[species.name] = species
 
+    def get_rho_s(self):
+        return np.sqrt(self.species['elc'].T0/self.species['ion'].m)
+    
     def init_normalization(self):
         keys = [
             'x','y','z','vpar','mu','phi',
@@ -155,7 +183,9 @@ class Simulation:
                 self.set_normalization(key=key, scale=scale, shift=shift, symbol=symbol, units=units)
                 self.norm_str.append(f'{key} is now normalized to {norm}')
             else:
-                print(f"Warning: The normalization '{norm}' for '{key}' is not recognized. Please check the inputs or refer to the documentation for valid options.")
+                print(f"Warning: The normalization '{norm}' for '{key}' \
+                      is not recognized. Please check the inputs or refer \
+                      to the documentation for valid options.")
         
     def norm_help(self):
         help_message = """
@@ -168,12 +198,14 @@ class Simulation:
         2. **Length Normalizations**:
         - 'rho' or 'minor radius': Normalized to the minor radius (ρ)
         - 'x/rho' or 'rho_L' or 'Larmor radius': Normalized to the Larmor radius (ρ_L)
-        - 'R-Rlcfs' or 'LCFS shift' or 'LCFS': Shift relative to the Last Closed Flux Surface (R - R_LCFS)
+        - 'R-Rlcfs' or 'LCFS shift' or 'LCFS': Shift relative to 
+            the Last Closed Flux Surface (R - R_LCFS)
         
         3. **Velocity Normalizations**:
         - 'vte': Electron thermal velocity (v_te)
         - 'vti': Ion thermal velocity (v_ti)
-        - 'thermal velocity' (when key is 'upare' or 'upari'): Parallel velocities normalized by thermal velocity
+        - 'thermal velocity' (when key is 'upare' or 'upari'): Parallel velocities 
+            normalized by thermal velocity
         
         4. **Temperature Normalizations**:
         - 'eV': Energy in electron volts (eV), applicable to various temperature components:
@@ -187,7 +219,9 @@ class Simulation:
         - 'fluid velocities': Normalizes both parallel electron and ion velocities (upare, upari)
 
         Note: you can setup a custom normalization using the set_normalization routine, e.g.
-                simulation.set_normalization(key='ni', scale=ion.n0, shift=0, symbol=r'$n_i/n_0$', units='')
+                simulation.set_normalization(
+                    key='ni', scale=ion.n0, shift=0, symbol=r'$n_i/n_0$', units=''
+                    )
               sets a normalization of the ion density to n0
         """
         print(help_message)
