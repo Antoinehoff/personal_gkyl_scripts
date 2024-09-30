@@ -8,71 +8,89 @@ from .geomparam import GeomParam
 from .gbsource  import GBsource
 class Simulation:
     def __init__(self):
-        # Initialize all attributes to None
-        self.phys_param = None
-        self.num_param  = None
-        self.data_param = None
-        self.geom_param = None
-        self.GBsource   = None
-        self.species    = {}
-        self.normalization = {}
-        self.norm_str  = []
-        self.init_normalization()
+        """
+        Initialize all attributes to None and setup normalization.
+        """
+        self.phys_param = None  # Physical parameters (e.g., constants like eps0, eV)
+        self.num_param  = None  # Numerical parameters (e.g., grid size)
+        self.data_param = None  # Data parameters (e.g., file paths)
+        self.geom_param = None  # Geometric parameters (e.g., axis positions)
+        self.GBsource   = None  # Source model of the simulation
+        self.species    = {}    # Dictionary of species (e.g., ions, electrons)
+        self.normalization = {} # Normalization values
+        self.norm_log   = []    # Normalization log
+        self.init_normalization() # Initialize default normalization settings
 
     def set_phys_param(self, eps0, eV, mp, me, B_axis):
+        """
+        Set physical parameters like permittivity, electron volts, masses, and magnetic field.
+        """
         self.phys_param = PhysParam(eps0, eV, mp, me, B_axis)
     
-    def set_geom_param(
-            self, R_axis, Z_axis, R_LCFSmid, a_shift, 
-            q0, kappa, delta, x_LCFS,geom_type='Miller'
-            ):
+    def set_geom_param(self, R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta, x_LCFS, geom_type='Miller'):
+        """
+        Set geometric parameters related to the shape and size of the plasma (e.g., axis positions, LCFS).
+        """
         self.geom_param = GeomParam(
             R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
             a_shift=a_shift, q0=q0, kappa=kappa, delta=delta, 
-            x_LCFS=x_LCFS, geom_type=geom_type,B0=self.phys_param.B_axis
-            )
-
-    def set_data_param(
-            self, expdatadir, g0simdir, simname, simdir, 
-            fileprefix, wkdir, BiMaxwellian=True
-            ):
-        self.data_param = DataParam(
-            expdatadir, g0simdir, simname, simdir, 
-            fileprefix, wkdir, BiMaxwellian)
-        self.set_num_param()
-
-    def set_num_param(self):
-        data = pg.data.GData(self.data_param.datadir+'xyz.gkyl')
-        normgrids = data.get_grid()
-        normx = normgrids[0]; normy = normgrids[1]; normz = normgrids[2]
-        Nx = (normx.shape[0]-2)*2
-        Ny = (normy.shape[0]-2)*2
-        Nz = normz.shape[0]*4
-        self.num_param = NumParam(Nx, Ny, Nz, Nvp=None, Nmu=None)  # Initialize the grid instance
-    
-    def set_GBsource(self,n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, 
-                     bfac_srcGB, temp_model="constant", dens_model="singaus"):
-        self.GBsource = GBsource(    
-            n_srcGB     = n_srcGB,
-            T_srcGB     = T_srcGB,
-            x_srcGB     = x_srcGB,
-            sigma_srcGB = sigma_srcGB,
-            bfac_srcGB  = bfac_srcGB,
-            temp_model  = temp_model,
-            dens_model  = dens_model
+            x_LCFS=x_LCFS, geom_type=geom_type, B0=self.phys_param.B_axis
         )
 
-    def set_species(self,name, m, q, T0, n0):
+    def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, wkdir, BiMaxwellian=True):
+        """
+        Set data parameters like directories for experimental and simulation data, file names, and options.
+        """
+        self.data_param = DataParam(
+            expdatadir, g0simdir, simname, simdir, 
+            fileprefix, wkdir, BiMaxwellian
+        )
+        self.set_num_param()  # Automatically set numerical parameters based on data
+
+    def set_num_param(self):
+        """
+        Set numerical parameters like grid size by loading and processing data.
+        """
+        data = pg.data.GData(self.data_param.datadir + 'xyz.gkyl')
+        normgrids = data.get_grid()
+        normx, normy, normz = normgrids[0], normgrids[1], normgrids[2]
+        
+        Nx = (normx.shape[0] - 2) * 2  # Double resolution in x
+        Ny = (normy.shape[0] - 2) * 2  # Double resolution in y
+        Nz = normz.shape[0] * 4        # Increase resolution in z
+        
+        self.num_param = NumParam(Nx, Ny, Nz, Nvp=None, Nmu=None)  # Set numerical grid
+
+    def set_GBsource(self, n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, bfac_srcGB, temp_model="constant", dens_model="singaus"):
+        """
+        Set the gradB source moodel parameters (density, temperature, etc.).
+        """
+        self.GBsource = GBsource(
+            n_srcGB=n_srcGB, T_srcGB=T_srcGB, x_srcGB=x_srcGB, 
+            sigma_srcGB=sigma_srcGB, bfac_srcGB=bfac_srcGB, 
+            temp_model=temp_model, dens_model=dens_model
+        )
+
+    def set_species(self, name, m, q, T0, n0):
+        """
+        Add a species (e.g., ion or electron) to the simulation, and compute its gyromotion features.
+        """
         s_ = Species(name, m, q, T0, n0)
         s_.set_gyromotion(self.phys_param.B_axis)
         self.species[name] = s_
 
-    def add_species(self,species):
+    def add_species(self, species):
+        """
+        Add an existing species object to the simulation and compute its gyromotion.
+        """
         species.set_gyromotion(self.phys_param.B_axis)
         self.species[species.name] = species
 
     def get_rho_s(self):
-        return np.sqrt(self.species['elc'].T0/self.species['ion'].m)
+        """
+        Calculate and return the ion sound gyroradius (rho_s).
+        """
+        return np.sqrt(self.species['elc'].T0 / self.species['ion'].m)
     
     def init_normalization(self):
         keys = [
@@ -181,7 +199,7 @@ class Simulation:
             #-- Apply normalization or handle unknown norm
             if scale != 0:
                 self.set_normalization(key=key, scale=scale, shift=shift, symbol=symbol, units=units)
-                self.norm_str.append(f'{key} is now normalized to {norm}')
+                self.norm_log.append(f'{key} is now normalized to {norm}')
             else:
                 print(f"Warning: The normalization '{norm}' for '{key}' \
                       is not recognized. Please check the inputs or refer \
@@ -227,5 +245,5 @@ class Simulation:
         print(help_message)
 
     def norm_info(self):
-        for msg in self.norm_str:
+        for msg in self.norm_log:
             print(msg)
