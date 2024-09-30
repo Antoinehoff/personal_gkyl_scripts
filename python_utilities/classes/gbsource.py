@@ -1,4 +1,5 @@
 import numpy as np
+from .frame import Frame
 
 class GBsource:
     """
@@ -131,3 +132,44 @@ class GBsource:
         - Density Model: {self.dens_model} (singaus)
         """
         print(info_message)
+
+    def compute_GBloss(sim,species,tf,ix=0,compute_bxgradBoB2=True):
+        if compute_bxgradBoB2:
+            sim.geom_param.compute_bxgradBoB2()
+        # Initialize perpendicular pressure (build as a product of n and Tperp)
+        pperp = 1.0
+        for field in ['n', 'Tperp']:
+            field_name = field + species.name[0]
+            frame = Frame(sim, field_name, tf, load=True)
+            pperp *= frame.values[ix, :, :]
+        # Convert pressure to Joules/m3
+        pperp *= sim.phys_param.eV
+        # Calculate GB loss for this time frame
+        GBloss_z = np.trapz(pperp * sim.geom_param.bxgradBoB2[0, ix, :, :] / species.q, x=sim.geom_param.y, axis=0)
+        GBloss   = np.trapz(GBloss_z, x=sim.geom_param.z, axis=0)
+        return GBloss, frame.time
+
+    def get_GBloss_t(sim, species, twindow, ix=0):
+        """
+        Compute the grad-B (GB) particle loss over time for a given species.
+        
+        Parameters:
+        - sim: Simulation object (with all geometry param and units)
+        - species: Species object (e.g., ion, electron)
+        - twindow: List of time frames to evaluate
+        - ix: Index of the flux surface (default=0)
+        
+        Returns:
+        - GBlss_t: List of GB loss values over time
+        - time: List of corresponding time points
+        """
+        time, GBloss_t = [], []
+        # Precompute vGB_x for the given flux surface
+        sim.geom_param.compute_bxgradBoB2()
+        # Loop over time frames in twindow
+        for tf in twindow:
+            GBloss, t = compute_GBloss(sim,species,tf,ix=0,compute_bxgradBoB2=False)
+            # Append corresponding GBloss value and time
+            GBloss_t.append(GBloss)
+            time.append(t)
+        return GBloss_t, time
