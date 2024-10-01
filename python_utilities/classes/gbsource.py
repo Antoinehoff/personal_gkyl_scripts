@@ -7,8 +7,8 @@ class GBsource:
     plasma sources with Gaussian profiles in density and variable temperature models.
     """
 
-    def __init__(self, n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, 
-                 bfac_srcGB, temp_model="constant", dens_model="singaus"):
+    def __init__(self, n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, bfac_srcGB, 
+                 dens_scale=1.0, temp_model="constant", dens_model="singaus"):
         """
         Initialize the GBsource object with source parameters.
         
@@ -30,8 +30,9 @@ class GBsource:
         self.bfac_srcGB = bfac_srcGB     # Scaling factor for z-dependence
         self.temp_model = temp_model     # Temperature model selection
         self.dens_model = dens_model     # Density model selection
+        self.dens_scale = dens_scale     # Density scaling parameter
 
-    def dens_source_singaus(self, x, z):
+    def dens_source_singaus(self, x, y, z):
         """
         Calculate the density source using a single Gaussian model in the x-direction.
         
@@ -40,14 +41,14 @@ class GBsource:
         - z : z-coordinate of the point.
         
         Returns:
-        - The density source at (x, z) based on the Gaussian profile in x and 
+        - The density source at (x,y,z) based on the Gaussian profile in x and 
           a sinusoidal attenuation in z.
         """
         # Gaussian profile in the x-direction
         env1 = np.exp(-np.power(x - self.x_srcGB, 2.) / (2. * np.power(self.sigma_srcGB, 2.)))
         
         # Sinusoidal profile with attenuation in the z-direction
-        env2 = max(np.sin(z) * np.exp(-np.power(np.abs(z), 1.5) / (2. * np.power(self.bfac_srcGB, 2.))), 0.)
+        env2 = np.maximum(np.sin(z) * np.exp(-np.power(np.abs(z), 1.5) / (2. * np.power(self.bfac_srcGB, 2.))), 0.)
 
         # Return the product of the density, x-profile, and z-profile
         return self.n_srcGB * env1 * env2
@@ -74,7 +75,7 @@ class GBsource:
         - z : z-coordinate of the point.
         
         Returns:
-        - The temperature at (x, z) based on a quadratic profile in x.
+        - The temperature at (x,y,z) based on a quadratic profile in x.
         """
         return self.T_srcGB * (1 - ((x - self.x_srcGB) ** 2) / (self.sigma_srcGB ** 2))
 
@@ -88,17 +89,17 @@ class GBsource:
         - z : z-coordinate of the point.
         
         Returns:
-        - The temperature at (x, z) from the selected temperature model.
+        - The temperature at (x,y,z) from the selected temperature model.
         """
         if self.temp_model == "constant":
-            return self.temp_source_constant(x, z)
+            return self.temp_source_constant(x,y,z)
         elif self.temp_model == "quadratic":
-            return self.temp_source_quadratic(x, z)
+            return self.temp_source_quadratic(x,y,z)
         else:
             raise ValueError(f"Unknown temperature model '{self.temp_model}'. \
                              Choose 'constant' or 'quadratic'.")
 
-    def dens_source(self, x, z):
+    def dens_source(self, x, y, z):
         """
         Main density source routine, which dynamically selects between different 
         density models based on the 'dens_model' attribute.
@@ -108,10 +109,10 @@ class GBsource:
         - z : z-coordinate of the point.
         
         Returns:
-        - The density at (x, z) from the selected density model.
+        - The density at (x,y,z) from the selected density model.
         """
         if self.dens_model == "singaus":
-            return self.dens_source_singaus(x, z)
+            return self.dens_source_singaus(x,y,z)
         else:
             raise ValueError(f"Unknown density model '{self.dens_model}'. \
                              Currently supported: 'singaus'.")
@@ -144,8 +145,12 @@ class GBsource:
             pperp *= frame.values[ix, :, :]
         # Convert pressure to Joules/m3
         pperp *= sim.phys_param.eV
+        # build the integrand
+        integrand = pperp*sim.geom_param.bxgradBoB2[0, ix, :, :]/species.q
+        # the simulation cannot gain particle, so we consider only losses
+        integrand[integrand > 0.0] = 0.0
         # Calculate GB loss for this time frame
-        GBloss_z = np.trapz(pperp * sim.geom_param.bxgradBoB2[0, ix, :, :] / species.q, x=sim.geom_param.y, axis=0)
+        GBloss_z = np.trapz(integrand, x=sim.geom_param.y, axis=0)
         GBloss   = np.trapz(GBloss_z, x=sim.geom_param.z, axis=0)
         return GBloss, frame.time
 
