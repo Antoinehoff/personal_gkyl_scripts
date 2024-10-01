@@ -96,17 +96,10 @@ class Simulation:
     def compute_GBloss(self,species,tf,ix=0,compute_bxgradBoB2=True):
         if compute_bxgradBoB2:
             self.geom_param.compute_bxgradBoB2()
-        # Initialize perpendicular pressure (build as a product of n and Tperp)
-        # pperp = 1.0
-        # for field in ['n', 'Tperp']:
-        #     field_name = field + species.name[0]
-        #     frame = Frame(self, field_name, tf, load=True)
-        #     pperp *= frame.values[ix, :, :]
-        # # Convert pressure to Joules/m3
-        # pperp *= self.phys_param.eV
         # Get pressure from the simulation data at tf
         field_name = 'pperp' + species.name[0]
         frame = Frame(self, field_name, tf, load=True)
+        # multiply by mass since temperature moment is stored as T/m
         pperp = frame.values[ix, :, :] * species.m
 
         # build the integrand
