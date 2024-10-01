@@ -100,7 +100,7 @@ class GeomParam:
 
     def GBflux_model(self,b=1.2):
         z = self.grids[2]
-        return np.sin(z)*np.exp(-np.power(np.abs(z),1.5)/(2.*b))
+        return np.maximum(np.sin(z)*np.exp(-np.power(np.abs(z),1.5)/(2.*b)),0.0)
     
     def set_domain(self,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]],Ntheta=128):
         if geom_type == 'Miller':
@@ -179,3 +179,6 @@ class GeomParam:
     #.Function that wraps x to [xMin,xMax].
     def wrap(self, x, xMin, xMax):
         return (((x-xMin) % (xMax-xMin)) + (xMax-xMin)) % (xMax-xMin) + xMin
+
+    def get_conf_grid(self):
+        return [self.x, self.y, self.z]
