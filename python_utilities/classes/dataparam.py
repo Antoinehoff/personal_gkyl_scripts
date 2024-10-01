@@ -42,16 +42,16 @@ class DataParam:
         data_field_dict['phi'+'gnames'] = gnames[0:3]
         
         # add moments info        
-        keys  = ['n','upar','Tpar','Tperp']
+        keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
         sname = ['ion','elc']
         for s_ in sname:
             shortname = s_[0]
             if BiMaxwellian:
-                comps  = [0,1,2,3]
-                prefix = 4*[s_+'_BiMaxwellianMoments']
+                comps  = [0,1,2,3,0,0]
+                prefix = 6*[s_+'_BiMaxwellianMoments']
             else:
-                comps  = [0,0,0,0]
-                prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp']
+                comps  = [0,0,0,0,0,0]
+                prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp',s_+'_M0',s_+'_M0']
             for i in range(len(keys)):
                 data_field_dict[keys[i]+shortname+'file']   = prefix[i]
                 data_field_dict[keys[i]+shortname+'comp']   = comps[i]
