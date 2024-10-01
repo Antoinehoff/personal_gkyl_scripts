@@ -6,6 +6,7 @@ from .dataparam import DataParam
 from .species   import Species
 from .geomparam import GeomParam
 from .gbsource  import GBsource
+from .frame     import Frame
 class Simulation:
     def __init__(self):
         """
@@ -92,29 +93,72 @@ class Simulation:
         """
         return np.sqrt(self.species['elc'].T0 / self.species['ion'].m)
     
+    def compute_GBloss(self,species,tf,ix=0,compute_bxgradBoB2=True):
+        if compute_bxgradBoB2:
+            self.geom_param.compute_bxgradBoB2()
+        # Initialize perpendicular pressure (build as a product of n and Tperp)
+        # pperp = 1.0
+        # for field in ['n', 'Tperp']:
+        #     field_name = field + species.name[0]
+        #     frame = Frame(self, field_name, tf, load=True)
+        #     pperp *= frame.values[ix, :, :]
+        # # Convert pressure to Joules/m3
+        # pperp *= self.phys_param.eV
+        # Get pressure from the simulation data at tf
+        field_name = 'pperp' + species.name[0]
+        frame = Frame(self, field_name, tf, load=True)
+        pperp = frame.values[ix, :, :] * species.m
+
+        # build the integrand
+        integrand = pperp*self.geom_param.bxgradBoB2[0, ix, :, :]/species.q
+        # the simulation cannot gain particle, so we consider only losses
+        integrand[integrand > 0.0] = 0.0
+        # Calculate GB loss for this time frame
+        GBloss_z = np.trapz(integrand, x=self.geom_param.y, axis=0)
+        GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
+        return GBloss, frame.time
+    
+    def get_GBloss_t(self, species, twindow, ix=0):
+        """
+        Compute the grad-B (GB) particle loss over time for a given species.
+        """
+        time, GBloss_t = [], []
+        # Precompute vGB_x for the given flux surface
+        self.geom_param.compute_bxgradBoB2()
+        # Loop over time frames in twindow
+        for tf in twindow:
+            GBloss, t = self.compute_GBloss(species,tf,ix=0,compute_bxgradBoB2=False)
+            # Append corresponding GBloss value and time
+            GBloss_t.append(GBloss)
+            time.append(t)
+        return GBloss_t, time
+
     def init_normalization(self):
         keys = [
             'x','y','z','vpar','mu','phi',
             'ne','ni','upare','upari',
             'Tpare','Tpari','Tperpe','Tperpi',
+            'ppare','ppari','pperpe','pperpi',
             'fe','fi','t'
             ]
         defaultsymbols = [
             r'$x$',r'$y$',r'$z$',r'$v_\parallel$',r'$\mu$',r'$\phi$',
             r'$n_e$',r'$n_i$',r'$u_{\parallel e}$',r'$u_{\parallel i}$',
             r'$T_{\parallel e}$',r'$T_{\parallel i}$',r'$T_{\perp e}$',r'$T_{\perp i}$',
+            r'$p_{\parallel e}$',r'$p_{\parallel i}$',r'$p_{\perp e}$',r'$p_{\perp i}$',
             r'$f_e$', r'$f_i$', r'$t$'
             ]
         defaultunits = [
             'm', 'm', '', 'm/s', 'J/T', 'V',
             r'm$^{-3}$', r'm$^{-3}$', 'm/s', 'm/s',
             'J/kg', 'J/kg', 'J/kg', 'J/kg',
+            r'J/kg/m$^{3}$', r'J/kg/m$^{3}$', r'J/kg/m$^{3}$', r'J/kg/m$^{3}$',
             '[f]','[f]','s'
         ]
         symbols = {keys[i]: defaultsymbols[i] for i in range(len(keys))}
         units   = {keys[i]: defaultunits[i]   for i in range(len(keys))}
 
-        [self.set_normalization(key,1,0,symbols[key],units[key]) for key in keys]
+        [self.set_normalization(key,1.0,0.0,symbols[key],units[key]) for key in keys]
 
     def get_filename(self,fieldname,tf):
         dataname = self.data_param.data_files_dict[fieldname+'file']
@@ -186,24 +230,48 @@ class Simulation:
             units = 'eV'
             if not self.data_param.BiMaxwellian:
                 scale /= self.phys_param.eV / 3.0
+        #-- Preessure normalization
+        elif norm == 'beta':
+            mu0 = 4*np.pi*1e-7
+            if key == 'ppare':
+                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/elc.m
+                symbol = r'$\beta_{\parallel e}$'
+            elif key == 'pperpe':
+                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/elc.m
+                symbol = r'$\beta_{\perp e}$'
+            elif key == 'ppari':
+                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/ion.m
+                symbol = r'$\beta_{\parallel i}$'
+            elif key == 'pperpi':
+                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/ion.m
+                symbol = r'$\beta_{\perp i}$'
+            shift = 0
+            units = '%'
+            if not self.data_param.BiMaxwellian:
+                scale /= self.phys_param.eV / 3.0
         #-- Grouped normalization
         if key.lower() == 'temperatures':
-            self.normalize('Tpare', norm)
+            self.normalize('Tpare',  norm)
             self.normalize('Tperpe', norm)
-            self.normalize('Tpari', norm)
+            self.normalize('Tpari',  norm)
             self.normalize('Tperpi', norm)
         elif key.lower() == 'fluid velocities':
             self.normalize('upare', norm)
             self.normalize('upari', norm)
+        elif key.lower() == 'pressures':
+            self.normalize('ppare',  norm)
+            self.normalize('pperpe', norm)
+            self.normalize('ppari',  norm)
+            self.normalize('pperpi', norm)         
         else:
             #-- Apply normalization or handle unknown norm
             if scale != 0:
                 self.set_normalization(key=key, scale=scale, shift=shift, symbol=symbol, units=units)
                 self.norm_log.append(f'{key} is now normalized to {norm}')
             else:
-                print(f"Warning: The normalization '{norm}' for '{key}' \
-                      is not recognized. Please check the inputs or refer \
-                      to the documentation for valid options.")
+                print(f"Warning: The normalization '{norm}' for '{key}'"+
+                      " is not recognized. Please check the inputs or refer"+
+                      " to the documentation for valid options.")
         
     def norm_help(self):
         help_message = """
