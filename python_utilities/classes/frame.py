@@ -6,7 +6,7 @@ def getgrid_index(s):
     return  (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm'))-1
 
 class Frame:
-    def __init__(self,simulation,name,tf,load=False,polytype='ms'):
+    def __init__(self,simulation,name,tf,load=False,polyorder=1,polytype='ms'):
         """
         Initialize a Frame instance with all attributes set to None.
         """
@@ -43,13 +43,13 @@ class Frame:
         self.slicetitle     = ''
         self.timetitle      = ''
         if load:
-            self.load(polytype=polytype)
+            self.load(polyorder=polyorder,polytype=polytype)
 
-    def load(self,polytype='ms'):
+    def load(self,polyorder=1,polytype='ms'):
         # Load the data from the file
         Gdata = pg.data.GData(self.filename)
         # Interpolate the data using modal interpolation
-        dg = pg.data.GInterpModal(Gdata,1,polytype)
+        dg = pg.data.GInterpModal(Gdata,polyorder,polytype)
         dg.interpolate(self.comp,overwrite=True)
         # Divide by density if we look for fluid velocity
         if self.name[0] == 'u':
