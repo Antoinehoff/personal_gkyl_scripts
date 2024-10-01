@@ -24,6 +24,7 @@ class GeomParam:
         self.b_i        = None
         self.grids      = None
         self.Jacobian   = None
+        self.intJac     = None
         self.dBdx       = None
         self.dBdy       = None
         self.dBdz       = None
@@ -70,13 +71,16 @@ class GeomParam:
             tmp_ = Gdata.get_values()
             self.b_i.append(tmp_[:,:,:,0])
 
-        #-- Compute Jacobian
+        #-- Load Jacobian
         fname = fileprefix+'-'+'jacobgeo.gkyl'
         Gdata = pg.data.GData(fname)
         dg = pg.data.GInterpModal(Gdata,1,'ms')
         dg.interpolate(0,overwrite=True)
         self.Jacobian = Gdata.get_values()
         self.Jacobian = self.Jacobian[:,:,:,0]
+        J_yz          = np.trapz(self.Jacobian,self.x,axis=0)
+        J_z           = np.trapz(J_yz,self.y,axis=0)
+        self.intJac   = np.trapz(J_z,self.z,axis=0)
 
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field
@@ -130,6 +134,10 @@ class GeomParam:
     def Z_f(self, r, theta):
         return self.kappa*r*np.sin(theta)
 
+    #.Minor radius as a function of x:
+    def r_x(self,xIn):
+        return self.a_mid + xIn
+
     #.Analytic derivatives.
     def R_f_r(self, r,theta): 
         return np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
@@ -167,3 +175,7 @@ class GeomParam:
             integral   = -intV
 
         return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r,theta)
+    
+    #.Function that wraps x to [xMin,xMax].
+    def wrap(self, x, xMin, xMax):
+        return (((x-xMin) % (xMax-xMin)) + (xMax-xMin)) % (xMax-xMin) + xMin
