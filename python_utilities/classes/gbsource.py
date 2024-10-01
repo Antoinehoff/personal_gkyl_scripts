@@ -23,14 +23,17 @@ class GBsource:
         - dens_model  : Choose between 'singaus' (single Gaussian) 
                         or other density models (default is 'singaus').
         """
-        self.n_srcGB = n_srcGB           # Peak source density
-        self.T_srcGB = T_srcGB           # Source temperature
-        self.x_srcGB = x_srcGB           # Position of the source along the x-axis
-        self.sigma_srcGB = sigma_srcGB   # Gaussian width in the x-direction
-        self.bfac_srcGB = bfac_srcGB     # Scaling factor for z-dependence
+        self.nrate = n_srcGB           # Peak source density
+        self.T     = T_srcGB           # Source temperature
+        self.x     = x_srcGB           # Position of the source along the x-axis
+        self.sigma = sigma_srcGB    # Gaussian width in the x-direction
+        self.bfac  = bfac_srcGB     # Scaling factor for z-dependence
         self.temp_model = temp_model     # Temperature model selection
         self.dens_model = dens_model     # Density model selection
         self.dens_scale = dens_scale     # Density scaling parameter
+
+    def set_nrate(self,vnew):
+        self.nrate = vnew
 
     def dens_source_singaus(self, x, y, z):
         """
@@ -45,13 +48,13 @@ class GBsource:
           a sinusoidal attenuation in z.
         """
         # Gaussian profile in the x-direction
-        env1 = np.exp(-np.power(x - self.x_srcGB, 2.) / (2. * np.power(self.sigma_srcGB, 2.)))
+        env1 = np.exp(-np.power(x - self.x, 2.) / (2. * np.power(self.sigma, 2.)))
         
         # Sinusoidal profile with attenuation in the z-direction
-        env2 = np.maximum(np.sin(z) * np.exp(-np.power(np.abs(z), 1.5) / (2. * np.power(self.bfac_srcGB, 2.))), 0.)
+        env2 = np.maximum(np.sin(z) * np.exp(-np.power(np.abs(z), 1.5) / (2. * np.power(self.bfac, 2.))), 0.)
 
         # Return the product of the density, x-profile, and z-profile
-        return self.n_srcGB * env1 * env2
+        return self.nrate * env1 * env2
 
     def temp_source_constant(self, x, z):
         """
@@ -64,7 +67,7 @@ class GBsource:
         Returns:
         - The constant temperature of the source.
         """
-        return self.T_srcGB
+        return self.T
 
     def temp_source_quadratic(self, x, z):
         """
@@ -77,7 +80,7 @@ class GBsource:
         Returns:
         - The temperature at (x,y,z) based on a quadratic profile in x.
         """
-        return self.T_srcGB * (1 - ((x - self.x_srcGB) ** 2) / (self.sigma_srcGB ** 2))
+        return self.T * (1 - ((x - self.x) ** 2) / (self.sigma ** 2))
 
     def temp_source(self, x, z):
         """
@@ -124,57 +127,12 @@ class GBsource:
         info_message = f"""
         GBsource Information:
         
-        - Peak Density (n_srcGB): {self.n_srcGB}
-        - Temperature (T_srcGB): {self.T_srcGB}
-        - Position (x_srcGB): {self.x_srcGB}
-        - Width (sigma_srcGB): {self.sigma_srcGB}
-        - Z-dependence Scaling (bfac_srcGB): {self.bfac_srcGB}
+        - Peak Density (n_srcGB): {self.nrate}
+        - Temperature (T_srcGB): {self.T}
+        - Position (x_srcGB): {self.x}
+        - Width (sigma_srcGB): {self.sigma}
+        - Z-dependence Scaling (bfac_srcGB): {self.bfac}
         - Temperature Model: {self.temp_model} (constant/quadratic)
         - Density Model: {self.dens_model} (singaus)
         """
         print(info_message)
-
-    def compute_GBloss(self,sim,species,tf,ix=0,compute_bxgradBoB2=True):
-        if compute_bxgradBoB2:
-            sim.geom_param.compute_bxgradBoB2()
-        # Initialize perpendicular pressure (build as a product of n and Tperp)
-        pperp = 1.0
-        for field in ['n', 'Tperp']:
-            field_name = field + species.name[0]
-            frame = Frame(sim, field_name, tf, load=True)
-            pperp *= frame.values[ix, :, :]
-        # Convert pressure to Joules/m3
-        pperp *= sim.phys_param.eV
-        # build the integrand
-        integrand = pperp*sim.geom_param.bxgradBoB2[0, ix, :, :]/species.q
-        # the simulation cannot gain particle, so we consider only losses
-        integrand[integrand > 0.0] = 0.0
-        # Calculate GB loss for this time frame
-        GBloss_z = np.trapz(integrand, x=sim.geom_param.y, axis=0)
-        GBloss   = np.trapz(GBloss_z, x=sim.geom_param.z, axis=0)
-        return GBloss, frame.time
-
-    def get_GBloss_t(self,sim, species, twindow, ix=0):
-        """
-        Compute the grad-B (GB) particle loss over time for a given species.
-        
-        Parameters:
-        - sim: Simulation object (with all geometry param and units)
-        - species: Species object (e.g., ion, electron)
-        - twindow: List of time frames to evaluate
-        - ix: Index of the flux surface (default=0)
-        
-        Returns:
-        - GBlss_t: List of GB loss values over time
-        - time: List of corresponding time points
-        """
-        time, GBloss_t = [], []
-        # Precompute vGB_x for the given flux surface
-        sim.geom_param.compute_bxgradBoB2()
-        # Loop over time frames in twindow
-        for tf in twindow:
-            GBloss, t = self.compute_GBloss(sim,species,tf,ix=0,compute_bxgradBoB2=False)
-            # Append corresponding GBloss value and time
-            GBloss_t.append(GBloss)
-            time.append(t)
-        return GBloss_t, time
