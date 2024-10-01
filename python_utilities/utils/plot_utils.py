@@ -153,7 +153,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     else:
         fig,axs = plt.subplots(1,1)
         axs    = [axs]
-        fields = [fieldname]
+        fields = [fieldname+spec]
 
     for ax,field in zip(axs,fields):
         frame = Frame(simulation,field,tf)
@@ -213,7 +213,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
         fieldname = 'mom'+spec
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = 'movie_'+fieldname+'_'+cutname[0]
+    moviename = 'movie_'+fieldname+spec+'_'+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
