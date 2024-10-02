@@ -113,7 +113,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                                 color=colormap(norm(t[it])))
                     ax.set_xlabel(xlabel)
                     ax.set_ylabel(vlabel)
-                    title = data['fulltitle']
+                    title = data['slicetitle'][:-2]
                     # Add a colorbar to the figure
                     sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
                     cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)
@@ -132,7 +132,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
                     ax.legend()
                 else:
                     ax.set_ylabel(vlabel)
-                title = data['fulltitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
+                title = data['slicetitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
             if not full_plot:
                 ax.set_title(title)
     if full_plot:
