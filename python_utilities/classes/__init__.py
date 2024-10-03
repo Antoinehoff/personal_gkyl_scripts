@@ -7,5 +7,11 @@ from .physparam  import PhysParam
 from .frame      import Frame
 from .geomparam  import GeomParam
 from .gbsource   import GBsource
-__all__ = ['Species', 'Simulation','NumParam',
-           'PhysParam','Frame','GeomParam','GBsource']
+__all__ = [
+    'Species', 
+    'Simulation',
+    'NumParam',
+    'PhysParam',
+    'Frame',
+    'GeomParam',
+    'GBsource']
