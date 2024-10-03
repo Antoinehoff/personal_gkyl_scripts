@@ -1,5 +1,8 @@
 import numpy as np
-from python_utilities.tools.math_tools import custom_meshgrid, integral_xyz
+import sys,os
+home_dir = os.path.expanduser("~")
+sys.path.append(home_dir+'/personal_gkyl_scripts/python_utilities')
+from tools.math_tools import custom_meshgrid, integral_xyz
 class GBsource:
     """
     A class representing a Gaussian-Bell (GB) source model, used for describing
