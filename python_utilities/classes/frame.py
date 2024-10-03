@@ -53,7 +53,7 @@ class Frame:
         # Field composition to handle composed fields.
         # Should be just name if its a simple field 
         # but can be, e.g., 'ne','Tperpe' for electron perpendicular pressure.
-        if self.name[0] == 'p': #detect if we are dealing with pressure
+        if self.name[0] == 'p' and self.name[1] != 'h': #detect if we are dealing with pressure
             self.composition.append('n%s'%self.name[-1]) # add density to the composition
             self.composition.append('T%s'%self.name[1:]) # add corresponding temperature
         else:
