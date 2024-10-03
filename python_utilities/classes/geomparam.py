@@ -98,10 +98,6 @@ class GeomParam:
         # Now divide the cross product by jacobian and Bmag^2
         self.bxgradBoB2 /= self.Jacobian * self.bmag**2
 
-    def GBflux_model(self,b=1.2):
-        z = self.grids[2]
-        return np.maximum(np.sin(z)*np.exp(-np.power(np.abs(z),1.5)/(2.*b)),0.0)
-    
     def set_domain(self,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]],Ntheta=128):
         if geom_type == 'Miller':
             ## Miller geometry model
