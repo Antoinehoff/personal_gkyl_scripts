@@ -31,6 +31,6 @@ def find_available_frames(simulation,dataname='field'):
             frames.append(frame_number)
 
     # Sort the frame numbers for easier interpretation
-    frames.sort()
     frames = list(set(frames))
+    frames.sort()
     return frames
