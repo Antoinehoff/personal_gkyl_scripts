@@ -145,6 +145,8 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
                 figout=[],cutout=[],):
     full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
     cmap0 = cmap
+    if fieldname == 'phi':
+        spec = ''
     if full_plot:
         fig,axs = plt.subplots(2,2,figsize=(8,6))
         axs    = axs.flatten()
@@ -198,6 +200,8 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
                       fieldname='',spec='e', cmap='inferno',
                       xlim=[], ylim=[], clim=[], full_plot=False):
     os.makedirs('gif_tmp', exist_ok=True)
+    if fieldname == 'phi':
+        spec = ''
     for tf in tfs:
         figout = []; cutout = []
         plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldname=fieldname,
