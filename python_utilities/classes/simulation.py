@@ -62,14 +62,14 @@ class Simulation:
         
         self.num_param = NumParam(Nx, Ny, Nz, Nvp=None, Nmu=None)  # Set numerical grid
 
-    def set_GBsource(self, n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, bfac_srcGB, temp_model="constant", dens_model="singaus"):
+    def set_GBsource(self, n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, bfac_srcGB, species, temp_model="constant", dens_model="singaus"):
         """
         Set the gradB source moodel parameters (density, temperature, etc.).
         """
         self.GBsource = GBsource(
             n_srcGB=n_srcGB, T_srcGB=T_srcGB, x_srcGB=x_srcGB, 
             sigma_srcGB=sigma_srcGB, bfac_srcGB=bfac_srcGB, 
-            temp_model=temp_model, dens_model=dens_model
+            temp_model=temp_model, dens_model=dens_model, species = species
         )
 
     def set_species(self, name, m, q, T0, n0):
@@ -87,31 +87,45 @@ class Simulation:
         species.set_gyromotion(self.phys_param.B_axis)
         self.species[species.name] = species
 
-    def get_rho_s(self):
+    def get_c_s(self):
         """
         Calculate and return the ion sound gyroradius (rho_s).
         """
         return np.sqrt(self.species['elc'].T0 / self.species['ion'].m)
     
-    def compute_GBloss(self,species,tf,ix=0,compute_bxgradBoB2=True):
+    def get_rho_s(self):
+        """
+        Calculate and return the ion sound gyroradius (rho_s).
+        """
+        return self.get_c_s()/self.species['ion'].omega_c
+    
+    def compute_GBloss(self,spec,tf=-1,ix=0,compute_bxgradBoB2=True,pperp_in=-1):
         if compute_bxgradBoB2:
             self.geom_param.compute_bxgradBoB2()
-        # Get pressure from the simulation data at tf
-        field_name = 'pperp' + species.name[0]
-        frame = Frame(self, field_name, tf, load=True)
-        # multiply by mass since temperature moment is stored as T/m
-        pperp = frame.values[ix, :, :] * species.m
+        # Check if we provided pperp
+        if pperp_in == -1:
+            # Not provided, get pressure from the simulation data at tf
+            field_name = 'pperp' + spec.name[0]
+            frame = Frame(self, field_name, tf, load=True)
+            # multiply by mass since temperature moment is stored as T/m
+            pperp = frame.values[ix, :, :] * spec.m
+            time  = frame.time
+        else:
+            # Take provided value
+            pperp = pperp_in
+            time  = None
 
-        # build the integrand
-        integrand = pperp*self.geom_param.bxgradBoB2[0, ix, :, :]/species.q
+        #--build the integrand
+        #-total version (/!\ this compensate loss and gain)
+        integrand = pperp*self.geom_param.bxgradBoB2[0, ix, :, :]/spec.q
         # the simulation cannot gain particle, so we consider only losses
         integrand[integrand > 0.0] = 0.0
         # Calculate GB loss for this time frame
         GBloss_z = np.trapz(integrand, x=self.geom_param.y, axis=0)
         GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
-        return GBloss, frame.time
+        return GBloss, time, GBloss_z
     
-    def get_GBloss_t(self, species, twindow, ix=0):
+    def get_GBloss_t(self, spec, twindow, ix=0):
         """
         Compute the grad-B (GB) particle loss over time for a given species.
         """
@@ -120,7 +134,7 @@ class Simulation:
         self.geom_param.compute_bxgradBoB2()
         # Loop over time frames in twindow
         for tf in twindow:
-            GBloss, t = self.compute_GBloss(species,tf,ix=0,compute_bxgradBoB2=False)
+            GBloss, t, _ = self.compute_GBloss(spec,tf,ix=0,compute_bxgradBoB2=False)
             # Append corresponding GBloss value and time
             GBloss_t.append(GBloss)
             time.append(t)
