@@ -7,6 +7,7 @@ from .species   import Species
 from .geomparam import GeomParam
 from .gbsource  import GBsource
 from .frame     import Frame
+import copy
 class Simulation:
     def __init__(self):
         """
@@ -18,7 +19,8 @@ class Simulation:
         self.geom_param = None  # Geometric parameters (e.g., axis positions)
         self.GBsource   = None  # Source model of the simulation
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
-        self.normalization = {} # Normalization values
+        self.default_units_dict = {} # Dictionary for default units of physical quantities
+        self.normalization = {} # Dictionary for special normalization
         self.norm_log   = []    # Normalization log
         self.init_normalization() # Initialize default normalization settings
 
@@ -99,31 +101,9 @@ class Simulation:
         """
         return self.get_c_s()/self.species['ion'].omega_c
     
-    def compute_GBloss(self,spec,tf=-1,ix=0,compute_bxgradBoB2=True,pperp_in=-1):
-        if compute_bxgradBoB2:
-            self.geom_param.compute_bxgradBoB2()
-        # Check if we provided pperp
-        if pperp_in == -1:
-            # Not provided, get pressure from the simulation data at tf
-            field_name = 'pperp' + spec.name[0]
-            frame = Frame(self, field_name, tf, load=True)
-            # multiply by mass since temperature moment is stored as T/m
-            pperp = frame.values[ix, :, :] * spec.m
-            time  = frame.time
-        else:
-            # Take provided value
-            pperp = pperp_in
-            time  = None
-
-        #--build the integrand
-        #-total version (/!\ this compensate loss and gain)
-        integrand = pperp*self.geom_param.bxgradBoB2[0, ix, :, :]/spec.q
-        # the simulation cannot gain particle, so we consider only losses
-        integrand[integrand > 0.0] = 0.0
-        # Calculate GB loss for this time frame
-        GBloss_z = np.trapz(integrand, x=self.geom_param.y, axis=0)
-        GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
-        return GBloss, time, GBloss_z
+    def get_filename(self,fieldname,tf):
+        dataname = self.data_param.data_files_dict[fieldname+'file']
+        return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)
     
     def get_GBloss_t(self, spec, twindow, ix=0):
         """
@@ -140,7 +120,35 @@ class Simulation:
             time.append(t)
         return GBloss_t, time
 
+    def compute_GBloss(self,spec,tf=-1,ix=0,compute_bxgradBoB2=True,pperp_in=-1):
+        if compute_bxgradBoB2:
+            self.geom_param.compute_bxgradBoB2()
+        # Check if we provided pperp
+        if pperp_in == -1:
+            # Not provided, get pressure from the simulation data at tf
+            field_name = 'pperp' + spec.name[0]
+            frame = Frame(self, field_name, tf, load=True)
+            # multiply by mass since temperature moment is stored as T/m
+            # we also make sure to remove any normalization
+            pperp = frame.values[ix, :, :] * spec.m * self.normalization[field_name+'scale']
+            time  = frame.time
+        else:
+            # Take provided value
+            pperp = pperp_in
+            time  = None
+
+        #--build the integrand
+        #-total version (/!\ this compensate loss and gain)
+        integrand = pperp*self.geom_param.bxgradBoB2[0, ix, :, :]/spec.q
+        # the simulation cannot gain particle, so we consider only losses
+        integrand[integrand > 0.0] = 0.0
+        # Calculate GB loss for this time frame
+        GBloss_z = np.trapz(integrand, x=self.geom_param.y, axis=0)
+        GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
+        return GBloss, time, GBloss_z
+
     def init_normalization(self):
+        # We define the fields that we are able to plot and load
         keys = [
             'x','y','z','vpar','mu','phi',
             'ne','ni','upare','upari',
@@ -148,6 +156,7 @@ class Simulation:
             'ppare','ppari','pperpe','pperpi',
             'fe','fi','t'
             ]
+        # their associated symbols
         defaultsymbols = [
             r'$x$',r'$y$',r'$z$',r'$v_\parallel$',r'$\mu$',r'$\phi$',
             r'$n_e$',r'$n_i$',r'$u_{\parallel e}$',r'$u_{\parallel i}$',
@@ -155,6 +164,7 @@ class Simulation:
             r'$p_{\parallel e}$',r'$p_{\parallel i}$',r'$p_{\perp e}$',r'$p_{\perp i}$',
             r'$f_e$', r'$f_i$', r'$t$'
             ]
+        # and their associated units
         defaultunits = [
             'm', 'm', '', 'm/s', 'J/T', 'V',
             r'm$^{-3}$', r'm$^{-3}$', 'm/s', 'm/s',
@@ -162,16 +172,25 @@ class Simulation:
             r'J/kg/m$^{3}$', r'J/kg/m$^{3}$', r'J/kg/m$^{3}$', r'J/kg/m$^{3}$',
             '[f]','[f]','s'
         ]
+        # we now fill the default units dictionary
         symbols = {keys[i]: defaultsymbols[i] for i in range(len(keys))}
         units   = {keys[i]: defaultunits[i]   for i in range(len(keys))}
+        for key in keys:
+            self.default_units_dict[key+'scale']  = 1.0
+            self.default_units_dict[key+'shift']  = 0.0
+            self.default_units_dict[key+'symbol'] = symbols[key]
+            self.default_units_dict[key+'units']  = units[key]
+        # and initialize the normalization
+        self.normalization = copy.copy(self.default_units_dict)
 
-        [self.set_normalization(key,1.0,0.0,symbols[key],units[key]) for key in keys]
+    def reset_normalization(self,key):
+        # allows to reset the normalization of key to the default value
+        adds = ['scale','shift','symbol','units']
+        for add in adds:
+            self.normalization[key+add]  = self.default_units_dict[key+add]
 
-    def get_filename(self,fieldname,tf):
-        dataname = self.data_param.data_files_dict[fieldname+'file']
-        return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)
-    
     def set_normalization(self,key,scale,shift,symbol,units):
+        # allows to set the normalization of key
         self.normalization[key+'scale']  = scale
         self.normalization[key+'shift']  = shift
         self.normalization[key+'symbol'] = symbol
@@ -279,7 +298,7 @@ class Simulation:
                 print(f"Warning: The normalization '{norm}' for '{key}'"+
                       " is not recognized. Please check the inputs or refer"+
                       " to the documentation for valid options.")
-        
+    
     def norm_help(self):
         help_message = """
         Available Normalizations:
