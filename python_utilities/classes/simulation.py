@@ -19,10 +19,9 @@ class Simulation:
         self.geom_param = None  # Geometric parameters (e.g., axis positions)
         self.GBsource   = None  # Source model of the simulation
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
-        self.default_units_dict = {} # Dictionary for default units of physical quantities
-        self.normalization = {} # Dictionary for special normalization
-        self.norm_log   = []    # Normalization log
-        self.init_normalization() # Initialize default normalization settings
+        # Dictionary for normalization (initialized with default mksa physical units)
+        self.normalization = DataParam.get_default_units_dict() 
+        self.norm_log   = []    # Normalization log to output normalization info
 
     def set_phys_param(self, eps0, eV, mp, me, B_axis):
         """
@@ -147,47 +146,13 @@ class Simulation:
         GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
         return GBloss, time, GBloss_z
 
-    def init_normalization(self):
-        # We define the fields that we are able to plot and load
-        keys = [
-            'x','y','z','vpar','mu','phi',
-            'ne','ni','upare','upari',
-            'Tpare','Tpari','Tperpe','Tperpi',
-            'ppare','ppari','pperpe','pperpi',
-            'fe','fi','t'
-            ]
-        # their associated symbols
-        defaultsymbols = [
-            r'$x$',r'$y$',r'$z$',r'$v_\parallel$',r'$\mu$',r'$\phi$',
-            r'$n_e$',r'$n_i$',r'$u_{\parallel e}$',r'$u_{\parallel i}$',
-            r'$T_{\parallel e}$',r'$T_{\parallel i}$',r'$T_{\perp e}$',r'$T_{\perp i}$',
-            r'$p_{\parallel e}$',r'$p_{\parallel i}$',r'$p_{\perp e}$',r'$p_{\perp i}$',
-            r'$f_e$', r'$f_i$', r'$t$'
-            ]
-        # and their associated units
-        defaultunits = [
-            'm', 'm', '', 'm/s', 'J/T', 'V',
-            r'm$^{-3}$', r'm$^{-3}$', 'm/s', 'm/s',
-            'J/kg', 'J/kg', 'J/kg', 'J/kg',
-            r'J/kg/m$^{3}$', r'J/kg/m$^{3}$', r'J/kg/m$^{3}$', r'J/kg/m$^{3}$',
-            '[f]','[f]','s'
-        ]
-        # we now fill the default units dictionary
-        symbols = {keys[i]: defaultsymbols[i] for i in range(len(keys))}
-        units   = {keys[i]: defaultunits[i]   for i in range(len(keys))}
-        for key in keys:
-            self.default_units_dict[key+'scale']  = 1.0
-            self.default_units_dict[key+'shift']  = 0.0
-            self.default_units_dict[key+'symbol'] = symbols[key]
-            self.default_units_dict[key+'units']  = units[key]
-        # and initialize the normalization
-        self.normalization = copy.copy(self.default_units_dict)
-
     def reset_normalization(self,key):
+        # Get the default dictionary
+        default_dict = DataParam.get_default_units_dict()
         # allows to reset the normalization of key to the default value
         adds = ['scale','shift','symbol','units']
         for add in adds:
-            self.normalization[key+add]  = self.default_units_dict[key+add]
+            self.normalization[key+add]  = default_dict[key+add]
 
     def set_normalization(self,key,scale,shift,symbol,units):
         # allows to set the normalization of key
