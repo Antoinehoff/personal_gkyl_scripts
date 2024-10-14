@@ -59,7 +59,7 @@ def poloidal_projection(sim, fieldname, twindow, outFigureFile=False):
 
     #.Get the interpolated grid, nodal coordinates.
     field = Frame(sim,'phi',fstart)
-    pgData = pg.GData(field.filename)
+    pgData = pg.GData(field.filenames)
     pgInterp = pg.GInterpModal(pgData, 1, 'ms')
     xNodal, dataInterp = pgInterp.interpolate(0)   # 0, 1, 2 for the three components of MaxwellianMoments
     dimInt = len(xNodal)
