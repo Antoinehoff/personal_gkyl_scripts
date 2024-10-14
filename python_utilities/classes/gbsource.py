@@ -62,96 +62,43 @@ class GBsource:
             return [dens,Temp]
         #-Get the inner radius IC value
         [n_x0, T_x0] = nT_IC(0,self.spec)
-        p_x0 = n_x0*T_x0 # pressure IC values
+        pperp_x0 = 2.0/3.0*n_x0*T_x0 # pressure IC values
         #-Compute the initial ion loss rate from IC values at x=0
-        GgB_x0,_,_ = sim.compute_GBloss(spec=self.spec,pperp_in=p_x0)
+        GgB_x0,_,_ = sim.compute_GBloss(spec=self.spec,pperp_in=pperp_x0)
         #-Normalize the source amplitude by the integral
         self.nrate *= -GgB_x0
 
     def flux_model(self,x,y,z,b_in=-1):
-        if b_in == -1:
-            b0 = self.bfac
-        else:
-            b0 = b_in
-        return np.maximum(np.sin(z) * np.exp(-np.power(np.abs(z), 1.5) / (2. * np.power(b0, 2.))), 0.0)
-    
-
-    def dens_source(self, x, y, z):
-        """
-        Calculate the density source using a single Gaussian model in the x-direction.
-        Parameters:
-        - x : x-coordinate
-        - y : y-coordinate
-        - z : z-coordinate
-        - env2_geom_z : array with b x gradB/B2 inside, -1 if we use the model
-        Returns:
-        - The density source at (x,y,z) based on the Gaussian profile in x and 
-          a sinusoidal attenuation in z.
-        """
         if self.dens_model == "singaus":
-            # Gaussian profile in the x-direction (first envelope)
-            env1 = np.exp(-np.power(x - self.x, 2.) / (2. * np.power(self.sigma, 2.)))
-            # Model for the grad-B flux (b x gradB/B^2)
-            env2 = self.flux_model(x,y,z)
-            return self.nrate * env1 * env2
+            if b_in == -1:
+                b0 = self.bfac
+            else:
+                b0 = b_in
+            flux = -np.sin(z) * np.exp(-np.power(np.abs(z), 1.5) / (2. * np.power(b0, 2.)))
         elif self.dens_model == "trugaus":
              if not (self.flux is None):
-                # Gaussian profile in the x-direction (first envelope)
-                env1 = np.exp(-np.power(x - self.x, 2.) / (2. * np.power(self.sigma, 2.)))
-                # True value of the grad-B flux (b x gradB/B^2) must be provided
-                env2 = self.flux
-                return self.nrate * env1 * env2
+                flux = self.flux
              else:
                  raise ValueError(f"One must provide flux in attribute if using trugaus density model")
         else:
             raise ValueError(f"Unknown density model '{self.dens_model}'. \
                              Currently supported: 'singaus','trugaus'.")
+        charge_sign = self.spec.q/np.abs(self.spec.q)
+        return np.maximum(flux*charge_sign, 0.0)
+    
 
-    def temp_source_constant(self, x, z):
+    def dens_source(self, x, y, z):
         """
-        Retrieve the constant temperature source.
-        
-        Parameters:
-        - x : x-coordinate of the point (ignored, since temperature is constant).
-        - z : z-coordinate of the point (ignored, since temperature is constant).
-        
-        Returns:
-        - The constant temperature of the source.
+        Calculate the density source using a single Gaussian model in the x-direction.
         """
-        return self.T
-
-    def temp_source_quadratic(self, x, z):
-        """
-        Calculate the temperature source with a quadratic profile in x.
-        
-        Parameters:
-        - x : x-coordinate of the point.
-        - z : z-coordinate of the point.
-        
-        Returns:
-        - The temperature at (x,y,z) based on a quadratic profile in x.
-        """
-        return self.T * (1 - ((x - self.x) ** 2) / (self.sigma ** 2))
+        # Gaussian profile in the x-direction (first envelope)
+        env1 = np.exp(-np.power(x - self.x, 2.) / (2. * np.power(self.sigma, 2.)))
+        # Model for the grad-B flux (b x gradB/B^2)
+        env2 = self.flux_model(x,y,z)
+        return self.nrate * env1 * env2
 
     def temp_source(self, x, z):
-        """
-        Main temperature source routine, which dynamically selects between the 
-        constant or quadratic temperature model based on the 'temp_model' attribute.
-        
-        Parameters:
-        - x : x-coordinate of the point.
-        - z : z-coordinate of the point.
-        
-        Returns:
-        - The temperature at (x,y,z) from the selected temperature model.
-        """
-        if self.temp_model == "constant":
-            return self.temp_source_constant(x,y,z)
-        elif self.temp_model == "quadratic":
-            return self.temp_source_quadratic(x,y,z)
-        else:
-            raise ValueError(f"Unknown temperature model '{self.temp_model}'. \
-                             Choose 'constant' or 'quadratic'.")
+        return self.T
 
     def info(self):
         """
@@ -165,7 +112,7 @@ class GBsource:
         - Position (x_srcGB): {self.x}
         - Width (sigma_srcGB): {self.sigma}
         - Z-dependence Scaling (bfac_srcGB): {self.bfac}
-        - Temperature Model: {self.temp_model} (constant/quadratic)
+        - Temperature Model: {self.temp_model} (constant)
         - Density Model: {self.dens_model} (singaus)
         """
         print(info_message)
