@@ -49,9 +49,9 @@ class GeomParam:
         #-- load grid
         self.grids = [0.5*(g[1:]+g[:-1]) for g in Gdata.get_grid() if len(g) > 1]
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
-        self.Lx    = self.grids[0][-1]-self.grids[0][0]
-        self.Ly    = self.grids[1][-1]-self.grids[1][0]
-        self.Lz    = self.grids[2][-1]-self.grids[2][0]
+        self.Lx    = self.x[-1]-self.x[0]
+        self.Ly    = self.y[-1]-self.y[0]
+        self.Lz    = self.z[-1]-self.z[0]
         #self.toroidal_mn =  2.*np.pi*self.R_LCFSmid/self.q0/self.Ly
         #-- compute associated derivatives
         self.dBdx = np.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
