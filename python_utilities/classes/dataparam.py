@@ -145,8 +145,20 @@ class DataParam:
         #-We define now composed quantities as pressures and fluxes 
         # for each species present in the simulation
         for spec in species.values():
-            s_ = spec.nshort        
+            s_ = spec.nshort
+
+            #locally normalized parallel velocity   
+            name       = 'spar%s'%(s_)
+            symbol     = r'$u_{\parallel %s}/v_{t %s}$'%(s_,s_)
+            units      = ''
+            field2load = ['upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
+            def receipe_Ttots(gdata_list):
+                upar = gdata_list[0].get_values()
+                Tom  = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
+                vt   = np.sqrt(2*Tom)
+                return upar/vt
             
+            default_qttes.append([name,symbol,units,field2load,receipe_Ttots])            
             #total temperature
             name       = 'T%s'%(s_)
             symbol     = r'$T_{%s}$'%(s_)
