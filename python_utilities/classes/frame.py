@@ -1,7 +1,6 @@
-import sys
 import postgkyl as pg
 import numpy as np
-
+from tools import math_tools as mt
 def getgrid_index(s):
     return  (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm'))-1
 
@@ -33,6 +32,8 @@ class Frame:
         self.cells          = None
         self.grids          = None
         self.values         = None
+        self.integral       = None
+        self.average        = None
 
         # attribute to handle slices
         self.dim_idx        = None       
@@ -152,65 +153,48 @@ class Frame:
         slicetitle = ''
         norm = self.simulation.normalization
         for k_,c_ in self.slicecoords.items():
-            slicetitle += norm[k_+'symbol']+'=%2.2f'%c_ + norm[k_+'units'] +', '
+            if isinstance(c_,float):
+                slicetitle += norm[k_+'symbol']+'=%2.2f'%c_ + norm[k_+'units'] +', '
+            else:
+                slicetitle += c_ +', '
+
         self.slicetitle = slicetitle
         self.timetitle  = self.tsymbol + '=%2.2f'%self.time+self.tunits
         self.fulltitle  = self.slicetitle + self.timetitle
 
-    def compress(self,direction,type='cut',cut=0):
-        ### This function does not work with phi derivatives since
-        #   the derivative is meant to be computed after the slice 
-        for gdata_ in self.Gdata:
-            if direction == 'x':
-                ic = 0
-                pg.data.select(gdata_, z0=cut, overwrite=True)
-            elif direction == 'y':
-                ic = 1
-                pg.data.select(gdata_, z1=cut, overwrite=True)
-            elif direction == 'z':
-                ic = 2
-                pg.data.select(gdata_, z2=cut, overwrite=True)
-            elif direction == 'v':
-                ic = 3
-                pg.data.select(gdata_, z3=cut, overwrite=True)
-            elif direction == 'm':
-                ic = 4
-                pg.data.select(gdata_, z4=cut, overwrite=True)
-        self.sliceddim.append(ic)
-        cc = (self.Gdata[0].ctx['lower'][ic]+self.Gdata[0].ctx['upper'][ic])/2.
-        self.slicecoords[direction] = cc   
-        self.refresh()
-        self.normalize(values=True,time=False,grid=False)
-        self.rename()
-
     def select_slice(self, direction, cut):
-        # Determine the direction (x, y, z correspond to 0, 1, 2)
-        if direction == 'x':
-            ic = 0
-        elif direction == 'y':
-            ic = 1
-        elif direction == 'z':
-            ic = 2
-        else:
-            raise ValueError("Invalid direction: must be 'x', 'y', or 'z'")
+        # Map the direction to the corresponding axis index
+        direction_map = {'x':0,'y':1,'z':2,'vpar':3,'mu':4}
+        
+        if direction not in direction_map:
+            raise ValueError("Invalid direction: must be 'x', 'y', 'z', 'vpar', or 'mu'")
+        
+        ic = direction_map[direction]  # Get the axis index for the given direction
 
-        # If cut is an integer, use it as the index
-        if isinstance(cut, int):
-            cut_index = np.minimum(cut,len(self.grids[ic]))
+        if cut == 'avg':
+            cut_coord   = direction+'-avg'
+            self.values = np.average(self.values,axis=ic)
+            # grid        = self.grids[ic][:]
+            # Jacobian    = self.simulation.geom_param.Jacobian
+            # self.values = np.trapz(self.values*Jacobian,grid,axis=ic)
+            # self.values/= np.trapz(Jacobian,grid,axis=ic)
+        elif cut == 'max':
+            cut_coord = direction+'-max'
+            self.values = np.max(self.values,axis=ic)
         else:
-            # Find the closest index in the corresponding grid
-            cut_index = (np.abs(self.grids[ic] - cut)).argmin()
-        # find the cut coordinate
-        cut_coord = self.grids[ic][cut_index]
+            # If cut is an integer, use it as the index
+            if isinstance(cut, int):
+                cut_index = np.minimum(cut,len(self.grids[ic]))
+            else:
+                # Find the closest index in the corresponding grid
+                cut_index = (np.abs(self.grids[ic] - cut)).argmin()
+            # find the cut coordinate
+            cut_coord = self.grids[ic][cut_index]
+            # Select the slice of values at the cut_index along the given direction
+            self.values = np.take(self.values,cut_index,axis=ic)
 
-        # Select the slice of values at the cut_index along the given direction
-        # For direction 'x' (ic=0), we're slicing along the first axis (axis=0)
-        if direction == 'x':
-            self.values = self.values[cut_index:cut_index+1, :, :]  # Slice along the first axis
-        elif direction == 'y':
-            self.values = self.values[:, cut_index:cut_index+1, :]  # Slice along the second axis
-        elif direction == 'z':
-            self.values = self.values[:, :, cut_index:cut_index+1]  # Slice along the third axis
+        # Expand to avoid dimensionality reduction
+        self.values = np.expand_dims(self.values, axis=ic)
 
         # record the cut and adapt the grids
         self.sliceddim.append(ic)
@@ -221,7 +205,6 @@ class Frame:
         axes = 'xyz'
         axes = axes.replace(cutdirection,'')
         for i_ in range(len(axes)):
-            # self.compress(direction=axes[i_],type='cut',cut=ccoords[i_])
             self.select_slice(direction=axes[i_],cut=ccoords[i_])
         self.refresh_new()
 
@@ -233,9 +216,17 @@ class Frame:
         i3   = 2*(i1==0 and i2==1)+1*(i1==0 and i2==2)+0*(i1==1 and i2==2)
         sdir = self.gnames[i3]
         # Reduce the dimensionality of the data
-        # self.compress(sdir,type='cut',cut=ccoord)
         self.select_slice(direction=sdir,cut=ccoord)
         self.refresh_new()
 
+    def compute_integral(self):
+        x   = 0.5*(self.grids[0][1:]+self.grids[0][:-1])
+        y   = 0.5*(self.grids[1][1:]+self.grids[1][:-1])
+        z   = 0.5*(self.grids[2][1:]+self.grids[2][:-1])
+        Jac    = self.simulation.geom_param.Jacobian
+        intJac = self.simulation.geom_param.intJac
+        self.integral = mt.integral_xyz(x,y,z,self.values*Jac)/intJac
+        return self.integral
+    
     def free_values(self):
         self.values = None
