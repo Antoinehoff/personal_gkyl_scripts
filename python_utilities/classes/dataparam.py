@@ -152,13 +152,13 @@ class DataParam:
             symbol     = r'$u_{\parallel %s}/v_{t %s}$'%(s_,s_)
             units      = ''
             field2load = ['upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
-            def receipe_Ttots(gdata_list):
+            def receipe_spars(gdata_list):
                 upar = gdata_list[0].get_values()
                 Tom  = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
                 vt   = np.sqrt(2*Tom)
                 return upar/vt
-            
-            default_qttes.append([name,symbol,units,field2load,receipe_Ttots])            
+            default_qttes.append([name,symbol,units,field2load,receipe_spars])      
+
             #total temperature
             name       = 'T%s'%(s_)
             symbol     = r'$T_{%s}$'%(s_)
@@ -207,6 +207,19 @@ class DataParam:
             def receipe_pperps(gdata_list):
                 return gdata_list[0].get_values()*gdata_list[1].get_values()*2.0/3.0     
             default_qttes.append([name,symbol,units,field2load,receipe_pperps])
+
+            #normalized pressure beta
+            name = 'beta%s'%(s_)
+            symbol = r'$\beta_{%s}$'%(s_)
+            units = '%'
+            field2load = ['n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'Bmag']
+            def receipe_betas(gdata_list):
+                mu0 = 4.0*np.pi*1e-7
+                dens = gdata_list[0].get_values()
+                Ttot = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0*spec.m
+                Bmag = gdata_list[3].get_values()
+                return 100*dens*Ttot*2*mu0/np.power(Bmag,2)
+            default_qttes.append([name,symbol,units,field2load,receipe_betas])
 
             #- The following are vector fields quantities that we treat component wise
             directions = ['x','y','z'] #directions array
