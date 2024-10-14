@@ -22,7 +22,7 @@ def integral_xyz(x,y,z,integrant_xyz):
     return integral
 
 def integral_yz(y,z,integrant_yz):
-    # Compute the volume integral (jacobian included in the integrand)
+    # Compute the surface integral (jacobian included in the integrand)
     integrant_z   = np.trapz(integrant_yz, x=y, axis=0)
     integral      = np.trapz(integrant_z,  x=z, axis=0)
     return integral
