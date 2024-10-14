@@ -23,140 +23,125 @@ def func_data_omp(field2d, comp):
     field1dValues = field2dValues[:,z_slice,0]
     return x_vals,field1dValues
 
-def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs=[]):
-    # Get available time frames
-    dataname = simulation.data_param.data_files_dict[fieldname+'file']
-    if not tfs:
-        tfs = find_available_frames(simulation, dataname)
-    if not isinstance(tfs, list):
-        tfs = [tfs]
+def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs ):
     # to store iteratively times and values
     t  = []
-    vv = []
+    values = []
     # Fill ZZ with data for each time frame
     for it, tf in enumerate(tfs):
         frame = Frame(simulation,fieldname,tf)
         frame.load()
         frame.slice_1D(cutdirection,ccoords)
         t.append(frame.time)
-        vv.append(frame.values)
+        values.append(frame.values)
     frame.free_values() # remove values to free memory
     x = frame.new_grids[0]
-    return {'x':x,'t':t,'values':vv,'name':frame.name,
+    tsymb = simulation.normalization['tsymbol'] 
+    tunit = simulation.normalization['tunits']
+    tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
+    xlabel = frame.new_gsymbols[0]+(' ('+frame.new_gunits[0]+')')*(1-(frame.new_gunits[0]==''))
+    vlabel = frame.vsymbol+(' ('+frame.vunits+')')*(1-(frame.vunits==''))
+    slicetitle = frame.slicetitle
+    return x,t,values,xlabel,tlabel,vlabel,frame.vunits,slicetitle
+    return {'x':x,'t':t,'values':values,'name':frame.name,
             'xsymbol':frame.new_gsymbols[0], 'xunits':frame.new_gunits[0], 
             'vsymbol':frame.vsymbol, 'vunits':frame.vunits, 'slicetitle':frame.slicetitle,
             'slicecoords':frame.slicecoords, 'fulltitle':frame.fulltitle}
     
-def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldname='', spec='e',
+def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                            twindow=[],space_time=False, cmap='inferno',
-                           xlim=[], ylim=[], clim=[], time_avg=False, full_plot=False):
-    full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
-    multi_species = isinstance(spec, list)
+                           xlim=[], ylim=[], clim=[], time_avg=False):
     cmap0 = cmap
-    if not multi_species:
-        spec = [spec]
-    else:
-        time_avg = True
-        space_time = False
-
-    if full_plot:
-        fig,axs = plt.subplots(2,2,figsize=(8,6))
-        axs    = axs.flatten()
-        fields = ['n','upar','Tpar','Tperp']
-    else:
-        fig,axs = plt.subplots(1,1)
-        axs    = [axs]
-        fields = [fieldname]
-
-    for s_ in spec:
-        for ax,field in zip(axs,fields):
-            if not field == 'phi':
-                field += s_
-            data = get_1xt_diagram(simulation, field, cdirection, ccoords,tfs=twindow)
-
-            t   = data['t'] #get in ms
-            x   = data['x']
-            tsymb = simulation.normalization['tsymbol'] 
-            tunit = simulation.normalization['tunits']
-            tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
-            xlabel = data['xsymbol']+(' ('+data['xunits']+')')*(1-(data['xunits']==''))
-            vlabel = data['vsymbol']+(' ('+data['vunits']+')')*(1-(data['vunits']==''))
-            if not time_avg:
-                if space_time:
-                    if (data['name'] == 'phi' or data['name'][:-1] == 'upar') or cmap0=='bwr':
-                        cmap = 'bwr'
-                        vmax = np.max(np.abs(data['values'])) 
-                        vmin = -vmax
-                    else:
-                        cmap = cmap0
-                        vmax = np.max(np.abs(data['values'])) 
-                        vmin = 0.0
-
-                    XX, TT = np.meshgrid(x,t)
-                    # Create a contour plot or a heatmap of the space-time diagram
-                    pcm = ax.pcolormesh(XX,TT,data['values'],cmap=cmap,vmin=vmin,vmax=vmax); 
-                    ax.set_xlabel(xlabel); ax.set_ylabel(tlabel);
-                    title = data['slicetitle'][:-2]
-                    cbar = fig.colorbar(pcm,label=vlabel);
-                    #-- to change window
-                    if xlim:
-                        ax.set_xlim(xlim)
-                    if ylim:
-                        ax.set_ylim(ylim)
-                    if clim:
-                        pcm.set_clim(clim)
-                else:
-                    norm = plt.Normalize(min(t), max(t))
-                    colormap = cm.viridis  # You can choose any colormap
-                    for it in range(len(t)):
-                        ax.plot(x,data['values'][it][:],label=r'$t=%2.2e$ (ms)'%(t[it]),
-                                color=colormap(norm(t[it])))
-                    ax.set_xlabel(xlabel)
-                    ax.set_ylabel(vlabel)
-                    title = data['slicetitle'][:-2]
-                    # Add a colorbar to the figure
-                    sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
-                    cbar = fig.colorbar(sm, ax=ax);cbar.set_label(tlabel)
+    fields,fig,axs = setup_figure(fieldnames)
+    for ax,field in zip(axs,fields):
+        x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
+              get_1xt_diagram(simulation,field,cdirection,ccoords,tfs=twindow)
+        if space_time:
+            if (field in ['phi','upar']) or cmap0=='bwr':
+                cmap = 'bwr'
+                vmax = np.max(np.abs(values)) 
+                vmin = -vmax
             else:
-                # Compute the average of data over the t-axis (axis=1)
-                average_data = np.mean(data['values'], axis=0)
-                # Compute the standard deviation of data over the t-axis (axis=1)
-                std_dev_data = np.std(data['values'], axis=0)
-                # Plot with error bars
-                ax.errorbar(x, average_data, yerr=std_dev_data, 
-                            fmt='o', capsize=5, label=vlabel)
-                # Labels and title
-                ax.set_xlabel(xlabel)
-                if multi_species:
-                    ax.set_ylabel(data['vunits'])
-                    ax.legend()
-                else:
-                    ax.set_ylabel(vlabel)
-                title = data['slicetitle']+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
-            if not full_plot:
-                ax.set_title(title)
-    if full_plot:
+                cmap = cmap0
+                vmax = np.max(np.abs(values)) 
+                vmin = 0.0
+            XX, TT = np.meshgrid(x,t)
+            # Create a contour plot or a heatmap of the space-time diagram
+            pcm = ax.pcolormesh(XX,TT,values,cmap=cmap,vmin=vmin,vmax=vmax); 
+            cbar = fig.colorbar(pcm)
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(tlabel)
+            cbar.set_label(vlabel)
+            #-- to change window
+            if xlim:
+                ax.set_xlim(xlim)
+            if ylim:
+                ax.set_ylim(ylim)
+            if clim:
+                pcm.set_clim(clim)
+        else:
+            norm = plt.Normalize(min(t), max(t))
+            colormap = cm.viridis  # You can choose any colormap
+            for it in range(len(t)):
+                ax.plot(x,values[it][:],label=r'$t=%2.2e$ (ms)'%(t[it]),
+                        color=colormap(norm(t[it])))
+            # Add a colorbar to the figure
+            sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
+            cbar = fig.colorbar(sm, ax=ax)
+            ax.set_xlabel(xlabel)
+            ax.set_ylabel(vlabel)
+            cbar.set_label(tlabel)
+        if len(axs) > 1:
+            fig.suptitle(slicetitle[:-2])
+        else:
+            ax.set_title(slicetitle[:-2])
+    fig.tight_layout()
+
+def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
+                           twindow=[], xlim=[], ylim=[], multi_species = True):
+    fields,fig,axs = setup_figure(fieldnames)
+
+    for ax,field in zip(axs,fields):
+        if not isinstance(field,list):
+            subfields = [field] #simple plot
+        else:
+            subfields = field # field is a combined plot
+        for subfield in subfields:
+            x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
+                get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=twindow)
+            data = get_1xt_diagram(simulation, subfield, cdirection, ccoords,tfs=twindow)
+            # Compute the average of data over the t-axis (axis=1)
+            average_data = np.mean(values, axis=0)
+            # Compute the standard deviation of data over the t-axis (axis=1)
+            std_dev_data = np.std(values, axis=0)
+            # Plot with error bars
+            ax.errorbar(x, average_data, yerr=std_dev_data, 
+                        fmt='o', capsize=5, label=vlabel)
+        # Labels and title
+        ax.set_xlabel(xlabel)
+        if multi_species:
+            ax.set_ylabel(vunits)
+            ax.legend()
+        else:
+            ax.set_ylabel(vlabel)
+        #-- to change window
+        if xlim:
+            ax.set_xlim(xlim)
+        if ylim:
+            ax.set_ylim(ylim)
+    title = slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
+    if len(axs) > 1:
         fig.suptitle(title)
+    else:
+        ax.set_title(title)
     fig.tight_layout()
 
 def plot_2D_cut(simulation,cdirection,ccoord,tf,
-                fieldname='',spec='e', cmap='inferno', full_plot=False,
+                fieldnames='', cmap='inferno', full_plot=False,
                 xlim=[], ylim=[], clim=[], 
                 figout=[],cutout=[],):
-    full_plot = (full_plot or (fieldname=='')) and (not fieldname=='phi')
-    cmap0 = cmap
-    if fieldname == 'phi':
-        spec = ''
-    if full_plot:
-        fig,axs = plt.subplots(2,2,figsize=(8,6))
-        axs    = axs.flatten()
-        fields = ['n','upar','Tpar','Tperp']
-        fields = [f_+spec for f_ in fields]
-    else:
-        fig,axs = plt.subplots(1,1)
-        axs    = [axs]
-        fields = [fieldname+spec]
-
+    cmap0 = cmap    
+    fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         frame = Frame(simulation,field,tf)
         frame.load()
@@ -182,7 +167,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         if xlim:
             ax.set_xlim(xlim)
         if ylim:
-            ax.set_xlim(ylim)
+            ax.set_ylim(ylim)
         if clim:
             pcm.set_clim(clim)    
         if not full_plot:
@@ -197,15 +182,15 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     cutout.append(frame.slicecoords)
 
 def make_2D_movie(simulation,cdirection,ccoord,tfs,
-                      fieldname='',spec='e', cmap='inferno',
+                      fieldname='', cmap='inferno',
                       xlim=[], ylim=[], clim=[], full_plot=False):
     os.makedirs('gif_tmp', exist_ok=True)
-    if fieldname == 'phi':
+    if fieldname in simulation.data_param.spec_undep_quantities:
         spec = ''
     for tf in tfs:
         figout = []; cutout = []
-        plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldname=fieldname,
-                    spec=spec,cmap=cmap,full_plot=full_plot,
+        plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldnames=fieldname,
+                    cmap=cmap,full_plot=full_plot,
                     xlim=xlim,ylim=ylim,clim=clim,
                     cutout=cutout,figout=figout)
         fig = figout[0]
@@ -217,7 +202,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
         fieldname = 'mom'+spec
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = 'movie_'+fieldname+spec+'_'+cutname[0]
+    moviename = 'movie_'+fieldname+'_'+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
@@ -250,6 +235,24 @@ def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]
     ax.set_xlabel('R (m)')
     ax.set_ylabel('Z (m)')
     ax.set_aspect('equal')
+
+def setup_figure(fieldname):
+    if fieldname == '':
+        ncol = 2
+        fields = ['n','upari','Tpari','Tperpi']
+    elif not isinstance(fieldname,list):
+        ncol   = 1
+        fields = [fieldname]
+    else:
+        ncol = 1 * (len(fieldname) == 1) + 2 * (len(fieldname) > 1)
+        fields = fieldname
+    nrow = len(fields)//ncol + len(fields)%ncol
+    fig,axs = plt.subplots(nrow,ncol,figsize=(4*ncol,3*nrow))
+    if ncol == 1:
+        axs = [axs]
+    else:
+        axs = axs.flatten()
+    return fields,fig,axs
 
 def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     # Set up the simulation geometry and load useful data
