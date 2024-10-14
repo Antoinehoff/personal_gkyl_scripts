@@ -184,12 +184,12 @@ class Simulation:
         elif norm in ['rho', 'minor radius']:
             scale  = self.geom_param.a_mid
             shift  = (self.geom_param.x_LCFS - self.geom_param.a_mid) / scale
-            symbol = r'$\rho$'
+            symbol = r'$r/a$'
             units  = ''
         elif norm in ['x/rho', 'rho_L', 'Larmor radius']:
             scale  = ion.rho
             shift  = 0
-            symbol = r'$%s/\rho_s$' % key
+            symbol = r'$%s/\rho_{0i}$' % key
             units  = ''
         elif norm in ['R-Rlcfs', 'LCFS shift', 'LCFS']:
             scale  = 1.0
@@ -224,12 +224,13 @@ class Simulation:
         elif norm == 'beta':
             mu0 = 4*np.pi*1e-7
             for spec in self.species.values():
+                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/spec.m
                 if key == 'ppar%s'%spec.nshort:
-                    scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/spec.m
                     symbol = r'$\beta_{\parallel %s}$'%spec.nshort
                 elif key == 'pperp%s'%spec.nshort:
-                    scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/spec.m
-                symbol = r'$\beta_{\perp %s}$'%spec.nshort
+                    symbol = r'$\beta_{\perp %s}$'%spec.nshort
+                elif key == 'p%s'%spec.nshort:
+                    symbol = r'$\beta_{%s}$'%spec.nshort
             shift = 0
             units = '%'
             if not self.data_param.BiMaxwellian:
@@ -245,7 +246,8 @@ class Simulation:
                 self.normalize('upar%s'%spec.nshort, norm)
         elif key.lower() == 'pressures':
             for spec in self.species.values():
-                self.normalize('ppar%s'%spec.nshort,  norm)
+                self.normalize(    'p%s'%spec.nshort, norm)
+                self.normalize( 'ppar%s'%spec.nshort,  norm)
                 self.normalize('pperp%s'%spec.nshort, norm)
 
         else:
