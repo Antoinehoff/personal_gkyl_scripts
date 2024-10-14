@@ -1,6 +1,6 @@
 import sys
 import postgkyl as pg
-
+import numpy as np
 
 def getgrid_index(s):
     return  (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm'))-1
@@ -13,8 +13,8 @@ class Frame:
         self.simulation     = simulation
         self.name           = name
         self.tf             = tf
-        self.dataname       = []
-        self.filename       = []
+        self.datanames       = []
+        self.filenames       = []
         self.comp           = []
         self.gnames         = None
         self.gsymbols       = None
@@ -53,16 +53,18 @@ class Frame:
         # Field composition to handle composed fields.
         # Should be just name if its a simple field 
         # but can be, e.g., 'ne','Tperpe' for electron perpendicular pressure.
-        if self.name[0] == 'p' and self.name[1] != 'h': #detect if we are dealing with pressure
-            self.composition.append('n%s'%self.name[-1]) # add density to the composition
-            self.composition.append('T%s'%self.name[1:]) # add corresponding temperature
-        else:
-            self.composition.append(self.name)
+        # self.composition.append(self.name)
+        self.composition = self.simulation.normalization[self.name+'compo']
+        # field receipe (function of the gdata)
+        self.receipe     = self.simulation.normalization[self.name+'receipe']
         for subname in self.composition:
             subdataname = self.simulation.data_param.data_files_dict[subname+'file']
-            self.dataname.append(subdataname)
-            self.filename.append("%s-%s_%d.gkyl"%(
-                self.simulation.data_param.fileprefix,subdataname,self.tf))
+            self.datanames.append(subdataname)
+            if subname in ['b_x','b_y','b_z','Jacobian','Bmag']: #time dependent data, add tf in the name
+                name_tf = subdataname
+            else: # time independent data (like geom)
+                name_tf = '%s_%d'%(subdataname,self.tf)
+            self.filenames.append("%s-%s.gkyl"%(self.simulation.data_param.fileprefix,name_tf))
             self.comp.append(self.simulation.data_param.data_files_dict[subname+'comp'])
             self.gnames   = self.simulation.data_param.data_files_dict[subname+'gnames']
         self.gsymbols = []
@@ -75,7 +77,7 @@ class Frame:
 
     def load(self,polyorder=1,polytype='ms'):
         self.Gdata = []
-        for (f_,c_) in zip(self.filename,self.comp):
+        for (f_,c_) in zip(self.filenames,self.comp):
             # Load the data from the file
             Gdata = pg.data.GData(f_)
             # Interpolate the data using modal interpolation
@@ -87,11 +89,13 @@ class Frame:
         self.ndims   = len(self.cells)
         self.dim_idx = list(range(self.ndims))
         self.time    = Gdata.ctx['time']
+        if self.time == None:
+            self.time = 0
         self.refresh()
         self.normalize()
         self.rename()
 
-    def refresh(self):
+    def refresh(self,values=True):
         self.new_cells    = self.Gdata[0].ctx['cells']
         self.new_grids    = []
         self.new_gnames   = []
@@ -104,14 +108,25 @@ class Frame:
             self.new_gnames.append(self.gnames[idx])
             self.new_gsymbols.append(self.gsymbols[idx])
             self.new_gunits.append(self.gunits[idx])
-        # compute again the values
-        self.compute_field()
+        if values:
+            # compute again the values
+            self.values = self.receipe(self.Gdata)
+        self.values = self.values.reshape(self.new_dims)        
 
-    def compute_field(self):
-        self.values = 1.0
-        for gdata_ in self.Gdata:
-            self.values *= gdata_.get_values()
-        self.values   = self.values.reshape(self.new_dims)
+    def refresh_new(self):
+        self.new_grids    = []
+        self.new_gnames   = []
+        self.new_gsymbols = []
+        self.new_gunits   = []
+        self.new_dims     = [c_ for c_ in np.shape(self.values) if c_ > 1]
+        self.dim_idx      = [d_ for d_ in range(self.ndims) if d_ not in self.sliceddim]
+        for idx in self.dim_idx:
+            self.new_grids.append(self.grids[idx][:-1])
+            self.new_gnames.append(self.gnames[idx])
+            self.new_gsymbols.append(self.gsymbols[idx])
+            self.new_gunits.append(self.gunits[idx])
+        self.values = self.values.reshape(self.new_dims)        
+
 
     def normalize(self,values=True,time=True,grid=True):
         if time:
@@ -143,6 +158,8 @@ class Frame:
         self.fulltitle  = self.slicetitle + self.timetitle
 
     def compress(self,direction,type='cut',cut=0):
+        ### This function does not work with phi derivatives since
+        #   the derivative is meant to be computed after the slice 
         for gdata_ in self.Gdata:
             if direction == 'x':
                 ic = 0
@@ -166,12 +183,47 @@ class Frame:
         self.normalize(values=True,time=False,grid=False)
         self.rename()
 
+    def select_slice(self, direction, cut):
+        # Determine the direction (x, y, z correspond to 0, 1, 2)
+        if direction == 'x':
+            ic = 0
+        elif direction == 'y':
+            ic = 1
+        elif direction == 'z':
+            ic = 2
+        else:
+            raise ValueError("Invalid direction: must be 'x', 'y', or 'z'")
+
+        # If cut is an integer, use it as the index
+        if isinstance(cut, int):
+            cut_index = np.minimum(cut,len(self.grids[ic]))
+        else:
+            # Find the closest index in the corresponding grid
+            cut_index = (np.abs(self.grids[ic] - cut)).argmin()
+        # find the cut coordinate
+        cut_coord = self.grids[ic][cut_index]
+
+        # Select the slice of values at the cut_index along the given direction
+        # For direction 'x' (ic=0), we're slicing along the first axis (axis=0)
+        if direction == 'x':
+            self.values = self.values[cut_index:cut_index+1, :, :]  # Slice along the first axis
+        elif direction == 'y':
+            self.values = self.values[:, cut_index:cut_index+1, :]  # Slice along the second axis
+        elif direction == 'z':
+            self.values = self.values[:, :, cut_index:cut_index+1]  # Slice along the third axis
+
+        # record the cut and adapt the grids
+        self.sliceddim.append(ic)
+        self.slicecoords[direction] = cut_coord   
+        self.rename()
+
     def slice_1D(self,cutdirection,ccoords):
         axes = 'xyz'
         axes = axes.replace(cutdirection,'')
         for i_ in range(len(axes)):
-            self.compress(direction=axes[i_],type='cut',cut=ccoords[i_])
-
+            # self.compress(direction=axes[i_],type='cut',cut=ccoords[i_])
+            self.select_slice(direction=axes[i_],cut=ccoords[i_])
+        self.refresh_new()
 
     def slice_2D(self,plane,ccoord):
         # Select the specific slice dimension indices
@@ -181,7 +233,9 @@ class Frame:
         i3   = 2*(i1==0 and i2==1)+1*(i1==0 and i2==2)+0*(i1==1 and i2==2)
         sdir = self.gnames[i3]
         # Reduce the dimensionality of the data
-        self.compress(sdir,type='cut',cut=ccoord)
+        # self.compress(sdir,type='cut',cut=ccoord)
+        self.select_slice(direction=sdir,cut=ccoord)
+        self.refresh_new()
 
     def free_values(self):
         self.values = None
