@@ -236,16 +236,16 @@ def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]
     ax.set_ylabel('Z (m)')
     ax.set_aspect('equal')
 
-def setup_figure(fieldname):
-    if fieldname == '':
+def setup_figure(fieldnames):
+    if fieldnames == '':
         ncol = 2
         fields = ['n','upari','Tpari','Tperpi']
-    elif not isinstance(fieldname,list):
+    elif not isinstance(fieldnames,list):
         ncol   = 1
-        fields = [fieldname]
+        fields = [fieldnames]
     else:
-        ncol = 1 * (len(fieldname) == 1) + 2 * (len(fieldname) > 1)
-        fields = fieldname
+        ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
+        fields = fieldnames
     nrow = len(fields)//ncol + len(fields)%ncol
     fig,axs = plt.subplots(nrow,ncol,figsize=(4*ncol,3*nrow))
     if ncol == 1:
@@ -291,6 +291,41 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
 
     plt.title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
               %(Ssimul,Smodel))
+
+def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[]):
+    fields,fig,axs = setup_figure(fieldnames)
+    for ax,field in zip(axs,fields):
+        if not isinstance(field,list):
+            subfields = [field] #simple plot
+        else:
+            subfields = field # field is a combined plot
+        for subfield in subfields:
+            int_t = []
+            time  = []
+            for tf in tfs:
+                f_ = Frame(simulation=simulation,name=subfield,tf=tf)
+                f_.load()
+                time.append(f_.time)
+                int_t.append(f_.compute_integral())
+            # Plot with error bars
+            lbl = simulation.normalization[subfield+'symbol']
+            lbl = r'$\int d^3x$'+lbl
+            ax.plot(time,int_t,label=lbl)
+            # Labels and title 
+            # ax.set_xlabel(label_from_simnorm(simulation,'t'))
+            ax.set_ylabel(simulation.normalization[subfield+'units']+r'm$^3$')
+            # ax.set_ylabel(lbl)
+            plt.legend()
+        title = 'Volume integral over time'
+        if len(axs) > 1:
+            fig.suptitle(title)
+        else:
+            ax.set_title(title)
+        fig.tight_layout()
+    
+    
+def label_from_simnorm(simulation,name):
+    return label(simulation.normalization[name+'symbol'],simulation.normalization[name+'units'])
 
 def label(label,units):
     if units:
