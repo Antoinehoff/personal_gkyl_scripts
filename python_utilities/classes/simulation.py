@@ -19,8 +19,7 @@ class Simulation:
         self.geom_param = None  # Geometric parameters (e.g., axis positions)
         self.GBsource   = None  # Source model of the simulation
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
-        # Dictionary for normalization (initialized with default mksa physical units)
-        self.normalization = DataParam.get_default_units_dict() 
+        self.normalization = None
         self.norm_log   = []    # Normalization log to output normalization info
 
     def set_phys_param(self, eps0, eV, mp, me, B_axis):
@@ -39,13 +38,14 @@ class Simulation:
             x_LCFS=x_LCFS, geom_type=geom_type, B0=self.phys_param.B_axis
         )
 
-    def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, wkdir, BiMaxwellian=True):
+    def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, 
+                       wkdir, BiMaxwellian=True, species = {}):
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
         self.data_param = DataParam(
             expdatadir, g0simdir, simname, simdir, 
-            fileprefix, wkdir, BiMaxwellian
+            fileprefix, wkdir, BiMaxwellian, species
         )
         self.set_num_param()  # Automatically set numerical parameters based on data
 
@@ -63,7 +63,8 @@ class Simulation:
         
         self.num_param = NumParam(Nx, Ny, Nz, Nvp=None, Nmu=None)  # Set numerical grid
 
-    def set_GBsource(self, n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, bfac_srcGB, species, temp_model="constant", dens_model="singaus"):
+    def set_GBsource(self, n_srcGB, T_srcGB, x_srcGB, sigma_srcGB, bfac_srcGB, species, 
+                     temp_model="constant", dens_model="singaus"):
         """
         Set the gradB source moodel parameters (density, temperature, etc.).
         """
@@ -80,6 +81,8 @@ class Simulation:
         s_ = Species(name, m, q, T0, n0)
         s_.set_gyromotion(self.phys_param.B_axis)
         self.species[name] = s_
+        # Update the normalization with all available species
+        self.normalization = DataParam.get_default_units_dict(self.species) 
 
     def add_species(self, species):
         """
@@ -87,6 +90,8 @@ class Simulation:
         """
         species.set_gyromotion(self.phys_param.B_axis)
         self.species[species.name] = species
+        # Update the normalization with all available species
+        self.normalization = DataParam.get_default_units_dict(self.species) 
 
     def get_c_s(self):
         """
@@ -148,7 +153,7 @@ class Simulation:
 
     def reset_normalization(self,key):
         # Get the default dictionary
-        default_dict = DataParam.get_default_units_dict()
+        default_dict = DataParam.get_default_units_dict(self.species)
         # allows to reset the normalization of key to the default value
         adds = ['scale','shift','symbol','units']
         for add in adds:
@@ -164,7 +169,6 @@ class Simulation:
     def normalize(self, key, norm):
         scale = 0
         ion = self.species['ion']
-        elc = self.species['elc']
         #-- Time scale
         if norm == 'mus':
             scale  = 1e-6
@@ -193,30 +197,25 @@ class Simulation:
             symbol = r'$R-R_{LCFS}$'
             units  = 'm'
         #-- Velocity normalization
-        elif norm == 'vte' or (key == 'upare' and norm == 'thermal velocity'):
-            scale  = elc.vt
-            shift  = 0
-            symbol = r'$u_{\parallel e}/v_{te}$'
-            units  = ''
-        elif norm == 'vti' or (key == 'upari' and norm == 'thermal velocity'):
-            scale  = ion.vt
-            shift  = 0
-            symbol = r'$u_{\parallel i}/v_{ti}$'
-            units  = ''
+        elif norm in ['vt', 'thermal velocity']:
+            for spec in self.species.values():
+                if key == 'upar%s'%spec.nshort:
+                    scale  = spec.vt
+                    shift  = 0
+                    symbol = r'$u_{\parallel %s}/v_{t0 %s}$'%(spec.nshort,spec.nshort)
+                    units  = ''
         #-- Temperature normalization
         elif norm == 'eV':
-            if key == 'Tpare':
-                scale  = self.phys_param.eV / elc.m
-                symbol = r'$T_{\parallel e}$'
-            elif key == 'Tperpe':
-                scale  = self.phys_param.eV / elc.m
-                symbol = r'$T_{\perp e}$'
-            elif key == 'Tpari':
-                scale  = self.phys_param.eV / ion.m
-                symbol = r'$T_{\parallel i}$'
-            elif key == 'Tperpi':
-                scale  = self.phys_param.eV / ion.m
-                symbol = r'$T_{\perp i}$'
+            for spec in self.species.values():
+                if key == 'T%s'%spec.name[0]:
+                    scale  = self.phys_param.eV / spec.m
+                    symbol = r'$T_%s$'%spec.name[0]
+                elif key == 'Tpar%s'%spec.name[0]:
+                    scale  = self.phys_param.eV / spec.m
+                    symbol = r'$T_{\parallel %s}$'%spec.name[0]
+                elif key == 'Tperp%s'%spec.name[0]:
+                    scale  = self.phys_param.eV / spec.m
+                    symbol = r'$T_{\perp %s}$'%spec.name[0]
             shift = 0
             units = 'eV'
             if not self.data_param.BiMaxwellian:
@@ -224,36 +223,31 @@ class Simulation:
         #-- Preessure normalization
         elif norm == 'beta':
             mu0 = 4*np.pi*1e-7
-            if key == 'ppare':
-                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/elc.m
-                symbol = r'$\beta_{\parallel e}$'
-            elif key == 'pperpe':
-                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/elc.m
-                symbol = r'$\beta_{\perp e}$'
-            elif key == 'ppari':
-                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/ion.m
-                symbol = r'$\beta_{\parallel i}$'
-            elif key == 'pperpi':
-                scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/ion.m
-                symbol = r'$\beta_{\perp i}$'
+            for spec in self.species.values():
+                if key == 'ppar%s'%spec.nshort:
+                    scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/spec.m
+                    symbol = r'$\beta_{\parallel %s}$'%spec.nshort
+                elif key == 'pperp%s'%spec.nshort:
+                    scale = 0.01*(self.geom_param.B0**2/(2*mu0)) * 1.0/spec.m
+                symbol = r'$\beta_{\perp %s}$'%spec.nshort
             shift = 0
             units = '%'
             if not self.data_param.BiMaxwellian:
                 scale /= self.phys_param.eV / 3.0
         #-- Grouped normalization
         if key.lower() == 'temperatures':
-            self.normalize('Tpare',  norm)
-            self.normalize('Tperpe', norm)
-            self.normalize('Tpari',  norm)
-            self.normalize('Tperpi', norm)
+            for spec in self.species.values():
+                self.normalize(    'T%s'%spec.nshort, norm)
+                self.normalize( 'Tpar%s'%spec.nshort, norm)
+                self.normalize('Tperp%s'%spec.nshort, norm)
         elif key.lower() == 'fluid velocities':
-            self.normalize('upare', norm)
-            self.normalize('upari', norm)
+            for spec in self.species.values():
+                self.normalize('upar%s'%spec.nshort, norm)
         elif key.lower() == 'pressures':
-            self.normalize('ppare',  norm)
-            self.normalize('pperpe', norm)
-            self.normalize('ppari',  norm)
-            self.normalize('pperpi', norm)         
+            for spec in self.species.values():
+                self.normalize('ppar%s'%spec.nshort,  norm)
+                self.normalize('pperp%s'%spec.nshort, norm)
+
         else:
             #-- Apply normalization or handle unknown norm
             if scale != 0:
@@ -262,7 +256,8 @@ class Simulation:
             else:
                 print(f"Warning: The normalization '{norm}' for '{key}'"+
                       " is not recognized. Please check the inputs or refer"+
-                      " to the documentation for valid options.")
+                      " to the documentation for valid options:")
+                self.norm_help()
     
     def norm_help(self):
         help_message = """
@@ -279,8 +274,6 @@ class Simulation:
             the Last Closed Flux Surface (R - R_LCFS)
         
         3. **Velocity Normalizations**:
-        - 'vte': Electron thermal velocity (v_te)
-        - 'vti': Ion thermal velocity (v_ti)
         - 'thermal velocity' (when key is 'upare' or 'upari'): Parallel velocities 
             normalized by thermal velocity
         
