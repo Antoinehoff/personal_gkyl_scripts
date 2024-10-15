@@ -102,7 +102,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
 def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
                            tfs=[], xlim=[], ylim=[], multi_species = True):
     fields,fig,axs = setup_figure(fieldnames)
-
+    print('the function plot_1D_time_avg is now depreciated, use plot_1D instead')
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
             subfields = [field] #simple plot
@@ -133,6 +133,58 @@ def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
             ax.set_ylim(ylim)
 
     title = slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
+    if len(axs) > 1:
+        fig.suptitle(title)
+    else:
+        ax.set_title(title)
+    fig.tight_layout()
+
+def plot_1D(simulation,cdirection,ccoords,fieldnames='',
+                           tfs=[], xlim=[], ylim=[], multi_species = True):
+    
+    fields,fig,axs = setup_figure(fieldnames)
+
+    if isinstance(tfs,int) or len(tfs) == 1:
+        time_avg = False
+    else:
+        time_avg = True
+
+    for ax,field in zip(axs,fields):
+        if not isinstance(field,list):
+            subfields = [field] #simple plot
+        else:
+            subfields = field # field is a combined plot
+        for subfield in subfields:
+            x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
+                get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=tfs)
+            # Compute the average of data over the t-axis (axis=1)
+            average_data = np.mean(values, axis=0)
+            # Compute the standard deviation of data over the t-axis (axis=1)
+            std_dev_data = np.std(values, axis=0)
+            if time_avg:
+                # Plot with error bars
+                ax.errorbar(x, average_data, yerr=std_dev_data, 
+                            fmt='o', capsize=5, label=vlabel)
+            else:
+                # Classic plot
+                ax.plot(x, average_data, label=vlabel)
+            
+        # Labels and title
+        ax.set_xlabel(xlabel)
+        if multi_species:
+            ax.set_ylabel(vunits)
+            ax.legend()
+        else:
+            ax.set_ylabel(vlabel)
+        #-- to change window
+        if xlim:
+            ax.set_xlim(xlim)
+        if ylim:
+            ax.set_ylim(ylim)
+    if t[0] == t[-1]:
+        title = slicetitle+tlabel+r'$=%2.2e$'%(t[0])
+    else:
+        title = slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
     if len(axs) > 1:
         fig.suptitle(title)
     else:
