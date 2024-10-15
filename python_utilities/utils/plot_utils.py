@@ -318,7 +318,7 @@ def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[]):
             ax.set_ylabel(ylbl)
             ax.legend()
             # ax.set_ylabel(lbl)
-        title = 'Volume integral over time'
+        # title = 'Volume integral over time'
         if len(axs) > 1:
             fig.suptitle(title)
         else:
