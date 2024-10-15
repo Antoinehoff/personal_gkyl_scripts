@@ -6,7 +6,7 @@ import matplotlib.cm as cm
 from .math_utils import *
 from .file_utils import *
 from classes import Frame
-import os
+import os, re
 
 # Function reads gkyl data of 2D axisymmetric fields and produces 1D array
 # at outer midplane (omp)
@@ -98,7 +98,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
     fig.tight_layout()
 
 def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
-                           twindow=[], xlim=[], ylim=[], multi_species = True):
+                           tfs=[], xlim=[], ylim=[], multi_species = True):
     fields,fig,axs = setup_figure(fieldnames)
 
     for ax,field in zip(axs,fields):
@@ -108,8 +108,7 @@ def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
             subfields = field # field is a combined plot
         for subfield in subfields:
             x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
-                get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=twindow)
-            data = get_1xt_diagram(simulation, subfield, cdirection, ccoords,tfs=twindow)
+                get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=tfs)
             # Compute the average of data over the t-axis (axis=1)
             average_data = np.mean(values, axis=0)
             # Compute the standard deviation of data over the t-axis (axis=1)
@@ -117,6 +116,7 @@ def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
             # Plot with error bars
             ax.errorbar(x, average_data, yerr=std_dev_data, 
                         fmt='o', capsize=5, label=vlabel)
+            
         # Labels and title
         ax.set_xlabel(xlabel)
         if multi_species:
@@ -129,6 +129,7 @@ def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
             ax.set_xlim(xlim)
         if ylim:
             ax.set_ylim(ylim)
+
     title = slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
     if len(axs) > 1:
         fig.suptitle(title)
@@ -312,10 +313,11 @@ def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[]):
             lbl = r'$\int d^3x$'+lbl
             ax.plot(time,int_t,label=lbl)
             # Labels and title 
-            # ax.set_xlabel(label_from_simnorm(simulation,'t'))
-            ax.set_ylabel(simulation.normalization[subfield+'units']+r'm$^3$')
+            ax.set_xlabel(label_from_simnorm(simulation,'t'))
+            ylbl = multiply_by_m3_expression(simulation.normalization[subfield+'units'])
+            ax.set_ylabel(ylbl)
+            ax.legend()
             # ax.set_ylabel(lbl)
-            plt.legend()
         title = 'Volume integral over time'
         if len(axs) > 1:
             fig.suptitle(title)
@@ -331,3 +333,13 @@ def label(label,units):
     if units:
         label += ' ('+units+')'
     return label
+
+def multiply_by_m3_expression(expression):
+    
+    if expression[-6:]=='/m$^3$':
+        expression_new = expression[:-6]
+    elif expression[-6:]=='m$^{-3}$':
+        expression_new = expression[:-8]
+    else:
+        expression_new = expression + r'm$^3$'
+    return expression_new
