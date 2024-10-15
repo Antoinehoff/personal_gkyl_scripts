@@ -57,7 +57,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
         x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
               get_1xt_diagram(simulation,field,cdirection,ccoords,tfs=twindow)
         if space_time:
-            if (field in ['phi','upar']) or cmap0=='bwr':
+            if (field in ['phi','upare','upari']) or cmap0=='bwr':
                 cmap = 'bwr'
                 vmax = np.max(np.abs(values)) 
                 vmin = -vmax
