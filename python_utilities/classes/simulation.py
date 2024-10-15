@@ -169,6 +169,7 @@ class Simulation:
     def normalize(self, key, norm):
         scale = 0
         ion = self.species['ion']
+
         #-- Time scale
         if norm == 'mus':
             scale  = 1e-6
@@ -180,6 +181,7 @@ class Simulation:
             shift  = 0
             symbol = r'$t v_{ti}/R$'
             units  = ''
+
         #-- Length scale
         elif norm in ['rho', 'minor radius']:
             scale  = self.geom_param.a_mid
@@ -196,6 +198,7 @@ class Simulation:
             shift  = self.geom_param.x_LCFS
             symbol = r'$R-R_{LCFS}$'
             units  = 'm'
+
         #-- Velocity normalization
         elif norm in ['vt', 'thermal velocity']:
             for spec in self.species.values():
@@ -204,6 +207,30 @@ class Simulation:
                     shift  = 0
                     symbol = r'$u_{\parallel %s}/v_{t0 %s}$'%(spec.nshort,spec.nshort)
                     units  = ''
+
+        #-- Energy normalization
+        elif norm == 'MJ':
+            scale = 1e6
+            for spec in self.species.values():
+                if key == 'Wkin%s'%spec.name[0]:
+                    symbol = r'$W_{k,%s}$'%spec.name[0]
+                if key == 'Wflu%s'%spec.name[0]:
+                    symbol = r'$W_{f,%s}$'%spec.name[0]
+                elif key == 'Wpot%s'%spec.name[0]:
+                    symbol = r'$W_{p,%s}$'%spec.name[0]
+                elif key == 'Wtot%s'%spec.name[0]:
+                    scale  = self.phys_param.eV / spec.m
+                    symbol = r'$W_{%s}$'%spec.name[0]
+            if key == 'Wkin':
+                symbol = r'$W_{k}$'
+            if key == 'Wflu':
+                symbol = r'$W_{f}$'
+            if key == 'Wpot':
+                symbol = r'$W_{p}$'            
+            if key == 'Wtot':
+                symbol = r'$W$'            
+            shift = 0
+            units = r'MJ/m$^3$'
         #-- Temperature normalization
         elif norm == 'eV':
             for spec in self.species.values():
@@ -220,6 +247,7 @@ class Simulation:
             units = 'eV'
             if not self.data_param.BiMaxwellian:
                 scale /= self.phys_param.eV / 3.0
+
         #-- Preessure normalization
         elif norm == 'beta':
             mu0 = 4*np.pi*1e-7
@@ -241,14 +269,27 @@ class Simulation:
                 self.normalize(    'T%s'%spec.nshort, norm)
                 self.normalize( 'Tpar%s'%spec.nshort, norm)
                 self.normalize('Tperp%s'%spec.nshort, norm)
+
         elif key.lower() == 'fluid velocities':
             for spec in self.species.values():
                 self.normalize('upar%s'%spec.nshort, norm)
+
         elif key.lower() == 'pressures':
             for spec in self.species.values():
                 self.normalize(    'p%s'%spec.nshort, norm)
                 self.normalize( 'ppar%s'%spec.nshort,  norm)
                 self.normalize('pperp%s'%spec.nshort, norm)
+
+        elif key.lower() == 'energies':
+            self.normalize('Wkin',norm)
+            self.normalize('Wflu',norm)
+            self.normalize('Wpot',norm)
+            self.normalize('Wtot',norm)
+            for spec in self.species.values():
+                self.normalize('Wkin%s'%spec.nshort,norm)
+                self.normalize('Wflu%s'%spec.nshort,norm)
+                self.normalize('Wpot%s'%spec.nshort,norm)
+                self.normalize('Wtot%s'%spec.nshort,norm)
 
         else:
             #-- Apply normalization or handle unknown norm
