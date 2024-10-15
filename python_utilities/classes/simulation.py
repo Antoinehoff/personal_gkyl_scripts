@@ -219,7 +219,6 @@ class Simulation:
                 elif key == 'Wpot%s'%spec.name[0]:
                     symbol = r'$W_{p,%s}$'%spec.name[0]
                 elif key == 'Wtot%s'%spec.name[0]:
-                    scale  = self.phys_param.eV / spec.m
                     symbol = r'$W_{%s}$'%spec.name[0]
             if key == 'Wkin':
                 symbol = r'$W_{k}$'

@@ -201,8 +201,8 @@ class DataParam:
                 return dens*qphi
             default_qttes.append([name,symbol,units,field2load,receipe_Wpots])
 
-            #total energy desntiy speciewise: Ws = Wkins + Wpots
-            name       = 'W%s'%(s_)
+            #total energy density speciewise: Ws = Wkins + Wflu + Wpots
+            name       = 'Wtot%s'%(s_)
             symbol     = r'$W_{%s}$'%(s_) 
             units      = r'J/m$^3$'
             field2load = ['n%s'%s_,'upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'phi']
