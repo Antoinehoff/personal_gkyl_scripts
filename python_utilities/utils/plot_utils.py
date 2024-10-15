@@ -27,6 +27,8 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs ):
     # to store iteratively times and values
     t  = []
     values = []
+    if isinstance(tfs,int):
+        tfs = [tfs]
     # Fill ZZ with data for each time frame
     for it, tf in enumerate(tfs):
         frame = Frame(simulation,fieldname,tf)
