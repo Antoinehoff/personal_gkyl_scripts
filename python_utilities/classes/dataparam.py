@@ -162,23 +162,57 @@ class DataParam:
             #total temperature
             name       = 'T%s'%(s_)
             symbol     = r'$T_{%s}$'%(s_)
-            units      = 'J/kg'
+            units      = 'J/kg' # T is stored as T/m in gkeyll
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Ttots(gdata_list):
                 return (gdata_list[0].get_values() + 2.0*gdata_list[1].get_values())/3.0
             default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
-            
-            #total energy speciewise: Ws = int dv3 1/2 ms vpar^2 + mus B - qs phi
+
+            #Kinetic energy density speciewise: Wkins = int dv3 1/2 ms vpar^2 + mus B
+            name       = 'Wkin%s'%(s_)
+            symbol     = r'$W_{k,%s}$'%(s_) 
+            units      = r'J/m$^3$'
+            field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_)]
+            def receipe_Wkins(gdata_list,m=spec.m):
+                dens = gdata_list[0].get_values()
+                Ttot = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
+                return dens*m*Ttot
+            default_qttes.append([name,symbol,units,field2load,receipe_Wkins])
+
+            #Fluid kinetic energy density speciewise: Wflu = 1/2 m*n*upar^2
+            name       = 'Wflu%s'%(s_)
+            symbol     = r'$W_{f,%s}$'%(s_) 
+            units      = r'J/m$^3$'
+            field2load = ['n%s'%s_,'upar%s'%(s_)]
+            def receipe_Wflus(gdata_list,m=spec.m):
+                dens = gdata_list[0].get_values()
+                upar = gdata_list[1].get_values()
+                return dens*m*np.power(upar,2)/2.0
+            default_qttes.append([name,symbol,units,field2load,receipe_Wflus])
+
+            #Potential energy density speciewise: Wpots = qs phi
+            name       = 'Wpot%s'%(s_)
+            symbol     = r'$W_{p,%s}$'%(s_) 
+            units      = r'J/m$^3$'
+            field2load = ['n%s'%s_,'phi']
+            def receipe_Wpots(gdata_list,q=spec.q):
+                dens = gdata_list[0].get_values()
+                qphi = q*gdata_list[1].get_values()
+                return dens*qphi
+            default_qttes.append([name,symbol,units,field2load,receipe_Wpots])
+
+            #total energy desntiy speciewise: Ws = Wkins + Wpots
             name       = 'W%s'%(s_)
             symbol     = r'$W_{%s}$'%(s_) 
             units      = r'J/m$^3$'
-            field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_),'phi']
+            field2load = ['n%s'%s_,'upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'phi']
             # We need the mass and the charge to converte J/kg (temp) and V (phi) in Joules
             def receipe_Ws(gdata_list,q=spec.q,m=spec.m):
                 dens = gdata_list[0].get_values()
-                Ttot = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
-                qphi = q*gdata_list[3].get_values()
-                return dens*(m*Ttot + qphi)
+                upar = gdata_list[1].get_values()
+                Ttot = (gdata_list[2].get_values() + 2.0*gdata_list[3].get_values())/3.0
+                qphi = q*gdata_list[4].get_values()
+                return dens*(m*np.power(upar,2)/2 + m*Ttot + qphi)
             default_qttes.append([name,symbol,units,field2load,receipe_Ws])
 
             #total pressure speciewise
@@ -282,6 +316,62 @@ class DataParam:
                 default_qttes.append([name,symbol,units,field2load,receipe_hfluxs])
 
         # Species summed quantities
+
+        #total energy : \sum_s W_kins = \sum_s int dv3 1/2 ms vpar^2 + mus B
+        name       = 'Wkin'
+        symbol     = r'$W_k$'
+        units      = r'J/m$^3$'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('Tpar%s'%(s_))
+            field2load.append('Tperp%s'%(s_))
+        def receipe_Wkin(gdata_list,species=species):
+            fout = 0.0
+            k    = 0
+            for spec in species.values():
+                fout += receipe_Wkins(gdata_list[0+k:3+k],m=spec.m)
+                k += 3
+            return fout 
+        default_qttes.append([name,symbol,units,field2load,receipe_Wkin])
+
+        #total fluid kinetic energy : \sum_s W_flus
+        name       = 'Wflu'
+        symbol     = r'$W_f$'
+        units      = r'J/m$^3$'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('upar%s'%(s_))
+        def receipe_Wflu(gdata_list,species=species):
+            fout = 0.0
+            k    = 0
+            for spec in species.values():
+                fout += receipe_Wflus(gdata_list[0+k:2+k],m=spec.m)
+                k += 2
+            return fout 
+        default_qttes.append([name,symbol,units,field2load,receipe_Wflu])
+
+        #total potential energy : \sum_s W_pots = qs phi
+        name       = 'Wpot'
+        symbol     = r'$W_p$'
+        units      = r'J/m$^3$'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('phi')
+        def receipe_Wpot(gdata_list,species=species):
+            fout = 0.0
+            k    = 0
+            for spec in species.values():
+                fout += receipe_Wpots(gdata_list[0+k:2+k],q=spec.q)
+                k += 2
+            return fout 
+        default_qttes.append([name,symbol,units,field2load,receipe_Wpot])
+
         #total energy : \sum_s W_s = int dv3 1/2 ms vpar^2 + mus B - qs phi
         name       = 'Wtot'
         symbol     = r'$W$'
@@ -290,6 +380,7 @@ class DataParam:
         for spec in species.values():
             s_ = spec.nshort
             field2load.append('n%s'%s_)
+            field2load.append('upar%s'%(s_))
             field2load.append('Tpar%s'%(s_))
             field2load.append('Tperp%s'%(s_))
             field2load.append('phi')
@@ -297,8 +388,8 @@ class DataParam:
             fout = 0.0
             k    = 0
             for spec in species.values():
-                fout += receipe_Ws(gdata_list[0+k:4+k],q=spec.q,m=spec.m)
-                k += 4
+                fout += receipe_Ws(gdata_list[0+k:5+k],q=spec.q,m=spec.m)
+                k += 5
             return fout 
         default_qttes.append([name,symbol,units,field2load,receipe_Wtot])
         
