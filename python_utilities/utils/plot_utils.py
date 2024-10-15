@@ -240,7 +240,7 @@ def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]
 def setup_figure(fieldnames):
     if fieldnames == '':
         ncol = 2
-        fields = ['n','upari','Tpari','Tperpi']
+        fields = ['ne','upari','Tpari','Tperpi']
     elif not isinstance(fieldnames,list):
         ncol   = 1
         fields = [fieldnames]
