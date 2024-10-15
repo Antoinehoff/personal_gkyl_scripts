@@ -85,12 +85,13 @@ class Frame:
             dg = pg.data.GInterpModal(Gdata,polyorder,polytype)
             dg.interpolate(c_,overwrite=True)
             self.Gdata.append(Gdata)
+            if Gdata.ctx['time']:
+                self.time = Gdata.ctx['time']
         self.grids   = [g for g in Gdata.get_grid() if len(g) > 1]
         self.cells   = Gdata.ctx['cells']
         self.ndims   = len(self.cells)
         self.dim_idx = list(range(self.ndims))
-        self.time    = Gdata.ctx['time']
-        if self.time == None:
+        if not self.time:
             self.time = 0
         self.refresh()
         self.normalize()
