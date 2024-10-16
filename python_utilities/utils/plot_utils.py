@@ -1,11 +1,21 @@
+# pgkyl to load and interpolate gkyl data
 import postgkyl as pg
-import numpy as np
-from PIL import Image
-import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+# personnal classes and routines
 from .math_utils import *
 from .file_utils import *
 from classes import Frame
+# other commonly used libs
+import numpy as np
+from PIL import Image
+import matplotlib.pyplot as plt
+
+# set the font to be LaTeX
+if check_latex_installed(verbose=True):
+    plt.rcParams['text.usetex'] = True
+    plt.rcParams['font.family'] = 'serif'
+    plt.rcParams['font.serif'] = ['Computer Modern Roman']
+
+import matplotlib.cm as cm
 import os, re
 
 # Function reads gkyl data of 2D axisymmetric fields and produces 1D array
@@ -347,7 +357,7 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     plt.title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
               %(Ssimul,Smodel))
 
-def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[]):
+def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[],ddt=False):
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -355,28 +365,34 @@ def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[]):
         else:
             subfields = field # field is a combined plot
         for subfield in subfields:
-            int_t = []
+            ftot_t = []
             time  = []
             for tf in tfs:
                 f_ = Frame(simulation=simulation,name=subfield,tf=tf)
                 f_.load()
                 time.append(f_.time)
-                int_t.append(f_.compute_integral())
-            # Plot with error bars
-            lbl = simulation.normalization[subfield+'symbol']
-            lbl = r'$\int d^3x$'+lbl
-            ax.plot(time,int_t,label=lbl)
-            # Labels and title 
-            ax.set_xlabel(label_from_simnorm(simulation,'t'))
+                ftot_t.append(f_.compute_integral())
+            if ddt: # time derivative
+                dfdt   = np.gradient(ftot_t,time)
+                # we rescale it to obtain a result in seconds
+                Ft = dfdt/simulation.normalization['tscale']
+            else:
+                Ft  = ftot_t
+
+            # Setup labels
+            Flbl = simulation.normalization[subfield+'symbol']
+            Flbl = r'$\int$ '+Flbl+r' $d^3x$'
+            xlbl = label_from_simnorm(simulation,'t')
             ylbl = multiply_by_m3_expression(simulation.normalization[subfield+'units'])
+
+            if ddt:
+                Flbl = r'$\partial_t$ '+Flbl
+                ylbl = ylbl+'/s'
+            # Plot and add labels
+            ax.plot(time,Ft,label=Flbl)
+            ax.set_xlabel(xlbl)
             ax.set_ylabel(ylbl)
             ax.legend()
-            # ax.set_ylabel(lbl)
-        # title = 'Volume integral over time'
-        # if len(axs) > 1:
-        #     fig.suptitle(title)
-        # else:
-        #     ax.set_title(title)
         fig.tight_layout()
     
     
