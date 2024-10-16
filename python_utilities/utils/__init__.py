@@ -1,7 +1,7 @@
 # src/utils/__init__.py
 
 # Import specific utility functions or classes
-from .file_utils import find_prefix, find_available_frames
+from .file_utils import find_prefix, find_available_frames, check_latex_installed
 from .math_utils import func_time_ave, func_calc_norm_fluc, integral_xyz,\
     custom_meshgrid, integral_yz
 from .plot_utils import func_data_omp,get_1xt_diagram,make_2D_movie,\
@@ -26,7 +26,8 @@ __all__ = [
     'integral_yz',
     'plot_1D_time_avg',
     'plot_volume_integral_vs_t',
-    'plot_1D'
+    'plot_1D',
+    'check_latex_installed'
 ]
 
 # You can also include some utility constants or helper functions here if needed.

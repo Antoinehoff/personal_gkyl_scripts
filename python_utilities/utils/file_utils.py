@@ -34,3 +34,26 @@ def find_available_frames(simulation,dataname='field'):
     frames = list(set(frames))
     frames.sort()
     return frames
+
+import subprocess
+
+def check_latex_installed(verbose=False):
+    try:
+        # Try running the 'latex --version' command
+        result = subprocess.run(['latex', '--version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        
+        # Check if the command ran successfully
+        if result.returncode == 0:
+            if verbose:
+                print("LaTeX is installed.")
+                print(result.stdout.decode('utf-8'))  # Optional: Print the LaTeX version
+            return True
+        else:
+            if verbose:
+                print("LaTeX is not installed.")
+                print(result.stderr.decode('utf-8'))  # Optional: Print the error message
+            return False
+    except FileNotFoundError:
+        if verbose:
+            print("LaTeX is not installed or not found in your system's PATH.")
+        return False
