@@ -32,8 +32,8 @@ class Frame:
         self.cells          = None
         self.grids          = None
         self.values         = None
-        self.integral       = None
-        self.average        = None
+        self.vol_int        = None
+        self.vol_avg        = None
 
         # attribute to handle slices
         self.dim_idx        = None       
@@ -215,8 +215,8 @@ class Frame:
             Jac = self.simulation.geom_param.Jacobian**2
         else:
             Jac = self.simulation.geom_param.Jacobian
-        self.integral = mt.integral_xyz(x,y,z,self.values*Jac)
-        return self.integral
+        self.vol_int = mt.integral_xyz(x,y,z,self.values*Jac)
+        return self.vol_int
     
     def compute_volume_average(self,jacob_squared=False):
         # We load the original grid (in original units)
@@ -226,8 +226,8 @@ class Frame:
         if jacob_squared:
             Jac *= Jac
         intJac = self.simulation.geom_param.intJac
-        self.integral = mt.integral_xyz(x,y,z,self.values*Jac)/intJac
-        return self.integral
+        self.vol_avg = mt.integral_xyz(x,y,z,self.values*Jac)/intJac
+        return self.vol_avg
     
     def free_values(self):
         self.values = None
