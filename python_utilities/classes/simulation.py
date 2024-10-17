@@ -1,13 +1,15 @@
 import numpy as np
 import postgkyl as pg
-from .numparam import NumParam
-from .physparam import PhysParam
-from .dataparam import DataParam
-from .species   import Species
-from .geomparam import GeomParam
-from .gbsource  import GBsource
-from .frame     import Frame
-import copy
+from .numparam   import NumParam
+from .physparam  import PhysParam
+from .dataparam  import DataParam
+from .species    import Species
+from .geomparam  import GeomParam
+from .gbsource   import GBsource
+from .ompsources import OMPsources
+from .frame      import Frame
+from tools       import math_tools
+
 class Simulation:
     def __init__(self):
         """
@@ -18,6 +20,7 @@ class Simulation:
         self.data_param = None  # Data parameters (e.g., file paths)
         self.geom_param = None  # Geometric parameters (e.g., axis positions)
         self.GBsource   = None  # Source model of the simulation
+        self.OMPsources = None  # Energy source analytical profiles
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
         self.normalization = None
         self.norm_log   = []    # Normalization log to output normalization info
@@ -72,6 +75,11 @@ class Simulation:
             n_srcGB=n_srcGB, T_srcGB=T_srcGB, x_srcGB=x_srcGB, 
             sigma_srcGB=sigma_srcGB, bfac_srcGB=bfac_srcGB, 
             temp_model=temp_model, dens_model=dens_model, species = species
+        )
+
+    def set_OMPsources(self, n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src):
+        self.OMPsources = OMPsources(
+            n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src
         )
 
     def set_species(self, name, m, q, T0, n0):
@@ -150,6 +158,20 @@ class Simulation:
         GBloss_z = np.trapz(integrand, x=self.geom_param.y, axis=0)
         GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
         return GBloss, time, GBloss_z
+
+    def get_input_power(self):
+        [x, y, z] = self.geom_param.get_conf_grid()
+        [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
+
+        # Calculate source terms
+        srcOMP_elc = self.OMPsources.density_srcOMP(X,Y,Z) * 3/2 * self.OMPsources.temp_elc_srcOMP(X,Y,Z)
+        srcOMP_ion = self.OMPsources.density_srcOMP(X,Y,Z) * 3/2 * self.OMPsources.temp_ion_srcOMP(X,Y,Z)
+
+        # Integrate source terms
+        src_tot_elc = math_tools.integral_xyz(x, y, z, srcOMP_elc * self.geom_param.Jacobian)
+        src_tot_ion = math_tools.integral_xyz(x, y, z, srcOMP_ion * self.geom_param.Jacobian)
+
+        return src_tot_elc + src_tot_ion
 
     def reset_normalization(self,key):
         # Get the default dictionary
