@@ -185,10 +185,11 @@ class Frame:
         else:
             # If cut is an integer, use it as the index
             if isinstance(cut, int):
-                cut_index = np.minimum(cut,len(self.grids[ic]))
+                cut_index = np.minimum(cut,len(self.grids[ic])-2)
             else:
                 # Find the closest index in the corresponding grid
                 cut_index = (np.abs(self.grids[ic] - cut)).argmin()
+                cut_index = np.minimum(cut_index,len(self.grids[ic])-2)
             # find the cut coordinate
             cut_coord = self.grids[ic][cut_index]
             # Select the slice of values at the cut_index along the given direction
@@ -220,11 +221,27 @@ class Frame:
         self.select_slice(direction=sdir,cut=ccoord)
         self.refresh_new()
 
-    def compute_integral(self):
+    def compute_volume_integral(self,jacob_squared=False):
+        x   = 0.5*(self.grids[0][1:]+self.grids[0][:-1])
+        y   = 0.5*(self.grids[1][1:]+self.grids[1][:-1])
+        z   = 0.5*(self.grids[2][1:]+self.grids[2][:-1])
+        
+         # This is useful for bimax moment that are output divide by jacobian
+        if jacob_squared:
+            Jac = self.simulation.geom_param.Jacobian**2
+        else:
+            Jac = self.simulation.geom_param.Jacobian
+        self.integral = mt.integral_xyz(x,y,z,self.values*Jac)
+        return self.integral
+    
+    def compute_volume_average(self,jacob_squared=False):
         x   = 0.5*(self.grids[0][1:]+self.grids[0][:-1])
         y   = 0.5*(self.grids[1][1:]+self.grids[1][:-1])
         z   = 0.5*(self.grids[2][1:]+self.grids[2][:-1])
         Jac    = self.simulation.geom_param.Jacobian
+        # This is useful for bimax moment that are output divide by jacobian
+        if jacob_squared:
+            Jac *= Jac
         intJac = self.simulation.geom_param.intJac
         self.integral = mt.integral_xyz(x,y,z,self.values*Jac)/intJac
         return self.integral
