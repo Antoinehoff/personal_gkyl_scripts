@@ -97,8 +97,10 @@ class GBsource:
         env2 = self.flux_model(x,y,z)
         return self.nrate * env1 * env2
 
-    def temp_source(self, x, z):
-        return self.T
+    def temp_source(self, x, y, z):
+        fout = np.empty_like(x)
+        fout[:] = self.T
+        return fout
 
     def info(self):
         """
