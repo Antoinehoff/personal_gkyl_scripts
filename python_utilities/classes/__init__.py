@@ -7,6 +7,7 @@ from .physparam  import PhysParam
 from .frame      import Frame
 from .geomparam  import GeomParam
 from .gbsource   import GBsource
+from .ompsources import OMPsources
 __all__ = [
     'Species', 
     'Simulation',
@@ -14,4 +15,5 @@ __all__ = [
     'PhysParam',
     'Frame',
     'GeomParam',
-    'GBsource']
+    'GBsource',
+    'OMPsources']
