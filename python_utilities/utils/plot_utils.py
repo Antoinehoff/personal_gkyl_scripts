@@ -357,7 +357,8 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     plt.title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
               %(Ssimul,Smodel))
 
-def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[],ddt=False,jacob_squared=False):
+def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
+                              jacob_squared=False, plot_src_input=False):
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -378,6 +379,10 @@ def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[],ddt=False,jacob_squar
                 Ft = dfdt/simulation.normalization['tscale']
             else:
                 Ft  = ftot_t
+            
+            # Convert to np arrays
+            ftot_t = np.array(ftot_t)
+            time   = np.array(time)
 
             # Setup labels
             Flbl = simulation.normalization[subfield+'symbol']
@@ -388,11 +393,23 @@ def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[],ddt=False,jacob_squar
             if ddt:
                 Flbl = r'$\partial_t$ '+Flbl
                 ylbl = ylbl+'/s'
-            # Plot and add labels
+            # Plot
             ax.plot(time,Ft,label=Flbl)
-            ax.set_xlabel(xlbl)
-            ax.set_ylabel(ylbl)
-            ax.legend()
+
+        # plot eventually the input power for comparison
+        if subfield == 'Wtot' and plot_src_input:
+            src_power = simulation.get_input_power()
+            if ddt:
+                ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
+                plt.plot(time,ddtWsrc_t,'--k',label='Source input')
+            else:
+                # plot the accumulate energy from the source
+                Wsrc_t = ftot_t[0] + src_power*simulation.normalization['tscale']*time/simulation.normalization['Wtotscale']
+                plt.plot(time,Wsrc_t,'--k',label='Source input')
+        # add labels and show legend
+        ax.set_xlabel(xlbl)
+        ax.set_ylabel(ylbl)
+        ax.legend()
         fig.tight_layout()
     
     
