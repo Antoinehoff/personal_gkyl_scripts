@@ -113,22 +113,8 @@ class Frame:
         if values:
             # compute again the values
             self.values = self.receipe(self.Gdata)
-        self.values = self.values.reshape(self.new_dims)        
-
-    def refresh_new(self):
-        self.new_grids    = []
-        self.new_gnames   = []
-        self.new_gsymbols = []
-        self.new_gunits   = []
-        self.new_dims     = [c_ for c_ in np.shape(self.values) if c_ > 1]
-        self.dim_idx      = [d_ for d_ in range(self.ndims) if d_ not in self.sliceddim]
-        for idx in self.dim_idx:
-            self.new_grids.append(self.grids[idx][:-1])
-            self.new_gnames.append(self.gnames[idx])
-            self.new_gsymbols.append(self.gsymbols[idx])
-            self.new_gunits.append(self.gunits[idx])
-        self.values = self.values.reshape(self.new_dims)        
-
+            self.values = self.values.reshape(self.new_dims)                
+        self.values = np.squeeze(self.values)
 
     def normalize(self,values=True,time=True,grid=True):
         if time:
@@ -208,7 +194,7 @@ class Frame:
         axes = axes.replace(cutdirection,'')
         for i_ in range(len(axes)):
             self.select_slice(direction=axes[i_],cut=ccoords[i_])
-        self.refresh_new()
+        self.refresh(values=False)
 
     def slice_2D(self,plane,ccoord):
         # Select the specific slice dimension indices
@@ -219,13 +205,11 @@ class Frame:
         sdir = self.gnames[i3]
         # Reduce the dimensionality of the data
         self.select_slice(direction=sdir,cut=ccoord)
-        self.refresh_new()
+        self.refresh(values=False)
 
     def compute_volume_integral(self,jacob_squared=False):
-        x   = 0.5*(self.grids[0][1:]+self.grids[0][:-1])
-        y   = 0.5*(self.grids[1][1:]+self.grids[1][:-1])
-        z   = 0.5*(self.grids[2][1:]+self.grids[2][:-1])
-        
+        # We load the original grid (in original units)
+        [x,y,z] = self.simulation.geom_param.grids
          # This is useful for bimax moment that are output divide by jacobian
         if jacob_squared:
             Jac = self.simulation.geom_param.Jacobian**2
@@ -235,10 +219,9 @@ class Frame:
         return self.integral
     
     def compute_volume_average(self,jacob_squared=False):
-        x   = 0.5*(self.grids[0][1:]+self.grids[0][:-1])
-        y   = 0.5*(self.grids[1][1:]+self.grids[1][:-1])
-        z   = 0.5*(self.grids[2][1:]+self.grids[2][:-1])
-        Jac    = self.simulation.geom_param.Jacobian
+        # We load the original grid (in original units)
+        [x,y,z] = self.simulation.geom_param.grids
+        Jac     = self.simulation.geom_param.Jacobian
         # This is useful for bimax moment that are output divide by jacobian
         if jacob_squared:
             Jac *= Jac
