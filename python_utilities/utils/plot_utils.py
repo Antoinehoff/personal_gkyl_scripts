@@ -357,7 +357,7 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     plt.title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
               %(Ssimul,Smodel))
 
-def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[],ddt=False):
+def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[],ddt=False,jacob_squared=False):
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -371,7 +371,7 @@ def plot_volume_integral_vs_t(simulation,fieldnames,tfs=[],ddt=False):
                 f_ = Frame(simulation=simulation,name=subfield,tf=tf)
                 f_.load()
                 time.append(f_.time)
-                ftot_t.append(f_.compute_integral())
+                ftot_t.append(f_.compute_volume_integral(jacob_squared=jacob_squared))
             if ddt: # time derivative
                 dfdt   = np.gradient(ftot_t,time)
                 # we rescale it to obtain a result in seconds
