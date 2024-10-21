@@ -3,7 +3,7 @@ import numpy as np
 import scipy.integrate as integrate
 
 class GeomParam:
-    def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B0=1.4,
+    def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B0=1.4, x_out = 0.08,
                  a_shift=0.0, q0=1.6, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller'):
         self.R_axis     = R_axis
         self.a_shift    = a_shift
@@ -14,6 +14,10 @@ class GeomParam:
         self.x_LCFS     = x_LCFS
         self.R_LCFSmid  = R_LCFSmid
         self.B0         = B0
+        self.Rmid_min   = R_LCFSmid-x_LCFS # Minimum midplane major radius of simulation box [m].
+        self.Rmid_max   = R_LCFSmid+x_out  # Maximum midplane major radius of simulation box [m].
+        self.R0         = 0.5*(self.Rmid_min+self.Rmid_max)  # Major radius of the simulation box [m].
+        self.r0         = self.R0-R_axis          # Minor radius of the simulation box [m].
         self.geom_type  = geom_type
         # self.a_mid      = R_LCFSmid-R_axis
         self.a_mid      = \
@@ -82,6 +86,10 @@ class GeomParam:
         J_z           = np.trapz(J_yz,self.y,axis=0)
         self.intJac   = np.trapz(J_z,self.z,axis=0)
 
+        #.Minor radius as a function of x:
+    def r_x(self,xIn):
+        return self.Rmid_min+xIn-self.R_axis
+    
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field
         gradB = np.array([self.dBdx, self.dBdy, self.dBdz])
