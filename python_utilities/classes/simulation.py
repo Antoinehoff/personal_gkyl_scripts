@@ -31,14 +31,16 @@ class Simulation:
         """
         self.phys_param = PhysParam(eps0, eV, mp, me, B_axis)
     
-    def set_geom_param(self, R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta, x_LCFS, geom_type='Miller'):
+    def set_geom_param(self, R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta, x_LCFS, 
+                       x_out = 0.08, geom_type='Miller'):
         """
         Set geometric parameters related to the shape and size of the plasma (e.g., axis positions, LCFS).
         """
         self.geom_param = GeomParam(
             R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
             a_shift=a_shift, q0=q0, kappa=kappa, delta=delta, 
-            x_LCFS=x_LCFS, geom_type=geom_type, B0=self.phys_param.B_axis
+            x_LCFS=x_LCFS, geom_type=geom_type, B0=self.phys_param.B_axis,
+            x_out = x_out
         )
 
     def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, 
@@ -220,7 +222,11 @@ class Simulation:
             shift  = self.geom_param.x_LCFS
             symbol = r'$R-R_{LCFS}$'
             units  = 'm'
-
+        elif norm in ['pi']:
+            scale  = np.pi
+            shift  = 0
+            symbol = r'$z/\pi$'
+            units  = ''
         #-- Velocity normalization
         elif norm in ['vt', 'thermal velocity']:
             for spec in self.species.values():
@@ -247,9 +253,11 @@ class Simulation:
             if key == 'Wflu':
                 symbol = r'$W_{f}$'
             if key == 'Wpot':
-                symbol = r'$W_{p}$'            
+                symbol = r'$W_{p}$'
+            if key == 'Welf':
+                symbol = r'$W_{E}$'
             if key == 'Wtot':
-                symbol = r'$W$'            
+                symbol = r'$W$'
             shift = 0
             units = r'MJ/m$^3$'
         #-- Temperature normalization
@@ -305,6 +313,7 @@ class Simulation:
             self.normalize('Wkin',norm)
             self.normalize('Wflu',norm)
             self.normalize('Wpot',norm)
+            self.normalize('Welf',norm)
             self.normalize('Wtot',norm)
             for spec in self.species.values():
                 self.normalize('Wkin%s'%spec.nshort,norm)
