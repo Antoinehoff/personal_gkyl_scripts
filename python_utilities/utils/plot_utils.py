@@ -8,6 +8,8 @@ from classes import Frame
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 # set the font to be LaTeX
 if check_latex_installed(verbose=True):
@@ -15,7 +17,6 @@ if check_latex_installed(verbose=True):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Computer Modern Roman']
 
-import matplotlib.cm as cm
 import os, re
 
 # Function reads gkyl data of 2D axisymmetric fields and produces 1D array
@@ -33,7 +34,16 @@ def func_data_omp(field2d, comp):
     field1dValues = field2dValues[:,z_slice,0]
     return x_vals,field1dValues
 
-def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs ):
+def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
+                    tfs):
+    # Check if we need to fourier transform
+    index = cutdirection.find('k')
+    if index > -1:
+        fourrier_y = True
+        cutdirection = cutdirection.replace('k','')
+    else:
+        fourrier_y = False
+
     # to store iteratively times and values
     t  = []
     values = []
@@ -43,7 +53,11 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs ):
     for it, tf in enumerate(tfs):
         frame = Frame(simulation,fieldname,tf)
         frame.load()
+        if fourrier_y:
+            frame.fourrier_y()
         frame.slice_1D(cutdirection,ccoords)
+        # if fourrier_y:
+            # frame.values = frame.values/np.max(frame.values)
         t.append(frame.time)
         values.append(frame.values)
     frame.free_values() # remove values to free memory
@@ -54,22 +68,18 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,tfs ):
     xlabel = frame.new_gsymbols[0]+(' ('+frame.new_gunits[0]+')')*(1-(frame.new_gunits[0]==''))
     vlabel = frame.vsymbol+(' ('+frame.vunits+')')*(1-(frame.vunits==''))
     slicetitle = frame.slicetitle
-    return x,t,values,xlabel,tlabel,vlabel,frame.vunits,slicetitle
-    return {'x':x,'t':t,'values':values,'name':frame.name,
-            'xsymbol':frame.new_gsymbols[0], 'xunits':frame.new_gunits[0], 
-            'vsymbol':frame.vsymbol, 'vunits':frame.vunits, 'slicetitle':frame.slicetitle,
-            'slicecoords':frame.slicecoords, 'fulltitle':frame.fulltitle}
+    return x,t,values,xlabel,tlabel,vlabel,frame.vunits,slicetitle, fourrier_y
     
 def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                            twindow=[],space_time=False, cmap='inferno',
-                           xlim=[], ylim=[], clim=[], time_avg=False):
+                           xlim=[], ylim=[], clim=[]):
     cmap0 = cmap
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
-        x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
+        x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourrier_y =\
               get_1xt_diagram(simulation,field,cdirection,ccoords,tfs=twindow)
         if space_time:
-            if (field in ['phi','upare','upari']) or cmap0=='bwr':
+            if ((field in ['phi','upare','upari']) or cmap0=='bwr') and not fourrier_y:
                 cmap = 'bwr'
                 vmax = np.max(np.abs(values)) 
                 vmin = -vmax
@@ -77,9 +87,18 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                 cmap = cmap0
                 vmax = np.max(np.abs(values)) 
                 vmin = 0.0
+
+            if fourrier_y:
+                vmin  = np.power(10,np.log10(vmax)-4)
+                values = np.clip(values, vmin, None)  # We plot 4 orders of magnitude
+                create_norm = mcolors.LogNorm
+            else:
+                create_norm = mcolors.Normalize
+            
             XX, TT = np.meshgrid(x,t)
             # Create a contour plot or a heatmap of the space-time diagram
-            pcm = ax.pcolormesh(XX,TT,values,cmap=cmap,vmin=vmin,vmax=vmax); 
+            norm  = create_norm(vmin=vmin, vmax=vmax)
+            pcm = ax.pcolormesh(XX,TT,values,cmap=cmap,norm=norm); 
             cbar = fig.colorbar(pcm)
             ax.set_xlabel(xlabel)
             ax.set_ylabel(tlabel)
@@ -109,48 +128,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             ax.set_title(slicetitle[:-2])
     fig.tight_layout()
 
-def plot_1D_time_avg(simulation,cdirection,ccoords,fieldnames='',
-                           tfs=[], xlim=[], ylim=[], multi_species = True):
-    fields,fig,axs = setup_figure(fieldnames)
-    print('the function plot_1D_time_avg is now depreciated, use plot_1D instead')
-    for ax,field in zip(axs,fields):
-        if not isinstance(field,list):
-            subfields = [field] #simple plot
-        else:
-            subfields = field # field is a combined plot
-        for subfield in subfields:
-            x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
-                get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=tfs)
-            # Compute the average of data over the t-axis (axis=1)
-            average_data = np.mean(values, axis=0)
-            # Compute the standard deviation of data over the t-axis (axis=1)
-            std_dev_data = np.std(values, axis=0)
-            # Plot with error bars
-            ax.errorbar(x, average_data, yerr=std_dev_data, 
-                        fmt='o', capsize=5, label=vlabel)
-            
-        # Labels and title
-        ax.set_xlabel(xlabel)
-        if multi_species:
-            ax.set_ylabel(vunits)
-            ax.legend()
-        else:
-            ax.set_ylabel(vlabel)
-        #-- to change window
-        if xlim:
-            ax.set_xlim(xlim)
-        if ylim:
-            ax.set_ylim(ylim)
-
-    title = slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
-    if len(axs) > 1:
-        fig.suptitle(title)
-    else:
-        ax.set_title(title)
-    fig.tight_layout()
-
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
-                           tfs=[], xlim=[], ylim=[], multi_species = True):
+            tfs=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False):
     
     fields,fig,axs = setup_figure(fieldnames)
 
@@ -165,7 +144,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
         else:
             subfields = field # field is a combined plot
         for subfield in subfields:
-            x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle =\
+            x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourrier_y =\
                 get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=tfs)
             # Compute the average of data over the t-axis (axis=1)
             average_data = np.mean(values, axis=0)
@@ -178,10 +157,12 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             else:
                 # Classic plot
                 ax.plot(x, average_data, label=vlabel)
-            
+                if periodicity > 0:
+                    ax.plot(x+periodicity, average_data, label=vlabel)
+
         # Labels and title
         ax.set_xlabel(xlabel)
-        if multi_species:
+        if len(subfields)>1:
             ax.set_ylabel(vunits)
             ax.legend()
         else:
@@ -191,6 +172,13 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             ax.set_xlim(xlim)
         if ylim:
             ax.set_ylim(ylim)
+        if xscale:
+            ax.set_xscale(xscale)
+        if yscale:
+            ax.set_yscale(yscale)
+        if grid:
+            ax.grid(True)
+
     if t[0] == t[-1]:
         title = slicetitle+tlabel+r'$=%2.2e$'%(t[0])
     else:
@@ -204,15 +192,29 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
 def plot_2D_cut(simulation,cdirection,ccoord,tf,
                 fieldnames='', cmap='inferno', full_plot=False,
                 xlim=[], ylim=[], clim=[], 
-                figout=[],cutout=[],):
+                figout=[],cutout=[]):
+    
+    # Check if we need to fourier transform
+    index = cdirection.find('k')
+    if index > -1:
+        fourrier_y = True
+        cdirection = cdirection.replace('k','')
+    else:
+        fourrier_y = False
+
     cmap0 = cmap    
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         frame = Frame(simulation,field,tf)
         frame.load()
+        
+        if fourrier_y:
+            frame.fourrier_y()
+
         frame.slice_2D(cdirection,ccoord)
 
-        if (field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr':
+        if ((field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr')\
+            and not fourrier_y:
             cmap = 'bwr'
             vmax = np.max(np.abs(frame.values)) 
             vmin = -vmax
@@ -221,14 +223,26 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
             vmax = np.max(frame.values)
             vmin = np.min(frame.values)
 
+        if fourrier_y:
+            vmin  = np.power(10,np.log10(vmax)-4)
+            frame.values = np.clip(frame.values, vmin, None)  # We plot 4 orders of magnitude
+            create_norm = mcolors.LogNorm
+        else:
+            create_norm = mcolors.Normalize
+
         YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
-        pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap,vmin=vmin,vmax=vmax)
+        norm  = create_norm(vmin=vmin, vmax=vmax)
+        pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap,norm=norm)
         xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
         ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
         title  = frame.fulltitle
         ax.set_xlabel(xlabel)
         ax.set_ylabel(ylabel)
-        cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
+
+        if fourrier_y and False:
+            title = r'FFT$_y($'+ frame.vsymbol + '), '+ title
+        else:
+            cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
         if xlim:
             ax.set_xlim(xlim)
         if ylim:
@@ -248,7 +262,8 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
 
 def make_2D_movie(simulation,cdirection,ccoord,tfs,
                       fieldname='', cmap='inferno',
-                      xlim=[], ylim=[], clim=[], full_plot=False):
+                      xlim=[], ylim=[], clim=[], full_plot=False,
+                      fourrier_y=False):
     os.makedirs('gif_tmp', exist_ok=True)
     if fieldname in simulation.data_param.spec_undep_quantities:
         spec = ''
@@ -257,7 +272,8 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
         plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldnames=fieldname,
                     cmap=cmap,full_plot=full_plot,
                     xlim=xlim,ylim=ylim,clim=clim,
-                    cutout=cutout,figout=figout)
+                    cutout=cutout,figout=figout,
+                    fourrier_y=fourrier_y)
         fig = figout[0]
         fig.tight_layout()
         fig.savefig(f'gif_tmp/plot_{tf}.png')
@@ -430,3 +446,7 @@ def multiply_by_m3_expression(expression):
     else:
         expression_new = expression + r'm$^3$'
     return expression_new
+
+
+#----- Retrocompatibility
+plot_1D_time_avg = plot_1D

@@ -111,6 +111,8 @@ class DataParam:
             ['x', r'$x$', 'm'],
             ['y', r'$y$', 'm'],
             ['z', r'$z$', ''],
+            ['ky', r'$k_y$', '1/m'],
+            ['wavelen', r'$\lambda$', 'm'],
             ['vpar', r'$v_\parallel$', 'm/s'],
             ['mu', r'$\mu$', 'J/T'],
             ['t', r'$t$', 's'],
@@ -194,10 +196,10 @@ class DataParam:
             name       = 'Wpot%s'%(s_)
             symbol     = r'$W_{p,%s}$'%(s_) 
             units      = r'J/m$^3$'
-            field2load = ['n%s'%s_,'phi']
+            field2load = ['phi','n%s'%s_]
             def receipe_Wpots(gdata_list,q=spec.q):
-                dens = gdata_list[0].get_values()
-                qphi = q*gdata_list[1].get_values()
+                qphi = q*gdata_list[0].get_values()
+                dens = gdata_list[1].get_values()
                 return dens*qphi
             default_qttes.append([name,symbol,units,field2load,receipe_Wpots])
 
@@ -205,13 +207,13 @@ class DataParam:
             name       = 'Wtot%s'%(s_)
             symbol     = r'$W_{%s}$'%(s_) 
             units      = r'J/m$^3$'
-            field2load = ['n%s'%s_,'upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'phi']
+            field2load = ['phi','n%s'%s_,'upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
             # We need the mass and the charge to converte J/kg (temp) and V (phi) in Joules
             def receipe_Ws(gdata_list,q=spec.q,m=spec.m):
-                dens = gdata_list[0].get_values()
-                upar = gdata_list[1].get_values()
-                Ttot = 3*(gdata_list[2].get_values() + 2.0*gdata_list[3].get_values())/3.0
-                qphi = q*gdata_list[4].get_values()
+                qphi = q*gdata_list[0].get_values()
+                dens = gdata_list[1].get_values()
+                upar = gdata_list[2].get_values()
+                Ttot = 3*(gdata_list[3].get_values() + 2.0*gdata_list[4].get_values())/3.0
                 return dens*(m*np.power(upar,2)/2 + m*Ttot + qphi)
             default_qttes.append([name,symbol,units,field2load,receipe_Ws])
 
@@ -263,15 +265,15 @@ class DataParam:
                 ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
 
                 # particle flux
-                name       = 'pflux%s%s'%(ci_,s_)
+                name       = 'pflux_%s%s'%(ci_,s_)
                 symbol     = r'$\Gamma_{%s %s}$'%(ci_,s_)
                 units      = r's$^{-1}$m$^{-2}$'
-                field2load = ['n%s'%s_,'phi','b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                field2load = ['phi','n%s'%s_,'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_pfluxs(gdata_list,i=i_):
-                    density = gdata_list[0].get_values()
-                    phi     = gdata_list[1].get_values()
+                    phi     = gdata_list[0].get_values()
+                    density = gdata_list[1].get_values()
                     b_j     = gdata_list[2].get_values()
                     b_k     = gdata_list[3].get_values()
                     Bmag    = gdata_list[4].get_values()
@@ -288,19 +290,19 @@ class DataParam:
                 default_qttes.append([name,symbol,units,field2load,receipe_pfluxs])
 
                 # heat fluxes
-                name       = 'hflux%s%s'%(ci_,s_)
+                name       = 'hflux_%s%s'%(ci_,s_)
                 symbol     = r'$Q_{%s %s}$'%(ci_,s_)
                 units       = r'J s$^{-1}$m$^{-2}$'
-                field2load = ['n%s'%s_,'Tpar%s'%s_,'Tperp%s'%s_,
-                              'phi','b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                field2load = ['phi','n%s'%s_,'Tpar%s'%s_,'Tperp%s'%s_,
+                              'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 # The receipe depends on the direction 
                 # because of the phi derivative and on the species 
                 # (temperature from J/kg to J)
                 def receipe_hfluxs(gdata_list,i=i_,m=spec.m):
-                    density = gdata_list[0].get_values()
-                    Ttot    = 3*(gdata_list[1].get_values() + 2.*gdata_list[2].get_values())
+                    phi     = gdata_list[0].get_values()
+                    density = gdata_list[1].get_values()
+                    Ttot    = 3*(gdata_list[2].get_values() + 2.*gdata_list[3].get_values())
                     Ttot    = m*Ttot/3.0 # 1/3 normalization (Tpar+2Tperp) and conversion to joules
-                    phi     = gdata_list[3].get_values()
                     b_j     = gdata_list[4].get_values()
                     b_k     = gdata_list[5].get_values()
                     Bmag    = gdata_list[6].get_values()
@@ -315,7 +317,44 @@ class DataParam:
                     return -density*Ttot*(dphidj*b_k - dphidk*b_j)/Jacob/Bmag
                 default_qttes.append([name,symbol,units,field2load,receipe_hfluxs])
 
-        # Species summed quantities
+        # Species independent quantities
+
+        #charge density
+        name       = 'qdens'
+        symbol     = r'$\sum_s q_{s}n_s$'
+        units       = r'C/m$^3$'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+        def receipe_qdens(gdata_list,species=species):
+            fout = 0.0
+            # add species dependent energies
+            k = 0
+            for spec in species.values():
+                fout += spec.q*gdata_list[0+k].get_values()
+                k    += 1
+            return fout
+        default_qttes.append([name,symbol,units,field2load,receipe_qdens])
+
+        #parallel current density
+        name       = 'jpar'
+        symbol     = r'$\sum_s j_{\parallel s}$'
+        units       = r'A/m$^3$'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('upar%s'%s_)
+        def receipe_jpar(gdata_list,species=species):
+            fout = 0.0
+            # add species dependent energies
+            k = 0
+            for spec in species.values():
+                fout += spec.q*gdata_list[0+k].get_values()*gdata_list[1+k].get_values()
+                k    += 2
+            return fout
+        default_qttes.append([name,symbol,units,field2load,receipe_jpar])
 
         #total energy : \sum_s W_kins = \sum_s int dv3 1/2 ms vpar^2 + mus B
         name       = 'Wkin'
@@ -361,8 +400,8 @@ class DataParam:
         field2load = []
         for spec in species.values():
             s_ = spec.nshort
-            field2load.append('n%s'%s_)
             field2load.append('phi')
+            field2load.append('n%s'%s_)
         def receipe_Wpot(gdata_list,species=species):
             fout = 0.0
             k    = 0
@@ -371,27 +410,70 @@ class DataParam:
                 k += 2
             return fout 
         default_qttes.append([name,symbol,units,field2load,receipe_Wpot])
+        
+        ## EM field related data
+        directions = ['x','y','z'] #directions array
+        for i_ in range(len(directions)):
+            ci_ = directions[i_] # direction of the component
+            # Electric field i-th component
+            name       = 'E%s'%(ci_)
+            symbol     = r'$E_{%s}$'%(ci_)
+            units      = r'V/m'
+            field2load = ['phi']
+            # The receipe depends on the direction 
+            # because of the phi derivative
+            def receipe_Ei(gdata_list,i=i_):
+                phi     = gdata_list[0].get_values()
+                grids   = gdata_list[0].get_grid()
+                grid    = grids[i][:-1]
+                return -np.gradient(phi, grid, axis=i)
+            default_qttes.append([name,symbol,units,field2load,receipe_Ei])
+
+        #electric field energy Welc = 1/2 eps0 |E|^2
+        name       = 'Welf'
+        symbol     = r'$W_{E}$'
+        units      = r'J/m$^3$'
+        field2load = ['phi']
+        # The receipe depends on the direction 
+        # because of the phi derivative
+        def receipe_Welf(gdata_list):
+            eps0 = 8.854e-12 # Vacuum permittivity in F⋅m−1
+            fout = 0.0
+            # compute the norm of the electric field
+            for i_ in range(3):
+                fout += np.power(receipe_Ei(gdata_list,i=i_),2)
+            # multiply by 1/2 eps0
+            fout *= 0.5*eps0
+            return fout
+        default_qttes.append([name,symbol,units,field2load,receipe_Welf])
 
         #total energy : \sum_s W_s = int dv3 1/2 ms vpar^2 + mus B - qs phi
         name       = 'Wtot'
-        symbol     = r'$W$'
+        symbol     = r'$W_{tot}$'
         units       = r'J/m$^3$'
         field2load = []
         for spec in species.values():
             s_ = spec.nshort
+            field2load.append('phi')
             field2load.append('n%s'%s_)
             field2load.append('upar%s'%(s_))
             field2load.append('Tpar%s'%(s_))
             field2load.append('Tperp%s'%(s_))
-            field2load.append('phi')
         def receipe_Wtot(gdata_list,species=species):
             fout = 0.0
-            k    = 0
+            # add species dependent energies
+            k = 0
             for spec in species.values():
                 fout += receipe_Ws(gdata_list[0+k:5+k],q=spec.q,m=spec.m)
                 k += 5
-            return fout 
+
+            # add the EM energy
+            fout += receipe_Welf(gdata_list[0:1])
+
+            return fout
         default_qttes.append([name,symbol,units,field2load,receipe_Wtot])
+
+        #-------------- END of the new diagnostics definitions
         
         ## We format everything so that it fits in one dictionary
         names   = [default_qttes[i][0] for i in range(len(default_qttes))]

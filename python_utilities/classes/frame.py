@@ -1,6 +1,7 @@
 import postgkyl as pg
 import numpy as np
 from tools import math_tools as mt
+import copy
 def getgrid_index(s):
     return  (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm'))-1
 
@@ -67,7 +68,7 @@ class Frame:
                 name_tf = '%s_%d'%(subdataname,self.tf)
             self.filenames.append("%s-%s.gkyl"%(self.simulation.data_param.fileprefix,name_tf))
             self.comp.append(self.simulation.data_param.data_files_dict[subname+'comp'])
-            self.gnames   = self.simulation.data_param.data_files_dict[subname+'gnames']
+            self.gnames = copy.deepcopy(self.simulation.data_param.data_files_dict[subname+'gnames'])
         self.gsymbols = []
         self.gunits   = []
         for key in self.gnames:
@@ -106,13 +107,17 @@ class Frame:
         self.new_dims     = [c_ for c_ in self.new_cells if c_ > 1]
         self.dim_idx      = [d_ for d_ in range(self.ndims) if d_ not in self.sliceddim]
         for idx in self.dim_idx:
-            self.new_grids.append(self.grids[idx][:-1])
+            # number of points in the idx grid
+            Ngidx = len(self.grids[idx])
+            # there is an additional point we have to remove to have similar size with values
+            self.new_grids.append(mt.create_uniform_array(self.grids[idx],Ngidx-1))
+            # self.new_grids.append(self.grids[idx][:-1])
             self.new_gnames.append(self.gnames[idx])
             self.new_gsymbols.append(self.gsymbols[idx])
             self.new_gunits.append(self.gunits[idx])
         if values:
             # compute again the values
-            self.values = self.receipe(self.Gdata)
+            self.values = copy.deepcopy(self.receipe(self.Gdata))
             self.values = self.values.reshape(self.new_dims)                
         self.values = np.squeeze(self.values)
 
@@ -154,7 +159,7 @@ class Frame:
         direction_map = {'x':0,'y':1,'z':2,'vpar':3,'mu':4}
         
         if direction not in direction_map:
-            raise ValueError("Invalid direction: must be 'x', 'y', 'z', 'vpar', or 'mu'")
+            raise ValueError("Invalid direction '"+direction+"': must be 'x', 'y', 'z', 'vpar', or 'mu'")
         
         ic = direction_map[direction]  # Get the axis index for the given direction
 
@@ -179,7 +184,7 @@ class Frame:
             # find the cut coordinate
             cut_coord = self.grids[ic][cut_index]
             # Select the slice of values at the cut_index along the given direction
-            self.values = np.take(self.values,cut_index,axis=ic)
+            self.values = np.take(np.copy(self.values), cut_index, axis=ic)
 
         # Expand to avoid dimensionality reduction
         self.values = np.expand_dims(self.values, axis=ic)
@@ -231,3 +236,41 @@ class Frame:
     
     def free_values(self):
         self.values = None
+
+    def fourrier_y(self):
+        # Apply FFT only along the y dimension (axis=1)
+        fft_ky = np.fft.rfft(self.values, axis=1)
+
+        # Get the Fourier frequencies for the y-dimension (ky)
+        Ny  = self.values.shape[1]  # Number of points in the y-dimension
+        y   = self.grids[1]
+        dy  = (y[1] - y[0])*self.simulation.normalization['yscale']
+        ky  = np.fft.rfftfreq(Ny, d=dy)  # Fourier frequencies for the y-dimension (ky)
+        Nky = len(ky)
+
+        # We extend our ky array by one 
+        # to follow the N+1 format of the grids
+        ky = mt.create_uniform_array(ky,Nky+1)
+
+        # Remove the zeroth wavenumber
+        ky     = ky[1:]
+        fft_ky = fft_ky[:,1:,:]
+
+        # Update frame data
+        self.values   = np.abs(fft_ky)
+        # renaming the y axis (wavelength)
+        # gname = 'wavelen'
+        # self.grids[1]    = 1.0/ky
+        # self.gnames[1]   = gname
+        # self.gsymbols[1] = self.simulation.normalization[gname+'symbol']
+        # self.gunits[1]   = self.simulation.normalization[gname+'units']
+
+        # renaming the y axis (wavenumber)
+        gname = 'ky'
+        self.grids[1]    = ky
+        self.gnames[1]   = gname
+        self.gsymbols[1] = self.simulation.normalization[gname+'symbol']
+        self.gunits[1]   = self.simulation.normalization[gname+'units']
+
+        # refresh everything
+        self.refresh(values=False)
