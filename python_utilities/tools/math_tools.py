@@ -35,3 +35,21 @@ def custom_meshgrid(x,y,z=0):
     else:
         Y,X,Z = np.meshgrid(y,x,z)
         return [X,Y,Z]
+    
+def create_uniform_array(a, N):
+    """
+    Create a 1D array of size N that goes from a[0] to a[-1] with uniform spacing.
+    
+    Parameters:
+    a (ndarray): Input 1D array.
+    N (int): Desired size of the output array.
+    
+    Returns:
+    b (ndarray): A 1D array of size N with uniform spacing from a[0] to a[-1].
+    """
+    # Generate a uniformly spaced array of size N between a[0] and a[-1]
+    b = np.linspace(a[0], a[-1], N)
+    return b
+
+def closest_index(array,value):
+    return np.abs(array - value).argmin()
