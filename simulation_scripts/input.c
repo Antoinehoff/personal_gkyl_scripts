@@ -540,7 +540,7 @@ create_ctx(void)
   double Te_srcOMP = 2*Te0;
   double Ti_srcOMP = 2*Ti0;
   double sigma_srcOMP = 0.03*Lx;
-  double n_srcGB = 3.185e23;
+  double n_srcGB = 4.67e+22; // This value was precomputed from the initial conditions (ACDH)
   double x_srcGB = x_min;
   double sigma_srcGB = 10*rho_s;
   double bfac_srcGB = 1.4;
@@ -726,7 +726,7 @@ main(int argc, char **argv)
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
       .write_source = false,
-      .num_sources = 1,
+      .num_sources = 2,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
         .ctx_density = &ctx,
@@ -746,16 +746,6 @@ main(int argc, char **argv)
         .temp = temp_elc_srcGB,
       },
     },
-
-    /* 
-    .diffusion = {
-      .num_diff_dir = 1,
-      .diff_dirs = { 0 },
-      .D = { 0.2 },
-      .order = 2,
-    },
-    */
-
     .bcx = {
       .lower={.type = GKYL_SPECIES_ABSORB,},
       .upper={.type = GKYL_SPECIES_ABSORB,},
@@ -811,7 +801,7 @@ main(int argc, char **argv)
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
       .write_source = false,
-      .num_sources = 1,
+      .num_sources = 2,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
         .ctx_density = &ctx,
@@ -831,14 +821,6 @@ main(int argc, char **argv)
         .temp = temp_ion_srcGB,
       },
     },
-    /*
-    .diffusion = {
-      .num_diff_dir = 1,
-      .diff_dirs = { 0 },
-      .D = { 0.2 },
-      .order = 2,
-    },
-    */
     .bcx = {
       .lower={.type = GKYL_SPECIES_ABSORB,},
       .upper={.type = GKYL_SPECIES_ABSORB,},
