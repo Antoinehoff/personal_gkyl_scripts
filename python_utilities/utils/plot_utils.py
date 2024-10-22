@@ -272,8 +272,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
         plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldnames=fieldname,
                     cmap=cmap,full_plot=full_plot,
                     xlim=xlim,ylim=ylim,clim=clim,
-                    cutout=cutout,figout=figout,
-                    fourrier_y=fourrier_y)
+                    cutout=cutout,figout=figout)
         fig = figout[0]
         fig.tight_layout()
         fig.savefig(f'gif_tmp/plot_{tf}.png')
