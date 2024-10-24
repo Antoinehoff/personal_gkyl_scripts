@@ -39,8 +39,8 @@ class GeomParam:
         self.Ly         = None
         self.z          = None # z-grid
         self.Lz         = None # z box size
-        self.toroidal_mn= None # Toroidal mode number
-
+        self.n0         = None # Toroidal mode number
+        
     def load_metric(self,fileprefix):
         #-- load B (bmag)
         fname = fileprefix+'-'+'bmag.gkyl'
@@ -115,7 +115,6 @@ class GeomParam:
                         r * np.cos(theta + np.arcsin(delta) * np.sin(theta)))
                 Z = self.Z_axis + kappa*r*np.sin(theta)
                 return [R,Z]
-            
             Rmid_min = self.R_LCFSmid - self.x_LCFS
             Rmid_max = Rmid_min+self.Lx
             theta = np.linspace(-np.pi,+np.pi,Ntheta)
@@ -186,3 +185,7 @@ class GeomParam:
 
     def get_conf_grid(self):
         return [self.x, self.y, self.z]
+    
+    def get_toroidal_mode_number(self):
+        self.n0 = 2.*np.pi*self.r0/self.qprofile(self.r0)/self.Ly # toroidal mode number
+        return self.n0
