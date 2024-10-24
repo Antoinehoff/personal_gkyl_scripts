@@ -167,7 +167,7 @@ class DataParam:
             units      = 'J/kg' # T is stored as T/m in gkeyll
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Ttots(gdata_list):
-                return 3*(gdata_list[0].get_values() + 2.0*gdata_list[1].get_values())/3.0
+                return (gdata_list[0].get_values() + 2.0*gdata_list[1].get_values())/3.0
             default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
 
             #Kinetic energy density speciewise: Wkins = int dv3 1/2 ms vpar^2 + mus B
@@ -177,7 +177,7 @@ class DataParam:
             field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Wkins(gdata_list,m=spec.m):
                 dens = gdata_list[0].get_values()
-                Ttot = 3*(gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
+                Ttot = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
                 return dens*m*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_Wkins])
 
@@ -213,7 +213,7 @@ class DataParam:
                 qphi = q*gdata_list[0].get_values()
                 dens = gdata_list[1].get_values()
                 upar = gdata_list[2].get_values()
-                Ttot = 3*(gdata_list[3].get_values() + 2.0*gdata_list[4].get_values())/3.0
+                Ttot = (gdata_list[3].get_values() + 2.0*gdata_list[4].get_values())/3.0
                 return dens*(m*np.power(upar,2)/2 + m*Ttot + qphi)
             default_qttes.append([name,symbol,units,field2load,receipe_Ws])
 
@@ -252,7 +252,7 @@ class DataParam:
             def receipe_betas(gdata_list):
                 mu0 = 4.0*np.pi*1e-7
                 dens = gdata_list[0].get_values()
-                Ttot = 3*(gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0*spec.m
+                Ttot = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0*spec.m
                 Bmag = gdata_list[3].get_values()
                 return 100*dens*Ttot*2*mu0/np.power(Bmag,2)
             default_qttes.append([name,symbol,units,field2load,receipe_betas])
@@ -301,7 +301,7 @@ class DataParam:
                 def receipe_hfluxs(gdata_list,i=i_,m=spec.m):
                     phi     = gdata_list[0].get_values()
                     density = gdata_list[1].get_values()
-                    Ttot    = 3*(gdata_list[2].get_values() + 2.*gdata_list[3].get_values())
+                    Ttot    = (gdata_list[2].get_values() + 2.*gdata_list[3].get_values())
                     Ttot    = m*Ttot/3.0 # 1/3 normalization (Tpar+2Tperp) and conversion to joules
                     b_j     = gdata_list[4].get_values()
                     b_k     = gdata_list[5].get_values()
