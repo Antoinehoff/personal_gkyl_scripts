@@ -166,8 +166,8 @@ class Simulation:
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
 
         # Calculate source terms
-        srcOMP_elc = self.OMPsources.density_srcOMP(X,Y,Z) * 3/2 * self.OMPsources.temp_elc_srcOMP(X,Y,Z)
-        srcOMP_ion = self.OMPsources.density_srcOMP(X,Y,Z) * 3/2 * self.OMPsources.temp_ion_srcOMP(X,Y,Z)
+        srcOMP_elc = self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_elc_srcOMP(X,Y,Z) # there was a 3/2 factor here...
+        srcOMP_ion = self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_ion_srcOMP(X,Y,Z) # there was a 3/2 factor here...
 
         # Integrate source terms
         src_tot_elc = math_tools.integral_xyz(x, y, z, srcOMP_elc * self.geom_param.Jacobian)
