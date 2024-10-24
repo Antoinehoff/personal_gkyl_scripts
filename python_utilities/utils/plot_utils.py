@@ -318,24 +318,6 @@ def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]
     ax.set_ylabel('Z (m)')
     ax.set_aspect('equal')
 
-def setup_figure(fieldnames):
-    if fieldnames == '':
-        ncol = 2
-        fields = ['ne','upari','Tpari','Tperpi']
-    elif not isinstance(fieldnames,list):
-        ncol   = 1
-        fields = [fieldnames]
-    else:
-        ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
-        fields = fieldnames
-    nrow = len(fields)//ncol + len(fields)%ncol
-    fig,axs = plt.subplots(nrow,ncol,figsize=(default_figsz[0]*ncol,default_figsz[1]*nrow))
-    if ncol == 1:
-        axs = [axs]
-    else:
-        axs = axs.flatten()
-    return fields,fig,axs
-
 def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     # Set up the simulation geometry and load useful data
     simulation.geom_param.compute_bxgradBoB2()
@@ -448,6 +430,24 @@ def multiply_by_m3_expression(expression):
         expression_new = expression + r'm$^3$'
     return expression_new
 
+def setup_figure(fieldnames):
+    if fieldnames == '':
+        ncol = 2
+        fields = ['ne','upari','Tpari','Tperpi']
+    elif not isinstance(fieldnames,list):
+        ncol   = 1
+        fields = [fieldnames]
+    else:
+        ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
+        fields = fieldnames
+    nrow = len(fields)//ncol + len(fields)%ncol
+    fig,axs = plt.subplots(nrow,ncol,figsize=(default_figsz[0]*ncol,default_figsz[1]*nrow))
+    if ncol == 1:
+        axs = [axs]
+    else:
+        axs = axs.flatten()
+    return fields,fig,axs
 
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
+
