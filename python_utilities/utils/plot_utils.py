@@ -400,15 +400,31 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
             src_power = simulation.get_input_power()
             if ddt:
                 ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
-                plt.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
+                ax.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
             else:
                 # plot the accumulate energy from the source
                 Wsrc_t = ftot_t[0] + src_power*simulation.normalization['tscale']*time/simulation.normalization['Wtotscale']
-                plt.plot(time,Wsrc_t,'--k',label='Source input')
+                ax.plot(time,Wsrc_t,'--k',label='Source input')
         # add labels and show legend
         ax.set_xlabel(xlbl)
         ax.set_ylabel(ylbl)
         ax.legend()
+        fig.tight_layout()
+
+def plot_GB_loss(simulation, twindow):
+    fields,fig,axs = setup_figure('onefield')
+    for ax,field in zip(axs,fields):
+        for spec in simulation.species.values():
+            GBloss_t, time = simulation.get_GBloss_t(
+                spec    = spec,
+                twindow = twindow[::4],
+                ix      = 0)
+            minus_GBloss = [-g for g in GBloss_t]
+            axs[0].plot(time,minus_GBloss,label=r'$-S_{\nabla B %s, loss}$'%spec.nshort)
+        ax.set_ylabel(r'particle/s')
+        ax.set_xlabel(r'$t$ ($\mu$s)')
+        ax.legend()
+        ax.set_title('Particle loss at the inner flux surface')
         fig.tight_layout()
     
     
