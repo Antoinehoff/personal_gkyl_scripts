@@ -417,7 +417,7 @@ def plot_GB_loss(simulation, twindow):
         for spec in simulation.species.values():
             GBloss_t, time = simulation.get_GBloss_t(
                 spec    = spec,
-                twindow = twindow[::4],
+                twindow = twindow,
                 ix      = 0)
             minus_GBloss = [-g for g in GBloss_t]
             axs[0].plot(time,minus_GBloss,label=r'$-S_{\nabla B %s, loss}$'%spec.nshort)
