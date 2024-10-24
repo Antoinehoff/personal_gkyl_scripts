@@ -16,6 +16,8 @@ if check_latex_installed(verbose=True):
     plt.rcParams['text.usetex'] = True
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Computer Modern Roman']
+plt.rcParams.update({'font.size': 14})
+default_figsz = [4,3]
 
 import os, re
 
@@ -298,7 +300,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
 
 def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
     geometry.set_domain(geom_type,vessel_corners)
-    fig = plt.figure()#(figsize=(4, 3))
+    fig = plt.figure(figsize=(default_figsz[0], default_figsz[1]))
     ax  = fig.add_subplot(111)
     ax.plot(geometry.RZ_min[0], geometry.RZ_min[1],'-c')
     ax.plot(geometry.RZ_max[0], geometry.RZ_max[1],'-c')
@@ -327,7 +329,7 @@ def setup_figure(fieldnames):
         ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
         fields = fieldnames
     nrow = len(fields)//ncol + len(fields)%ncol
-    fig,axs = plt.subplots(nrow,ncol,figsize=(4*ncol,3*nrow))
+    fig,axs = plt.subplots(nrow,ncol,figsize=(default_figsz[0]*ncol,default_figsz[1]*nrow))
     if ncol == 1:
         axs = [axs]
     else:
@@ -416,7 +418,7 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
             src_power = simulation.get_input_power()
             if ddt:
                 ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
-                plt.plot(time,ddtWsrc_t,'--k',label='Source input')
+                plt.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
             else:
                 # plot the accumulate energy from the source
                 Wsrc_t = ftot_t[0] + src_power*simulation.normalization['tscale']*time/simulation.normalization['Wtotscale']
