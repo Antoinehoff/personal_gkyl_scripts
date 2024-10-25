@@ -357,7 +357,8 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
               %(Ssimul,Smodel))
 
 def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
-                              jacob_squared=False, plot_src_input=False):
+                              jacob_squared=False, plot_src_input=False,
+                              add_GBloss = False):
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -378,10 +379,21 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
                 Ft = dfdt/simulation.normalization['tscale']
             else:
                 Ft  = ftot_t
-            
             # Convert to np arrays
             ftot_t = np.array(ftot_t)
             time   = np.array(time)
+
+            # if we are talking about energy, add if needed the GBloss
+            if subfield == 'Wtot' and add_GBloss: 
+                gbl = np.zeros_like(ftot_t)
+                for spec in simulation.species.values():
+                    gbl_s, _ = simulation.get_GBloss_t(
+                        spec    = spec,
+                        twindow = tfs,
+                        ix      = 0,
+                        losstype = 'energy',
+                        integrate = True)
+                    gbl = gbl+np.array(gbl_s)
 
             # Setup labels
             Flbl = simulation.normalization[subfield+'symbol']
@@ -392,8 +404,11 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
             if ddt:
                 Flbl = r'$\partial_t$ '+Flbl
                 ylbl = ylbl+'/s'
+            
             # Plot
             ax.plot(time,Ft,label=Flbl)
+            if add_GBloss:
+                ax.plot(time,Ft-gbl,label='w/o gB loss')
 
         # plot eventually the input power for comparison
         if subfield == 'Wtot' and plot_src_input:
@@ -411,20 +426,29 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
         ax.legend()
         fig.tight_layout()
 
-def plot_GB_loss(simulation, twindow):
+def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False):
     fields,fig,axs = setup_figure('onefield')
     for ax,field in zip(axs,fields):
         for spec in simulation.species.values():
             GBloss_t, time = simulation.get_GBloss_t(
                 spec    = spec,
                 twindow = twindow,
-                ix      = 0)
+                ix      = 0,
+                losstype = losstype,
+                integrate = integrate)
             minus_GBloss = [-g for g in GBloss_t]
             axs[0].plot(time,minus_GBloss,label=r'$-S_{\nabla B %s, loss}$'%spec.nshort)
-        ax.set_ylabel(r'particle/s')
+
+        if losstype == 'particle':
+            ylabel = r'loss of particle'
+        elif losstype == 'energy':
+            ylabel = r'loss in MJ'
+        if not integrate:
+            ylabel = ylabel+'/s'
+        ax.set_ylabel(ylabel)
         ax.set_xlabel(r'$t$ ($\mu$s)')
         ax.legend()
-        ax.set_title('Particle loss at the inner flux surface')
+        # ax.set_title('Particle loss at the inner flux surface')
         fig.tight_layout()
     
     

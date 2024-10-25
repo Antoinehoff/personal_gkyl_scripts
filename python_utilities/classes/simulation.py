@@ -1,4 +1,5 @@
 import numpy as np
+import scipy as scp
 import postgkyl as pg
 from .numparam   import NumParam
 from .physparam  import PhysParam
@@ -119,7 +120,7 @@ class Simulation:
         dataname = self.data_param.data_files_dict[fieldname+'file']
         return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)
     
-    def get_GBloss_t(self, spec, twindow, ix=0):
+    def get_GBloss_t(self, spec, twindow, ix=0, losstype='particle', integrate = False):
         """
         Compute the grad-B (GB) particle loss over time for a given species.
         """
@@ -128,13 +129,18 @@ class Simulation:
         self.geom_param.compute_bxgradBoB2()
         # Loop over time frames in twindow
         for tf in twindow:
-            GBloss, t, _ = self.compute_GBloss(spec,tf,ix=0,compute_bxgradBoB2=False)
+            GBloss, t, _ = self.compute_GBloss(spec,tf,ix=0,compute_bxgradBoB2=False,losstype=losstype)
             # Append corresponding GBloss value and time
             GBloss_t.append(GBloss)
             time.append(t)
+
+        if integrate:
+            t_in_s = [t_*self.normalization['tscale'] for t_ in time] #time in second to integrate a per sec value
+            GBloss_t = scp.integrate.cumtrapz(GBloss_t,x=t_in_s, initial=0)
+
         return GBloss_t, time
 
-    def compute_GBloss(self,spec,tf=-1,ix=0,compute_bxgradBoB2=True,pperp_in=-1):
+    def compute_GBloss(self,spec,tf=-1,ix=0,losstype='particle',compute_bxgradBoB2=True,pperp_in=-1,T_in=-1):
         if compute_bxgradBoB2:
             self.geom_param.compute_bxgradBoB2()
         # Check if we provided pperp
@@ -151,9 +157,25 @@ class Simulation:
             pperp = pperp_in
             time  = None
 
+        if losstype == 'energy':
+            if T_in == -1:
+                # Not provided, get pressure from the simulation data at tf
+                field_name = 'T' + spec.name[0]
+                frame = Frame(self, field_name, tf, load=True)
+                # multiply by mass since temperature moment is stored as T/m
+                # we also make sure to remove any normalization and set in MJ
+                Ttot = frame.values[ix, :, :] * spec.m * self.normalization[field_name+'scale']/1e6
+            else:
+                Ttot = T_in
+        elif losstype == 'particle':
+            Ttot = 1.0 # we cancel the temp multiplication
+        elif not losstype in ['energy','particle']:
+            print(f"Warning: The loss type '{losstype}' "+
+                      " is not recognized. must be energy or particle")
+            
         #--build the integrand
         #-total version (/!\ this compensate loss and gain)
-        integrand = pperp*self.geom_param.bxgradBoB2[0, ix, :, :]/spec.q
+        integrand = Ttot*pperp*self.geom_param.bxgradBoB2[0, ix, :, :]/spec.q
         # the simulation cannot gain particle, so we consider only losses
         integrand[integrand > 0.0] = 0.0
         # Calculate GB loss for this time frame
