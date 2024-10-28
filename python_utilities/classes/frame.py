@@ -33,6 +33,7 @@ class Frame:
         self.cells          = None
         self.grids          = None
         self.values         = None
+        self.Jacobian       = simulation.geom_param.Jacobian
         self.vol_int        = None
         self.vol_avg        = None
 
@@ -157,22 +158,26 @@ class Frame:
     def select_slice(self, direction, cut):
         # Map the direction to the corresponding axis index
         direction_map = {'x':0,'y':1,'z':2,'vpar':3,'mu':4}
-        
         if direction not in direction_map:
             raise ValueError("Invalid direction '"+direction+"': must be 'x', 'y', 'z', 'vpar', or 'mu'")
         
         ic = direction_map[direction]  # Get the axis index for the given direction
 
-        if cut == 'avg':
-            cut_coord   = direction+'-avg'
-            self.values = np.average(self.values,axis=ic)
-            # grid        = self.grids[ic][:]
-            # Jacobian    = self.simulation.geom_param.Jacobian
-            # self.values = np.trapz(self.values*Jacobian,grid,axis=ic)
-            # self.values/= np.trapz(Jacobian,grid,axis=ic)
+        if cut in ['avg','int']:
+            cut_coord   = direction+'-'+cut
+            # self.values = np.average(self.values,axis=ic)
+            grid          = self.simulation.geom_param.grids[ic][:]
+            self.values   = np.trapz(self.values*self.Jacobian,grid,axis=ic)
+            self.Jacobian = np.trapz(self.Jacobian,grid,axis=ic)
+             # normalize by the integrated jacobian for the average
+            if cut == 'avg':
+                self.values  /= self.Jacobian        
         elif cut == 'max':
             cut_coord = direction+'-max'
             self.values = np.max(self.values,axis=ic)
+        elif cut == 'mean':
+            cut_coord = direction+'-mean'
+            self.values = np.avg(self.values,axis=ic)
         else:
             # If cut is an integer, use it as the index
             if isinstance(cut, int):
@@ -184,10 +189,12 @@ class Frame:
             # find the cut coordinate
             cut_coord = self.grids[ic][cut_index]
             # Select the slice of values at the cut_index along the given direction
-            self.values = np.take(np.copy(self.values), cut_index, axis=ic)
+            self.values   = np.take(np.copy(self.values), cut_index, axis=ic)
+            self.Jacobian = np.take(np.copy(self.Jacobian), cut_index, axis=ic)
 
         # Expand to avoid dimensionality reduction
-        self.values = np.expand_dims(self.values, axis=ic)
+        self.values   = np.expand_dims(self.values, axis=ic)
+        self.Jacobian = np.expand_dims(self.Jacobian, axis=ic)
 
         # record the cut and adapt the grids
         self.sliceddim.append(ic)
@@ -212,7 +219,7 @@ class Frame:
         self.select_slice(direction=sdir,cut=ccoord)
         self.refresh(values=False)
 
-    def compute_volume_integral(self,jacob_squared=False):
+    def compute_volume_integral(self,jacob_squared=False,average=False):
         # We load the original grid (in original units)
         [x,y,z] = self.simulation.geom_param.grids
          # This is useful for bimax moment that are output divide by jacobian
@@ -221,18 +228,66 @@ class Frame:
         else:
             Jac = self.simulation.geom_param.Jacobian
         self.vol_int = mt.integral_xyz(x,y,z,self.values*Jac)
+        if average :
+            self.vol_int /= self.simulation.geom_param.intJac
         return self.vol_int
     
-    def compute_volume_average(self,jacob_squared=False):
+    def compute_surface_integral(self,direction='yz',jacob_squared=False,loss_only=False,
+                                 int_bounds = ['all','all']):
         # We load the original grid (in original units)
-        [x,y,z] = self.simulation.geom_param.grids
-        Jac     = self.simulation.geom_param.Jacobian
-        # This is useful for bimax moment that are output divide by jacobian
-        if jacob_squared:
-            Jac *= Jac
-        intJac = self.simulation.geom_param.intJac
-        self.vol_avg = mt.integral_xyz(x,y,z,self.values*Jac)/intJac
-        return self.vol_avg
+        [x,y,z]  = self.simulation.geom_param.grids
+        dir_dict = {'x':[0,x],'y':[1,y],'z':[2,z]}
+
+        # Check if direction is valid
+        if len(direction) != 2 or any(d not in dir_dict for d in direction):
+            raise ValueError("Direction must be a two-character string from 'x', 'y', 'z'")
+        
+        # get the integration grids and directions
+        [dir1,grid1] = dir_dict[direction[0]]
+        [dir2,grid2] = dir_dict[direction[1]]
+        # set up integration domain (full by default)
+        il1 = 0; iu1 = len(grid1)
+        il2 = 0; iu2 = len(grid2)
+
+        # Check if custom integration domain is provided
+        if isinstance(int_bounds[0],list):
+            #lower index of grid 1
+            il1 = np.argmin(np.abs(grid1-int_bounds[0][0]))
+            #upper index of grid 1
+            iu1 = np.argmin(np.abs(grid1-int_bounds[0][1]))
+        if isinstance(int_bounds[1],list):
+            #lower index of grid 2
+            il2 = np.argmin(np.abs(grid2-int_bounds[1][0]))
+            #upper index of grid 2
+            iu2 = np.argmin(np.abs(grid2-int_bounds[1][1]))
+
+        # Build the integrant
+        integrand = self.values*self.simulation.geom_param.Jacobian
+
+        # Zero out integrand value outside of the integration domain
+        # Create slice objects for each dimension
+        slices = [slice(None)] * 3
+
+        # Apply bounds (zero out all outside values of the given domain)
+        for bound,dir in zip([[il1,iu1],[il2,iu2]],[dir1,dir2]):
+            slices[dir]              = slice(None, bound[0])
+            integrand[tuple(slices)] = 0  # Set values below lower bound to 0
+            slices[dir]              = slice(bound[1] + 1, None)
+            integrand[tuple(slices)] = 0  # Set values above upper bound to 0
+            slices[dir]              = slice(None) # reset slice
+
+
+        # Zero out all negative value if we consider loss only
+        if loss_only:
+            integrand[integrand < 0.0] = 0.0   
+
+        # Calculate GB loss for this time frame
+        surf_int_z = np.trapz(integrand,  x=grid1, axis=dir1)
+        surf_int_z = np.expand_dims(surf_int_z, axis=dir1)
+        surf_int   = np.trapz(surf_int_z, x=grid2, axis=dir2)
+        self.surf_int = surf_int.squeeze()
+
+        return self.surf_int        
     
     def free_values(self):
         self.values = None
