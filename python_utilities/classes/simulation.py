@@ -311,7 +311,7 @@ class Simulation:
                 elif key == 'p%s'%spec.nshort:
                     symbol = r'$\beta_{%s}$'%spec.nshort
             shift = 0
-            units = '%'
+            units = r'$\%$'
             if not self.data_param.BiMaxwellian:
                 scale /= self.phys_param.eV / 3.0
         #-- Grouped normalization
