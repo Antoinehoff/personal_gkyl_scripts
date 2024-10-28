@@ -358,7 +358,7 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
 
 def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
                               jacob_squared=False, plot_src_input=False,
-                              add_GBloss = False):
+                              add_GBloss = False, average = False):
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -371,8 +371,10 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
             for tf in tfs:
                 f_ = Frame(simulation=simulation,name=subfield,tf=tf)
                 f_.load()
+
                 time.append(f_.time)
-                ftot_t.append(f_.compute_volume_integral(jacob_squared=jacob_squared))
+                ftot_t.append(f_.compute_volume_integral(jacob_squared=jacob_squared,average=average))
+
             if ddt: # time derivative
                 dfdt   = np.gradient(ftot_t,time)
                 # we rescale it to obtain a result in seconds
@@ -399,7 +401,10 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
             Flbl = simulation.normalization[subfield+'symbol']
             Flbl = r'$\int$ '+Flbl+r' $d^3x$'
             xlbl = label_from_simnorm(simulation,'t')
-            ylbl = multiply_by_m3_expression(simulation.normalization[subfield+'units'])
+            if average:
+                Flbl = Flbl + r'$/V$'
+            else:
+                ylbl = multiply_by_m3_expression(simulation.normalization[subfield+'units'])
 
             if ddt:
                 Flbl = r'$\partial_t$ '+Flbl
