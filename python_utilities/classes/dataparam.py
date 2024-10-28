@@ -144,6 +144,37 @@ class DataParam:
             default_qttes[i].append([default_qttes[i][0]])
             default_qttes[i].append(identity)
 
+        #-Drift velocities
+        #- The following are vector fields quantities that we treat component wise
+        directions = ['x','y','z'] #directions array
+        for i_ in range(len(directions)):
+            ci_ = directions[i_] # direction of the flux component
+            cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
+            ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
+
+            # ExB velocity
+            name       = 'ExB_%s'%(ci_)
+            symbol     = r'$u_{E,%s}$'%(ci_)
+            units      = r'm/s'
+            field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','phi']
+            # The receipe depends on the direction 
+            # because of the phi derivative
+            def receipe_vExB(gdata_list,i=i_):
+                b_j     = gdata_list[0].get_values()
+                b_k     = gdata_list[1].get_values()
+                Bmag    = gdata_list[2].get_values()
+                Jacob   = gdata_list[3].get_values()
+                grids   = gdata_list[0].get_grid()
+                j       = np.mod(i+1,3)
+                k       = np.mod(i+2,3)
+                jgrid   = grids[j][:-1]
+                kgrid   = grids[k][:-1]
+                phi     = gdata_list[4].get_values()
+                dphidj  = np.gradient(phi, jgrid, axis=j)
+                dphidk  = np.gradient(phi, kgrid, axis=k)
+                return -(dphidj*b_k - dphidk*b_j)/Jacob/Bmag
+            default_qttes.append([name,symbol,units,field2load,receipe_vExB])
+
         #-We define now composed quantities as pressures and fluxes 
         # for each species present in the simulation
         for spec in species.values():
@@ -213,7 +244,7 @@ class DataParam:
                 qphi = q*gdata_list[0].get_values()
                 dens = gdata_list[1].get_values()
                 upar = gdata_list[2].get_values()
-                Ttot = (gdata_list[3].get_values() + 2.0*gdata_list[4].get_values())/3.0
+                Ttot = receipe_Ttots(gdata_list[3:5])
                 return dens*(m*np.power(upar,2)/2 + m*Ttot + qphi)
             default_qttes.append([name,symbol,units,field2load,receipe_Ws])
 
@@ -223,7 +254,8 @@ class DataParam:
             units = 'J/kg/m$^{3}$'
             field2load = ['n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_ptots(gdata_list):
-                return gdata_list[0].get_values()*(gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
+                Ttot = receipe_Ttots(gdata_list[1:3])
+                return gdata_list[0].get_values()*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_ptots])
 
             #parallel pressures
@@ -247,14 +279,14 @@ class DataParam:
             #normalized pressure beta
             name = 'beta%s'%(s_)
             symbol = r'$\beta_{%s}$'%(s_)
-            units = '%'
+            units = r'$\%$'
             field2load = ['n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'Bmag']
-            def receipe_betas(gdata_list):
+            def receipe_betas(gdata_list,m=spec.m):
                 mu0 = 4.0*np.pi*1e-7
                 dens = gdata_list[0].get_values()
-                Ttot = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0*spec.m
+                Ttot = receipe_Ttots(gdata_list[1:3])
                 Bmag = gdata_list[3].get_values()
-                return 100*dens*Ttot*2*mu0/np.power(Bmag,2)
+                return 100 * dens * m*Ttot* 2*mu0/np.power(Bmag,2)
             default_qttes.append([name,symbol,units,field2load,receipe_betas])
 
             #- The following are vector fields quantities that we treat component wise
@@ -264,61 +296,89 @@ class DataParam:
                 cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
                 ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
 
-                # particle flux
-                name       = 'pflux_%s%s'%(ci_,s_)
-                symbol     = r'$\Gamma_{%s %s}$'%(ci_,s_)
-                units      = r's$^{-1}$m$^{-2}$'
-                field2load = ['phi','n%s'%s_,'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
-                # The receipe depends on the direction 
-                # because of the phi derivative
-                def receipe_pfluxs(gdata_list,i=i_):
-                    phi     = gdata_list[0].get_values()
-                    density = gdata_list[1].get_values()
-                    b_j     = gdata_list[2].get_values()
-                    b_k     = gdata_list[3].get_values()
-                    Bmag    = gdata_list[4].get_values()
-                    Jacob   = gdata_list[5].get_values()
+                # gradBxB velocity
+                name       = 'gradBxB_%s%s'%(ci_,s_)
+                symbol     = r'$u_{\nabla B,%s %s}$'%(ci_,s_)
+                units      = r'm/s'
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','Tperp%s'%s_]
+                def receipe_vgB(gdata_list,i=i_,q=spec.q,m=spec.m):
+                    b_j     = gdata_list[0].get_values()
+                    b_k     = gdata_list[1].get_values()
+                    Bmag    = gdata_list[2].get_values()
+                    Jacob   = gdata_list[3].get_values()
+                    Tperp   = gdata_list[4].get_values()*m
+                    grids   = gdata_list[4].get_grid()
                     j       = np.mod(i+1,3)
                     k       = np.mod(i+2,3)
-                    grids   = gdata_list[0].get_grid()
                     jgrid   = grids[j][:-1]
                     kgrid   = grids[k][:-1]
-                    dphidj  = np.gradient(phi, jgrid, axis=j)
-                    dphidk  = np.gradient(phi, kgrid, axis=k)
-                    return -density*(dphidj*b_k - dphidk*b_j)/Jacob/Bmag
-                
-                default_qttes.append([name,symbol,units,field2load,receipe_pfluxs])
+                    dBdj  = np.gradient(Bmag, jgrid, axis=j)
+                    dBdk  = np.gradient(Bmag, kgrid, axis=k)
+                    return Tperp*(b_j*dBdk - b_k*dBdj)/Jacob/Bmag/q
+                default_qttes.append([name,symbol,units,field2load,receipe_vgB])
 
-                # heat fluxes
-                name       = 'hflux_%s%s'%(ci_,s_)
-                symbol     = r'$Q_{%s %s}$'%(ci_,s_)
+                # ExB particle flux
+                name       = 'ExB_pflux_%s%s'%(ci_,s_)
+                symbol     = r'$\Gamma_{E%s,%s}$'%(ci_,s_)
+                units      = r's$^{-1}$m$^{-2}$'
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian',
+                              'phi','n%s'%s_,]
+                # The receipe depends on the direction 
+                # because of the phi derivative
+                def receipe_ExB_pflux_s(gdata_list,i=i_):
+                    vE      = receipe_vExB(gdata_list,i=i)
+                    density = gdata_list[5].get_values()
+                    return density*vE
+                
+                default_qttes.append([name,symbol,units,field2load,receipe_ExB_pflux_s])
+
+                # ExB heat fluxes
+                name       = 'ExB_hflux_%s%s'%(ci_,s_)
+                symbol     = r'$Q_{E%s,%s}$'%(ci_,s_)
                 units       = r'J s$^{-1}$m$^{-2}$'
-                field2load = ['phi','n%s'%s_,'Tpar%s'%s_,'Tperp%s'%s_,
-                              'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian',
+                              'phi','n%s'%s_,'Tpar%s'%s_,'Tperp%s'%s_,]
                 # The receipe depends on the direction 
                 # because of the phi derivative and on the species 
                 # (temperature from J/kg to J)
-                def receipe_hfluxs(gdata_list,i=i_,m=spec.m):
-                    phi     = gdata_list[0].get_values()
-                    density = gdata_list[1].get_values()
-                    Ttot    = (gdata_list[2].get_values() + 2.*gdata_list[3].get_values())
-                    Ttot    = m*Ttot/3.0 # 1/3 normalization (Tpar+2Tperp) and conversion to joules
-                    b_j     = gdata_list[4].get_values()
-                    b_k     = gdata_list[5].get_values()
-                    Bmag    = gdata_list[6].get_values()
-                    Jacob   = gdata_list[7].get_values()
-                    j       = np.mod(i+1,3)
-                    k       = np.mod(i+2,3)
-                    grids   = gdata_list[0].get_grid()
-                    jgrid   = grids[j][:-1]
-                    kgrid   = grids[k][:-1]
-                    dphidj  = np.gradient(phi, jgrid, axis=j)
-                    dphidk  = np.gradient(phi, kgrid, axis=k)
-                    return -density*Ttot*(dphidj*b_k - dphidk*b_j)/Jacob/Bmag
-                default_qttes.append([name,symbol,units,field2load,receipe_hfluxs])
+                def receipe_ExB_hflux_s(gdata_list,i=i_,m=spec.m):
+                    vE = receipe_vExB(gdata_list,i=i)
+                    density = gdata_list[5].get_values()
+                    Ttot    = receipe_Ttots(gdata_list[6:8])
+                    return density * m*Ttot * vE
+                default_qttes.append([name,symbol,units,field2load,receipe_ExB_hflux_s])
+
+                # gradB particle flux
+                name       = 'gradB_pflux_%s%s'%(ci_,s_)
+                symbol     = r'$\Gamma_{\nabla B%s,%s}$'%(ci_,s_)
+                units      = r's$^{-1}$m$^{-2}$'
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian',
+                              'phi','n%s'%s_,]
+                # The receipe depends on the direction 
+                # because of the phi derivative
+                def receipe_gradB_pflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
+                    vgB     = receipe_vgB(gdata_list,i=i,q=q,m=m)
+                    density = gdata_list[5].get_values()
+                    return density*vgB
+                default_qttes.append([name,symbol,units,field2load,receipe_gradB_pflux_s])
+                
+                # gradB heat flux
+                name       = 'gradB_hflux_%s%s'%(ci_,s_)
+                symbol     = r'$Q_{\nabla B%s,%s}$'%(ci_,s_)
+                units      = r'J s$^{-1}$m$^{-2}$'
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian',
+                              'phi','n%s'%s_,'Tpar%s'%s_,'Tperp%s'%s_,]
+                # The receipe depends on the direction 
+                # because of the phi derivative
+                def receipe_gradB_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
+                    vgB     = receipe_vgB(gdata_list,i=i,q=q,m=m)
+                    density = gdata_list[5].get_values()
+                    Ttot    = receipe_Ttots(gdata_list[6:8])
+                    #T is converted to joules by mass
+                    return density * m*Ttot * vgB
+                default_qttes.append([name,symbol,units,field2load,receipe_gradB_hflux_s])
 
         # Species independent quantities
-
         #charge density
         name       = 'qdens'
         symbol     = r'$\sum_s q_{s}n_s$'
