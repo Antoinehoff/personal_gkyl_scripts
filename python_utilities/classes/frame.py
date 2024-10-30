@@ -276,10 +276,9 @@ class Frame:
             integrand[tuple(slices)] = 0  # Set values above upper bound to 0
             slices[dir]              = slice(None) # reset slice
 
-
         # Zero out all negative value if we consider loss only
         if loss_only:
-            integrand[integrand < 0.0] = 0.0   
+            integrand[integrand < 0.0] = 0.0
 
         # Calculate GB loss for this time frame
         surf_int_z = np.trapz(integrand,  x=grid1, axis=dir1)
