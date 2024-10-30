@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import scipy as scp
 import postgkyl as pg
@@ -57,9 +58,23 @@ class Simulation:
 
     def set_num_param(self):
         """
-        Set numerical parameters like grid size by loading and processing data.
+        Set numerical parameters like grid size by loading 
+        the xyz.gkyl file or the nodes.gkyl file. Depends on the gkyl version...
         """
-        data = pg.data.GData(self.data_param.datadir + 'xyz.gkyl')
+        # Define file paths
+        file1 = os.path.join(self.data_param.datadir, 'xyz.gkyl')
+        file2 = self.data_param.fileprefix+'-nodes.gkyl'
+        # Check if 'xyz.gkyl' exists
+        if os.path.isfile(file1):
+            filename = file1
+        # If not, check if 'nodes.gkyl' exists
+        elif os.path.isfile(file2):
+            filename = file2
+        # If neither file is found, print a message
+        else:
+            print("Neither 'xyz.gkyl' nor 'nodes.gkyl' was found in the specified directory.")
+        # Load
+        data = pg.data.GData(filename)
         normgrids = data.get_grid()
         normx, normy, normz = normgrids[0], normgrids[1], normgrids[2]
         
