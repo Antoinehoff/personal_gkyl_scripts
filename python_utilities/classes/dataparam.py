@@ -208,7 +208,7 @@ class DataParam:
             field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Wkins(gdata_list,m=spec.m):
                 dens = gdata_list[0].get_values()
-                Ttot = (gdata_list[1].get_values() + 2.0*gdata_list[2].get_values())/3.0
+                Ttot = receipe_Ttots(gdata_list[1:3])
                 return dens*m*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_Wkins])
 
@@ -533,6 +533,36 @@ class DataParam:
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_Wtot])
 
+        #total heat flux: Qtot = \sum_s Q_tot_s
+        directions = ['x','y','z'] #directions array
+        for i_ in range(len(directions)):
+            ci_ = directions[i_] # direction of the flux component
+            cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
+            ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
+            name       = 'hflux_%s'%(ci_)
+            symbol     = r'$Q_{%s}$'%(ci_)
+            units      = r'J s$^{-1}$m$^{-2}$'
+            field2load = []
+            for spec in species.values():
+                s_ = spec.nshort
+                field2load.append('b_%s'%cj_)
+                field2load.append('b_%s'%ck_)
+                field2load.append('Bmag')
+                field2load.append('Jacobian')
+                field2load.append('phi')
+                field2load.append('n%s'%s_)
+                field2load.append('Tpar%s'%s_)
+                field2load.append('Tperp%s'%s_)
+            def receipe_hflux(gdata_list,i=i_,species=species):
+                fout = 0.0
+                # add species dependent energies
+                k = 0
+                for spec in species.values():
+                    # fout += receipe_gradB_hflux_s(gdata_list[0+k:8+k], i=i, q=spec.q, m=spec.m)
+                    fout += receipe_ExB_hflux_s(gdata_list[0+k:8+k], i=i, m=spec.m)
+                    k+= 8
+                return fout
+            default_qttes.append([name,symbol,units,field2load,receipe_hflux]) 
         #-------------- END of the new diagnostics definitions
         
         ## We format everything so that it fits in one dictionary
