@@ -75,7 +75,7 @@ EOT
 cp $HOME/personal_gkyl_scripts/simulation_scripts/input.c $new_dir
 cp $HOME/personal_gkyl_scripts/simulation_scripts/Makefile $new_dir
 cp $HOME/personal_gkyl_scripts/simulation_scripts/submit.sh $new_dir
-cp $HOME/personal_gkyl_scripts/example.ipynb $new_dir/$new_dir.inpynb
+cp $HOME/personal_gkyl_scripts/example.ipynb $new_dir/$new_dir.ipynb
 mkdir $new_dir/wk
 mkdir $new_dir/history
 echo "# This is a simulation logbook to keep track on restarts and changes" > $new_dir/sim_log.txt
