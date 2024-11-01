@@ -263,15 +263,21 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     cutout.append(frame.slicecoords)
 
 def make_2D_movie(simulation,cdirection,ccoord,tfs,
-                      fieldname='', cmap='inferno',
+                      fieldnames='', cmap='inferno',
                       xlim=[], ylim=[], clim=[], full_plot=False,
                       fourrier_y=False):
     os.makedirs('gif_tmp', exist_ok=True)
-    if fieldname in simulation.data_param.spec_undep_quantities:
-        spec = ''
+    
+    if isinstance(fieldnames,str):
+        dataname = fieldnames
+    else:
+        dataname = ''
+        for f_ in fieldnames:
+            dataname += f_+'_'
+
     for tf in tfs:
         figout = []; cutout = []
-        plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldnames=fieldname,
+        plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldnames=fieldnames,
                     cmap=cmap,full_plot=full_plot,
                     xlim=xlim,ylim=ylim,clim=clim,
                     cutout=cutout,figout=figout)
@@ -280,11 +286,9 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
         fig.savefig(f'gif_tmp/plot_{tf}.png')
         plt.close()
     # Naming
-    if not fieldname or full_plot:
-        fieldname = 'mom'+spec
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = 'movie_'+fieldname+'_'+cutname[0]
+    moviename = 'movie_'+dataname+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
