@@ -72,7 +72,8 @@ class Simulation:
             filename = file2
         # If neither file is found, print a message
         else:
-            print("Neither 'xyz.gkyl' nor 'PREFIX-nodes.gkyl' was found in the specified directory.")
+            print("Neither 'xyz.gkyl' nor 'PREFIX-nodes.gkyl' was found with prefix:")
+            print(self.data_param.fileprefix)
         # Load
         data = pg.data.GData(filename)
         normgrids = data.get_grid()
