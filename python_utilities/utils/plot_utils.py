@@ -17,7 +17,7 @@ if check_latex_installed(verbose=True):
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Computer Modern Roman']
 plt.rcParams.update({'font.size': 14})
-default_figsz = [4,3]
+default_figsz = [5,3.5]
 
 import os, re
 
@@ -74,7 +74,7 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
     
 def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                            twindow=[],space_time=False, cmap='inferno',
-                           xlim=[], ylim=[], clim=[]):
+                           xlim=[], ylim=[], clim=[], figout=[]):
     cmap0 = cmap
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
@@ -124,14 +124,20 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             ax.set_xlabel(xlabel)
             ax.set_ylabel(vlabel)
             cbar.set_label(tlabel)
+            if xlim:
+                ax.set_xlim(xlim)
+            if ylim:
+                ax.set_ylim(ylim)
         if len(axs) > 1:
             fig.suptitle(slicetitle[:-2])
         else:
             ax.set_title(slicetitle[:-2])
     fig.tight_layout()
+    figout.append(fig)
 
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
-            tfs=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False):
+            tfs=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
+            figout = []):
     
     fields,fig,axs = setup_figure(fieldnames)
 
@@ -190,6 +196,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
     else:
         ax.set_title(title)
     fig.tight_layout()
+    figout.append(fig)
 
 def plot_2D_cut(simulation,cdirection,ccoord,tf,
                 fieldnames='', cmap='inferno', full_plot=False,
@@ -322,7 +329,7 @@ def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]
     ax.set_ylabel('Z (m)')
     ax.set_aspect('equal')
 
-def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
+def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2,figout=[]):
     # Set up the simulation geometry and load useful data
     simulation.geom_param.compute_bxgradBoB2()
     vGBz_x = simulation.geom_param.bxgradBoB2[0,ix,:,:]
@@ -348,21 +355,23 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2):
     # y integration is done by Ly multiplication
     fz      = -n0*T0/qs * vGBz_x * Ly
 
-    plt.plot(zgrid,Gammaz,label='Effective source at ' + frame.timetitle)
-    plt.plot(zgrid,fz,label='GB source model')
-    plt.legend()
-    plt.xlabel(r'$z$')
-    plt.ylabel(r'$\int \Gamma_{\nabla B,x} dy$')
+    fig,ax = plt.subplots(1,1,figsize=(default_figsz[0],default_figsz[1]))
+    ax[0].plot(zgrid,Gammaz,label='Effective source at ' + frame.timetitle)
+    ax[0].plot(zgrid,fz,label='GB source model')
+    ax[0].set_xlabel(r'$z$')
+    ax[0].set_ylabel(r'$\int \Gamma_{\nabla B,x} dy$')
+    ax[0].legend()
         
     Ssimul = np.trapz(Gammaz,x=zgrid, axis=0)
     Smodel = np.trapz(fz    ,x=zgrid, axis=0)
 
-    plt.title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
+    ax[0].title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
               %(Ssimul,Smodel))
+    figout.append(fig)
 
 def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
                               jacob_squared=False, plot_src_input=False,
-                              add_GBloss = False, average = False):
+                              add_GBloss = False, average = False, figout=[]):
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -434,8 +443,9 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
         ax.set_ylabel(ylbl)
         ax.legend()
         fig.tight_layout()
+    figout.append(fig)
 
-def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False):
+def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False, figout = []):
     fields,fig,axs = setup_figure('onefield')
     for ax,field in zip(axs,fields):
         for spec in simulation.species.values():
@@ -459,7 +469,8 @@ def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False):
         ax.legend()
         # ax.set_title('Particle loss at the inner flux surface')
         fig.tight_layout()
-    
+    figout.append(fig)
+
     
 def label_from_simnorm(simulation,name):
     return label(simulation.normalization[name+'symbol'],simulation.normalization[name+'units'])
@@ -496,6 +507,7 @@ def setup_figure(fieldnames):
     else:
         axs = axs.flatten()
     return fields,fig,axs
+
 
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
