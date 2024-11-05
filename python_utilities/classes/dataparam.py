@@ -397,6 +397,19 @@ class DataParam:
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_qdens])
 
+        #ion-electron temperature ratio
+        name       = 'Tratio'
+        symbol     = r'$T_{i}/T_e$'
+        units      = '' # T is stored as T/m in gkeyll
+        field2load = ['Tpare','Tperpe','Tpari','Tperpi']
+        def receipe_Tratio(gdata_list,species=species):
+            Te = (gdata_list[0].get_values() + 2.0*gdata_list[1].get_values())/3.0
+            Ti = (gdata_list[2].get_values() + 2.0*gdata_list[3].get_values())/3.0
+            me = species['elc'].m
+            mi = species['ion'].m
+            return Ti*mi/(Te*me)
+        default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
+
         #parallel current density
         name       = 'jpar'
         symbol     = r'$\sum_s j_{\parallel s}$'
@@ -507,7 +520,7 @@ class DataParam:
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_Welf])
 
-        #total energy : \sum_s W_s = int dv3 1/2 ms vpar^2 + mus B - qs phi
+        #total energy : \sum_s W_s = int dv3 1/2 ms vpar^2 + mus B - qs ns phi
         name       = 'Wtot'
         symbol     = r'$W_{tot}$'
         units       = r'J/m$^3$'
