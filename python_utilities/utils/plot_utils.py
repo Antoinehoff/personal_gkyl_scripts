@@ -276,7 +276,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
     os.makedirs('gif_tmp', exist_ok=True)
     
     if isinstance(fieldnames,str):
-        dataname = fieldnames
+        dataname = fieldnames + '_'
     else:
         dataname = ''
         for f_ in fieldnames:
