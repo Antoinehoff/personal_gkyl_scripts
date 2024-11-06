@@ -123,11 +123,11 @@ EXT_LIBS = ${LAPACK_LIB} ${SUPERLU_LIB} ${MPI_RPATH} ${MPI_LIBS} ${LUA_RPATH} ${
 all: input setup
 
 input: input.c
-		${CC} ${CFLAGS} ${INCLUDES} input.c -o g0 -L${G0_LIB_DIR} ${G0_RPATH} ${G0_LIBS} ${LIB_DIRS} ${EXT_LIBS}
+	${CC} ${CFLAGS} ${INCLUDES} input.c -o g0 -L${G0_LIB_DIR} ${G0_RPATH} ${G0_LIBS} ${LIB_DIRS} ${EXT_LIBS}
 
-setup: 
-		mkdir -p wk
-        cp g0 wk
+setup: g0
+	mkdir -p wk
+	cp g0 wk
 
 clean:
-        rm -rf g0 g0.dSYM
+	rm -rf g0 g0.dSYM wk
