@@ -644,6 +644,10 @@ write_data(struct gkyl_tm_trigger* iot, gkyl_gyrokinetic_app* app, double t_curr
 
     gkyl_gyrokinetic_app_write(app, t_curr, frame);
 
+    gkyl_gyrokinetic_app_calc_mom(app);
+    gkyl_gyrokinetic_app_write_mom(app, t_curr, frame);
+    //gkyl_gyrokinetic_app_write_source_mom(app, t_curr, frame);
+
     gkyl_gyrokinetic_app_calc_field_energy(app, t_curr);
     gkyl_gyrokinetic_app_write_field_energy(app);
 
@@ -675,8 +679,11 @@ main(int argc, char **argv)
   for (int d=0; d<ctx.vdim; d++)
     cells_v[d] = APP_ARGS_CHOOSE(app_args.vcells[d], ctx.cells[ctx.cdim+d]);
 
+  // Create decomposition.
+  struct gkyl_rect_decomp *decomp = gkyl_gyrokinetic_comms_decomp_new(ctx.cdim, cells_x, app_args.cuts, app_args.use_mpi, stderr);
+
   // Construct communicator for use in app.
-  struct gkyl_comm *comm = gkyl_gyrokinetic_comms_new(app_args.use_mpi, app_args.use_gpu, stderr);
+  struct gkyl_comm *comm = gkyl_gyrokinetic_comms_new(app_args.use_mpi, app_args.use_gpu, decomp, stderr);
 
   int my_rank = 0;
 #ifdef GKYL_HAVE_MPI
@@ -718,6 +725,7 @@ main(int argc, char **argv)
 
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
+      .write_source = false,
       .num_sources = 2,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
@@ -792,6 +800,7 @@ main(int argc, char **argv)
 
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
+      .write_source = false,
       .num_sources = 2,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
@@ -870,10 +879,12 @@ main(int argc, char **argv)
     .species = { elc, ion },
     .field = field,
 
-    .parallelism = {
-      .comm = comm,
-      .cuts = {app_args.cuts[0], app_args.cuts[1], app_args.cuts[2]},
-      .use_gpu = app_args.use_gpu,
+    .use_gpu = app_args.use_gpu,
+
+    .has_low_inp = true,
+    .low_inp = {
+      .local_range = decomp->ranges[my_rank],
+      .comm = comm
     }
   };
 
@@ -991,7 +1002,7 @@ main(int argc, char **argv)
   freeresources:
   // simulation complete, free app
   gkyl_gyrokinetic_app_release(app);
-  gkyl_gyrokinetic_comms_release(comm);
+  gkyl_gyrokinetic_comms_release(decomp, comm);
 
 #ifdef GKYL_HAVE_MPI
   if (app_args.use_mpi) {
