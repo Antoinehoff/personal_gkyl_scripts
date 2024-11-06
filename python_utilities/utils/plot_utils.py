@@ -137,7 +137,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
 
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             tfs=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
-            figout = []):
+            figout = [], errorbar = False):
     
     fields,fig,axs = setup_figure(fieldnames)
 
@@ -158,7 +158,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             average_data = np.mean(values, axis=0)
             # Compute the standard deviation of data over the t-axis (axis=1)
             std_dev_data = np.std(values, axis=0)
-            if time_avg:
+            if time_avg and errorbar:
                 # Plot with error bars
                 ax.errorbar(x, average_data, yerr=std_dev_data, 
                             fmt='o', capsize=5, label=vlabel)
@@ -565,6 +565,6 @@ def save_figout(figout,fname):
     with open(fname+'.pkl', 'wb') as f:
         pickle.dump(figdatadict, f)
     print(fname+' saved.')
-    
+
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
