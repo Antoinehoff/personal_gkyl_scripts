@@ -558,5 +558,13 @@ def plot_figdatadict(figdatadict):
 
         n_ = n_ + 1
 
+def save_figout(figout,fname):
+    import pickle
+    figdatadict = get_figdatadict(figout[0])
+    # Save the dictionary to a JSON file
+    with open(fname+'.pkl', 'wb') as f:
+        pickle.dump(figdatadict, f)
+    print(fname+' saved.')
+    
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
