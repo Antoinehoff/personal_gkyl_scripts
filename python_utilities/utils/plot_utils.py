@@ -508,7 +508,55 @@ def setup_figure(fieldnames):
         axs = axs.flatten()
     return fields,fig,axs
 
+def get_figdatadict(fig):
+    """
+    Get data from all curves in a figure
+    
+    Parameters:
+    fig : matplotlib.figure.Figure
+        The figure containing the curves.
+    """
+    figdatadict = []
+    # Loop through each Axes in the Figure
+    for ax in fig.get_axes():
+        a_ = {}
+        # axis labels
+        a_['xlabel'] = ax.get_xlabel()
+        a_['ylabel'] = ax.get_ylabel()
+        a_['curves'] = []
+        # Write data for each line in the Axes
+        for line in ax.get_lines():
+            l_ = {}
+            l_['xdata'] = line.get_xdata()  # Extract x data
+            l_['ydata'] = line.get_ydata()  # Extract y data
+            l_['label'] = line.get_label()  # Extract label
+            a_['curves'].append(l_)
+        figdatadict.append(a_)
+
+    return figdatadict
+
+def plot_figdatadict(figdatadict):
+    naxes = len(figdatadict)
+    if naxes == 1:
+        ncol   = 1
+    else:
+        ncol = 1 * (naxes == 1) + 2 * (naxes > 1)
+    nrow = naxes//ncol + naxes%ncol
+    fig,axs = plt.subplots(nrow,ncol,figsize=(default_figsz[0]*ncol,default_figsz[1]*nrow))
+    if ncol == 1:
+        axs = [axs]
+    else:
+        axs = axs.flatten()
+        
+    n_ = 0
+    for ax in axs:
+        a_ = figdatadict[n_]
+        for l_ in a_['curves']:
+            ax.plot(l_['xdata'], l_['ydata'], label=l_['label'])
+        ax.set_xlabel(a_['xlabel'])
+        ax.set_ylabel(a_['ylabel'])
+
+        n_ = n_ + 1
 
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
-
