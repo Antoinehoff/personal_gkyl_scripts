@@ -84,7 +84,7 @@ class Frame:
             # Load the data from the file
             Gdata = pg.data.GData(f_)
             # Interpolate the data using modal interpolation
-            dg = pg.data.GInterpModal(Gdata,polyorder,polytype)
+            dg = pg.data.GInterpModal(Gdata,poly_order=polyorder,basis_type=polytype,periodic=False)
             dg.interpolate(c_,overwrite=True)
             self.Gdata.append(Gdata)
             if Gdata.ctx['time']:
@@ -147,7 +147,7 @@ class Frame:
         norm = self.simulation.normalization
         for k_,c_ in self.slicecoords.items():
             if isinstance(c_,float):
-                slicetitle += norm[k_+'symbol']+'=%2.2f'%c_ + norm[k_+'units'] +', '
+                slicetitle += norm[k_+'symbol']+'=%3.3f'%c_ + norm[k_+'units'] +', '
             else:
                 slicetitle += c_ +', '
 
