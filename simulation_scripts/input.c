@@ -910,9 +910,9 @@ main(int argc, char **argv)
   struct gkyl_tm_trigger trig_calc_intdiag = { .dt = t_end/GKYL_MAX2(num_frames, num_int_diag_calc),
     .tcurr = t_curr, .curr = frame_curr };
 
-  // Write out ICs (if restart, it overwrites the restart frame).
+  // Write out ICs (if restart, we do not overwrites the restart frame).
   calc_integrated_diagnostics(&trig_calc_intdiag, app, t_curr, false); // does not exist here
-  write_data(&trig_write, app, t_curr, false);
+  if (!app_args.is_restart) write_data(&trig_write, app, t_curr, false);
 
   // Initial time-step.
   double dt = t_end-t_curr;
