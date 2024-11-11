@@ -120,6 +120,7 @@ read -p "Proceed and submit the job? ((y)/n) " proceed
 if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     module load $MODULES
     make
+    mkdir -p history
     cp input.c history/input_sf_$LAST_FRAME.c
     cp $SCRIPTNAME wk/.
     mv $SCRIPTNAME history/.

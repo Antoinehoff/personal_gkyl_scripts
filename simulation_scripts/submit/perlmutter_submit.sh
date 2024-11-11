@@ -5,13 +5,13 @@ set -e
 JOB_NAME="gk_tcv_3x2v"
 #.Request the queue.
 #.QOS="debug"
-QOS="debug"
-#.Number of nodes to request (Stellar has 96 cores and 2 GPUs per node).
+QOS="regular"
+#.Number of nodes to request.
 NODES=1
-#.Specify GPUs per node (stellar-amd has 2):
+#.Specify GPUs per node (Perlmutter has 4 GPUs per node):
 GPU_PER_NODE=4
 #.Request wall time
-TIME="00:30:00"  # HH:MM:SS
+TIME="02:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load
@@ -129,6 +129,7 @@ read -p "Proceed and submit the job? ((y)/n) " proceed
 if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     module load $MODULES
     make
+    mkdir -p history
     cp input.c history/input_sf_$LAST_FRAME.c
     cp $SCRIPTNAME wk/.
     mv $SCRIPTNAME history/.

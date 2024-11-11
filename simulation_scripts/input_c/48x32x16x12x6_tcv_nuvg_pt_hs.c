@@ -552,13 +552,13 @@ create_ctx(void)
   int num_cell_x = 48;
   int num_cell_y = 32;
   int num_cell_z = 16;
-  int num_cell_vpar = 16;
+  int num_cell_vpar = 12;
   int num_cell_mu = 6;
   int poly_order = 1;
 
-  double vpar_max_elc = 6.*vte;
+  double vpar_max_elc = 4.*vte;
   double mu_max_elc   = 0.5*me*pow(4*vte,2)/(2*B0);
-  double vpar_max_ion = 6.*vti;
+  double vpar_max_ion = 4.*vti;
   double mu_max_ion   = 0.5*mi*pow(4*vti,2)/(2*B0);
 
   double final_time = 1.e-3;
@@ -644,10 +644,6 @@ write_data(struct gkyl_tm_trigger* iot, gkyl_gyrokinetic_app* app, double t_curr
 
     gkyl_gyrokinetic_app_write(app, t_curr, frame);
 
-    gkyl_gyrokinetic_app_calc_mom(app);
-    gkyl_gyrokinetic_app_write_mom(app, t_curr, frame);
-    //gkyl_gyrokinetic_app_write_source_mom(app, t_curr, frame);
-
     gkyl_gyrokinetic_app_calc_field_energy(app, t_curr);
     gkyl_gyrokinetic_app_write_field_energy(app);
 
@@ -679,11 +675,8 @@ main(int argc, char **argv)
   for (int d=0; d<ctx.vdim; d++)
     cells_v[d] = APP_ARGS_CHOOSE(app_args.vcells[d], ctx.cells[ctx.cdim+d]);
 
-  // Create decomposition.
-  struct gkyl_rect_decomp *decomp = gkyl_gyrokinetic_comms_decomp_new(ctx.cdim, cells_x, app_args.cuts, app_args.use_mpi, stderr);
-
   // Construct communicator for use in app.
-  struct gkyl_comm *comm = gkyl_gyrokinetic_comms_new(app_args.use_mpi, app_args.use_gpu, decomp, stderr);
+  struct gkyl_comm *comm = gkyl_gyrokinetic_comms_new(app_args.use_mpi, app_args.use_gpu, stderr);
 
   int my_rank = 0;
 #ifdef GKYL_HAVE_MPI
@@ -725,7 +718,6 @@ main(int argc, char **argv)
 
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
-      .write_source = false,
       .num_sources = 2,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
@@ -800,7 +792,6 @@ main(int argc, char **argv)
 
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
-      .write_source = false,
       .num_sources = 2,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
@@ -879,12 +870,10 @@ main(int argc, char **argv)
     .species = { elc, ion },
     .field = field,
 
-    .use_gpu = app_args.use_gpu,
-
-    .has_low_inp = true,
-    .low_inp = {
-      .local_range = decomp->ranges[my_rank],
-      .comm = comm
+    .parallelism = {
+      .comm = comm,
+      .cuts = {app_args.cuts[0], app_args.cuts[1], app_args.cuts[2]},
+      .use_gpu = app_args.use_gpu,
     }
   };
 
@@ -923,7 +912,7 @@ main(int argc, char **argv)
 
   // Write out ICs (if restart, it overwrites the restart frame).
   calc_integrated_diagnostics(&trig_calc_intdiag, app, t_curr, false); // does not exist here
-  write_data(&trig_write, app, t_curr, false);
+  if (!app_args.is_restart) write_data(&trig_write, app, t_curr, false);
 
   // Initial time-step.
   double dt = t_end-t_curr;
@@ -937,10 +926,10 @@ main(int argc, char **argv)
   long step = 1, num_steps = app_args.num_steps;
   while ((t_curr < t_end) && (step <= num_steps)) {
     if (step % 100 == 0)
-      gkyl_gyrokinetic_app_cout(app, stdout, "Taking time-step at t = %g ...", t_curr);
+      gkyl_gyrokinetic_app_cout(app, stdout, "Taking time-step at t = %g mus ...", t_curr*1.0e6);
     struct gkyl_update_status status = gkyl_gyrokinetic_update(app, dt);
     if (step % 100 == 0)
-      gkyl_gyrokinetic_app_cout(app, stdout, " dt = %g\n", status.dt_actual);
+      gkyl_gyrokinetic_app_cout(app, stdout, " dt = %g mus\n", status.dt_actual*1.0e6);
 
     if (!status.success) {
       if (my_rank == 0) gkyl_gyrokinetic_app_cout(app, stdout, "** Update method failed! Aborting simulation ....\n");
@@ -1002,7 +991,7 @@ main(int argc, char **argv)
   freeresources:
   // simulation complete, free app
   gkyl_gyrokinetic_app_release(app);
-  gkyl_gyrokinetic_comms_release(decomp, comm);
+  gkyl_gyrokinetic_comms_release(comm);
 
 #ifdef GKYL_HAVE_MPI
   if (app_args.use_mpi) {
