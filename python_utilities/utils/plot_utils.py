@@ -371,7 +371,7 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2,figout=[]):
 
 def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
                               jacob_squared=False, plot_src_input=False,
-                              add_GBloss = False, average = False, figout=[]):
+                              add_GBloss = False, average = False, figout=[], rm_legend=False):
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -441,7 +441,8 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
         # add labels and show legend
         ax.set_xlabel(xlbl)
         ax.set_ylabel(ylbl)
-        ax.legend()
+        if not rm_legend:
+            ax.legend()
         fig.tight_layout()
     figout.append(fig)
 
@@ -555,7 +556,7 @@ def plot_figdatadict(figdatadict):
             ax.plot(l_['xdata'], l_['ydata'], label=l_['label'])
         ax.set_xlabel(a_['xlabel'])
         ax.set_ylabel(a_['ylabel'])
-
+        ax.legend()
         n_ = n_ + 1
 
 def save_figout(figout,fname):
