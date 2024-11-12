@@ -130,4 +130,4 @@ setup: g0
 	cp g0 wk
 
 clean:
-	rm -rf g0 g0.dSYM wk
+	rm -rf g0 g0.dSYM wk/g0
