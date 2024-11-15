@@ -103,7 +103,7 @@ cat <<EOT > $SCRIPTNAME
 #SBATCH --tasks-per-node=$NTASKS_PER_NODE
 #SBATCH --time $TIME
 #SBATCH --constraint gpu
-#SBATCH --gpus $GPU_PER_NODE
+#SBATCH --gpus $TOTAL_GPUS
 #SBATCH --mail-user=$EMAIL
 #SBATCH --mail-type=END,FAIL,REQUEUE
 #SBATCH --output $OUTPUT
