@@ -73,7 +73,7 @@ e) submit.sh automatically make, copy the executable in /wk, go to /wk, submit t
 f) notes can (and should) be taken in the sim_log.txt to keep trace of the restart changes
 EOT
 cp $HOME/personal_gkyl_scripts/simulation_scripts/input_c/48x32x16x12x6_tcv_nuvg_pt_hs.c $new_dir/input.c
-cp $HOME/personal_gkyl_scripts/simulation_scripts/Makefile $new_dir
+cp $HOME/personal_gkyl_scripts/simulation_scripts/makefiles/perlmutter_makefile $new_dir/Makefile
 cp $HOME/personal_gkyl_scripts/simulation_scripts/submit/perlmutter_submit.sh $new_dir
 cp $HOME/personal_gkyl_scripts/example.ipynb $new_dir/$new_dir.ipynb
 mkdir $new_dir/wk
