@@ -212,6 +212,20 @@ class Simulation:
         src_tot_ion = math_tools.integral_xyz(x, y, z, srcOMP_ion * self.geom_param.Jacobian)
 
         return src_tot_elc + src_tot_ion
+    
+    def get_input_particle(self):
+        [x, y, z] = self.geom_param.get_conf_grid()
+        [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
+
+        # Calculate source terms
+        srcOMP_elc = self.OMPsources.density_srcOMP(X,Y,Z)
+        srcOMP_ion = self.OMPsources.density_srcOMP(X,Y,Z)
+
+        # Integrate source terms
+        src_tot_elc = math_tools.integral_xyz(x, y, z, srcOMP_elc * self.geom_param.Jacobian)
+        src_tot_ion = math_tools.integral_xyz(x, y, z, srcOMP_ion * self.geom_param.Jacobian)
+
+        return src_tot_elc + src_tot_ion
 
     def reset_normalization(self,key):
         # Get the default dictionary
