@@ -472,6 +472,60 @@ def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False, 
         fig.tight_layout()
     figout.append(fig)
 
+def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_src_input=False,figout=[]):
+    fields,fig,axs = setup_figure(fieldnames)
+    for ax,field in zip(axs,fields):
+        if not isinstance(field,list):
+            subfields = [field] #simple plot
+        else:
+            subfields = field # field is a combined plot
+        for subfield in subfields:
+            addscale = 1
+            if subfield[-1] == 'e':
+                spec_s = 'elc'
+            elif subfield[-1] == 'i':
+                spec_s = 'ion'
+            if subfield[:-1] in ['n']:
+                comp = 0
+            elif subfield[:-1] in ['upar']:
+                comp = 1
+            elif subfield[:-1] in ['Tpar']:
+                comp = 2
+                addscale = simulation.phys_param.eV
+            elif subfield[:-1] in ['Tperp']:
+                comp = 3
+                addscale = simulation.phys_param.eV
+
+            f_ = simulation.data_param.fileprefix+'-'+spec_s+'_integrated_moms.gkyl'
+            # Load the data from the file
+            Gdata = pg.data.GData(f_)
+            int_moms = Gdata.get_values()
+            time = np.squeeze(Gdata.get_grid()) / simulation.normalization['tscale']
+            Ft = np.squeeze(int_moms[:,comp]) / simulation.normalization[subfield+'scale'] * addscale
+            Flbl = ddt*r'$\partial_t$ '+simulation.normalization[subfield+'symbol']
+            # Plot
+            ax.plot(time,Ft,label=Flbl)
+
+        # plot eventually the input power for comparison
+        if subfield == 'Wtot' and plot_src_input:
+            src_power = simulation.get_input_power()
+            if ddt:
+                ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
+                ax.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
+            else:
+                # plot the accumulate energy from the source
+                Wsrc_t = Ft[0] + src_power*simulation.normalization['tscale']*time/simulation.normalization['Wtotscale']
+                ax.plot(time,Wsrc_t,'--k',label='Source input')
+        # add labels and show legend
+        ax.set_xlabel(simulation.normalization['tunits'])
+        ax.set_ylabel(simulation.normalization[subfield+'units'])
+        if xlim:
+            ax.set_xlim(xlim)
+        if ylim:
+            ax.set_ylim(ylim)
+        ax.legend()
+        fig.tight_layout()
+    figout.append(fig)
     
 def label_from_simnorm(simulation,name):
     return label(simulation.normalization[name+'symbol'],simulation.normalization[name+'units'])
@@ -566,6 +620,14 @@ def save_figout(figout,fname):
     with open(fname+'.pkl', 'wb') as f:
         pickle.dump(figdatadict, f)
     print(fname+' saved.')
+
+def load_figout(fname):
+    import pickle
+    # Load the dictionary from the pickle file
+    with open(fname + '.pkl', 'rb') as f:
+        figdatadict = pickle.load(f)
+    print(fname + ' loaded.')
+    return figdatadict
 
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
