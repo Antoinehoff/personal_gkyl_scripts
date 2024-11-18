@@ -502,7 +502,17 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
             int_moms = Gdata.get_values()
             time = np.squeeze(Gdata.get_grid()) / simulation.normalization['tscale']
             Ft = np.squeeze(int_moms[:,comp]) / simulation.normalization[subfield+'scale'] * addscale
+            # remove double diagnostic
+            time, indices = np.unique(time, return_index=True)
+            Ft = Ft[indices]
+            # Labels
             Flbl = ddt*r'$\partial_t$ '+simulation.normalization[subfield+'symbol']
+            ylbl = simulation.normalization[subfield+'units']
+            if ddt: # time derivative
+                dfdt   = np.gradient(Ft,time,edge_order=2)
+                # we rescale it to obtain a result in seconds
+                Ft = dfdt/simulation.normalization['tscale']
+                ylbl = simulation.normalization[subfield+'units']+'/s'
             # Plot
             ax.plot(time,Ft,label=Flbl)
 
@@ -518,7 +528,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
                 ax.plot(time,Wsrc_t,'--k',label='Source input')
         # add labels and show legend
         ax.set_xlabel(simulation.normalization['tunits'])
-        ax.set_ylabel(simulation.normalization[subfield+'units'])
+        ax.set_ylabel(ylbl)
         if xlim:
             ax.set_xlim(xlim)
         if ylim:
@@ -526,6 +536,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
         ax.legend()
         fig.tight_layout()
     figout.append(fig)
+    return time
     
 def label_from_simnorm(simulation,name):
     return label(simulation.normalization[name+'symbol'],simulation.normalization[name+'units'])
