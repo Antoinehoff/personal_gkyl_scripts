@@ -62,6 +62,7 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
             # frame.values = frame.values/np.max(frame.values)
         t.append(frame.time)
         values.append(frame.values)
+    values = np.squeeze(values)
     frame.free_values() # remove values to free memory
     x = frame.new_grids[0]
     tsymb = simulation.normalization['tsymbol'] 
@@ -241,7 +242,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
 
         YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
         norm  = create_norm(vmin=vmin, vmax=vmax)
-        pcm = ax.pcolormesh(XX,YY,frame.values,cmap=cmap,norm=norm)
+        pcm = ax.pcolormesh(XX,YY,np.squeeze(frame.values),cmap=cmap,norm=norm)
         xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
         ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
         title  = frame.fulltitle
@@ -480,39 +481,66 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
         else:
             subfields = field # field is a combined plot
         for subfield in subfields:
-            addscale = 1
             if subfield[-1] == 'e':
                 spec_s = 'elc'
             elif subfield[-1] == 'i':
                 spec_s = 'ion'
-            if subfield[:-1] in ['n']:
-                comp = 0
-            elif subfield[:-1] in ['upar']:
-                comp = 1
-            elif subfield[:-1] in ['Tpar']:
-                comp = 2
-                addscale = simulation.phys_param.eV
-            elif subfield[:-1] in ['Tperp']:
-                comp = 3
-                addscale = simulation.phys_param.eV
 
-            f_ = simulation.data_param.fileprefix+'-'+spec_s+'_integrated_moms.gkyl'
+            if subfield[:-1] in ['n']:
+                def receipe(x): return x[:,0]
+                scale = 1.0
+                units = 'particles'
+                symbol = r'$\bar n_%s$'%spec_s[0]
+            elif subfield[:-1] in ['upar']:
+                def receipe(x): return x[:,1]
+                scale = simulation.species[spec_s].m*simulation.species[spec_s].vt
+                units = ''
+                symbol = r'$\bar u_{\parallel %s}/v_{t %s}$'%(spec_s[0],spec_s[0])
+            elif subfield[:-1] in ['Tpar']:
+                def receipe(x): return x[:,2]
+                scale = simulation.species[spec_s].m
+                units = 'eV'
+                symbol = r'$\bar T_{\parallel %s}$'%spec_s[0]
+            elif subfield[:-1] in ['Tperp']:
+                def receipe(x): return x[:,3]
+                scale = simulation.species[spec_s].m
+                units = 'eV'
+                symbol = r'$\bar T_{\perp %s}$'%spec_s[0]
+            elif subfield[:-1] in ['T']:
+                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])
+                scale = simulation.species[spec_s].m
+                units = 'eV'
+                symbol = r'$\bar T_{%s}$'%spec_s[0]
+            elif subfield[:-1] in ['W']:
+                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])*x[:,0]
+                scale = simulation.species[spec_s].m * simulation.phys_param.eV / 1e6
+                units = 'MJ'
+                symbol = r'$\bar n_{%s} \bar T_{%s}$'%(spec_s[0],spec_s[0])
+
             # Load the data from the file
+            f_ = simulation.data_param.fileprefix+'-'+spec_s+'_integrated_moms.gkyl'
             Gdata = pg.data.GData(f_)
             int_moms = Gdata.get_values()
             time = np.squeeze(Gdata.get_grid()) / simulation.normalization['tscale']
-            Ft = np.squeeze(int_moms[:,comp]) / simulation.normalization[subfield+'scale'] * addscale
+
+            Ft = receipe(int_moms)
+            Ft = np.squeeze(Ft)
+            # resacle
+            Ft = Ft * scale
             # remove double diagnostic
             time, indices = np.unique(time, return_index=True)
             Ft = Ft[indices]
             # Labels
-            Flbl = ddt*r'$\partial_t$ '+simulation.normalization[subfield+'symbol']
-            ylbl = simulation.normalization[subfield+'units']
+            Flbl = ddt*r'$\partial_t$ '+symbol
+            ylbl = units
             if ddt: # time derivative
                 dfdt   = np.gradient(Ft,time,edge_order=2)
                 # we rescale it to obtain a result in seconds
                 Ft = dfdt/simulation.normalization['tscale']
-                ylbl = simulation.normalization[subfield+'units']+'/s'
+                if ylbl == 'MJ':
+                    ylbl = 'MW'
+                else:
+                    ylbl = units+'/s'
             # Plot
             ax.plot(time,Ft,label=Flbl)
 
@@ -639,6 +667,10 @@ def load_figout(fname):
         figdatadict = pickle.load(f)
     print(fname + ' loaded.')
     return figdatadict
+
+def replot_figout(fname):
+    fdict = load_figout(fname)
+    plot_figdatadict(fdict)
 
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
