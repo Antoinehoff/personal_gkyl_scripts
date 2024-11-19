@@ -187,7 +187,7 @@ class DataParam:
                 grids = gdata_list[0].get_grid()
                 igrid = grids[i][:-1]
                 sExB  = np.gradient(vExB, igrid, axis=i)
-                return sExB
+                return sExB/vExB
             default_qttes.append([name,symbol,units,field2load,receipe_sExB])
 
         #-We define now composed quantities as pressures and fluxes 
