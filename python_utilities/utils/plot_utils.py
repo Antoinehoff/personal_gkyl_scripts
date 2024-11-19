@@ -658,19 +658,51 @@ def save_figout(figout,fname):
     # Save the dictionary to a JSON file
     with open(fname+'.pkl', 'wb') as f:
         pickle.dump(figdatadict, f)
-    print(fname+' saved.')
+    print(fname+'.pkl'+' saved.')
 
 def load_figout(fname):
     import pickle
     # Load the dictionary from the pickle file
     with open(fname + '.pkl', 'rb') as f:
         figdatadict = pickle.load(f)
-    print(fname + ' loaded.')
     return figdatadict
 
 def replot_figout(fname):
     fdict = load_figout(fname)
     plot_figdatadict(fdict)
+
+def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnums='all'):
+    import matplotlib.pyplot as plt
+    if file1[-4:] == '.pkl':
+        file1 = file1[:-4]
+    if file2[-4:] == '.pkl':
+        file2 = file2[:-4]
+    fdict1 = load_figout(file1)    
+    fdict2 = load_figout(file2)
+    
+    ax1 = fdict1[plot_idx]    
+    ax2 = fdict2[plot_idx]
+    
+    lnums,fig,axs = setup_figure(lnums)
+    for ax,lnum in zip(axs,lnums):
+        for lnums_sub in lnum:
+            if not isinstance(lnums_sub,list):
+                lnums_sub = [lnums_sub]
+            il = 0
+            for l_ in ax1['curves']:
+                if lnums_sub[0]=='all' or il in lnums_sub:
+                    ax.plot(l_['xdata'], l_['ydata'], label=name1)
+                il += 1
+            il = 0
+            for l_ in ax2['curves']:    
+                if lnums_sub[0]=='all' or il in lnums_sub:
+                    ax.plot(l_['xdata'], l_['ydata'], label=name2)
+                il += 1
+        ax.set_xlabel(ax1['xlabel'])
+        ax.set_ylabel(l_['label'])
+        ax.legend()
+    plt.tight_layout()
+    plt.show()
 
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
