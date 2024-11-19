@@ -174,21 +174,22 @@ class DataParam:
                 dphidk  = np.gradient(phi, kgrid, axis=k)
                 return -(dphidj*b_k - dphidk*b_j)/Jacob/Bmag
             default_qttes.append([name,symbol,units,field2load,receipe_vExB])
-
-            # ExB shearing rate
-            name       = 'sExB_%s'%(ci_)
-            symbol     = r'$s_{E,%s}$'%(ci_)
-            units      = r'1/s'
-            field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','phi']
-            # The receipe depends on the direction 
-            # because of the phi derivative
-            def receipe_sExB(gdata_list,i=i_):
-                vExB  = receipe_vExB(gdata_list,i=i)
-                grids = gdata_list[0].get_grid()
-                igrid = grids[i][:-1]
-                sExB  = np.gradient(vExB, igrid, axis=i)
-                return sExB
-            default_qttes.append([name,symbol,units,field2load,receipe_sExB])
+            for j_ in range(len(directions)):
+                cj_ = directions[j_] # direction of the flux component
+                # ExB shearing rate
+                name       = 'sExB%s_%s'%(ci_,cj_)
+                symbol     = r'$\partial_%s v_{E,%s}$'%(cj_,ci_)
+                units      = r'1/s'
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','phi']
+                # The receipe depends on the direction 
+                # because of the phi derivative
+                def receipe_sExB(gdata_list,i=i_,j=j_):
+                    vExBi = receipe_vExB(gdata_list,i=i)
+                    grids = gdata_list[0].get_grid()
+                    jgrid = grids[j][:-1]
+                    sExB  = np.gradient(vExBi, jgrid, axis=j)
+                    return sExB
+                default_qttes.append([name,symbol,units,field2load,receipe_sExB])
 
         #-We define now composed quantities as pressures and fluxes 
         # for each species present in the simulation
