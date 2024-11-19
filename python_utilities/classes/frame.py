@@ -120,7 +120,7 @@ class Frame:
             # compute again the values
             self.values = copy.deepcopy(self.receipe(self.Gdata))
             self.values = self.values.reshape(self.new_dims)                
-        self.values = np.squeeze(self.values)
+            self.values = np.squeeze(self.values)
 
     def normalize(self,values=True,time=True,grid=True):
         if time:
@@ -232,8 +232,8 @@ class Frame:
             self.vol_int /= self.simulation.geom_param.intJac
         return self.vol_int
     
-    def compute_surface_integral(self,direction='yz',jacob_squared=False,loss_only=False,
-                                 int_bounds = ['all','all']):
+    def compute_surface_integral(self,direction='yz',ccoord=0, integrant_filter="all",
+                                 int_bounds = ['all','all'], surf_coord = 'all'):
         # We load the original grid (in original units)
         [x,y,z]  = self.simulation.geom_param.grids
         dir_dict = {'x':[0,x],'y':[1,y],'z':[2,z]}
@@ -262,7 +262,8 @@ class Frame:
             iu2 = np.argmin(np.abs(grid2-int_bounds[1][1]))
 
         # Build the integrant
-        integrand = self.values*self.simulation.geom_param.Jacobian
+        self.slice_2D(plane=direction,ccoord=ccoord)
+        integrant = self.values*self.Jacobian
 
         # Zero out integrand value outside of the integration domain
         # Create slice objects for each dimension
@@ -271,17 +272,19 @@ class Frame:
         # Apply bounds (zero out all outside values of the given domain)
         for bound,dir in zip([[il1,iu1],[il2,iu2]],[dir1,dir2]):
             slices[dir]              = slice(None, bound[0])
-            integrand[tuple(slices)] = 0  # Set values below lower bound to 0
+            integrant[tuple(slices)] = 0  # Set values below lower bound to 0
             slices[dir]              = slice(bound[1] + 1, None)
-            integrand[tuple(slices)] = 0  # Set values above upper bound to 0
+            integrant[tuple(slices)] = 0  # Set values above upper bound to 0
             slices[dir]              = slice(None) # reset slice
 
         # Zero out all negative value if we consider loss only
-        if loss_only:
-            integrand[integrand < 0.0] = 0.0
+        if integrant_filter == "pos":
+            integrant[integrant < 0.0] = 0.0
+        elif integrant_filter == "neg":
+            integrant[integrant > 0.0] = 0.0
 
         # Calculate GB loss for this time frame
-        surf_int_z = np.trapz(integrand,  x=grid1, axis=dir1)
+        surf_int_z = np.trapz(integrant,  x=grid1, axis=dir1)
         surf_int_z = np.expand_dims(surf_int_z, axis=dir1)
         surf_int   = np.trapz(surf_int_z, x=grid2, axis=dir2)
         self.surf_int = surf_int.squeeze()
