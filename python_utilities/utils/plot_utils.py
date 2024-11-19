@@ -697,9 +697,10 @@ def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnu
             for l_ in ax2['curves']:    
                 if lnums_sub[0]=='all' or il in lnums_sub:
                     ax.plot(l_['xdata'], l_['ydata'], label=name2)
+                    ylabel = l_['label']
                 il += 1
+        ax.set_ylabel(ylabel)
         ax.set_xlabel(ax1['xlabel'])
-        ax.set_ylabel(l_['label'])
         ax.legend()
     plt.tight_layout()
     plt.show()
