@@ -344,6 +344,19 @@ class Simulation:
             units = r'$\%$'
             if not self.data_param.BiMaxwellian:
                 scale /= self.phys_param.eV / 3.0
+        elif norm == 'Pa':
+            for spec in self.species.values():
+                scale = 1/spec.m
+                if key == 'ppar%s'%spec.nshort:
+                    symbol = r'$p_{\parallel %s}$'%spec.nshort
+                elif key == 'pperp%s'%spec.nshort:
+                    symbol = r'$p_{\perp %s}$'%spec.nshort
+                elif key == 'p%s'%spec.nshort:
+                    symbol = r'$p_{%s}$'%spec.nshort
+            shift = 0
+            units = r'Pa'
+            if not self.data_param.BiMaxwellian:
+                scale /= self.phys_param.eV / 3.0
         #-- Grouped normalization
         if key.lower() == 'temperatures':
             for spec in self.species.values():
@@ -424,3 +437,19 @@ class Simulation:
     def norm_info(self):
         for msg in self.norm_log:
             print(msg)
+
+    def display_available_fields(self):
+        default_dict = DataParam.get_default_units_dict(self.species)
+        # Create a table to display the data
+        print(f"| {'Quantity':<15} | {'Symbol':<30} | {'Units':<20} |")
+        print(f"|{'-' * 17}|{'-' * 32}|{'-' * 22}|")
+
+        for key in default_dict:
+            if key.endswith('symbol'):  # Check for a specific type of key
+                quantity = key[:-6]  # Remove the suffix to get the base name
+                if not quantity in ['x','y','z','ky','wavelen','vpar','mu','t','fi']:
+                    symbol = default_dict[f'{quantity}symbol']
+                    units = default_dict.get(f'{quantity}units', 'N/A')
+                    # components = default_dict.get(f'{quantity}compo', 'N/A')
+                    # Format as a table row
+                    print(f"| {quantity:<15} | {symbol:<30} | {units:<20} |")
