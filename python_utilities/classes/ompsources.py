@@ -2,7 +2,8 @@ import numpy as np
 from tools import math_tools
 
 class OMPsources:
-    def __init__(self, n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src):
+    def __init__(self, n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src, 
+                 density_function="gaussian", temp_function_elc="default", temp_function_ion="default"):
         """
         Initializes the OMP source analysis with the required parameters.
 
@@ -13,6 +14,7 @@ class OMPsources:
         Ti_srcOMP (float): Ion temperature source.
         sigma_srcOMP (float): Standard deviation of the source Gaussian.
         floor_src (float): Floor source value to avoid zero density.
+        density_function (str or callable): Type of density function ('gaussian', 'exponential', or custom callable).
         """
         self.n_srcOMP     = n_srcOMP
         self.x_srcOMP     = x_srcOMP
@@ -21,47 +23,57 @@ class OMPsources:
         self.sigma_srcOMP = sigma_srcOMP
         self.floor_src    = floor_src
 
-    def density_srcOMP(self,x,y,z):
-        """
-        Computes the source term for density using the Gaussian profile.
+        # Assign the function type
+        if callable(density_function):
+            self.density_function = density_function
+        elif density_function == "gaussian":
+            self.density_function = self.gaussian_density
+        elif density_function == "exponential":
+            self.density_function = self.exponential_density
+        else:
+            raise ValueError("Unsupported density function type. Use 'gaussian', 'exponential', or a callable.")
 
-        Parameters:
-        x (ndarray): Position values for which the density source is calculated.
+        if callable(temp_function_elc):
+            self.temp_elc_srcOMP = temp_function_elc
+        elif temp_function_elc == "default":
+            self.temp_elc_srcOMP = self.default_temp_elc
+        else:
+            raise ValueError("Unsupported elc temperature function type. Use 'default' or a callable.")
 
-        Returns:
-        ndarray: Density source term.
-        """
-        fout = self.n_srcOMP * (np.exp(-((x - self.x_srcOMP) ** 2) / (2.0 * self.sigma_srcOMP ** 2)) + self.floor_src)
-        return fout
+        if callable(temp_function_ion):
+            self.temp_ion_srcOMP = temp_function_ion
+        elif temp_function_ion == "default":
+            self.temp_ion_srcOMP = self.default_temp_ion
+        else:
+            raise ValueError("Unsupported ion temperature function type. Use 'default' or a callable.")
 
-    def temp_elc_srcOMP(self,x,y,z):
-        """
-        Computes the electron temperature source term based on the position.
+    def gaussian_density(self, x, y=None, z=None):
+        """Gaussian profile for density."""
+        return self.n_srcOMP * (np.exp(-((x - self.x_srcOMP) ** 2) / (2.0 * self.sigma_srcOMP ** 2)) + self.floor_src)
 
-        Parameters:
-        x (ndarray): Position values for which the electron temperature source is calculated.
-
-        Returns:
-        ndarray: Electron temperature source term.
-        """
+    def exponential_density(self, x, y=None, z=None):
+        """Exponential profile for density."""
+        return self.n_srcOMP * (np.exp(-np.abs(x - self.x_srcOMP) / self.sigma_srcOMP) + self.floor_src)
+    
+    def default_temp_elc(self, x, y = None, z = None):
         mask = x < (self.x_srcOMP + 3 * self.sigma_srcOMP)
         fout = np.empty_like(x)
         fout[mask] = self.Te_srcOMP
         fout[~mask] = self.Te_srcOMP * 3.0 / 8.0
-        return fout
+        return fout  
 
-    def temp_ion_srcOMP(self,x,y,z):
-        """
-        Computes the ion temperature source term based on the position.
-
-        Parameters:
-        x (ndarray): Position values for which the ion temperature source is calculated.
-
-        Returns:
-        ndarray: Ion temperature source term.
-        """
+    def default_temp_ion(self, x, y = None, z = None):
         mask = x < (self.x_srcOMP + 3 * self.sigma_srcOMP)
         fout = np.empty_like(x)
         fout[mask] = self.Ti_srcOMP
         fout[~mask] = self.Ti_srcOMP * 3.0 / 8.0
-        return fout
+        return fout  
+    
+    def density_srcOMP(self, x, y, z):
+        return self.density_function(x,y,z)
+
+    def temp_elc_srcOMP(self,x,y,z):
+        return self.default_temp_elc(x,y,z)
+
+    def temp_ion_srcOMP(self,x,y,z):
+        return self.default_temp_ion(x,y,z)
