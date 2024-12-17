@@ -75,14 +75,21 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
     
 def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                            twindow=[],space_time=False, cmap='inferno',
+                           fluctuation=False, bckgrnd_avg_wind=[],
                            xlim=[], ylim=[], clim=[], figout=[]):
+    if not isinstance(twindow,list): twindow = [twindow]
     cmap0 = cmap
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourrier_y =\
               get_1xt_diagram(simulation,field,cdirection,ccoords,tfs=twindow)
+        if fluctuation:
+            average_data = np.mean(values, axis=0)
+            for it in range(len(t)) :
+                values[it,:] = values[it,:] - average_data[:]
+            vlabel = r'$\delta$' + vlabel
         if space_time:
-            if ((field in ['phi','upare','upari']) or cmap0=='bwr') and not fourrier_y:
+            if ((field in ['phi','upare','upari']) or cmap0=='bwr' or fluctuation) and not fourrier_y:
                 cmap = 'bwr'
                 vmax = np.max(np.abs(values)) 
                 vmin = -vmax
@@ -201,9 +208,15 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
 
 def plot_2D_cut(simulation,cdirection,ccoord,tf,
                 fieldnames='', cmap='inferno', full_plot=False,
+                time_average=False, fluctuation=False,
                 xlim=[], ylim=[], clim=[], 
                 figout=[],cutout=[]):
-    
+    # Check if we provide multiple time frames (time average or fluctuation plot)
+    if isinstance(tf, int):
+        tf = [tf]
+        time_average = False
+        fluctuation = False  # Fluctuation only makes sense with multiple time frames
+
     # Check if we need to fourier transform
     index = cdirection.find('k')
     if index > -1:
@@ -215,34 +228,58 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     cmap0 = cmap    
     fields,fig,axs = setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
-        frame = Frame(simulation,field,tf)
-        frame.load()
-        
-        if fourrier_y:
-            frame.fourrier_y()
+        # Load and process data for all time frames
+        frames = []
+        for t in tf:
+            frame = Frame(simulation, field, t)
+            frame.load()
+            
+            if fourrier_y:
+                frame.fourrier_y()
+                
+            frame.slice_2D(cdirection, ccoord)
+            frames.append(frame)
+        # Calculate mean and fluctuation if needed
+        values_all = np.array([frame.values for frame in frames])
+        if len(tf) > 1:  # Multiple time frames
+            mean_values = np.mean(values_all, axis=0)
+            fluct_values = values_all - mean_values[np.newaxis, ...]
 
-        frame.slice_2D(cdirection,ccoord)
+        # Determine what to plot
+        if fluctuation and len(tf) > 1:
+            mean_values = np.mean([frame.values for frame in frames], axis=0)
+            plot_data = frames[-1].values - mean_values[np.newaxis, ...]
+        elif time_average and len(tf) > 1:
+            plot_data = np.mean([frame.values for frame in frames], axis=0)  # Time-averaged data
+        else:
+            plot_data = frames[-1].values  # Single time frame data
 
+        frame = frames[-1] # keep only the last one
+        vsymbol = frame.vsymbol
         if ((field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr')\
             and not fourrier_y:
             cmap = 'bwr'
-            vmax = np.max(np.abs(frame.values)) 
+            vmax = np.max(np.abs(plot_data)) 
             vmin = -vmax
         else:
             cmap = cmap0
-            vmax = np.max(frame.values)
-            vmin = np.min(frame.values)
+            vmax = np.max(plot_data)
+            vmin = np.min(plot_data)
 
         if fourrier_y:
             vmin  = np.power(10,np.log10(vmax)-4)
-            frame.values = np.clip(frame.values, vmin, None)  # We plot 4 orders of magnitude
+            plot_data = np.clip(plot_data, vmin, None)  # We plot 4 orders of magnitude
             create_norm = mcolors.LogNorm
         else:
             create_norm = mcolors.Normalize
 
+        if fluctuation:
+            vsymbol = r'$\delta$'+ vsymbol
+        elif time_average:
+            vsymbol = r'$\langle$'+vsymbol + r'$\rangle$'
         YY,XX = np.meshgrid(frame.new_grids[1],frame.new_grids[0])
         norm  = create_norm(vmin=vmin, vmax=vmax)
-        pcm = ax.pcolormesh(XX,YY,np.squeeze(frame.values),cmap=cmap,norm=norm)
+        pcm = ax.pcolormesh(XX,YY,np.squeeze(plot_data),cmap=cmap,norm=norm)
         xlabel = label(frame.new_gsymbols[0],frame.new_gunits[0])
         ylabel = label(frame.new_gsymbols[1],frame.new_gunits[1])
         title  = frame.fulltitle
@@ -252,7 +289,10 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
         if fourrier_y and False:
             title = r'FFT$_y($'+ frame.vsymbol + '), '+ title
         else:
-            cbar = fig.colorbar(pcm,label=label(frame.vsymbol,frame.vunits))
+            lbl = label(vsymbol,frame.vunits)
+            if fluctuation or time_average:
+                lbl += ' (avg from %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
+            cbar = fig.colorbar(pcm,label=lbl)
         if xlim:
             ax.set_xlim(xlim)
         if ylim:
@@ -271,7 +311,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     cutout.append(frame.slicecoords)
 
 def make_2D_movie(simulation,cdirection,ccoord,tfs,
-                      fieldnames='', cmap='inferno',
+                      fieldnames='', cmap='inferno', fluctuation=False,
                       xlim=[], ylim=[], clim=[], full_plot=False,
                       fourrier_y=False):
     os.makedirs('gif_tmp', exist_ok=True)
