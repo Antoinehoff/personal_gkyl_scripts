@@ -210,7 +210,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
                 fieldnames='', cmap='inferno', full_plot=False,
                 time_average=False, fluctuation=False,
                 xlim=[], ylim=[], clim=[], 
-                figout=[],cutout=[]):
+                figout=[],cutout=[], val_out=[]):
     # Check if we provide multiple time frames (time average or fluctuation plot)
     if isinstance(tf, int):
         tf = [tf]
@@ -239,11 +239,6 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
                 
             frame.slice_2D(cdirection, ccoord)
             frames.append(frame)
-        # Calculate mean and fluctuation if needed
-        values_all = np.array([frame.values for frame in frames])
-        if len(tf) > 1:  # Multiple time frames
-            mean_values = np.mean(values_all, axis=0)
-            fluct_values = values_all - mean_values[np.newaxis, ...]
 
         # Determine what to plot
         if fluctuation and len(tf) > 1:
@@ -309,9 +304,10 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     # This allows to return the figure in the arguments line (used for movies)
     figout.append(fig)
     cutout.append(frame.slicecoords)
+    val_out.append(np.squeeze(plot_data))
 
 def make_2D_movie(simulation,cdirection,ccoord,tfs,
-                      fieldnames='', cmap='inferno', fluctuation=False,
+                      fieldnames='', cmap='inferno',
                       xlim=[], ylim=[], clim=[], full_plot=False,
                       fourrier_y=False):
     os.makedirs('gif_tmp', exist_ok=True)
@@ -336,7 +332,6 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
     # Naming
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = 'movie_'+dataname+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:

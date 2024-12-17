@@ -3,7 +3,7 @@ from tools import math_tools
 
 class OMPsources:
     def __init__(self, n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src, 
-                 density_function="gaussian", temp_function_elc="default", temp_function_ion="default"):
+                 density_src_profile="default", temp_src_profile_elc="default", temp_src_profile_ion="default"):
         """
         Initializes the OMP source analysis with the required parameters.
 
@@ -24,25 +24,25 @@ class OMPsources:
         self.floor_src    = floor_src
 
         # Assign the function type
-        if callable(density_function):
-            self.density_function = density_function
-        elif density_function == "gaussian":
+        if callable(density_src_profile):
+            self.density_function = density_src_profile
+        elif density_src_profile in ["gaussian","default"]:
             self.density_function = self.gaussian_density
-        elif density_function == "exponential":
+        elif density_src_profile == "exponential":
             self.density_function = self.exponential_density
         else:
             raise ValueError("Unsupported density function type. Use 'gaussian', 'exponential', or a callable.")
 
-        if callable(temp_function_elc):
-            self.temp_elc_srcOMP = temp_function_elc
-        elif temp_function_elc == "default":
+        if callable(temp_src_profile_elc):
+            self.temp_elc_srcOMP = temp_src_profile_elc
+        elif temp_src_profile_elc == "default":
             self.temp_elc_srcOMP = self.default_temp_elc
         else:
             raise ValueError("Unsupported elc temperature function type. Use 'default' or a callable.")
 
-        if callable(temp_function_ion):
-            self.temp_ion_srcOMP = temp_function_ion
-        elif temp_function_ion == "default":
+        if callable(temp_src_profile_ion):
+            self.temp_ion_srcOMP = temp_src_profile_ion
+        elif temp_src_profile_ion == "default":
             self.temp_ion_srcOMP = self.default_temp_ion
         else:
             raise ValueError("Unsupported ion temperature function type. Use 'default' or a callable.")

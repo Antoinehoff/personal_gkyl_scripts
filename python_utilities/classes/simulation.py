@@ -96,9 +96,11 @@ class Simulation:
             temp_model=temp_model, dens_model=dens_model, species = species
         )
 
-    def set_OMPsources(self, n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src):
+    def set_OMPsources(self, n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src,
+                       density_src_profile = "default", temp_src_profile_elc = "default", temp_src_profile_ion = "default"):
         self.OMPsources = OMPsources(
-            n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src
+            n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP, floor_src, 
+            density_src_profile, temp_src_profile_elc, temp_src_profile_ion
         )
 
     def set_species(self, name, m, q, T0, n0):
