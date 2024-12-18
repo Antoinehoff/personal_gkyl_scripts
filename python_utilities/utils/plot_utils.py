@@ -332,6 +332,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
     # Naming
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
+    moviename = 'movie_'+dataname+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
