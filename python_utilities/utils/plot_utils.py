@@ -49,8 +49,7 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
     # to store iteratively times and values
     t  = []
     values = []
-    if isinstance(tfs,int):
-        tfs = [tfs]
+    if not isinstance(tfs,list): tfs = [tfs]
     # Fill ZZ with data for each time frame
     for it, tf in enumerate(tfs):
         frame = Frame(simulation,fieldname,tf)
@@ -63,6 +62,7 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
         t.append(frame.time)
         values.append(frame.values)
     values = np.squeeze(values)
+    if values.ndim == 1: values = values.reshape(1,-1)
     frame.free_values() # remove values to free memory
     x = frame.new_grids[0]
     tsymb = simulation.normalization['tsymbol'] 
