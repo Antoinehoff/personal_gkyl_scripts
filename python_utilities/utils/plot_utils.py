@@ -309,7 +309,7 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
 def make_2D_movie(simulation,cdirection,ccoord,tfs,
                       fieldnames='', cmap='inferno',
                       xlim=[], ylim=[], clim=[], full_plot=False,
-                      fourrier_y=False):
+                      fourrier_y=False,movieprefix=''):
     os.makedirs('gif_tmp', exist_ok=True)
     
     if isinstance(fieldnames,str):
@@ -332,7 +332,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
     # Naming
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = 'movie_'+dataname+cutname[0]
+    moviename = movieprefix+'movie_'+dataname+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
