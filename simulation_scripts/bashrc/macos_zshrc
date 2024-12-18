@@ -1,0 +1,39 @@
+# Macos bashrc
+
+# Personnal aliases
+alias pg=pgkyl
+alias setup_pgkyl='conda activate pgkyl'
+alias connect_stellar='ssh ah1032@stellar-amd.princeton.edu'
+alias du='du -h'
+alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_total_runtime.sh'
+alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_available_frames.sh'
+alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'
+alias gkyl_new_sim='sh ~/personal_gkyl_scripts/simulation_scripts/new_sim/perlmutter_new_sim.sh'
+alias ll='ls -l'
+
+# Personnal functions
+
+# Path manipulation
+# Add latex binary file
+export PATH="/Library/TeX/texbin:$PATH"
+# Add anaconda binary files
+export PATH=$PATH:/opt/anaconda3/bin
+
+
+# >>> conda initialize >>>
+# !! Contents within this block are managed by 'conda init' !!
+__conda_setup="$('/opt/anaconda3/bin/conda' 'shell.zsh' 'hook' 2> /dev/null)"
+if [ $? -eq 0 ]; then
+    eval "$__conda_setup"
+else
+    if [ -f "/opt/anaconda3/etc/profile.d/conda.sh" ]; then
+        . "/opt/anaconda3/etc/profile.d/conda.sh"
+    else
+        export PATH="/opt/anaconda3/bin:$PATH"
+    fi
+fi
+unset __conda_setup
+# <<< conda initialize <<<
+
+# run fish
+fish
