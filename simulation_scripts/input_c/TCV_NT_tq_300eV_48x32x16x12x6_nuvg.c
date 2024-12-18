@@ -1,3 +1,14 @@
+/*
+This input file sets up a 3x2v GK simulation with Gkeyll using
+a clopen domain. The physical parameters are taken from a NT
+TCV discharge. The resolution is 48x32x16x12x6 with a fairly
+small velocity box size. 
+
+These parameters produce a stable GK turbulence simulation for
+many miliseconds when used with the gk-g0-app-clopen-fix2-phase5.1
+branch
+*/
+
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
