@@ -45,8 +45,8 @@ class Simulation:
             x_out = x_out
         )
 
-    def set_data_param(self, expdatadir, g0simdir, simname, simdir, fileprefix, 
-                       wkdir, BiMaxwellian=True, species = {}):
+    def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",
+                       wkdir = "", BiMaxwellian=True, species = {}):
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
@@ -77,7 +77,11 @@ class Simulation:
         # Load
         data = pg.data.GData(filename)
         normgrids = data.get_grid()
-        normx, normy, normz = normgrids[0], normgrids[1], normgrids[2]
+        if len(normgrids) == 3:
+            normx, normy, normz = normgrids[0], normgrids[1], normgrids[2]
+        elif len(normgrids) == 2:
+            normx, normz = normgrids[0], normgrids[1]
+            normy = np.array([0])
         
         Nx = (normx.shape[0] - 2) * 2  # Double resolution in x
         Ny = (normy.shape[0] - 2) * 2  # Double resolution in y

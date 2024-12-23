@@ -53,3 +53,9 @@ def create_uniform_array(a, N):
 
 def closest_index(array,value):
     return np.abs(array - value).argmin()
+
+def gradient(array,grid,axis):
+    if(len(array[axis])>1):
+        return np.gradient(array, grid, axis=axis)
+    else:
+        return np.zeros_like(array)

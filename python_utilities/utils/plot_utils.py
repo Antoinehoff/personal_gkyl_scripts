@@ -11,6 +11,7 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
+from tools import pgkyl_interface as pgkyl_
 
 # set the font to be LaTeX
 if check_latex_installed(verbose=True):
@@ -556,7 +557,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
             # Load the data from the file
             f_ = simulation.data_param.fileprefix+'-'+spec_s+'_integrated_moms.gkyl'
             Gdata = pg.data.GData(f_)
-            int_moms = Gdata.get_values()
+            int_moms = pgkyl_.get_values(Gdata)
             time = np.squeeze(Gdata.get_grid()) / simulation.normalization['tscale']
 
             Ft = receipe(int_moms)

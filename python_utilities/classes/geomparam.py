@@ -1,6 +1,8 @@
 import postgkyl as pg
 import numpy as np
 import scipy.integrate as integrate
+from tools import pgkyl_interface as pgkyl_
+from tools import math_tools as mt
 
 class GeomParam:
     def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B0=1.4, x_out = 0.08,
@@ -47,20 +49,21 @@ class GeomParam:
         Gdata = pg.data.GData(fname)
         dg = pg.data.GInterpModal(Gdata,1,'ms')
         dg.interpolate(0,overwrite=True)
-        self.bmag = Gdata.get_values()
+        self.bmag = pgkyl_.get_values(Gdata)
         self.bmag = self.bmag[:,:,:,0]
         
         #-- load grid
-        self.grids = [0.5*(g[1:]+g[:-1]) for g in Gdata.get_grid() if len(g) > 1]
+        # self.grids = [0.5*(g[1:]+g[:-1]) for g in Gdata.get_grid() if len(g) > 1]
+        self.grids = [0.5*(g[1:]+g[:-1]) for g in pgkyl_.get_grid(Gdata) if len(g) > 1]
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
         self.Lx    = self.x[-1]-self.x[0]
         self.Ly    = self.y[-1]-self.y[0]
         self.Lz    = self.z[-1]-self.z[0]
         #self.toroidal_mn =  2.*np.pi*self.R_LCFSmid/self.q0/self.Ly
         #-- compute associated derivatives
-        self.dBdx = np.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
-        self.dBdy = np.gradient(self.bmag, self.grids[1], axis=1)  # Derivative w.r.t y
-        self.dBdz = np.gradient(self.bmag, self.grids[2], axis=2)  # Derivative w.r.t z
+        self.dBdx = mt.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
+        self.dBdy = mt.gradient(self.bmag, self.grids[1], axis=1)  # Derivative w.r.t y
+        self.dBdz = mt.gradient(self.bmag, self.grids[2], axis=2)  # Derivative w.r.t z
 
         #-- load g_ij (not useful yet)
         # fname = simulation.data_param.fileprefix+'-'+'g_ij.gkyl'
@@ -72,7 +75,7 @@ class GeomParam:
             Gdata = pg.data.GData(fname)
             dg = pg.data.GInterpModal(Gdata,1,'ms')
             dg.interpolate(i,overwrite=True)
-            tmp_ = Gdata.get_values()
+            tmp_ = pgkyl_.get_values(Gdata)
             self.b_i.append(tmp_[:,:,:,0])
 
         #-- Load Jacobian
@@ -80,7 +83,7 @@ class GeomParam:
         Gdata = pg.data.GData(fname)
         dg = pg.data.GInterpModal(Gdata,1,'ms')
         dg.interpolate(0,overwrite=True)
-        self.Jacobian = Gdata.get_values()
+        self.Jacobian = pgkyl_.get_values(Gdata)
         self.Jacobian = self.Jacobian[:,:,:,0]
         J_yz          = np.trapz(self.Jacobian,self.x,axis=0)
         J_z           = np.trapz(J_yz,self.y,axis=0)

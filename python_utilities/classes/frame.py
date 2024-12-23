@@ -2,6 +2,8 @@ import postgkyl as pg
 import numpy as np
 from tools import math_tools as mt
 import copy
+from tools import pgkyl_interface as pgkyl_
+
 def getgrid_index(s):
     return  (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm'))-1
 
@@ -89,7 +91,7 @@ class Frame:
             self.Gdata.append(Gdata)
             if Gdata.ctx['time']:
                 self.time = Gdata.ctx['time']
-        self.grids   = [g for g in Gdata.get_grid() if len(g) > 1]
+        self.grids   = [g for g in pgkyl_.get_grid(Gdata) if len(g) > 2]
         self.cells   = Gdata.ctx['cells']
         self.ndims   = len(self.cells)
         self.dim_idx = list(range(self.ndims))
@@ -97,22 +99,20 @@ class Frame:
             self.time = 0
         self.refresh()
         self.normalize()
-        self.rename()
 
     def refresh(self,values=True):
-        self.new_cells    = self.Gdata[0].ctx['cells']
+        self.new_cells    = pgkyl_.get_cells(self.Gdata[0])
         self.new_grids    = []
         self.new_gnames   = []
         self.new_gsymbols = []
         self.new_gunits   = []
         self.new_dims     = [c_ for c_ in self.new_cells if c_ > 1]
-        self.dim_idx      = [d_ for d_ in range(self.ndims) if d_ not in self.sliceddim]
+        self.dim_idx      = [d_ for d_ in range(3) if d_ not in self.sliceddim]
         for idx in self.dim_idx:
             # number of points in the idx grid
             Ngidx = len(self.grids[idx])
             # there is an additional point we have to remove to have similar size with values
             self.new_grids.append(mt.create_uniform_array(self.grids[idx],Ngidx-1))
-            # self.new_grids.append(self.grids[idx][:-1])
             self.new_gnames.append(self.gnames[idx])
             self.new_gsymbols.append(self.gsymbols[idx])
             self.new_gunits.append(self.gunits[idx])
@@ -158,6 +158,7 @@ class Frame:
     def select_slice(self, direction, cut):
         # Map the direction to the corresponding axis index
         direction_map = {'x':0,'y':1,'z':2,'vpar':3,'mu':4}
+            
         if direction not in direction_map:
             raise ValueError("Invalid direction '"+direction+"': must be 'x', 'y', 'z', 'vpar', or 'mu'")
         
@@ -216,7 +217,7 @@ class Frame:
         i3   = 2*(i1==0 and i2==1)+1*(i1==0 and i2==2)+0*(i1==1 and i2==2)
         sdir = self.gnames[i3]
         # Reduce the dimensionality of the data
-        self.select_slice(direction=sdir,cut=ccoord)
+        self.select_slice(direction=sdir,cut=ccoord)          
         self.refresh(values=False)
 
     def compute_volume_integral(self,jacob_squared=False,average=False):
