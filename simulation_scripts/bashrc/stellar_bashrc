@@ -32,5 +32,5 @@ alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utili
 alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'
 alias gkyl_salloc_one_gpu_30min='salloc --time=00:30:00 --gres=gpu:1'
 alias gkyl_new_sim='sh ~/personal_gkyl_scripts/simulation_scripts/new_sim/stellar_new_sim.sh'
-alias gkyl_salloc_one_gpu='salloc --gres=gpu:1'
+alias gkyl_salloc_one_gpu_node='salloc --gres=gpu:2 --tasks-per-node=2 --nodes 1 --time 12:00:00'
 alias ll='ls -l'
