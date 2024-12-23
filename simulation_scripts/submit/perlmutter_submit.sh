@@ -3,21 +3,26 @@ set -e
 #.SLURM PARAMETERS (user oriented)
 #.Declare a name for this job, preferably with 16 or fewer characters.
 JOB_NAME="gk_tcv_3x2v"
-#.Request the queue.
-#.QOS="debug"
-QOS="regular"
 #.Number of nodes to request.
 NODES=1
 #.Specify GPUs per node (Perlmutter has 4 GPUs per node):
 GPU_PER_NODE=4
 #.Request wall time
-TIME="02:00:00"  # HH:MM:SS
+TIME="20:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load
 MODULES="PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.0 nccl/2.18.3-cu12"
 #.Set the account
 ACCOUNT="m2116"
+
+# Check if the script is called with "debug"
+if [[ "$1" == "debug" ]]; then
+    QOS="debug"
+    TIME="00:10:00"
+else
+    QOS="regular"
+fi
 
 #.AUXILIARY SLURM VARIABLES
 #.Total number of cores/tasks/MPI processes.
@@ -111,8 +116,8 @@ cat <<EOT > $SCRIPTNAME
 #SBATCH --account $ACCOUNT
 module load $MODULES
 export MPICH_GPU_SUPPORT_ENABLED=0
-export DVS_MAXNODES=24_
-export MPICH_MPIIO_DVS_MAXNODES=24
+export DVS_MAXNODES=32_
+export MPICH_MPIIO_DVS_MAXNODES=32
 $RUNCMD
 exit 0
 EOT
