@@ -22,21 +22,6 @@ plt.rcParams.update({'font.size': 14})
 
 import os, re
 
-# # Function reads gkyl data of 2D axisymmetric fields and produces 1D array
-# # at outer midplane (omp)
-# def func_data_omp(field2d, comp):
-#     field2dInterp = pg.data.GInterpModal(field2d, 1, 'ms')
-#     interpGrid, field2dValues = field2dInterp.interpolate(comp)
-#     # get cell center coordinates since interpolate returns edge values
-#     CCC = []
-#     for j in range(0,len(interpGrid)):
-#         CCC.append((interpGrid[j][1:] + interpGrid[j][:-1])/2)
-#     x_vals = CCC[0]
-#     z_vals = CCC[1]
-#     z_slice = len(z_vals)//2
-#     field1dValues = field2dValues[:,z_slice,0]
-#     return x_vals,field1dValues
-
 def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
                     tfs):
     # Check if we need to fourier transform
@@ -145,12 +130,12 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
     figout.append(fig)
 
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
-            tfs=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
+            time_frames=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
             figout = [], errorbar = False):
     
     fields,fig,axs = setup_figure(fieldnames)
 
-    if isinstance(tfs,int) or len(tfs) == 1:
+    if isinstance(time_frames,int) or len(time_frames) == 1:
         time_avg = False
     else:
         time_avg = True
@@ -162,7 +147,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             subfields = field # field is a combined plot
         for subfield in subfields:
             x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourrier_y =\
-                get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=tfs)
+                get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=time_frames)
             # Compute the average of data over the t-axis (axis=1)
             average_data = np.mean(values, axis=0)
             # Compute the standard deviation of data over the t-axis (axis=1)
@@ -207,22 +192,22 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
     fig.tight_layout()
     figout.append(fig)
 
-def plot_2D_cut(simulation,cdirection,ccoord,tf,
+def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
                 fieldnames='', cmap='inferno', full_plot=False,
                 time_average=False, fluctuation=False,
                 xlim=[], ylim=[], clim=[], 
                 figout=[],cutout=[], val_out=[]):
     # Check if we provide multiple time frames (time average or fluctuation plot)
-    if isinstance(tf, int):
-        tf = [tf]
+    if isinstance(time_frame, int):
+        time_frame = [time_frame]
         time_average = False
         fluctuation = False  # Fluctuation only makes sense with multiple time frames
 
     # Check if we need to fourier transform
-    index = cdirection.find('k')
+    index = cut_dir.find('k')
     if index > -1:
         fourrier_y = True
-        cdirection = cdirection.replace('k','')
+        cut_dir = cut_dir.replace('k','')
     else:
         fourrier_y = False
 
@@ -231,29 +216,29 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     for ax,field in zip(axs,fields):
         # Load and process data for all time frames
         frames = []
-        for t in tf:
+        for t in time_frame:
             frame = Frame(simulation, field, t)
             frame.load()
             
             if fourrier_y:
                 frame.fourrier_y()
                 
-            frame.slice_2D(cdirection, ccoord)
+            frame.slice_2D(cut_dir, cut_coord)
             frames.append(frame)
 
         # Determine what to plot
-        if fluctuation and len(tf) > 1:
+        if fluctuation and len(time_frame) > 1:
             mean_values = np.mean([frame.values for frame in frames], axis=0)
             plot_data = frames[-1].values - mean_values[np.newaxis, ...]
-        elif time_average and len(tf) > 1:
+        elif time_average and len(time_frame) > 1:
             plot_data = np.mean([frame.values for frame in frames], axis=0)  # Time-averaged data
         else:
             plot_data = frames[-1].values  # Single time frame data
 
         frame = frames[-1] # keep only the last one
         vsymbol = frame.vsymbol
-        if ((field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr')\
-            and not fourrier_y:
+        if ((field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr'\
+            or fluctuation) and not fourrier_y:
             cmap = 'bwr'
             vmax = np.max(np.abs(plot_data)) 
             vmin = -vmax
@@ -307,10 +292,9 @@ def plot_2D_cut(simulation,cdirection,ccoord,tf,
     cutout.append(frame.slicecoords)
     val_out.append(np.squeeze(plot_data))
 
-def make_2D_movie(simulation,cdirection,ccoord,tfs,
-                      fieldnames='', cmap='inferno',
-                      xlim=[], ylim=[], clim=[], full_plot=False,
-                      fourrier_y=False,movieprefix=''):
+def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
+                      cmap='inferno', xlim=[], ylim=[], clim=[], 
+                      full_plot=False, movieprefix=''):
     os.makedirs('gif_tmp', exist_ok=True)
     
     if isinstance(fieldnames,str):
@@ -320,20 +304,31 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
         for f_ in fieldnames:
             dataname += f_+'_'
 
-    for tf in tfs:
-        figout = []; cutout = []
-        plot_2D_cut(simulation,cdirection,ccoord,tf=tf,fieldnames=fieldnames,
-                    cmap=cmap,full_plot=full_plot,
-                    xlim=xlim,ylim=ylim,clim=clim,
-                    cutout=cutout,figout=figout)
+
+    total_frames = len(time_frames)
+    for i, tf in enumerate(time_frames, 1):  # Start the index at 1
+        figout = []
+        cutout = []
+        plot_2D_cut(
+            simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
+            cmap=cmap, full_plot=full_plot,
+            xlim=xlim, ylim=ylim, clim=clim,
+            cutout=cutout, figout=figout
+        )
         fig = figout[0]
         fig.tight_layout()
         fig.savefig(f'gif_tmp/plot_{tf}.png')
         plt.close()
+
+        # Update progress
+        progress = f"Processing frames: {i}/{total_frames}... "
+        sys.stdout.write("\r" + progress)
+        sys.stdout.flush()
+    sys.stdout.write("\n")
     # Naming
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = movieprefix+'movie_'+dataname+cutname[0]
+    moviename = movieprefix+'_movie_'+dataname+cutname[0]
     if xlim:
         moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
     if ylim:
@@ -342,7 +337,7 @@ def make_2D_movie(simulation,cdirection,ccoord,tfs,
         moviename+='_clim_%2.2d_%2.2d'%(clim[0],clim[1])
     moviename += '.gif'
     # Compiling the movie images
-    images = [Image.open(f'gif_tmp/plot_{tf}.png') for tf in tfs]
+    images = [Image.open(f'gif_tmp/plot_{tf}.png') for tf in time_frames]
     # Save as gif
     images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
     print("movie "+moviename+" created.")
@@ -407,24 +402,38 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2,figout=[]):
               %(Ssimul,Smodel))
     figout.append(fig)
 
-def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
+def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
                               jacob_squared=False, plot_src_input=False,
                               add_GBloss = False, average = False, figout=[], rm_legend=False):
     fields,fig,axs = setup_figure(fieldnames)
-    for ax,field in zip(axs,fields):
-        if not isinstance(field,list):
-            subfields = [field] #simple plot
+    total_fields = len(fields)
+    total_frames = len(time_frames)
+
+    for field_idx, (ax, field) in enumerate(zip(axs, fields), 1):
+        if not isinstance(field, list):
+            subfields = [field]  # Simple plot
         else:
-            subfields = field # field is a combined plot
-        for subfield in subfields:
+            subfields = field  # Field is a combined plot
+
+        for subfield_idx, subfield in enumerate(subfields, 1):
             ftot_t = []
-            time  = []
-            for tf in tfs:
-                f_ = Frame(simulation=simulation,name=subfield,tf=tf)
+            time = []
+
+            for frame_idx, tf in enumerate(time_frames, 1):
+                f_ = Frame(simulation=simulation, name=subfield, tf=tf)
                 f_.load()
 
                 time.append(f_.time)
-                ftot_t.append(f_.compute_volume_integral(jacob_squared=jacob_squared,average=average))
+                ftot_t.append(f_.compute_volume_integral(jacob_squared=jacob_squared, average=average))
+
+                # Update progress for time frame loop
+                progress = (
+                    f"Processing: Field {field_idx}/{total_fields}, "
+                    f"Subfield {subfield_idx}/{len(subfields)}, "
+                    f"Frame {frame_idx}/{total_frames}"
+                )
+                sys.stdout.write("\r" + progress)
+                sys.stdout.flush()
 
             if ddt: # time derivative
                 dfdt   = np.gradient(ftot_t,time)
@@ -442,7 +451,7 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
                 for spec in simulation.species.values():
                     gbl_s, _ = simulation.get_GBloss_t(
                         spec    = spec,
-                        twindow = tfs,
+                        twindow = time_frames,
                         ix      = 0,
                         losstype = 'energy',
                         integrate = True)
@@ -465,7 +474,6 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
             ax.plot(time,Ft,label=Flbl)
             if add_GBloss:
                 ax.plot(time,Ft-gbl,label='w/o gB loss')
-
         # plot eventually the input power for comparison
         if subfield == 'Wtot' and plot_src_input:
             src_power = simulation.get_input_power()
@@ -476,6 +484,10 @@ def plot_volume_integral_vs_t(simulation, fieldnames, tfs=[], ddt=False,
                 # plot the accumulate energy from the source
                 Wsrc_t = ftot_t[0] + src_power*simulation.normalization['tscale']*time/simulation.normalization['Wtotscale']
                 ax.plot(time,Wsrc_t,'--k',label='Source input')
+
+        # Print a newline after completing all frames for the current subfield
+        sys.stdout.write("\n")
+
         # add labels and show legend
         ax.set_xlabel(xlbl)
         ax.set_ylabel(ylbl)
