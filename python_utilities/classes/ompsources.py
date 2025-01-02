@@ -1,4 +1,5 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from tools import math_tools
 
 class OMPsources:
@@ -77,3 +78,30 @@ class OMPsources:
 
     def temp_ion_srcOMP(self,x,y,z):
         return self.default_temp_ion(x,y,z)
+    
+    def plot(self, x_grid, y_const, z_const):
+        # Evaluate the source profiles
+        density = self.density_srcOMP(x_grid, y_const, z_const)
+        temp_elc = self.temp_elc_srcOMP(x_grid, y_const, z_const)
+        temp_ion = self.temp_ion_srcOMP(x_grid, y_const, z_const)
+        
+        # Create the subplots
+        fig, axs = plt.subplots(2, 1, figsize=(6, 4), sharex=True)
+        
+        # Plot density in the first subplot
+        axs[0].plot(x_grid, density, label="Density", color="black", linestyle="-")
+        axs[0].set_title(r"Source Profiles at $y = {:.2f}$, $z = {:.2f}$".format(y_const, z_const))
+        axs[0].set_ylabel(r"Density [1/$m^3$]")
+        axs[0].grid(True, linestyle="--", alpha=0.7)
+        
+        # Plot temperatures in the second subplot
+        axs[1].plot(x_grid, temp_elc, label="Electron", color="blue", linestyle="--")
+        axs[1].plot(x_grid, temp_ion, label="Ion", color="red", linestyle="-.")
+        axs[1].set_xlabel(r"x-grid [m]")
+        axs[1].set_ylabel(r"Temperature [J]")
+        axs[1].grid(True, linestyle="--", alpha=0.7)
+        axs[1].legend()
+        
+        # Adjust layout and show the plot
+        plt.tight_layout()
+        plt.show()
