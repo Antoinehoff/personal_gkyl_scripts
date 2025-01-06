@@ -3,3 +3,9 @@
 *pycache*
 *.ipynb_checkpoints
 *.pkl
+*.gkyl
+*.gif
+*.mp4
+*.json
+simulation_scripts/.DS_Store
+.*
