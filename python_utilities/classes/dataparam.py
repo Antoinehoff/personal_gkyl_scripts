@@ -70,7 +70,7 @@ class DataParam:
         data_field_dict['phi'+'comp'] = 0
         data_field_dict['phi'+'gnames'] = gnames[0:3]
         
-        # add moments info        
+        # add bimax moments and dist func info        
         keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
         for spec in species.values():
             s_        = spec.name
@@ -90,6 +90,51 @@ class DataParam:
             data_field_dict['f'+shortname+'file'] = s_
             data_field_dict['f'+shortname+'comp'] = 0
             data_field_dict['f'+shortname+'gnames'] = gnames
+
+        # add moments info        
+        keys  = ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
+        for spec in species.values():
+            s_        = spec.name
+            shortname = spec.nshort
+            comps  = [0,0,0,0,0,0,0]
+            prefix = [s_+'_M0',s_+'_M1',s_+'_M2',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
+            for i in range(len(keys)):
+                data_field_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_field_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_field_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+
+        # add source info        
+        keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
+        for spec in species.values():
+            s_        = spec.name+'_source'
+            shortname = spec.nshort+'_src'
+            if BiMaxwellian:
+                comps  = [0,1,2,3,0,0]
+                prefix = 6*[s_+'_BiMaxwellianMoments']
+            else:
+                comps  = [0,0,0,0,0,0]
+                prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp',s_+'_M0',s_+'_M0']
+            for i in range(len(keys)):
+                data_field_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_field_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_field_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+
+            # add distribution functions
+            data_field_dict['f'+shortname+'file'] = s_
+            data_field_dict['f'+shortname+'comp'] = 0
+            data_field_dict['f'+shortname+'gnames'] = gnames
+
+        # add source moments info        
+        keys  = ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
+        for spec in species.values():
+            s_        = spec.name+'_source'
+            shortname = spec.nshort+'_src'
+            comps  = [0,0,0,0,0,0,0]
+            prefix = [s_+'_M0',s_+'_M1',s_+'_M2',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
+            for i in range(len(keys)):
+                data_field_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_field_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_field_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
         self.data_files_dict = data_field_dict
         
@@ -130,13 +175,27 @@ class DataParam:
             s_ = spec.nshort
             # distribution functions
             default_qttes.append(['f%s'%(s_), r'$f_%s$'%(s_), '[f]'])
+            default_qttes.append(['f%s_src'%(s_), r'$f_%s$'%(s_), '[f]'])
             # densities
+            default_qttes.append(['M0%s'%(s_), r'$M_{0%s}$'%(s_), r'm$^{-3}$'])
             default_qttes.append(['n%s'%(s_), r'$n_%s$'%(s_), r'm$^{-3}$'])
             # parallel velocities
+            default_qttes.append(['M1%s'%(s_), r'$M_{1%s}$'%(s_), r'm$^{-2}$/s'])
             default_qttes.append(['upar%s'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
-            #parallel and perpendicular temperatures
+            # parallel and perpendicular temperatures
+            default_qttes.append(['M2%s'%(s_), r'$M_{2%s}$'%(s_), r'J/kg/m$^{3}$'])
+            default_qttes.append(['M2par%s'%(s_), r'$M_{2\parallel %s}$'%(s_), r'J/kg/m$^{3}$'])
+            default_qttes.append(['M2perp%s'%(s_), r'$M_{2\perp %s}$'%(s_), r'J/kg/m$^{3}$'])
             default_qttes.append(['Tpar%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
             default_qttes.append(['Tperp%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
+            # source moments
+            default_qttes.append(['M0%s_src'%(s_), r'$\dot M_{0%s}$'%(s_), r'm$^{-3}$/s'])
+            default_qttes.append(['M1%s_src'%(s_), r'$\dot M_{1%s}$'%(s_), r'm$^{-2}$/s'])
+            default_qttes.append(['M2%s_src'%(s_), r'$\dot M_{2%s}$'%(s_), r'J/kg/m$^{3}$/s'])
+            default_qttes.append(['n%s_src'%(s_), r'$\dot n_%s$'%(s_), r'm$^{-3}$/s'])
+            default_qttes.append(['upar%s_src'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
+            default_qttes.append(['Tpar%s_src'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
+            default_qttes.append(['Tperp%s_src'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
         def identity(gdata_list):
@@ -410,7 +469,7 @@ class DataParam:
             # add species dependent energies
             k = 0
             for spec in species.values():
-                fout += spec.q*gdata_list[0+k].get_values()
+                fout += spec.q*pgkyl_.get_values(gdata_list[0+k])
                 k    += 1
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_qdens])
@@ -447,7 +506,7 @@ class DataParam:
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_jpar])
 
-        #total energy : \sum_s W_kins = \sum_s int dv3 1/2 ms vpar^2 + mus B
+        #thermal energy : \sum_s W_kins = \sum_s int dv3 1/2 ms vpar^2 + mus B
         name       = 'Wkin'
         symbol     = r'$W_k$'
         units      = r'J/m$^3$'
@@ -519,6 +578,25 @@ class DataParam:
                 grid    = grids[i][:-1]
                 return -np.gradient(phi, grid, axis=i)
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
+
+        #source power
+        name       = 'src_pow'
+        symbol     = r'$P_{src}$'
+        units      = r'W/m$^3$'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s_src'%s_)
+            field2load.append('Tpar%s_src'%(s_))
+            field2load.append('Tperp%s_src'%(s_))
+        def receipe_src_pow(gdata_list,species=species):
+            fout = 0.0
+            k    = 0
+            for spec in species.values():
+                fout += receipe_Wkins(gdata_list[0+k:3+k],m=spec.m)
+                k += 3
+            return fout 
+        default_qttes.append([name,symbol,units,field2load,receipe_src_pow])
 
         #electric field energy Welc = 1/2 eps0 |E|^2
         name       = 'Welf'
