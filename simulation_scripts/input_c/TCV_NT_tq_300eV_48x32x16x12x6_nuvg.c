@@ -4,7 +4,6 @@ a clopen domain. The physical parameters are taken from a NT
 TCV discharge. The resolution is 48x16x12x6 with a fairly
 small velocity box size. It is a 2D reduction of the 3D baseline of TCV NT.
 */
-
 #include <math.h>
 #include <stdio.h>
 #include <time.h>
@@ -72,10 +71,13 @@ struct gk_app_ctx {
 
   // Grid parameters.
   double Lx;        // Domain size in radial direction.
+  double Ly;        // Domain size in binormal direction.
   double Lz;        // Domain size along magnetic field.
   double x_min;  double x_max;
+  double y_min;  double y_max;
   double z_min;  double z_max;
   int num_cell_x;
+  int num_cell_y;  // Cell count in binormal direction
   int num_cell_z;
   int num_cell_vpar;
   int num_cell_mu;
@@ -218,7 +220,7 @@ double gradr(double r, double theta, void *ctx)
 // Common source profiles.
 void density_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double n_srcOMP = app->n_srcOMP;
@@ -236,7 +238,7 @@ void zero_func(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT 
 // Electron source profiles.
 void density_elc_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double n_srcGB = app->n_srcGB;
@@ -250,7 +252,7 @@ void density_elc_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_R
 }
 void temp_elc_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double x_srcOMP = app->x_srcOMP;
@@ -265,7 +267,7 @@ void temp_elc_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RES
 }
 void temp_elc_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double Te_srcGB = app->Te_srcGB;
@@ -276,7 +278,7 @@ void temp_elc_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_REST
 // Ion source profiles.
 void density_ion_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double n_srcGB = app->n_srcGB;
@@ -290,7 +292,7 @@ void density_ion_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_R
 }
 void temp_ion_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double x_srcOMP = app->x_srcOMP;
@@ -305,7 +307,7 @@ void temp_ion_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RES
 }
 void temp_ion_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double Ti_srcGB = app->Ti_srcGB;
@@ -316,7 +318,7 @@ void temp_ion_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_REST
 // Density initial condition
 void density_init(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   //double n0 = 7.e19;
@@ -330,7 +332,7 @@ void density_init(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRI
 // Electron temperature initial conditions
 void temp_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double Te0 = app->Te0;
@@ -343,7 +345,7 @@ void temp_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT f
 // Ion temperature initial conditions
 void temp_ion(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xn[0], z = xn[1];
+  double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
   double Ti0 = app->Ti0;
@@ -368,13 +370,13 @@ void nuIon(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout
 // Geometry evaluation functions for the gk app
 void mapc2p(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx)
 {
+  double x = xc[0], y = xc[1], z = xc[2];
+
   struct gk_app_ctx *app = ctx;
   double r0 = app->r0;
   double q0 = app->q0;
   double a_mid = app->a_mid;
   double x_inner = app->x_inner;
-
-  double x = xc[0], y = xc[1], z = xc[2];
 
   double r = r_x(x,a_mid,x_inner);
 
@@ -430,7 +432,7 @@ void mapc2p_vel_ion(double t, const double *vc, double* GKYL_RESTRICT vp, void *
 
 void bmag_func(double t, const double *xc, double* GKYL_RESTRICT fout, void *ctx)
 {
-  double x = xc[0], z = xc[1];
+  double x = xc[0], y = xc[1], z = xc[2];
 
   struct gk_app_ctx *app = ctx;
   double a_mid = app->a_mid;
@@ -468,7 +470,7 @@ void bc_shift_func_up(double t, const double *xc, double* GKYL_RESTRICT fout, vo
 struct gk_app_ctx
 create_ctx(void)
 {
-  int cdim = 2, vdim = 2; // Dimensionality.
+  int cdim = 3, vdim = 2; // Dimensionality.
 
   // Universal constant parameters.
   double eps0 = GKYL_EPSILON0, eV = GKYL_ELEMENTARY_CHARGE;
@@ -514,9 +516,12 @@ create_ctx(void)
   // Configuration domain parameters 
   double Lx        = Rmid_max-Rmid_min;   // Domain size along x.
   double Lz        = 2.*M_PI-1e-10;       // Domain size along magnetic field.
+  double Ly        = 150*rho_s;                 // from rt_gk_d3d_iwl_3x2v_p1
   //double Ly        = 0.07;                // Tess simulations
   double x_min     = 0.;
   double x_max     = Lx;
+  double y_min     = -Ly/2.;
+  double y_max     =  Ly/2.;
   double z_min     = -Lz/2.;
   double z_max     =  Lz/2.;
 
@@ -552,6 +557,7 @@ create_ctx(void)
 
   // Grid parameters
   int num_cell_x = 48;
+  int num_cell_y = 32;
   int num_cell_z = 16;
   int num_cell_vpar = 12;
   int num_cell_mu = 6;
@@ -562,8 +568,8 @@ create_ctx(void)
   double vpar_max_ion = 4.*vti;
   double mu_max_ion   = 0.5*mi*pow(4*vti,2)/(2*B0);
 
-  double final_time = 1.0e-3;
-  int num_frames = 1000;
+  double final_time = 8.e-3;
+  int num_frames = 4000;
   int int_diag_calc_num = num_frames*100;
   double dt_failure_tol = 1.0e-3; // Minimum allowable fraction of initial time-step.
   int num_failures_max = 20; // Maximum allowable number of consecutive small time-steps.
@@ -582,8 +588,10 @@ create_ctx(void)
     .delta  = delta ,
     .q0     = q0    ,
     .Lx     = Lx    ,
+    .Ly     = Ly    ,
     .Lz     = Lz    ,
     .x_min = x_min,  .x_max = x_max,
+    .y_min = y_min,  .y_max = y_max,
     .z_min = z_min,  .z_max = z_max,
 
     .x_LCFS = x_LCFS,
@@ -608,16 +616,16 @@ create_ctx(void)
     .floor_src    = floor_src   ,
   
     .num_cell_x     = num_cell_x,
+    .num_cell_y     = num_cell_y,
     .num_cell_z     = num_cell_z,
     .num_cell_vpar  = num_cell_vpar,
     .num_cell_mu    = num_cell_mu,
-    .cells = {num_cell_x, num_cell_z, num_cell_vpar, num_cell_mu},
+    .cells = {num_cell_x, num_cell_y, num_cell_z, num_cell_vpar, num_cell_mu},
     .poly_order   = poly_order,
     .vpar_max_elc = vpar_max_elc,  .mu_max_elc = mu_max_elc,
     .vpar_max_ion = vpar_max_ion,  .mu_max_ion = mu_max_ion,
 
-    .final_time = final_time,  
-    .num_frames = num_frames,
+    .final_time = final_time,  .num_frames = num_frames,
     .int_diag_calc_num = int_diag_calc_num,
     .dt_failure_tol = dt_failure_tol,
     .num_failures_max = num_failures_max,
@@ -737,17 +745,11 @@ main(int argc, char **argv)
         .temp = temp_elc_srcGB,
       },
     },
-    .diffusion = {
-      .num_diff_dir = 1,
-      .diff_dirs = { 0 },
-      .D = { 0.5 },
-      .order = 2,
-    },
     .bcx = {
       .lower={.type = GKYL_SPECIES_ABSORB,},
       .upper={.type = GKYL_SPECIES_ABSORB,},
     },
-    .bcy = {
+    .bcz = {
       .lower={.type = GKYL_SPECIES_GK_IWL,
               .aux_parameter = ctx.x_LCFS,
               .aux_profile = bc_shift_func_lo, // taken from rt d3d 
@@ -817,17 +819,11 @@ main(int argc, char **argv)
         .temp = temp_ion_srcGB,
       },
     },
-    .diffusion = {
-      .num_diff_dir = 1,
-      .diff_dirs = { 0 },
-      .D = { 0.5 },
-      .order = 2,
-    },
     .bcx = {
       .lower={.type = GKYL_SPECIES_ABSORB,},
       .upper={.type = GKYL_SPECIES_ABSORB,},
     },
-    .bcy = {
+    .bcz = {
       .lower={.type = GKYL_SPECIES_GK_IWL,
               .aux_parameter = ctx.x_LCFS,
               .aux_profile = bc_shift_func_lo, // taken from rt d3d 
@@ -855,12 +851,12 @@ main(int argc, char **argv)
 
   // GK app
   struct gkyl_gk gk = {
-    .name = "gk_tcv_negD_trueq_iwl_2x2v",
+    .name = "gk_tcv_negD_trueq_iwl_3x2v",
 
-    .cdim = 2, .vdim = 2,
-    .lower = { ctx.x_min, ctx.z_min },
-    .upper = { ctx.x_max, ctx.z_max },
-    .cells = { cells_x[0], cells_x[1]},
+    .cdim = 3, .vdim = 2,
+    .lower = { ctx.x_min, ctx.y_min, ctx.z_min },
+    .upper = { ctx.x_max, ctx.y_max, ctx.z_max },
+    .cells = { cells_x[0], cells_x[1], cells_x[2] },
     .poly_order = ctx.poly_order,
     .basis_type = app_args.basis_type,
 
@@ -873,8 +869,8 @@ main(int argc, char **argv)
       .bmag_ctx = &ctx
     },
 
-    .num_periodic_dir = 0,
-    .periodic_dirs = { },
+    .num_periodic_dir = 1,
+    .periodic_dirs = { 1 },
 
     .num_species = 2,
     .species = { elc, ion },
@@ -882,7 +878,7 @@ main(int argc, char **argv)
 
     .parallelism = {
       .comm = comm,
-      .cuts = {app_args.cuts[0], app_args.cuts[1]},
+      .cuts = {app_args.cuts[0], app_args.cuts[1], app_args.cuts[2]},
       .use_gpu = app_args.use_gpu,
     }
   };
