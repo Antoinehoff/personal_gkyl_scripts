@@ -33,8 +33,8 @@ class Simulation:
         """
         self.phys_param = PhysParam(eps0, eV, mp, me, B_axis)
     
-    def set_geom_param(self, R_axis, Z_axis, R_LCFSmid, a_shift, q0, kappa, delta, x_LCFS, 
-                       x_out = 0.08, geom_type='Miller'):
+    def set_geom_param(self, R_axis=None, Z_axis=None, R_LCFSmid=None, a_shift=None, kappa=None, 
+                       delta=None, x_LCFS=None, q0 = None, x_out = None, geom_type='Miller', qprofile='default'):
         """
         Set geometric parameters related to the shape and size of the plasma (e.g., axis positions, LCFS).
         """
@@ -42,7 +42,7 @@ class Simulation:
             R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
             a_shift=a_shift, q0=q0, kappa=kappa, delta=delta, 
             x_LCFS=x_LCFS, geom_type=geom_type, B0=self.phys_param.B_axis,
-            x_out = x_out
+            x_out = x_out, qprofile=qprofile
         )
 
     def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",
