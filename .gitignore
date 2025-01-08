@@ -9,3 +9,4 @@
 *.json
 simulation_scripts/.DS_Store
 .*
+sim_data_dir_example/*
