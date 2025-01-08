@@ -6,7 +6,7 @@ from tools import math_tools as mt
 
 class GeomParam:
     def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B0=1.4, x_out = 0.08,
-                 a_shift=0.0, q0=1.6, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller'):
+                 a_shift=0.0, q0=1.6, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile='default'):
         self.R_axis     = R_axis
         self.a_shift    = a_shift
         self.Z_axis     = Z_axis
@@ -42,7 +42,11 @@ class GeomParam:
         self.z          = None # z-grid
         self.Lz         = None # z box size
         self.n0         = None # Toroidal mode number
-        
+        if callable(qprofile):
+            self.qprofile = qprofile
+        elif qprofile == 'default':
+            self.qprofile = self.qprofile_default
+
     def load_metric(self,fileprefix):
         #-- load B (bmag)
         fname = fileprefix+'-'+'bmag.gkyl'
@@ -130,7 +134,7 @@ class GeomParam:
             # one day... (09/20/2024)
 
     #.Magnetic safety factor profile.
-    def qprofile(self,rIn):
+    def qprofile_default(self,rIn):
         qa = [497.3420166252413,-1408.736172826569,1331.4134861681464,-419.00692601227627]
         return qa[0]*(rIn+self.R_axis)**3 + qa[1]*(rIn+self.R_axis)**2 + qa[2]*(rIn+self.R_axis) + qa[3]
 
