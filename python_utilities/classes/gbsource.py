@@ -2,7 +2,7 @@ import numpy as np
 import sys,os
 home_dir = os.path.expanduser("~")
 sys.path.append(home_dir+'/personal_gkyl_scripts/python_utilities')
-from tools.math_tools import custom_meshgrid, integral_xyz
+from tools.math_tools import custom_meshgrid, integral_vol
 class GBsource:
     """
     A class representing a Gaussian-Bell (GB) source model, used for describing
@@ -44,13 +44,13 @@ class GBsource:
         #-evaluate the integrant on the mesh
         integrant = self.dens_source(X,Y,Z)*sim.geom_param.Jacobian
         #-Compute the volume integral
-        integral = integral_xyz(x,y,z,integrant)
+        integral = integral_vol(x,y,z,integrant)
         # print(integral) # this has to be compared with after the normalization
         #-Normalize the source amplitude by the integral
         self.nrate /= integral
         #-We can perform again the volume integral to verify that it is equal to one
         # integrant = self.dens_source(X,Y,Z)*sim.geom_param.Jacobian
-        # integral = integral_xyz(x,y,z,integrant)
+        # integral = integral_vol(x,y,z,integrant)
         # print(integral) # this is equal to 1.0 now
         #-We now scale the nrate to match the initial particle loss rate
         #-Profile initial conditions
