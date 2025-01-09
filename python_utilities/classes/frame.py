@@ -100,6 +100,21 @@ class Frame:
         self.refresh()
         self.normalize()
 
+    def load_DG(self,polyorder=1,polytype='ms'):
+        self.Gdata = []
+        # Load the data from the file
+        Gdata = pg.data.GData(self.filenames[0])
+        self.Gdata.append(Gdata)
+        if Gdata.ctx['time']:
+            self.time = Gdata.ctx['time']
+        self.grids   = [g for g in pgkyl_.get_grid(Gdata) if len(g) > 2]
+        self.cells   = Gdata.ctx['cells']
+        self.ndims   = len(self.cells)
+        self.dim_idx = list(range(self.ndims))
+        if not self.time:
+            self.time = 0
+        self.values = pgkyl_.get_values(Gdata)
+
     def refresh(self,values=True):
         self.new_cells    = pgkyl_.get_cells(self.Gdata[0])
         self.new_grids    = []
@@ -228,7 +243,7 @@ class Frame:
             Jac = self.simulation.geom_param.Jacobian**2
         else:
             Jac = self.simulation.geom_param.Jacobian
-        self.vol_int = mt.integral_xyz(x,y,z,self.values*Jac)
+        self.vol_int = mt.integral_vol(x,y,z,self.values*Jac)
         if average :
             self.vol_int /= self.simulation.geom_param.intJac
         return self.vol_int
