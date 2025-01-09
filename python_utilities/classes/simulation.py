@@ -13,10 +13,8 @@ from .frame      import Frame
 from tools       import math_tools
 
 class Simulation:
-    def __init__(self):
-        """
-        Initialize all attributes to None and setup normalization.
-        """
+    def __init__(self,dimensionality='3x2v'):
+        self.dimensionality = dimensionality # Dimensionality of the simulation (e.g., 3x2v, 2x2v)
         self.phys_param = None  # Physical parameters (e.g., constants like eps0, eV)
         self.num_param  = None  # Numerical parameters (e.g., grid size)
         self.data_param = None  # Data parameters (e.g., file paths)
@@ -206,32 +204,37 @@ class Simulation:
         return GBloss, time, GBloss_z
 
     def get_input_power(self):
+        # P_{src} = \int_{-L_z/2}^{L_z/2}\int_{-L_y/2}^{L_y/2}\int_{L_{x,min}}^{L_{x,max}} 
+        #               \frac{3}{2}(n_eT_e+n_iT_i) \mathcal{J}dxdydz
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
-
-        # Calculate source terms
-        srcOMP_elc = self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_elc_srcOMP(X,Y,Z) # there was a 3/2 factor here...
-        srcOMP_ion = self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_ion_srcOMP(X,Y,Z) # there was a 3/2 factor here...
-
-        # Integrate source terms
-        src_tot_elc = math_tools.integral_xyz(x, y, z, srcOMP_elc * self.geom_param.Jacobian)
-        src_tot_ion = math_tools.integral_xyz(x, y, z, srcOMP_ion * self.geom_param.Jacobian)
-
-        return src_tot_elc + src_tot_ion
+        # Build the integrant according to 3/2 * (n_e T_e + n_i T_i) * Jacobian
+        integrant  = 1.5*self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_elc_srcOMP(X,Y,Z)
+        integrant += 1.5*self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_ion_srcOMP(X,Y,Z)
+        integrant *= self.geom_param.Jacobian
+        # Integrate source terms (volume or surface)
+        if self.dimensionality == '3x2v':
+            pow_in = math_tools.integral_vol(x, y, z, integrant)
+            print("Total input power: %g kW"%(pow_in/1e3))
+        elif self.dimensionality == '2x2v':
+            pow_in = math_tools.integral_surf(x, z, integrant[:,0,:])
+            print("Lineic input power: %g kW/m"%(pow_in/1e3))
+        return pow_in
     
     def get_input_particle(self):
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
-
-        # Calculate source terms
-        srcOMP_elc = self.OMPsources.density_srcOMP(X,Y,Z)
-        srcOMP_ion = self.OMPsources.density_srcOMP(X,Y,Z)
-
-        # Integrate source terms
-        src_tot_elc = math_tools.integral_xyz(x, y, z, srcOMP_elc * self.geom_param.Jacobian)
-        src_tot_ion = math_tools.integral_xyz(x, y, z, srcOMP_ion * self.geom_param.Jacobian)
-
-        return src_tot_elc + src_tot_ion
+        # Calculate the integrant according to N_species * n_srcOMP * Jacobian
+        integrant  = 2*self.OMPsources.density_srcOMP(X,Y,Z) # 2 is the number of species
+        integrant *= self.geom_param.Jacobian
+        # Integrate source terms (volume or surface)
+        if self.dimensionality == '3x2v':
+            part_in = math_tools.integral_vol(x, y, z, integrant)
+            print("Total input particle: %g part/s"%(part_in))
+        elif self.dimensionality == '2x2v':
+            part_in = math_tools.integral_surf(x, z, integrant[:,0,:])
+            print("Lineic input particle: %g part/s/m"%(part_in))
+        return part_in
 
     def reset_normalization(self,key):
         # Get the default dictionary
