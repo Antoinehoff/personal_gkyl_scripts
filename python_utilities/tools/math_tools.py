@@ -14,17 +14,17 @@ def func_calc_norm_fluc(data2d, dataAve, dataNorm, Nt, Ny, Nx):
     delt_norm = sigma/dataNorm
     return delt, delt_norm
 
-def integral_xyz(x,y,z,integrant_xyz):
+def integral_vol(x,y,z,integrant_xyz):
     # Compute the volume integral (jacobian included in the integrand)
     integrant_xz  = np.trapz(integrant_xyz, x=x, axis=0)
     integrant_z   = np.trapz(integrant_xz,  x=y, axis=0)
     integral      = np.trapz(integrant_z,   x=z, axis=0)
     return integral
 
-def integral_yz(y,z,integrant_yz):
-    # Compute the surface integral (jacobian included in the integrand)
-    integrant_z   = np.trapz(integrant_yz, x=y, axis=0)
-    integral      = np.trapz(integrant_z,  x=z, axis=0)
+def integral_surf(x,y,integrant_xy):
+    # Compute the line integral (jacobian included in the integrand)
+    integral_y   = np.trapz(integrant_xy, x=x, axis=0)
+    integral     = np.trapz(integral_y,   x=y, axis=0)
     return integral
 
 def custom_meshgrid(x,y,z=0):
