@@ -1,3 +1,4 @@
+# This file contains functions that are used to interface with the postgkyl library.
 import postgkyl as pg
 import numpy as np
 
