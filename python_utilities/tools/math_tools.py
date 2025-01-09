@@ -1,3 +1,4 @@
+# this file contains some useful functions for mathematical operations
 import numpy as np
 
 def func_time_ave(listIn):
