@@ -21,7 +21,7 @@ def get_grid(Gdata):
     if len(values) == 3 :
         return values
     elif len(values) == 2 :
-        return [values[0], np.array([0, 0.5, 1]), values[1]]
+        return [values[0], np.array([0, 1/3, 2/3]), values[1]]
     
 def get_cells(Gdata):
     cells = Gdata.ctx['cells']
@@ -30,3 +30,6 @@ def get_cells(Gdata):
     else :        
         cells = [cells[0], 2, cells[1]]
         return cells
+
+def integrate(Gdata):
+    return Gdata.integrate()
