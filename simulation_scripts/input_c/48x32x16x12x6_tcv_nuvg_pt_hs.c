@@ -310,7 +310,7 @@ void temp_ion_srcGB(double t, const double * GKYL_RESTRICT xn, double* GKYL_REST
 }
 
 // Density initial condition
-void density_init(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+void density_ic(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
   double x = xn[0], z = xn[2];
 
@@ -324,7 +324,7 @@ void density_init(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRI
 }
 
 // Electron temperature initial conditions
-void temp_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+void temp_ic_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
   double x = xn[0], z = xn[2];
 
@@ -337,7 +337,7 @@ void temp_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT f
 }
 
 // Ion temperature initial conditions
-void temp_ion(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+void temp_ic_ion(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
   double x = xn[0], z = xn[2];
 
@@ -703,9 +703,9 @@ main(int argc, char **argv)
       .ctx_density = &ctx,
       .ctx_upar = &ctx,
       .ctx_temp = &ctx,
-      .density = density_init,
+      .density = density_ic,
       .upar = zero_func,
-      .temp = temp_elc,
+      .temp = temp_ic_elc,
     },
 
     .collisions =  {
@@ -777,9 +777,9 @@ main(int argc, char **argv)
       .ctx_density = &ctx,
       .ctx_upar = &ctx,
       .ctx_temp = &ctx,
-      .density = density_init,
+      .density = density_ic,
       .upar = zero_func,
-      .temp = temp_ion,
+      .temp = temp_ic_ion,
     },
 
     .collisions =  {
