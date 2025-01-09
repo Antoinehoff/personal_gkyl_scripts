@@ -203,14 +203,19 @@ class Simulation:
         GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
         return GBloss, time, GBloss_z
 
-    def get_input_power(self):
-        # P_{src} = \int_{-L_z/2}^{L_z/2}\int_{-L_y/2}^{L_y/2}\int_{L_{x,min}}^{L_{x,max}} 
-        #               \frac{3}{2}(n_eT_e+n_iT_i) \mathcal{J}dxdydz
+    def get_input_power(self,type='profile'):
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
-        # Build the integrant according to 3/2 * (n_e T_e + n_i T_i) * Jacobian
-        integrant  = 1.5*self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_elc_srcOMP(X,Y,Z)
-        integrant += 1.5*self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_ion_srcOMP(X,Y,Z)
+
+        if type == 'profile': # Compute the input power from the source term analytical profile
+            integrant  = 1.5*self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_elc_srcOMP(X,Y,Z)
+            integrant += 1.5*self.OMPsources.density_srcOMP(X,Y,Z) * self.OMPsources.temp_ion_srcOMP(X,Y,Z)
+        else : # Compute the input power from the source term diagnostic
+            M2e = Frame(self,'M2e_src',tf=0,load=True)
+            M2i = Frame(self,'M2i_src',tf=0,load=True)
+            integrant = 0.5 * self.species['elc'].m * M2e.values + 0.5*self.species['ion'].m*M2i.values
+
+        # multiply by Jacobian
         integrant *= self.geom_param.Jacobian
         # Integrate source terms (volume or surface)
         if self.dimensionality == '3x2v':
@@ -220,13 +225,19 @@ class Simulation:
             pow_in = math_tools.integral_surf(x, z, integrant[:,0,:])
             print("Lineic input power: %g kW/m"%(pow_in/1e3))
         return pow_in
-    
-    def get_input_particle(self):
+
+    def get_input_particle(self,type='profile'):
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
-        # Calculate the integrant according to N_species * n_srcOMP * Jacobian
-        integrant  = 2*self.OMPsources.density_srcOMP(X,Y,Z) # 2 is the number of species
-        integrant *= self.geom_param.Jacobian
+
+        if type == 'profile': # Compute the input particle from the source term analytical profile
+            integrant  = 2*self.OMPsources.density_srcOMP(X,Y,Z) # 2 is the number of species
+            integrant *= self.geom_param.Jacobian
+        else :  # Compute the input particle from the source term diagnostic
+            M0e = Frame(self,'ne_src',tf=0,load=True)
+            M0i = Frame(self,'ni_src',tf=0,load=True)
+            integrant = M0e.values + M0i.values
+
         # Integrate source terms (volume or surface)
         if self.dimensionality == '3x2v':
             part_in = math_tools.integral_vol(x, y, z, integrant)
