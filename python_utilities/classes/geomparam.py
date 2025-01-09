@@ -147,6 +147,10 @@ class GeomParam:
     #.Minor radius as a function of x:
     def r_x(self,xIn):
         return self.a_mid + xIn
+    
+    #.Major radius as a function of x:
+    def R_x(self,xIn):
+        return self.R_LCFSmid - self.x_LCFS + xIn
 
     #.Analytic derivatives.
     def R_f_r(self, r,theta): 
@@ -196,3 +200,6 @@ class GeomParam:
     def get_toroidal_mode_number(self):
         self.n0 = 2.*np.pi*self.r0/self.qprofile(self.r0)/self.Ly # toroidal mode number
         return self.n0
+    
+    def get_epsilon(self):
+        return self.r0/self.a_mid
