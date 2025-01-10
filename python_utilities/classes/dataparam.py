@@ -325,6 +325,15 @@ class DataParam:
                 return dens*(m*np.power(upar,2)/2 + m*Ttot + qphi)
             default_qttes.append([name,symbol,units,field2load,receipe_Ws])
 
+            #kinetic energy (M2 moment) speciewise: Wkin = 1/2 m*M2
+            name       = 'WkinM2%s'%(s_)
+            symbol     = r'$W_{k,M2,%s}$'%(s_)
+            units      = r'J/m$^3$'
+            field2load = ['M2%s'%s_]
+            def receipe_WkinM2s(gdata_list,m=spec.m):
+                return m*pgkyl_.get_values(gdata_list[0])/2.0
+            default_qttes.append([name,symbol,units,field2load,receipe_WkinM2s])
+
             #total pressure speciewise
             name = 'p%s'%(s_)
             symbol = r'$p_{%s}$'%(s_)
@@ -456,6 +465,22 @@ class DataParam:
                 default_qttes.append([name,symbol,units,field2load,receipe_gradB_hflux_s])
 
         # Species independent quantities
+
+        # total M2 kinetic energy density
+        name       = 'WkinM2'
+        symbol     = r'$W_{k,M2}$'
+        units      = r'J/m$^3$'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('M2%s'%s_)
+        def receipe_WkinM2(gdata_list,species=species):
+            fout = 0.0
+            for spec in species.values():
+                fout += receipe_WkinM2s(gdata_list, m=spec.m)
+            return fout
+        default_qttes.append([name,symbol,units,field2load,receipe_WkinM2])
+        
         #charge density
         name       = 'qdens'
         symbol     = r'$\sum_s q_{s}n_s$'
