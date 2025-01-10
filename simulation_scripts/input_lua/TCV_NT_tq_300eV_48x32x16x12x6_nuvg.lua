@@ -66,6 +66,18 @@ dRdtheta = function (r_, t_) -- Derivative of major radius with respect to theta
             *(1.0 + math.asin(delta)*math.cos(t_))
 end
 
+dZdr = function (r_, t_) -- Derivative of height with respect to r.
+  return kappa*math.sin(t_)
+end
+
+dZdtheta = function (r_, t_) -- Derivative of height with respect to theta.
+  return kappa*r_*math.cos(t_)
+end
+
+Jr = function (r_, t_) -- Jacobian determinant.
+  return R_rtheta(r_, t_)*(dRdr(r_,t_)*dZdt(r_,t_)-dRdt(r_,t_)*dZdr(r_,t_))
+end
+
 nu_frac = 0.1 -- Collision frequency fraction.
 log_lambda_elc = 6.6 - 0.5 * math.log(n0 / 1.0e20) + 1.5 * math.log(temp_elc / charge_ion) -- Electron Coulomb logarithm.
 log_lambda_ion = 6.6 - 0.5 * math.log(n0 / 1.0e20) + 1.5 * math.log(temp_ion / charge_ion) -- Ion Coulomb logarithm.
