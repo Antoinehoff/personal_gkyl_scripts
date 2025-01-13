@@ -8,10 +8,16 @@ setting up simulations, processing data, and visualizing results.
 You can install the library using pip:
 
 ```sh
-pip install /path/to/your/python_utilities
+pip install /path/to/your/personal_gkyl_scripts/pygkyl/
 ```
 
-Replace `/path/to/your/python_utilities` with the actual path to your `python_utilities` directory.
+Replace `/path/to/your/personal_gkyl_scripts` with the actual path to your `personal_gkyl_scripts` directory.
+For example, on perlmutter, we can run directly from the Jupyter notebook the following command in a cell
+```python
+import sys
+!{sys.executable} -m pip install ~/personal_gkyl_scripts/pygkyl
+```
+assuming that the personal_gkyl_scripts library is in the home directory.
 
 ## Requirements
 
