@@ -33,7 +33,7 @@ import matplotlib.colors as mcolors
 from tools import pgkyl_interface as pgkyl_
 
 # set the font to be LaTeX
-if check_latex_installed(verbose=True):
+if check_latex_installed(verbose=False):
     plt.rcParams['text.usetex'] = True
     plt.rcParams['font.family'] = 'serif'
     plt.rcParams['font.serif'] = ['Computer Modern Roman']
@@ -82,6 +82,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                            twindow=[],space_time=False, cmap='inferno',
                            fluctuation=False, bckgrnd_avg_wind=[],
                            xlim=[], ylim=[], clim=[], figout=[]):
+    
     if not isinstance(twindow,list): twindow = [twindow]
     cmap0 = cmap
     fields,fig,axs = setup_figure(fieldnames)
@@ -91,8 +92,11 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
         if fluctuation:
             average_data = np.mean(values, axis=0)
             for it in range(len(t)) :
-                values[it,:] = values[it,:] - average_data[:]
-            vlabel = r'$\delta$' + vlabel
+                values[it,:] = (values[it,:] - average_data[:])
+            if (np.min(np.abs(average_data)>1e-6)):
+                values = 100.0*values/average_data
+                vlabel = re.sub(r'\(.*?\)', '', vlabel)
+                vlabel = r'$\delta$' + vlabel + ' (\%)'
         if space_time:
             if ((field in ['phi','upare','upari']) or cmap0=='bwr' or fluctuation) and not fourrier_y:
                 cmap = 'bwr'
@@ -249,6 +253,7 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
         if fluctuation and len(time_frame) > 1:
             mean_values = np.mean([frame.values for frame in frames], axis=0)
             plot_data = frames[-1].values - mean_values[np.newaxis, ...]
+            plot_data = 100.0*plot_data/mean_values[np.newaxis, ...]
         elif time_average and len(time_frame) > 1:
             plot_data = np.mean([frame.values for frame in frames], axis=0)  # Time-averaged data
         else:
@@ -291,7 +296,9 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
         else:
             lbl = label(vsymbol,frame.vunits)
             if fluctuation or time_average:
-                lbl += ' (avg from %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
+                lbl = re.sub(r'\(.*?\)', '', lbl)
+                lbl = lbl + ' (\%)'
+                lbl += ' (avg %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
             cbar = fig.colorbar(pcm,label=lbl)
         if xlim:
             ax.set_xlim(xlim)
@@ -494,7 +501,7 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
                 ax.plot(time,Ft-gbl,label='w/o gB loss')
         # plot eventually the input power for comparison
         if subfield == 'Wtot' and plot_src_input:
-            src_power = simulation.get_input_power()
+            src_power = simulation.get_source_power()
             if ddt:
                 ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
                 ax.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
@@ -613,7 +620,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
 
         # plot eventually the input power for comparison
         if subfield == 'Wtot' and plot_src_input:
-            src_power = simulation.get_input_power()
+            src_power = simulation.get_source_power()
             if ddt:
                 ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
                 ax.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
