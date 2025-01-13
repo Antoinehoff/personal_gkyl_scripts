@@ -565,4 +565,5 @@ class Simulation:
         print("-- Source Informations --")
         self.get_source_particle(type=type)
         self.get_source_power(type=type)
-        self.plot_sources(y_const=y_const, z_const=z_const)
+        if len(self.sources) > 0:
+            self.plot_sources(y_const=y_const, z_const=z_const)
