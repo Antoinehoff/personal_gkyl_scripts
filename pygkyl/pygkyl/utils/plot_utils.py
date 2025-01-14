@@ -93,7 +93,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             average_data = np.mean(values, axis=0)
             for it in range(len(t)) :
                 values[it,:] = (values[it,:] - average_data[:])
-            if (np.min(np.abs(average_data)>1e-6)):
+            if fluctuation == "relative":
                 values = 100.0*values/average_data
                 vlabel = re.sub(r'\(.*?\)', '', vlabel)
                 vlabel = r'$\delta$' + vlabel + ' (\%)'
@@ -253,7 +253,8 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
         if fluctuation and len(time_frame) > 1:
             mean_values = np.mean([frame.values for frame in frames], axis=0)
             plot_data = frames[-1].values - mean_values[np.newaxis, ...]
-            plot_data = 100.0*plot_data/mean_values[np.newaxis, ...]
+            if fluctuation == "relative":
+                plot_data = 100.0*plot_data/mean_values[np.newaxis, ...]
         elif time_average and len(time_frame) > 1:
             plot_data = np.mean([frame.values for frame in frames], axis=0)  # Time-averaged data
         else:
@@ -295,9 +296,10 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
             title = r'FFT$_y($'+ frame.vsymbol + '), '+ title
         else:
             lbl = label(vsymbol,frame.vunits)
-            if fluctuation or time_average:
+            if fluctuation == "relative" :
                 lbl = re.sub(r'\(.*?\)', '', lbl)
-                lbl = lbl + ' (\%)'
+                lbl = lbl + ' (\%)'               
+            if fluctuation or time_average:
                 lbl += ' (avg %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
             cbar = fig.colorbar(pcm,label=lbl)
         if xlim:
