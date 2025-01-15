@@ -91,12 +91,13 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
               get_1xt_diagram(simulation,field,cdirection,ccoords,tfs=twindow)
         if fluctuation:
             average_data = np.mean(values, axis=0)
+            vlabel = r'$\delta$' + vlabel
             for it in range(len(t)) :
                 values[it,:] = (values[it,:] - average_data[:])
             if fluctuation == "relative":
                 values = 100.0*values/average_data
                 vlabel = re.sub(r'\(.*?\)', '', vlabel)
-                vlabel = r'$\delta$' + vlabel + ' (\%)'
+                vlabel = vlabel + ' (\%)'
         if space_time:
             if ((field in ['phi','upare','upari']) or cmap0=='bwr' or fluctuation) and not fourrier_y:
                 cmap = 'bwr'
@@ -368,6 +369,41 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
     # Save as gif
     images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
     print("movie "+moviename+" created.")
+
+def movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
+          fluctuation = False, cmap='inferno', xlim=[], ylim=[], clim=[], 
+          full_plot=False, movieprefix=''):
+    if isinstance(fieldnames,str):
+        dataname = fieldnames + '_'
+    else:
+        dataname = ''
+        for f_ in fieldnames:
+            dataname += f_+'_'
+
+    # Load all data for the movie
+    for i, field in enumerate(fieldnames, 1):
+        field_frames = []
+        for j, tf in enumerate(time_frames, 1):
+            # Load and process data for all time frames
+            frame_values = []
+            t = time_frames[0]
+            frame = Frame(simulation, field, t, load=True)
+            frame.slice_2D(cut_dir, cut_coord)
+            frame_values.append(frame.values)
+        # if fluctuation:
+            
+        field_frames.append(frame_values)
+
+
+    # make the movie
+    total_frames = len(time_frames)
+    for i, tf in enumerate(time_frames, 1):  # Start the index at 1
+
+        # Update progress
+        progress = f"Processing frames: {i}/{total_frames}... "
+        sys.stdout.write("\r" + progress)
+        sys.stdout.flush()
+    sys.stdout.write("\n")
 
 def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
     geometry.set_domain(geom_type,vessel_corners)
