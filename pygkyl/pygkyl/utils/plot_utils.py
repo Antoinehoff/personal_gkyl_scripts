@@ -300,8 +300,8 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
             if fluctuation == "relative" :
                 lbl = re.sub(r'\(.*?\)', '', lbl)
                 lbl = lbl + ' (\%)'               
-            if fluctuation or time_average:
-                lbl += ' (avg %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
+            #if fluctuation or time_average:
+                #lbl += ' (avg %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
             cbar = fig.colorbar(pcm,label=lbl)
         if xlim:
             ax.set_xlim(xlim)
