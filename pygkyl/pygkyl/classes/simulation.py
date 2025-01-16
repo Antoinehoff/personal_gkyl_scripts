@@ -251,6 +251,30 @@ class Simulation:
         self.normalization[key+'units']  = units
 
     def normalize(self, key, norm):
+        """
+        Normalize a specified key based on the provided normalization type.
+        Use self.norm_help() for a list of available normalizations.
+
+        Parameters:
+        key (str): The key to be normalized (e.g., 'T', 'p', 'Wkin').
+        norm (str): The type of normalization to apply. Available options include:
+            - 'mus': Microseconds (µs)
+            - 'vti/R': Time normalized by ion thermal velocity over major radius (t v_{ti}/R)
+            - 'rho': Normalized to the minor radius (ρ)
+            - 'x/rho': Normalized to the Larmor radius (ρ_L)
+            - 'R-Rlcfs': Shift relative to the Last Closed Flux Surface (R - R_LCFS)
+            - 'thermal velocity': Parallel velocities normalized by thermal velocity
+            - 'eV': Energy in electron volts (eV)
+            - 'MJ': Energy in megajoules (MJ)
+            - 'beta': Pressure normalized by magnetic pressure (β)
+            - 'Pa': Pressure in pascals (Pa)
+            - 'temperatures': Normalizes all temperature components
+            - 'fluid velocities': Normalizes both parallel electron and ion velocities
+            - 'pressures': Normalizes all pressure components
+            - 'energies': Normalizes all energy components
+
+        This method updates the normalization dictionary and log with the new normalization settings.
+        """
         scale = 0
         ion = self.species['ion']
 
