@@ -225,8 +225,8 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
     # Check if we provide multiple time frames (time average or fluctuation plot)
     if isinstance(time_frame, int):
         time_frame = [time_frame]
-    if not isinstance(clim[0], list):
-        clim = [clim]
+    if clim:
+        clim = [clim] if not isinstance(clim[0], list) else clim
 
     # Check if we need to fourier transform
     index = cut_dir.find('k')

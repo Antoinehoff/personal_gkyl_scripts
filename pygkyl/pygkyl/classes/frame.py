@@ -74,6 +74,7 @@ class Frame:
         self.slicecoords = {}
         self.slicetitle = ''
         self.timetitle = ''
+        self.fulltitle = ''
 
         if load:
             self.load(polyorder=polyorder, polytype=polytype)
@@ -179,9 +180,9 @@ class Frame:
             self.vsymbol = self.simulation.normalization[self.name + 'symbol']
             self.vunits = self.simulation.normalization[self.name + 'units']
 
-    def rename(self):
+    def refresh_title(self):
         """
-        Rename the slice title and time title.
+        Refresh the slice title and time title.
         """
         slicetitle = ''
         norm = self.simulation.normalization
@@ -234,7 +235,7 @@ class Frame:
 
         self.sliceddim.append(ic)
         self.slicecoords[direction] = cut_coord
-        self.rename()
+        self.refresh_title()
 
     def slice_1D(self, cutdirection, ccoords):
         """
