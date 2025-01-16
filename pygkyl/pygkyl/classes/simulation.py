@@ -559,7 +559,7 @@ class Simulation:
             # get temperature of the source at the inner wall
             Ti_iw = self.species['ion'].m * M2i.values[iw_ix, iw_iy, iw_iz]  
             # get magnetic field at the inner wall
-            Bfield = Frame(self, 'B', tf=0, load=True).values[iw_ix, iw_iy, iw_iz]
+            Bfield = Frame(self, 'Bmag', tf=0, load=True).values[iw_ix, iw_iy, iw_iz]
 
             banana_width = phys_tools.banana_width(
                 self.species['ion'].q, self.species['ion'].m, Ti_iw, 
