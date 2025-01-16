@@ -10,7 +10,7 @@ from .geomparam import GeomParam
 from .gbsource import GBsource
 from .ompsources import OMPsources
 from .frame import Frame
-from ..tools import math_tools
+from ..tools import math_tools, phys_tools
 import matplotlib.pyplot as plt  # Add this import if not already present
 
 class Simulation:
@@ -244,7 +244,16 @@ class Simulation:
             self.normalization[key+add]  = default_dict[key+add]
 
     def set_normalization(self,key,scale,shift,symbol,units):
-        # allows to set the normalization of key
+        """
+        Set the normalization parameters for a given field.
+
+        Parameters:
+        key (str): The field for which the normalization parameters are being set.
+        scale (float): The scale factor for normalization.
+        shift (float): The shift value for normalization.
+        symbol (str): The symbol representing the normalized quantity.
+        units (str): The units of the normalized quantity.
+        """
         self.normalization[key+'scale']  = scale
         self.normalization[key+'shift']  = shift
         self.normalization[key+'symbol'] = symbol
@@ -528,7 +537,7 @@ class Simulation:
         plt.tight_layout()
         plt.show()
 
-    def get_source_power(self, type='profile'):
+    def get_source_power(self, type='profile', remove_GB_loss=False, qfactor = 1.4, epsilon = 0.3):
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
 
@@ -541,6 +550,22 @@ class Simulation:
             M2e = Frame(self, 'M2e_src', tf=0, load=True)
             M2i = Frame(self, 'M2i_src', tf=0, load=True)
             integrant = 0.5 * self.species['elc'].m * M2e.values + 0.5 * self.species['ion'].m * M2i.values
+        
+        if remove_GB_loss:
+            # get inner wall indices
+            iw_ix = np.argmin(np.abs(x))
+            iw_iy = 0
+            iw_iz = np.argmin(np.abs(z))
+            # get temperature of the source at the inner wall
+            Ti_iw = self.species['ion'].m * M2i.values[iw_ix, iw_iy, iw_iz]  
+            # get magnetic field at the inner wall
+            Bfield = Frame(self, 'B', tf=0, load=True).values[iw_ix, iw_iy, iw_iz]
+
+            banana_width = phys_tools.banana_width(
+                self.species['ion'].q, self.species['ion'].m, Ti_iw, 
+                Bfield, qfactor, epsilon)
+            # apply a filter to the integrant for all x < banana_width
+            integrant[X < banana_width] = 0.0
 
         # multiply by Jacobian
         integrant *= self.geom_param.Jacobian
