@@ -23,6 +23,7 @@ import postgkyl as pg
 from .math_utils import *
 from .file_utils import *
 from .fig_utils import *
+from .data_utils import *
 from classes import Frame
 # other commonly used libs
 import numpy as np
@@ -220,12 +221,12 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
                 fieldnames='', cmap='inferno', full_plot=False,
                 time_average=False, fluctuation=False,
                 xlim=[], ylim=[], clim=[], 
-                figout=[],cutout=[], val_out=[]):
+                figout=[],cutout=[], val_out=[], frames_to_plot = None):
     # Check if we provide multiple time frames (time average or fluctuation plot)
     if isinstance(time_frame, int):
         time_frame = [time_frame]
-        time_average = False
-        fluctuation = False  # Fluctuation only makes sense with multiple time frames
+    if not isinstance(clim[0], list):
+        clim = [clim]
 
     # Check if we need to fourier transform
     index = cut_dir.find('k')
@@ -237,31 +238,36 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
 
     cmap0 = cmap    
     fields,fig,axs = setup_figure(fieldnames)
+    kf = 0 # field counter
     for ax,field in zip(axs,fields):
-        # Load and process data for all time frames
-        frames = []
-        for t in time_frame:
-            frame = Frame(simulation, field, t)
-            frame.load()
-            
-            if fourrier_y:
-                frame.fourrier_y()
-                
-            frame.slice_2D(cut_dir, cut_coord)
-            frames.append(frame)
-
-        # Determine what to plot
-        if fluctuation and len(time_frame) > 1:
-            mean_values = np.mean([frame.values for frame in frames], axis=0)
-            plot_data = frames[-1].values - mean_values[np.newaxis, ...]
-            if fluctuation == "relative":
-                plot_data = 100.0*plot_data/mean_values[np.newaxis, ...]
-        elif time_average and len(time_frame) > 1:
-            plot_data = np.mean([frame.values for frame in frames], axis=0)  # Time-averaged data
+        if frames_to_plot:
+            frame = frames_to_plot[kf]
+            plot_data = frame.values
         else:
-            plot_data = frames[-1].values  # Single time frame data
+            # Load and process data for all time frames
+            frames = []
+            for t in time_frame:
+                frame = Frame(simulation, field, t)
+                frame.load()
+                
+                if fourrier_y:
+                    frame.fourrier_y()
+                    
+                frame.slice_2D(cut_dir, cut_coord)
+                frames.append(frame)
 
-        frame = frames[-1] # keep only the last one
+            # Determine what to plot
+            if fluctuation and len(time_frame) > 1:
+                mean_values = np.mean([frame.values for frame in frames], axis=0)
+                plot_data = frames[-1].values - mean_values[np.newaxis, ...]
+                if fluctuation == "relative":
+                    plot_data = 100.0*plot_data/mean_values[np.newaxis, ...]
+            elif time_average and len(time_frame) > 1:
+                plot_data = np.mean([frame.values for frame in frames], axis=0)  # Time-averaged data
+            else:
+                plot_data = frames[-1].values  # Single time frame data
+            frame = frames[-1] # keep only the last one
+
         vsymbol = frame.vsymbol
         if ((field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr'\
             or fluctuation) and not fourrier_y:
@@ -303,14 +309,11 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
             #if fluctuation or time_average:
                 #lbl += ' (avg %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
             cbar = fig.colorbar(pcm,label=lbl)
-        if xlim:
-            ax.set_xlim(xlim)
-        if ylim:
-            ax.set_ylim(ylim)
-        if clim:
-            pcm.set_clim(clim)    
-        if not full_plot:
-            ax.set_title(title)
+        if xlim: ax.set_xlim(xlim)
+        if ylim: ax.set_ylim(ylim)
+        if clim: pcm.set_clim(clim[kf])    
+        if not full_plot: ax.set_title(title)
+        kf += 1 # field counter
 
     if full_plot:
         fig.suptitle(title)
@@ -322,7 +325,7 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
     val_out.append(np.squeeze(plot_data))
 
 def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
-                      cmap='inferno', xlim=[], ylim=[], clim=[], 
+                      cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
                       full_plot=False, movieprefix=''):
     os.makedirs('gif_tmp', exist_ok=True)
     
@@ -331,17 +334,19 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
     else:
         dataname = ''
         for f_ in fieldnames:
-            dataname += f_+'_'
-
+            dataname += 'd'+f_+'_' if fluctuation else f_+'_'
+    
+    movie_frames, vlims = get_2D_movie_data(simulation, cut_dir, cut_coord, time_frames, fieldnames, fluctuation) 
     total_frames = len(time_frames)
     for i, tf in enumerate(time_frames, 1):  # Start the index at 1
         figout = []
         cutout = []
+        clim = clim if clim else vlims
         plot_2D_cut(
             simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
             cmap=cmap, full_plot=full_plot,
-            xlim=xlim, ylim=ylim, clim=clim,
-            cutout=cutout, figout=figout
+            xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
+            cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
         )
         fig = figout[0]
         fig.tight_layout()
@@ -357,53 +362,15 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
     moviename = movieprefix+'_movie_'+dataname+cutname[0]
-    if xlim:
-        moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1])
-    if ylim:
-        moviename+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1])
-    if clim:
-        moviename+='_clim_%2.2d_%2.2d'%(clim[0],clim[1])
+    moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
+    moviename+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
+    # moviename+='_clim_%2.2d_%2.2d'%(clim[0],clim[1]) if clim else ''
     moviename += '.gif'
     # Compiling the movie images
     images = [Image.open(f'gif_tmp/plot_{tf}.png') for tf in time_frames]
     # Save as gif
     images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
     print("movie "+moviename+" created.")
-
-def movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
-          fluctuation = False, cmap='inferno', xlim=[], ylim=[], clim=[], 
-          full_plot=False, movieprefix=''):
-    if isinstance(fieldnames,str):
-        dataname = fieldnames + '_'
-    else:
-        dataname = ''
-        for f_ in fieldnames:
-            dataname += f_+'_'
-
-    # Load all data for the movie
-    for i, field in enumerate(fieldnames, 1):
-        field_frames = []
-        for j, tf in enumerate(time_frames, 1):
-            # Load and process data for all time frames
-            frame_values = []
-            t = time_frames[0]
-            frame = Frame(simulation, field, t, load=True)
-            frame.slice_2D(cut_dir, cut_coord)
-            frame_values.append(frame.values)
-        # if fluctuation:
-            
-        field_frames.append(frame_values)
-
-
-    # make the movie
-    total_frames = len(time_frames)
-    for i, tf in enumerate(time_frames, 1):  # Start the index at 1
-
-        # Update progress
-        progress = f"Processing frames: {i}/{total_frames}... "
-        sys.stdout.write("\r" + progress)
-        sys.stdout.flush()
-    sys.stdout.write("\n")
 
 def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
     geometry.set_domain(geom_type,vessel_corners)
