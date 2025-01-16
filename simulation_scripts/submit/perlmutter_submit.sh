@@ -16,36 +16,31 @@ MODULES="PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12
 #.Set the account
 ACCOUNT="m2116"
 
-# Check if the script is called with "debug"
-if [[ "$1" == "debug" ]]; then
-    QOS="debug"
-    TIME="00:10:00"
-else
-    QOS="regular"
-fi
-
-#.AUXILIARY SLURM VARIABLES
-#.Total number of cores/tasks/MPI processes.
-NTASKS_PER_NODE=$GPU_PER_NODE
-#.Calculate total number of GPUs (nodes * GPUs per node)
-TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
-
-#.------- RESTART HELPER
-#.Default value
-LAST_FRAME=-1
-# Function to display help
+# help function
 show_help() {
-    echo "Usage: $0 [-r N] [-h]"
-    echo ""
-    echo "Options:"
-    echo "  -r N      Restart the simulation from frame N (optional)."
-    echo "  -h        Display this help message."
+    echo "Usage: $0 [-q QOS] [-n JOB_NAME] [-t TIME] [-h]"
+    echo "Submit a job to Perlmutter"
+    echo "  -q QOS      QOS to use (default: regular)"
+    echo "  -n JOB_NAME Name of the job (default: $JOB_NAME)"
+    echo "  -t TIME     Wall time for the job (default: $TIME)"
+    echo "  -h          Display this help and exit"
 }
-# Parse command-line options
-while getopts ":r:h" opt; do
+# check the following options : -q -name -time -help
+while getopts ":q:n:t:h" opt; do
     case ${opt} in
-        r )
-            LAST_FRAME=$OPTARG
+        q )
+            QOS=$OPTARG
+            #if its debug add _dbg to jobname
+            if [ "$QOS" == "debug" ]; then
+                JOB_NAME="${JOB_NAME}_dbg"
+                TIME="00:30:00"
+            fi
+            ;;
+        n )
+            JOB_NAME=$OPTARG
+            ;;
+        t )
+            TIME=$OPTARG
             ;;
         h )
             show_help
@@ -53,11 +48,21 @@ while getopts ":r:h" opt; do
             ;;
         \? )
             echo "Invalid option: -$OPTARG" >&2
-            show_help
             exit 1
             ;;
     esac
 done
+
+
+#.AUXILIARY SLURM VARIABLES
+#.Total number of cores/tasks/MPI processes.
+NTASKS_PER_NODE=$GPU_PER_NODE
+#.Calculate total number of GPUs (nodes * GPUs per node)
+TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
+
+#.------- RESTART
+#.Default value
+LAST_FRAME=-1
 if (( LAST_FRAME < 0 )); then
     #.Find the most recent frame for restart
     # Loop through all files ending with .gkyl in the current directory
