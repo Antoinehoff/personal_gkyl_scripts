@@ -501,13 +501,13 @@ class Simulation:
         """
         self.sources[name] = source
 
-    def plot_sources(self,y_const=0,z_const=0):
+    def plot_sources(self,y_const=0,z_const=0, banana_width=None):
         """
         Plot the profiles of all sources in the sources dictionary using various cuts.
         """
-        x_grid, y_grid, z_grid = self.geom_param.grids
+        x_grid, _, _ = self.geom_param.grids
 
-        fig, axs = plt.subplots(len(self.sources), 3, figsize=(18, 4 * len(self.sources)), sharex='col')
+        _, axs = plt.subplots(len(self.sources), 3, figsize=(18, 4 * len(self.sources)), sharex='col')
         
         if len(self.sources) == 1:
             axs = [axs]  # Ensure axs is iterable if there's only one subplot
@@ -515,6 +515,8 @@ class Simulation:
         for ax_row, (name, source) in zip(axs, self.sources.items()):
             # Plot density profiles
             ax_row[0].plot(x_grid, source.density_src(x_grid, y_const, z_const), label="Density", color="black", linestyle="-")
+            if banana_width:
+                ax_row[0].axvline(x=banana_width, color='black', linestyle='--', label='Banana width = %.2f m' % banana_width)
             ax_row[0].set_title(f"Density Profile: {name}")
             ax_row[0].set_ylabel(r"Density [1/m$^3$]")
             ax_row[0].grid(True, linestyle="--", alpha=0.7)
@@ -537,11 +539,11 @@ class Simulation:
         plt.tight_layout()
         plt.show()
 
-    def get_source_power(self, type='profile', remove_GB_loss=False, qfactor = 1.4, epsilon = 0.3):
+    def get_source_power(self, type='profile', remove_GB_loss=False):
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
-
-        if type == 'profile':  # Compute the input power from the source term analytical profile
+        
+        if (type == 'profile'):  # Compute the input power from the source term analytical profile
             integrant = np.zeros_like(X)
             for source in self.sources.values():
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_elc(X, Y, Z)
@@ -550,23 +552,6 @@ class Simulation:
             M2e = Frame(self, 'M2e_src', tf=0, load=True)
             M2i = Frame(self, 'M2i_src', tf=0, load=True)
             integrant = 0.5 * self.species['elc'].m * M2e.values + 0.5 * self.species['ion'].m * M2i.values
-        
-        if remove_GB_loss:
-            # get inner wall indices
-            iw_ix = np.argmin(np.abs(x))
-            iw_iy = 0
-            iw_iz = np.argmin(np.abs(z))
-            # get temperature of the source at the inner wall
-            Ti_iw = self.species['ion'].m * M2i.values[iw_ix, iw_iy, iw_iz]  
-            # get magnetic field at the inner wall
-            Bfield = Frame(self, 'Bmag', tf=0, load=True).values[iw_ix, iw_iy, iw_iz]
-
-            banana_width = phys_tools.banana_width(
-                self.species['ion'].q, self.species['ion'].m, Ti_iw, 
-                Bfield, qfactor, epsilon)
-            # apply a filter to the integrant for all x < banana_width
-            integrant[X < banana_width] = 0.0
-
         # multiply by Jacobian
         integrant *= self.geom_param.Jacobian
         # Integrate source terms (volume or surface)
@@ -576,9 +561,33 @@ class Simulation:
         elif self.dimensionality == '2x2v':
             pow_in = math_tools.integral_surf(x, z, integrant[:, 0, :])
             print("Lineic input power: %g kW/m" % (pow_in / 1e3))
+
+        if remove_GB_loss:
+            # Compute the banana width to estimate how much of the source is lost to the grad-B drift
+            banana_width = self.get_banana_width(x=0,z=0)
+            # apply a filter to the integrant for all x < banana_width
+            integrant_bw = integrant.copy()
+            integrant_bw[X < banana_width] = 0.0
+            if self.dimensionality == '3x2v':
+                pow_bw_in = math_tools.integral_vol(x, y, z, integrant_bw)
+            elif self.dimensionality == '2x2v':
+                pow_bw_in = math_tools.integral_surf(x, z, integrant_bw[:, 0, :])
+            print("Grad-B drift loss: %g %%" % (100 * (pow_in - pow_bw_in) / pow_in))
+            print("(input power after grad-B drift: %g kW)" % (pow_bw_in / 1e3))
+
         return pow_in
 
-    def get_source_particle(self, type='profile'):
+    def get_source_particle(self, type='profile', remove_GB_loss=False):
+        """
+        Compute the input particle from the source term.
+
+        Parameters:
+        type (str): The type of source term ('profile' or 'diagnostic').
+        remove_GB_loss (bool): Whether to remove the grad-B drift loss from the computation.
+
+        Returns:
+        float: The total input particle rate (particles per second).
+        """
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
 
@@ -590,19 +599,29 @@ class Simulation:
             M0e = Frame(self, 'ne_src', tf=0, load=True)
             M0i = Frame(self, 'ni_src', tf=0, load=True)
             integrant = M0e.values + M0i.values
-
-        # multiply by Jacobian
         integrant *= self.geom_param.Jacobian
-        # Integrate source terms (volume or surface)
+
         if self.dimensionality == '3x2v':
             part_in = math_tools.integral_vol(x, y, z, integrant)
             print("Total input particle: %g part/s" % (part_in))
         elif self.dimensionality == '2x2v':
             part_in = math_tools.integral_surf(x, z, integrant[:, 0, :])
             print("Lineic input particle: %g part/s/m" % (part_in))
+
+        if remove_GB_loss:
+            banana_width = self.get_banana_width(x=0,z=0)
+            integrant_bw = integrant.copy()
+            integrant_bw[X < banana_width] = 0.0
+            if self.dimensionality == '3x2v':
+                part_bw_in = math_tools.integral_vol(x, y, z, integrant_bw)
+            elif self.dimensionality == '2x2v':
+                part_bw_in = math_tools.integral_surf(x, z, integrant_bw[:, 0, :])
+            print("Grad-B drift loss: %g %%" % (100 * (part_in - part_bw_in) / part_in))
+            print("(input particle after grad-B drift: %g part/s)" % (part_bw_in))
+
         return part_in
 
-    def source_info(self, type='profile', y_const=0, z_const=0):
+    def source_info(self, type='profile', y_const=0, z_const=0, remove_GB_loss=False):
         """
         Combines get_source_particle, get_source_power, and plot_sources to provide comprehensive source information.
         
@@ -612,7 +631,34 @@ class Simulation:
         z_const (float): The constant z value for the profiles.
         """
         print("-- Source Informations --")
-        self.get_source_particle(type=type)
-        self.get_source_power(type=type)
+        self.get_source_particle(type=type, remove_GB_loss=remove_GB_loss)
+        self.get_source_power(type=type, remove_GB_loss=remove_GB_loss)
         if len(self.sources) > 0:
-            self.plot_sources(y_const=y_const, z_const=z_const)
+            self.plot_sources(y_const=y_const, z_const=z_const, banana_width = self.get_banana_width(x=0,z=0))
+
+
+    def get_banana_width(self, x=0.0, z=0.0):
+        '''
+        calculate the banana width of a particle.
+        Parameters:
+        simulation (pygkyl.simulations.simulation.Simulation): Simulation object.
+        x (float): x-coordinate of the source location [m].
+        z (float): z-coordinate of the source location [m].
+        Returns:
+        rho_b (float): Banana width of the particle [m].
+        '''
+        # get inner wall indices
+        iw_ix = np.argmin(np.abs(x))
+        iw_iy = 0
+        iw_iz = np.argmin(np.abs(z))
+        # get temperature of the source at the inner wall
+        M2i = Frame(self, 'M2i_src', tf=0, load=True, normalize=False)
+        M0i = Frame(self, 'ni_src', tf=0, load=True, normalize=False)
+        Ti_iw = self.species['ion'].m * M2i.values[iw_ix, iw_iy, iw_iz] / M0i.values[iw_ix, iw_iy, iw_iz] 
+        # get magnetic field at the inner wall
+        Bfield = Frame(self, 'Bmag', tf=0, load=True).values[iw_ix, iw_iy, iw_iz]
+        qfactor = self.geom_param.qprofile_x(0)
+        epsilon = self.geom_param.get_epsilon()
+        banana_width = phys_tools.banana_width(
+            self.species['ion'].q, self.species['ion'].m, Ti_iw, Bfield, qfactor, epsilon)
+        return banana_width
