@@ -24,14 +24,14 @@ from .math_utils import *
 from .file_utils import *
 from .fig_utils import *
 from .data_utils import *
-from classes import Frame
+from ..classes import Frame
 # other commonly used libs
 import numpy as np
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-from tools import pgkyl_interface as pgkyl_
+from ..tools import pgkyl_interface as pgkyl_
 
 # set the font to be LaTeX
 if check_latex_installed(verbose=False):

@@ -2,7 +2,8 @@ import numpy as np
 import sys,os
 home_dir = os.path.expanduser("~")
 sys.path.append(home_dir+'/personal_gkyl_scripts/python_utilities')
-from tools.math_tools import custom_meshgrid, integral_vol
+#from tools.math_tools import custom_meshgrid, integral_vol
+from ..tools.math_tools import custom_meshgrid, integral_vol
 
 class GBsource:
     """

@@ -1,5 +1,5 @@
 import numpy as np
-from classes import Frame
+from ..classes import Frame
 
 def get_2D_movie_data(simulation,cut_dir,cut_coord,time_frames, fieldnames, fluctuation):
     # Load all data for the movie e.g. [[n0,u0,...],[n1,u1,...],...]
