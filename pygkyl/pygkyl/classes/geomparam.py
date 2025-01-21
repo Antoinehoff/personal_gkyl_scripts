@@ -122,7 +122,8 @@ class GeomParam:
 
         #.Minor radius as a function of x:
     def r_x(self,xIn):
-        return self.Rmid_min+xIn-self.R_axis
+        return self.a_mid - self.x_LCFS + xIn
+        #return self.Rmid_min-self.R_axis+xIn
     
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field
@@ -229,14 +230,16 @@ class GeomParam:
         return self.n0
     
     def get_epsilon(self):
-        return self.r0/self.a_mid
+        return self.a_mid/self.R_axis
+    
+    def qprofile_x(self,x):
+        return self.qprofile(self.R_x(x))
 
     def info(self):
         print(f"R_axis: {self.R_axis}")
         print(f"Z_axis: {self.Z_axis}")
         print(f"R_LCFSmid: {self.R_LCFSmid}")
         print(f"B0: {self.B0}")
-        print(f"x_out: {self.x_out}")
         print(f"a_shift: {self.a_shift}")
         print(f"q0: {self.q0}")
         print(f"kappa: {self.kappa}")
