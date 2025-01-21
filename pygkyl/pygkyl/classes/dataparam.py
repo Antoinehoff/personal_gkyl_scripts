@@ -20,13 +20,14 @@ class DataParam:
     - data_files_dict (dict): Dictionary mapping data fields to file specifications.
     - BiMaxwellian (bool): Flag indicating if BiMaxwellian moments are used.
     - spec_undep_quantities (list): List of quantities independent of species.
-
+    
     Methods:
     --------
     - __init__: Initializes the DataParam object with the required parameters.
     - info: Displays the information of the directory parameters.
     - set_data_field_dict: Sets up the data field dictionary for various scalar fields.
     - get_default_units_dict: Returns the default units dictionary for various quantities.
+    - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
                  fileprefix='', wkdir='', BiMaxwellian=True, species = {}):
@@ -40,6 +41,7 @@ class DataParam:
         self.data_files_dict = {}
         self.BiMaxwellian = BiMaxwellian
         self.set_data_field_dict(BiMaxwellian=BiMaxwellian, species=species)
+        self.species = species
         # We set here an array where all quantities that does not depend on species are stored. 
         # This helps in the treatment of input in the plot functions
         self.spec_undep_quantities = ['phi','Apar','b_x','b_y','b_z','Jacobian','Bmag','Wtot']
@@ -747,3 +749,19 @@ class DataParam:
 
         # Return a copy of the units dictionary
         return copy.copy(default_units_dict)
+
+    def info(self):
+        default_dict = DataParam.get_default_units_dict(self.species)
+        # Create a table to display the data
+        print(f"A table of the default quantities and their default units:")
+        print(f"| {'Quantity':<15} | {'Symbol':<30} | {'Units':<20} |")
+        print(f"|{'-' * 17}|{'-' * 32}|{'-' * 22}|")
+
+        for key in default_dict:
+            if key.endswith('symbol'):  # Check for a specific type of key
+                quantity = key[:-6]  # Remove the suffix to get the base name
+                if not quantity in ['x','y','z','ky','wavelen','vpar','mu','t','fi']:
+                    symbol = default_dict[f'{quantity}symbol']
+                    units = default_dict.get(f'{quantity}units', 'N/A')
+                    # Format as a table row
+                    print(f"| {quantity:<15} | {symbol:<30} | {units:<20} |")
