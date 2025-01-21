@@ -5,6 +5,8 @@ set -e
 JOB_NAME="gk_tcv_3x2v"
 #.Number of nodes to request.
 NODES=1
+#.Specify the QOS
+QOS="regular"
 #.Specify GPUs per node (Perlmutter has 4 GPUs per node):
 GPU_PER_NODE=4
 #.Request wall time
@@ -15,6 +17,8 @@ EMAIL="ahoffman@pppl.gov"
 MODULES="PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.0 nccl/2.18.3-cu12"
 #.Set the account
 ACCOUNT="m2116"
+# default value to check a possible restart
+LAST_FRAME=-1 
 
 # help function
 show_help() {
@@ -23,10 +27,11 @@ show_help() {
     echo "  -q QOS      QOS to use (default: regular)"
     echo "  -n JOB_NAME Name of the job (default: $JOB_NAME)"
     echo "  -t TIME     Wall time for the job (default: $TIME)"
+    echo "  -N numnodes Number of nodes required (default: $NODES)"
     echo "  -h          Display this help and exit"
 }
-# check the following options : -q -name -time -help
-while getopts ":q:n:t:h" opt; do
+# check the following options : -q -n -t -h
+while getopts ":q:n:t:r:N:h" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG
@@ -39,8 +44,14 @@ while getopts ":q:n:t:h" opt; do
         n )
             JOB_NAME=$OPTARG
             ;;
+        N )
+            NODES=$OPTARG
+            ;;
         t )
             TIME=$OPTARG
+            ;;
+        r )
+            LAST_FRAME=$OPTARG
             ;;
         h )
             show_help
@@ -61,8 +72,6 @@ NTASKS_PER_NODE=$GPU_PER_NODE
 TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
 
 #.------- RESTART
-#.Default value
-LAST_FRAME=-1
 if (( LAST_FRAME < 0 )); then
     #.Find the most recent frame for restart
     # Loop through all files ending with .gkyl in the current directory
