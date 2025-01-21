@@ -71,8 +71,8 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
     if values.ndim == 1: values = values.reshape(1,-1)
     frame.free_values() # remove values to free memory
     x = frame.new_grids[0]
-    tsymb = simulation.normalization['tsymbol'] 
-    tunit = simulation.normalization['tunits']
+    tsymb = simulation.normalization.dict['tsymbol'] 
+    tunit = simulation.normalization.dict['tunits']
     tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
     xlabel = frame.new_gsymbols[0]+(' ('+frame.new_gunits[0]+')')*(1-(frame.new_gunits[0]==''))
     vlabel = frame.vsymbol+(' ('+frame.vunits+')')*(1-(frame.vunits==''))
@@ -468,7 +468,7 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
             if ddt: # time derivative
                 dfdt   = np.gradient(ftot_t,time)
                 # we rescale it to obtain a result in seconds
-                Ft = dfdt/simulation.normalization['tscale']
+                Ft = dfdt/simulation.normalization.dic['tscale']
             else:
                 Ft  = ftot_t
             # Convert to np arrays
@@ -488,13 +488,13 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
                     gbl = gbl+np.array(gbl_s)
 
             # Setup labels
-            Flbl = simulation.normalization[subfield+'symbol']
+            Flbl = simulation.normalization.dict[subfield+'symbol']
             Flbl = r'$\int$ '+Flbl+r' $d^3x$'
             xlbl = label_from_simnorm(simulation,'t')
             if average:
                 Flbl = Flbl + r'$/V$'
             else:
-                ylbl = multiply_by_m3_expression(simulation.normalization[subfield+'units'])
+                ylbl = multiply_by_m3_expression(simulation.normalization.dict[subfield+'units'])
 
             if ddt:
                 Flbl = r'$\partial_t$ '+Flbl
@@ -508,11 +508,11 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
         if subfield == 'Wtot' and plot_src_input:
             src_power = simulation.get_source_power()
             if ddt:
-                ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
+                ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization.dict['Wtotscale']
                 ax.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
             else:
                 # plot the accumulate energy from the source
-                Wsrc_t = ftot_t[0] + src_power*simulation.normalization['tscale']*time/simulation.normalization['Wtotscale']
+                Wsrc_t = ftot_t[0] + src_power*simulation.normalization.dict['tscale']*time/simulation.normalization.dict['Wtotscale']
                 ax.plot(time,Wsrc_t,'--k',label='Source input')
 
         # Print a newline after completing all frames for the current subfield
@@ -564,6 +564,8 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
                 spec_s = 'elc'
             elif subfield[-1] == 'i':
                 spec_s = 'ion'
+            elif subfield[-3:] == 'tot':
+                spec_s = ['elc','ion']
 
             if subfield[:-1] in ['n']:
                 def receipe(x): return x[:,0]
@@ -590,22 +592,38 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
                 scale = simulation.species[spec_s].m
                 units = 'eV'
                 symbol = r'$\bar T_{%s}$'%spec_s[0]
-            elif subfield[:-1] in ['W']:
-                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])*x[:,0]
-                scale = simulation.species[spec_s].m * simulation.phys_param.eV / 1e6
+            elif subfield[:-1] in ['W','Pow']:
+                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])
+                scale = simulation.species[spec_s].m / 1e6                
                 units = 'MJ'
-                symbol = r'$\bar n_{%s} \bar T_{%s}$'%(spec_s[0],spec_s[0])
+                symbol = r'$W_{kin,%s}$'%spec_s[0]
+            elif subfield in ['Wtot']:
+                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])
+                scale = [simulation.species[s].m / 1e6 for s in spec_s]
+                units = 'MJ'
+                symbol = r'$W_{kin,tot}$'
+            elif subfield in ['ntot']:
+                def receipe(x): return x[:,0]
+                scale = [1.0 for s in spec_s]      
+                units = 'particles'
+                symbol = r'$\bar n_{tot}$'
 
-            # Load the data from the file
-            f_ = simulation.data_param.fileprefix+'-'+spec_s+'_integrated_moms.gkyl'
-            Gdata = pg.data.GData(f_)
-            int_moms = pgkyl_.get_values(Gdata)
-            time = np.squeeze(Gdata.get_grid()) / simulation.normalization['tscale']
+            # Load the data from the file(s)
+            int_moms = 0
+            if isinstance(spec_s,list):
+                for s in spec_s:
+                    f_ = simulation.data_param.fileprefix+'-'+s+'_integrated_moms.gkyl'
+                    Gdata = pg.data.GData(f_)
+                    int_moms += pgkyl_.get_values(Gdata) * scale[spec_s.index(s)]
+            else:
+                f_ = simulation.data_param.fileprefix+'-'+spec_s+'_integrated_moms.gkyl'
+                Gdata = pg.data.GData(f_)
+                int_moms = pgkyl_.get_values(Gdata) * scale
+
+            time = np.squeeze(Gdata.get_grid()) / simulation.normalization.dict['tscale']
 
             Ft = receipe(int_moms)
             Ft = np.squeeze(Ft)
-            # resacle
-            Ft = Ft * scale
             # remove double diagnostic
             time, indices = np.unique(time, return_index=True)
             Ft = Ft[indices]
@@ -615,7 +633,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
             if ddt: # time derivative
                 dfdt   = np.gradient(Ft,time,edge_order=2)
                 # we rescale it to obtain a result in seconds
-                Ft = dfdt/simulation.normalization['tscale']
+                Ft = dfdt/simulation.normalization.dict['tscale']
                 if ylbl == 'MJ':
                     ylbl = 'MW'
                 else:
@@ -624,17 +642,19 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
             ax.plot(time,Ft,label=Flbl)
 
         # plot eventually the input power for comparison
-        if subfield == 'Wtot' and plot_src_input:
-            src_power = simulation.get_source_power()
+        if subfield in ['Wtot','ntot'] and plot_src_input:
+            src_input = simulation.get_source_power() if subfield == 'Wtot' else simulation.get_source_particle()
+            if subfield == 'Wtot': src_input /= simulation.normalization.dict['Wtotscale']
             if ddt:
-                ddtWsrc_t = src_power*np.ones_like(time)/simulation.normalization['Wtotscale']
-                ax.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
+                ddtWsrc_t = src_input*np.ones_like(time)
+                ax.plot(time,ddtWsrc_t,'--k',label='Source input')
             else:
                 # plot the accumulate energy from the source
-                Wsrc_t = Ft[0] + src_power*simulation.normalization['tscale']*time/simulation.normalization['Wtotscale']
+                Wsrc_t = Ft[0] + src_input*simulation.normalization.dict['tscale']*time
                 ax.plot(time,Wsrc_t,'--k',label='Source input')
+            
         # add labels and show legend
-        ax.set_xlabel(simulation.normalization['tunits'])
+        ax.set_xlabel(simulation.normalization.dict['tunits'])
         ax.set_ylabel(ylbl)
         if xlim:
             ax.set_xlim(xlim)

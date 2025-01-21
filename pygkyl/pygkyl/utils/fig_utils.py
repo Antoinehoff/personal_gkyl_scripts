@@ -22,7 +22,7 @@ import pickle
 default_figsz = [5,3.5]
 
 def label_from_simnorm(simulation,name):
-    return label(simulation.normalization[name+'symbol'],simulation.normalization[name+'units'])
+    return label(simulation.normalization.dict[name+'symbol'],simulation.normalization.dict[name+'units'])
 
 def label(label,units):
     if units:
