@@ -32,7 +32,7 @@ class Frame:
     - info: Prints out key information about the frame.
 
     """
-    def __init__(self, simulation, name, tf, load=False, polyorder=1, polytype='ms'):
+    def __init__(self, simulation, name, tf, load=False, polyorder=1, polytype='ms', normalize=True):
         """
         Initialize a Frame instance with all attributes set to None.
         """
@@ -77,7 +77,7 @@ class Frame:
         self.fulltitle = ''
 
         if load:
-            self.load(polyorder=polyorder, polytype=polytype)
+            self.load(polyorder=polyorder, polytype=polytype, normalize=normalize)
 
     def process_field_name(self):
         """
@@ -100,7 +100,7 @@ class Frame:
         self.vsymbol = self.simulation.normalization[self.name + 'symbol']
         self.vunits = self.simulation.normalization[self.name + 'units']
 
-    def load(self, polyorder=1, polytype='ms'):
+    def load(self, polyorder=1, polytype='ms', normalize=True):
         """
         Load the data from the file and interpolate it.
         """
@@ -119,7 +119,8 @@ class Frame:
         if not self.time:
             self.time = 0
         self.refresh()
-        self.normalize()
+        if normalize:
+            self.normalize()
 
     def load_DG(self, polyorder=1, polytype='ms'):
         """
