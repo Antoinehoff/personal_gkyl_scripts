@@ -10,5 +10,8 @@
 simulation_scripts/.DS_Store
 .*
 sim_data_dir_example/*
-studies/*
 simulation_scripts/.DS_Store
+pygkyl/pygkyl.egg-info
+pygkyl/build
+pygkyl/install.log
+.DS_Store
