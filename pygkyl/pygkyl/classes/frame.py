@@ -83,8 +83,8 @@ class Frame:
         """
         Process the field name and set up the composition and filenames.
         """
-        self.composition = self.simulation.normalization[self.name + 'compo']
-        self.receipe = self.simulation.normalization[self.name + 'receipe']
+        self.composition = self.simulation.normalization.dict[self.name + 'compo']
+        self.receipe = self.simulation.normalization.dict[self.name + 'receipe']
         for subname in self.composition:
             subdataname = self.simulation.data_param.data_files_dict[subname + 'file']
             self.datanames.append(subdataname)
@@ -95,10 +95,10 @@ class Frame:
             self.filenames.append("%s-%s.gkyl" % (self.simulation.data_param.fileprefix, name_tf))
             self.comp.append(self.simulation.data_param.data_files_dict[subname + 'comp'])
             self.gnames = copy.deepcopy(self.simulation.data_param.data_files_dict[subname + 'gnames'])
-        self.gsymbols = [self.simulation.normalization[key + 'symbol'] for key in self.gnames]
-        self.gunits = [self.simulation.normalization[key + 'units'] for key in self.gnames]
-        self.vsymbol = self.simulation.normalization[self.name + 'symbol']
-        self.vunits = self.simulation.normalization[self.name + 'units']
+        self.gsymbols = [self.simulation.normalization.dict[key + 'symbol'] for key in self.gnames]
+        self.gunits = [self.simulation.normalization.dict[key + 'units'] for key in self.gnames]
+        self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']
+        self.vunits = self.simulation.normalization.dict[self.name + 'units']
 
     def load(self, polyorder=1, polytype='ms', normalize=True):
         """
@@ -166,27 +166,27 @@ class Frame:
         Normalize the time, grids, and values.
         """
         if time:
-            self.time /= self.simulation.normalization['tscale']
-            self.tsymbol = self.simulation.normalization['tsymbol']
-            self.tunits = self.simulation.normalization['tunits']
+            self.time /= self.simulation.normalization.dict['tscale']
+            self.tsymbol = self.simulation.normalization.dict['tsymbol']
+            self.tunits = self.simulation.normalization.dict['tunits']
         if grid:
             for ig in range(len(self.grids)):
-                self.grids[ig] /= self.simulation.normalization[self.gnames[ig] + 'scale']
-                self.grids[ig] -= self.simulation.normalization[self.gnames[ig] + 'shift']
-                self.gsymbols[ig] = self.simulation.normalization[self.gnames[ig] + 'symbol']
-                self.gunits[ig] = self.simulation.normalization[self.gnames[ig] + 'units']
+                self.grids[ig] /= self.simulation.normalization.dict[self.gnames[ig] + 'scale']
+                self.grids[ig] -= self.simulation.normalization.dict[self.gnames[ig] + 'shift']
+                self.gsymbols[ig] = self.simulation.normalization.dict[self.gnames[ig] + 'symbol']
+                self.gunits[ig] = self.simulation.normalization.dict[self.gnames[ig] + 'units']
         if values:
-            self.values /= self.simulation.normalization[self.name + 'scale']
-            self.values -= self.simulation.normalization[self.name + 'shift']
-            self.vsymbol = self.simulation.normalization[self.name + 'symbol']
-            self.vunits = self.simulation.normalization[self.name + 'units']
+            self.values /= self.simulation.normalization.dict[self.name + 'scale']
+            self.values -= self.simulation.normalization.dict[self.name + 'shift']
+            self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']
+            self.vunits = self.simulation.normalization.dict[self.name + 'units']
 
     def refresh_title(self):
         """
         Refresh the slice title and time title.
         """
         slicetitle = ''
-        norm = self.simulation.normalization
+        norm = self.simulation.normalization.dict
         for k_, c_ in self.slicecoords.items():
             if isinstance(c_, float):
                 slicetitle += norm[k_ + 'symbol'] + '=%3.3f' % c_ + norm[k_ + 'units'] + ', '
@@ -328,7 +328,7 @@ class Frame:
         fft_ky = np.fft.rfft(self.values, axis=1)
         Ny = self.values.shape[1]
         y = self.grids[1]
-        dy = (y[1] - y[0]) * self.simulation.normalization['yscale']
+        dy = (y[1] - y[0]) * self.simulation.normalization.dict['yscale']
         ky = np.fft.rfftfreq(Ny, d=dy)
         Nky = len(ky)
         ky = mt.create_uniform_array(ky, Nky + 1)
@@ -339,8 +339,8 @@ class Frame:
         gname = 'ky'
         self.grids[1] = ky
         self.gnames[1] = gname
-        self.gsymbols[1] = self.simulation.normalization[gname + 'symbol']
-        self.gunits[1] = self.simulation.normalization[gname + 'units']
+        self.gsymbols[1] = self.simulation.normalization.dict[gname + 'symbol']
+        self.gunits[1] = self.simulation.normalization.dict[gname + 'units']
 
         self.refresh(values=False)
 
