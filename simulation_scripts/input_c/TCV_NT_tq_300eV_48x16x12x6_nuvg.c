@@ -668,6 +668,11 @@ main(int argc, char **argv)
       .ctx = &ctx,
     },
 
+    // .init_from_file = {
+    //   .type = GKYL_IC_IMPORT_F,
+    //   .file_name = "gk_tcv_negD_trueq_iwl_3x2v-elc_3000.gkyl",
+    // },
+
     .projection = {
       .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
       .ctx_density = &ctx,
@@ -747,6 +752,11 @@ main(int argc, char **argv)
       .mapping = mapc2p_vel_ion,
       .ctx = &ctx,
     },
+
+    // .init_from_file = {
+    //   .type = GKYL_IC_IMPORT_F,
+    //   .file_name = "gk_tcv_negD_trueq_iwl_3x2v-ion_3000.gkyl",
+    // },
 
     .projection = {
       .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
