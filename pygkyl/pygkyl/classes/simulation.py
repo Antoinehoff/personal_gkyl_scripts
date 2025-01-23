@@ -5,14 +5,11 @@ import postgkyl as pg
 from .numparam import NumParam
 from .physparam import PhysParam
 from .dataparam import DataParam
-from .species import Species
 from .geomparam import GeomParam
 from .normalization import Normalization
 from .frame import Frame
 from ..tools import math_tools, phys_tools
-#import math_tools as math_tools
-#import phys_tools as phys_tools
-import matplotlib.pyplot as plt  # Add this import if not already present
+import matplotlib.pyplot as plt
 
 class Simulation:
     """
@@ -41,8 +38,8 @@ class Simulation:
     """
     def __init__(self,dimensionality='3x2v'):
         self.dimensionality = dimensionality # Dimensionality of the simulation (e.g., 3x2v, 2x2v)
-        self.phys_param = None  # Physical parameters (e.g., constants like eps0, eV)
-        self.num_param  = None  # Numerical parameters (e.g., grid size)
+        self.phys_param = PhysParam()  # Physical parameters (eps0, eV, mp, me)
+        self.num_param  = None  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
         self.data_param = None  # Data parameters (e.g., file paths)
         self.geom_param = None  # Geometric parameters (e.g., axis positions)
         self.GBsource   = None  # Source model of the simulation
@@ -51,13 +48,13 @@ class Simulation:
         self.normalization = None # Normalization units for the simulation data
         self.sources = {}  # Dictionary to store sources
 
-    def set_phys_param(self, eps0, eV, mp, me, B_axis):
+    def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """
         Set physical parameters like permittivity, electron volts, masses, and magnetic field.
         """
-        self.phys_param = PhysParam(eps0, eV, mp, me, B_axis)
+        self.phys_param = PhysParam(eps0, eV, mp, me)
     
-    def set_geom_param(self, R_axis=None, Z_axis=None, R_LCFSmid=None, a_shift=None, kappa=None, 
+    def set_geom_param(self, R_axis=None, Z_axis=None, R_LCFSmid=None, a_shift=None, kappa=None, B_axis = None,
                        delta=None, x_LCFS=None, q0 = None, x_out = None, geom_type='Miller', qprofile='default'):
         """
         Set geometric parameters related to the shape and size of the plasma (e.g., axis positions, LCFS).
@@ -65,7 +62,7 @@ class Simulation:
         self.geom_param = GeomParam(
             R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
             a_shift=a_shift, q0=q0, kappa=kappa, delta=delta, 
-            x_LCFS=x_LCFS, geom_type=geom_type, B0=self.phys_param.B_axis,
+            x_LCFS=x_LCFS, geom_type=geom_type, B_axis=B_axis,
             x_out = x_out, qprofile=qprofile
         )
 
@@ -117,7 +114,7 @@ class Simulation:
         """
         Add an existing species object to the simulation and compute its gyromotion.
         """
-        species.set_gyromotion(self.phys_param.B_axis)
+        species.set_gyromotion(self.geom_param.B_axis)
         self.species[species.name] = species
         # Update the normalization with all available species
         self.normalization = Normalization(self) 
@@ -202,48 +199,7 @@ class Simulation:
         return GBloss, time, GBloss_z
 
     def add_source(self, name, source):
-        """
-        Add a source to the simulation.
-        """
         self.sources[name] = source
-
-    def plot_sources(self,y_const=0,z_const=0, banana_width=None):
-        """
-        Plot the profiles of all sources in the sources dictionary using various cuts.
-        """
-        x_grid, _, _ = self.geom_param.grids
-
-        _, axs = plt.subplots(len(self.sources), 3, figsize=(18, 4 * len(self.sources)), sharex='col')
-        
-        if len(self.sources) == 1:
-            axs = [axs]  # Ensure axs is iterable if there's only one subplot
-        
-        for ax_row, (name, source) in zip(axs, self.sources.items()):
-            # Plot density profiles
-            ax_row[0].plot(x_grid, source.density_src(x_grid, y_const, z_const), label="Density", color="black", linestyle="-")
-            if banana_width:
-                ax_row[0].axvline(x=banana_width, color='black', linestyle='--', label='Banana width = %.2f m' % banana_width)
-            ax_row[0].set_title(f"Density Profile: {name}")
-            ax_row[0].set_ylabel(r"Density [1/m$^3$]")
-            ax_row[0].grid(True, linestyle="--", alpha=0.7)
-            
-            # Plot electron temperature profiles
-            ax_row[1].plot(x_grid, source.temp_profile_elc(x_grid, y_const, z_const), label="Electron Temp", color="blue", linestyle="--")
-            ax_row[1].set_title(f"Electron Temp Profile: {name}")
-            ax_row[1].set_ylabel("Temperature [J]")
-            ax_row[1].grid(True, linestyle="--", alpha=0.7)
-            
-            # Plot ion temperature profiles
-            ax_row[2].plot(x_grid, source.temp_profile_ion(x_grid, y_const, z_const), label="Ion Temp", color="red", linestyle="-.")
-            ax_row[2].set_title(f"Ion Temp Profile: {name}")
-            ax_row[2].set_ylabel("Temperature [J]")
-            ax_row[2].grid(True, linestyle="--", alpha=0.7)
-        
-        axs[-1][0].set_xlabel("x-grid [m]")
-        axs[-1][1].set_xlabel("x-grid [m]")
-        axs[-1][2].set_xlabel("x-grid [m]")
-        plt.tight_layout()
-        plt.show()
 
     def get_source_power(self, type='profile', remove_GB_loss=False):
         [x, y, z] = self.geom_param.get_conf_grid()
@@ -286,13 +242,6 @@ class Simulation:
     def get_source_particle(self, type='profile', remove_GB_loss=False):
         """
         Compute the input particle from the source term.
-
-        Parameters:
-        type (str): The type of source term ('profile' or 'diagnostic').
-        remove_GB_loss (bool): Whether to remove the grad-B drift loss from the computation.
-
-        Returns:
-        float: The total input particle rate (particles per second).
         """
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
@@ -326,22 +275,6 @@ class Simulation:
             print("(input particle after grad-B drift: %g part/s)" % (part_bw_in))
 
         return part_in
-
-    def source_info(self, type='profile', y_const=0, z_const=0, remove_GB_loss=False):
-        """
-        Combines get_source_particle, get_source_power, and plot_sources to provide comprehensive source information.
-        
-        Parameters:
-        type (str): The type of source term ('profile' or 'diagnostic').
-        y_const (float): The constant y value for the profiles.
-        z_const (float): The constant z value for the profiles.
-        """
-        print("-- Source Informations --")
-        self.get_source_particle(type=type, remove_GB_loss=remove_GB_loss)
-        self.get_source_power(type=type, remove_GB_loss=remove_GB_loss)
-        if len(self.sources) > 0:
-            self.plot_sources(y_const=y_const, z_const=z_const, banana_width = self.get_banana_width(x=0,z=0))
-
 
     def get_banana_width(self, x=0.0, z=0.0, spec='ion'):
         '''

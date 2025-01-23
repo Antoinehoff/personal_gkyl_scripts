@@ -665,5 +665,95 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
     figout.append(fig)
     return time
 
+def plot_sources_info(simulation,x_const=0,z_const=0):
+    """
+    Plot the profiles of all sources in the sources dictionary using various cuts.
+    """
+    print("-- Source Informations --")
+    simulation.get_source_particle(type=type, remove_GB_loss=True)
+    simulation.get_source_power(type=type, remove_GB_loss=True)
+    banana_width = simulation.get_banana_width(x=0.0, z=z_const, spec='ion')
+    if len(simulation.sources) > 0:
+        x_grid, _, z_grid = simulation.geom_param.grids
+        _, axs = plt.subplots(2, 2, figsize=(2*default_figsz[0],2*default_figsz[1]))
+        y_const = 0.0
+
+        # Plot the density profiles at constant y and z
+        for (name, source) in simulation.sources.items():
+            n_src = [source.density_src(x, y_const, z_const) for x in x_grid]
+            axs[0][0].plot(x_grid, n_src, label=r"$\dot n$ "+name, linestyle="-")
+        axs[0][0].axvline(x=banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
+        axs[0][0].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
+        axs[0][0].set_xlabel("x-grid [m]")
+        axs[0][0].set_ylabel(r"1/m$^3/s$")
+        axs[0][0].legend()
+
+        # Plot the temperature profiles at constant x and z
+        for (name, source) in simulation.sources.items():
+            Te_src = [source.temp_profile_elc(x, y_const, z_const)/simulation.phys_param.eV for x in x_grid]
+            Ti_src = [source.temp_profile_ion(x, y_const, z_const)/simulation.phys_param.eV for x in x_grid]
+            axs[0][1].plot(x_grid, Te_src, label=r"$T_e$ "+name, linestyle="--")
+            axs[0][1].plot(x_grid, Ti_src, label=r"$T_i$ "+name, linestyle="-.")
+        axs[0][1].axvline(x=banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
+        axs[0][1].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
+        axs[0][1].set_xlabel("x-grid [m]")
+        axs[0][1].set_ylabel("eV")
+        axs[0][1].legend()
+
+        # Plot the density profiles at constant x and y
+        for (name, source) in simulation.sources.items():
+            n_src = [source.density_src(x_const, y_const, z) for z in z_grid]
+            axs[1][0].plot(z_grid, n_src, label=r"$\dot n$ "+name, color="black", linestyle="-")
+        axs[1][0].set_xlabel("z-grid")
+        axs[1][0].set_ylabel(r"1/m$^3/s$")
+        axs[1][0].legend()
+
+        # Plot the temperature profiles at constant x and y
+        for (name, source) in simulation.sources.items():
+            Te_src = [source.temp_profile_elc(x_const, y_const, z)/simulation.phys_param.eV for z in z_grid]
+            Ti_src = [source.temp_profile_ion(x_const, y_const, z)/simulation.phys_param.eV for z in z_grid]
+            axs[1][1].plot(z_grid, Te_src, label=r"$T_e$ "+name, linestyle="--")
+            axs[1][1].plot(z_grid, Ti_src, label=r"$T_i$ "+name, linestyle="-.")
+        axs[1][1].set_xlabel("z-grid [rad]")
+        axs[1][1].set_ylabel("eV")
+        axs[1][1].legend()
+        
+        plt.tight_layout()
+        plt.show()
+        
+        # Build the total source profiles on a xz meshgrid
+        XX, ZZ = custom_meshgrid(x_grid, z_grid)
+        total_dens_src = np.zeros_like(XX)
+        total_pow_src = np.zeros_like(XX)
+        for (name, source) in simulation.sources.items():
+            total_dens_src += source.density_src(XX, y_const, ZZ)
+            total_pow_src += source.density_src(XX, y_const, ZZ) * (source.temp_profile_elc(XX, y_const, ZZ) + source.temp_profile_ion(XX, y_const, ZZ))/1e6
+
+        _, axs = plt.subplots(1, 2, figsize=(2*default_figsz[0],1*default_figsz[1]))
+
+        # Plot the total density source profile
+        pcm = axs[0].pcolormesh(XX, ZZ, total_dens_src, cmap='inferno')
+        cbar = plt.colorbar(pcm, ax=axs[0])
+        cbar.set_label(r"1/m$^3/s$")
+        axs[0].set_xlabel("x-grid [m]")
+        axs[0].set_ylabel("z-grid [rad]")
+        axs[0].set_title(r"Total $\dot n$ src")
+        axs[0].axvline(x=banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
+        axs[0].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
+
+        # Plot the total power
+        pcm = axs[1].pcolormesh(XX, ZZ, total_pow_src, cmap='inferno')
+        cbar = plt.colorbar(pcm, ax=axs[1])
+        cbar.set_label(r"MW/m$^3$")
+        axs[1].set_xlabel("x-grid [m]")
+        axs[1].set_ylabel("z-grid [rad]")
+        axs[1].set_title(r"Total power src")
+        axs[1].axvline(x=banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
+        axs[1].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS' % banana_width, alpha=0.7)
+
+        plt.tight_layout()
+        plt.show()
+
+
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
