@@ -1,7 +1,22 @@
+# This script reads a matrix and a vector from files and prints them in a formatted way.
+# The matrix should be in the format 'a(i,j) = value' and the vector in the format 'variable = value'.
+# The script uses regular expressions to extract the values.
+
 import re
 import numpy as np
 
 def parse_file_to_matrix(filename):
+    """
+    Parses a file to create a matrix.
+
+    The file should contain lines in the format 'a(i,j) = value'.
+
+    Args:
+        filename (str): The name of the file to parse.
+
+    Returns:
+        np.ndarray: A 2D numpy array representing the matrix.
+    """
     # Dictionary to store values, using tuples (i, j) as keys
     data = {}
     max_i, max_j = 0, 0
@@ -25,6 +40,17 @@ def parse_file_to_matrix(filename):
     return matrix
 
 def read_vector_from_file(filename):
+    """
+    Reads a vector from a file.
+
+    The file should contain lines in the format 'variable = value'.
+
+    Args:
+        filename (str): The name of the file to read.
+
+    Returns:
+        list: A list of float values representing the vector.
+    """
     vector = []
     with open(filename, 'r') as file:
         for line in file:
@@ -36,7 +62,14 @@ def read_vector_from_file(filename):
                 vector.append(value)
     return vector
 
-def print_A_and_b(A,b):
+def print_A_and_b(A, b):
+    """
+    Prints the matrix A and vector b in a formatted way.
+
+    Args:
+        A (np.ndarray): The matrix to print.
+        b (list): The vector to print.
+    """
     k = 0
     nb = len(b)
     print("\t\t\t\t Matrix \t\t\t\t |RHS|")
