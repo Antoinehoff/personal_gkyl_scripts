@@ -1,7 +1,5 @@
 """
-fig_utils.py
-
-This module provides various utilities for handling and plotting figures.
+fig_tools.py -- Various utilities for handling and plotting figures.
 
 Functions:
 - label_from_simnorm: Generates a label from simulation normalization.
@@ -17,8 +15,13 @@ Functions:
 
 """
 
+from ..tools import math_tools
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import pickle
+import numpy as np
+
 default_figsz = [5,3.5]
 
 def label_from_simnorm(simulation,name):
@@ -56,6 +59,35 @@ def setup_figure(fieldnames):
     else:
         axs = axs.flatten()
     return fields,fig,axs
+
+def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
+            xlabel='', ylabel='', clabel='', title='',
+            cmap='viridis', colorscale='linear', plot_type='pcolormesh'):
+    z = np.squeeze(z)
+    if colorscale == 'log':
+        norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
+    else:
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    if plot_type == 'pcolormesh':
+        x,y = math_tools.custom_meshgrid(x,y)
+        im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)
+    elif plot_type == 'contourf':
+        im = ax.contourf(x, y, z, cmap=cmap, norm=norm)
+    elif plot_type == 'smoothed':
+        # smooth the data
+        from scipy.ndimage import gaussian_filter
+        z = gaussian_filter(z, sigma=0.5)
+        im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)
+    cbar = fig.colorbar(im, ax=ax)
+    cbar.set_label(clabel)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    ax.set_title(title)
+    if xlim: ax.set_xlim(xlim)
+    if ylim: ax.set_ylim(ylim)
+    if clim: im.set_clim(clim)
+
+    return fig
 
 def get_figdatadict(fig):
     """

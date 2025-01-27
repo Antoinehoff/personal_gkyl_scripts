@@ -11,8 +11,8 @@ Modules:
 """
 
 from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam, GBsource, Source
-from .tools import math_tools, pgkyl_interface, phys_tools
-from .utils import fig_utils, file_utils, math_utils, plot_utils
+from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools
+from .utils import file_utils, math_utils, plot_utils
 
 __all__ = [
     'Species',
@@ -28,7 +28,7 @@ __all__ = [
     'math_tools',
     'pgkyl_interface',
     'phys_tools',
-    'fig_utils',
+    'fig_tools',
     'file_utils',
     'math_utils',
     'plot_utils'
