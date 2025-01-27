@@ -1,4 +1,8 @@
 #!/bin/bash
+#this script lists all the available frames in the specified folder
+#it extracts the numbers just before .gkyl in the filenames
+#it is useful for checking which frames are available in a simulation
+
 # Check if a folder was provided as an argument, otherwise use the current directory
 folder=${1:-"."}
 

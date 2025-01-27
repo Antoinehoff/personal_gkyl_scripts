@@ -1,4 +1,6 @@
 #!/bin/bash
+# this script deletes all files matching the pattern '*I1_XX.gkyl' where XX is between I2 and I3
+# it is useful for cleaning up the output files from a simulation
 
 # Function to display the help message
 show_help() {
