@@ -101,6 +101,12 @@ class Frame:
         self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']
         self.vunits = self.simulation.normalization.dict[self.name + 'units']
 
+    def get_DG_coeff(self):
+        """
+        Get the DG coefficients.
+        """
+        return pg.data.GData(self.filenames[0])
+
     def load(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
         """
         Load the data from the file and interpolate it.
