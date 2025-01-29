@@ -44,7 +44,7 @@ struct gk_app_ctx {
   double kappa;     // Elongation (=1 for no elongation).
   double delta;     // Triangularity (=0 for no triangularity).
   double q0;        // Magnetic safety factor in the center of domain.
-
+  double Bref;      // Reference magnetic field [T].
   double x_LCFS;    // Radial location of the last closed flux surface.
 
   // Plasma parameters.
@@ -507,6 +507,7 @@ create_ctx(void)
   double Te0 = 100*eV;
   double Ti0 = 100*eV;
   double n0  = 2.0e19;   // [1/m^3]
+  double Bref = 1.129;   // Reference magnetic field [T].
 
   double vte = sqrt(Te0/me), vti = sqrt(Ti0/mi); // Thermal speeds.
   double c_s = sqrt(Te0/mi);
@@ -593,7 +594,7 @@ create_ctx(void)
     .x_min = x_min,  .x_max = x_max,
     .y_min = y_min,  .y_max = y_max,
     .z_min = z_min,  .z_max = z_max,
-
+    .Bref = Bref,
     .x_LCFS = x_LCFS,
   
     .me = me,  .qe = qe,
@@ -844,6 +845,7 @@ main(int argc, char **argv)
     .gkfield_id = GKYL_GK_FIELD_ES_IWL,
     .xLCFS = ctx.x_LCFS,
     .fem_parbc = GKYL_FEM_PARPROJ_DIRICHLET,
+    .polarization_bmag = ctx.Bref,
     .poisson_bcs = {.lo_type = {GKYL_POISSON_DIRICHLET},
                     .up_type = {GKYL_POISSON_DIRICHLET},
                     .lo_value = {0.0}, .up_value = {0.0}},
