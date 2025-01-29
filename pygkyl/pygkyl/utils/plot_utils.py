@@ -17,14 +17,12 @@ Functions:
 
 """
 
-# pgkyl to load and interpolate gkyl data
-import postgkyl as pg
 # personnal classes and routines
 from ..utils import math_utils
 from .. utils import file_utils
 from ..tools import fig_tools
 from ..utils import data_utils
-from ..classes import Frame
+from ..classes import Frame, Integrated_moment
 # other commonly used libs
 import numpy as np
 import sys
@@ -32,7 +30,6 @@ from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import matplotlib.colors as mcolors
-from ..tools import pgkyl_interface as pgkyl_
 
 # set the font to be LaTeX
 if file_utils.check_latex_installed(verbose=False):
@@ -88,19 +85,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             # Add a colorbar to the figure
             sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
             cbar = fig.colorbar(sm, ax=ax)
-            ax.set_xlabel(xlabel)
-            ax.set_ylabel(vlabel)
-            cbar.set_label(tlabel)
-            if xlim:
-                ax.set_xlim(xlim)
-            if ylim:
-                ax.set_ylim(ylim)
-        if len(axs) > 1:
-            fig.suptitle(slicetitle[:-2])
-        else:
-            ax.set_title(slicetitle[:-2])
-    fig.tight_layout()
-    figout.append(fig)
+            fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2], figout=figout, xlim=xlim, ylim=ylim,
+                                    xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar)
 
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             time_frames=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
@@ -122,48 +108,27 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourier_y =\
                 data_utils.get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=time_frames)
             # Compute the average of data over the t-axis (axis=1)
-            average_data = np.mean(values, axis=0)
+            average_data = np.mean(values, axis=1)
             # Compute the standard deviation of data over the t-axis (axis=1)
-            std_dev_data = np.std(values, axis=0)
-            if time_avg and errorbar:
-                # Plot with error bars
-                ax.errorbar(x, average_data, yerr=std_dev_data, 
-                            fmt='o', capsize=5, label=vlabel)
+            std_dev_data = np.std(values, axis=1)
+            if time_avg :
+                if errorbar:
+                    ax.errorbar(x, average_data, yerr=std_dev_data, 
+                                fmt='o', capsize=5, label=vlabel)
+                else:
+                    ax.plot(x, average_data, label=vlabel)
             else:
                 # Classic plot
-                ax.plot(x, average_data, label=vlabel)
+                ax.plot(x, values, label=vlabel)
                 if periodicity > 0:
-                    ax.plot(x+periodicity, average_data, label=vlabel)
-
+                    ax.plot(x+periodicity, values, label=vlabel)
         # Labels and title
-        ax.set_xlabel(xlabel)
-        if len(subfields)>1:
-            ax.set_ylabel(vunits)
-            ax.legend()
-        else:
-            ax.set_ylabel(vlabel)
-        #-- to change window
-        if xlim:
-            ax.set_xlim(xlim)
-        if ylim:
-            ax.set_ylim(ylim)
-        if xscale:
-            ax.set_xscale(xscale)
-        if yscale:
-            ax.set_yscale(yscale)
-        if grid:
-            ax.grid(True)
-
-    if t[0] == t[-1]:
-        title = slicetitle+tlabel+r'$=%2.2e$'%(t[0])
-    else:
-        title = slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
-    if len(axs) > 1:
-        fig.suptitle(title)
-    else:
-        ax.set_title(title)
-    fig.tight_layout()
-    figout.append(fig)
+        ylabel = vunits if len(subfields)>1 else vlabel
+        show_legend = len(subfields)>1
+        title = slicetitle+tlabel+r'$=%2.2e$'%(t[0]) if t[0] == t[-1] else \
+                slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
+        fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title, legend=show_legend,
+                                figout=figout, grid=grid, xlim=xlim, ylim=ylim, xscale=xscale, yscale=yscale)
 
 def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
                 fieldnames='', cmap='inferno', full_plot=False,
@@ -318,9 +283,7 @@ def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]
     ax.plot([vx1,vx2],[vy1,vy1],'-k')
     ax.plot([vx1,vx2],[vy2,vy2],'-k')
     ax.plot(geometry.R_axis,geometry.Z_axis,'x')
-    ax.set_xlabel('R (m)')
-    ax.set_ylabel('Z (m)')
-    ax.set_aspect('equal')
+    fig_tools.finalize_plot(ax, fig, xlabel='R (m)', ylabel='Z (m)', aspect='equal')
 
 def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2,figout=[]):
     # Set up the simulation geometry and load useful data
@@ -351,16 +314,10 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2,figout=[]):
     fig,ax = plt.subplots(1,1,figsize=(fig_tools.default_figsz[0],fig_tools.default_figsz[1]))
     ax[0].plot(zgrid,Gammaz,label='Effective source at ' + frame.timetitle)
     ax[0].plot(zgrid,fz,label='GB source model')
-    ax[0].set_xlabel(r'$z$')
-    ax[0].set_ylabel(r'$\int \Gamma_{\nabla B,x} dy$')
-    ax[0].legend()
-        
     Ssimul = np.trapz(Gammaz,x=zgrid, axis=0)
     Smodel = np.trapz(fz    ,x=zgrid, axis=0)
-
-    ax[0].title('Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'\
-              %(Ssimul,Smodel))
-    figout.append(fig)
+    fig_tools.finalize_plot(ax[0], fig, xlabel=r'$z$', ylabel=r'$\int \Gamma_{\nabla B,x} dy$', legend=True,
+                            title = 'Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'%(Ssimul,Smodel))
 
 def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
                               jacob_squared=False, plot_src_input=False,
@@ -449,12 +406,7 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
         sys.stdout.write("\n")
 
         # add labels and show legend
-        ax.set_xlabel(xlbl)
-        ax.set_ylabel(ylbl)
-        if not rm_legend:
-            ax.legend()
-        fig.tight_layout()
-    figout.append(fig)
+        fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, legend=not rm_legend)
 
 def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False, figout = []):
     fields,fig,axs = fig_tools.setup_figure('onefield')
@@ -469,20 +421,12 @@ def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False, 
             minus_GBloss = [-g for g in GBloss_t]
             axs[0].plot(time,minus_GBloss,label=r'$-S_{\nabla B %s, loss}$'%spec.nshort)
 
-        if losstype == 'particle':
-            ylabel = r'loss of particle'
-        elif losstype == 'energy':
-            ylabel = r'loss in MJ'
-        if not integrate:
-            ylabel = ylabel+'/s'
-        ax.set_ylabel(ylabel)
-        ax.set_xlabel(r'$t$ ($\mu$s)')
-        ax.legend()
-        # ax.set_title('Particle loss at the inner flux surface')
-        fig.tight_layout()
-    figout.append(fig)
+        if losstype == 'particle': ylabel = r'loss of particle'
+        elif losstype == 'energy': ylabel = r'loss in MJ'
+        if not integrate: ylabel = ylabel+'/s'
+        fig_tools.finalize_plot(ax, fig, xlabel=r'$t$ ($\mu$s)', ylabel=ylabel, figout=figout, legend=True)
 
-def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_src_input=False,figout=[]):
+def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_src_input=False,figout=[],twindow=[]):
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -490,110 +434,30 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
         else:
             subfields = field # field is a combined plot
         for subfield in subfields:
-            if subfield[-1] == 'e':
-                spec_s = 'elc'
-            elif subfield[-1] == 'i':
-                spec_s = 'ion'
-            elif subfield[-3:] == 'tot':
-                spec_s = ['elc','ion']
-
-            if subfield[:-1] in ['n']:
-                def receipe(x): return x[:,0]
-                scale = 1.0
-                units = 'particles'
-                symbol = r'$\bar n_%s$'%spec_s[0]
-            elif subfield[:-1] in ['upar']:
-                def receipe(x): return x[:,1]
-                scale = simulation.species[spec_s].m*simulation.species[spec_s].vt
-                units = ''
-                symbol = r'$\bar u_{\parallel %s}/v_{t %s}$'%(spec_s[0],spec_s[0])
-            elif subfield[:-1] in ['Tpar']:
-                def receipe(x): return x[:,2]
-                scale = simulation.species[spec_s].m
-                units = 'eV'
-                symbol = r'$\bar T_{\parallel %s}$'%spec_s[0]
-            elif subfield[:-1] in ['Tperp']:
-                def receipe(x): return x[:,3]
-                scale = simulation.species[spec_s].m
-                units = 'eV'
-                symbol = r'$\bar T_{\perp %s}$'%spec_s[0]
-            elif subfield[:-1] in ['T']:
-                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])
-                scale = simulation.species[spec_s].m
-                units = 'eV'
-                symbol = r'$\bar T_{%s}$'%spec_s[0]
-            elif subfield[:-1] in ['W','Pow']:
-                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])
-                scale = simulation.species[spec_s].m / 1e6                
-                units = 'MJ'
-                symbol = r'$W_{kin,%s}$'%spec_s[0]
-            elif subfield in ['Wtot']:
-                def receipe(x): return 1/3*(x[:,2]+2*x[:,3])
-                scale = [simulation.species[s].m / 1e6 for s in spec_s]
-                units = 'MJ'
-                symbol = r'$W_{kin,tot}$'
-            elif subfield in ['ntot']:
-                def receipe(x): return x[:,0]
-                scale = [1.0 for s in spec_s]      
-                units = 'particles'
-                symbol = r'$\bar n_{tot}$'
-
-            # Load the data from the file(s)
-            int_moms = 0
-            if isinstance(spec_s,list):
-                for s in spec_s:
-                    f_ = simulation.data_param.fileprefix+'-'+s+'_integrated_moms.gkyl'
-                    Gdata = pg.data.GData(f_)
-                    int_moms += pgkyl_.get_values(Gdata) * scale[spec_s.index(s)]
-            else:
-                f_ = simulation.data_param.fileprefix+'-'+spec_s+'_integrated_moms.gkyl'
-                Gdata = pg.data.GData(f_)
-                int_moms = pgkyl_.get_values(Gdata) * scale
-
-            time = np.squeeze(Gdata.get_grid()) / simulation.normalization.dict['tscale']
-
-            Ft = receipe(int_moms)
-            Ft = np.squeeze(Ft)
-            # remove double diagnostic
-            time, indices = np.unique(time, return_index=True)
-            Ft = Ft[indices]
-            # Labels
-            Flbl = ddt*r'$\partial_t$ '+symbol
-            ylbl = units
-            if ddt: # time derivative
-                dfdt   = np.gradient(Ft,time,edge_order=2)
-                # we rescale it to obtain a result in seconds
-                Ft = dfdt/simulation.normalization.dict['tscale']
-                if ylbl == 'MJ':
-                    ylbl = 'MW'
-                else:
-                    ylbl = units+'/s'
+            int_mom = Integrated_moment(simulation=simulation, name=subfield, load=True, ddt=ddt)
+            # select the time window
+            if twindow:
+                it0 = np.argmin(abs(int_mom.time-twindow[0]))
+                it1 = np.argmin(abs(int_mom.time-twindow[1]))
+                int_mom.time = int_mom.time[it0:it1]
+                int_mom.values = int_mom.values[it0:it1]
             # Plot
-            ax.plot(time,Ft,label=Flbl)
-
+            ax.plot(int_mom.time,int_mom.values,label=int_mom.symbol)
         # plot eventually the input power for comparison
         if subfield in ['Wtot','ntot'] and plot_src_input:
             src_input = simulation.get_source_power() if subfield == 'Wtot' else simulation.get_source_particle()
             if subfield == 'Wtot': src_input /= simulation.normalization.dict['Wtotscale']
             if ddt:
-                ddtWsrc_t = src_input*np.ones_like(time)
-                ax.plot(time,ddtWsrc_t,'--k',label='Source input')
+                ddtWsrc_t = src_input*np.ones_like(int_mom.time)
+                ax.plot(int_mom.time,ddtWsrc_t,'--k',label='Source input')
             else:
                 # plot the accumulate energy from the source
-                Wsrc_t = Ft[0] + src_input*simulation.normalization.dict['tscale']*time
-                ax.plot(time,Wsrc_t,'--k',label='Source input')
+                Wsrc_t = int_mom.values[0] + src_input*simulation.normalization.dict['tscale']*int_mom.time
+                ax.plot(int_mom.time,Wsrc_t,'--k',label='Source input')
             
         # add labels and show legend
-        ax.set_xlabel(simulation.normalization.dict['tunits'])
-        ax.set_ylabel(ylbl)
-        if xlim:
-            ax.set_xlim(xlim)
-        if ylim:
-            ax.set_ylim(ylim)
-        ax.legend()
-        fig.tight_layout()
-    figout.append(fig)
-    return time
+        fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, xlim=xlim, ylim=ylim)
+    return int_mom.time
 
 def plot_sources_info(simulation,x_const=0,z_const=0):
     """
@@ -607,7 +471,7 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
     if len(simulation.sources) > 0:
         x_grid, _, z_grid = simulation.geom_param.grids
         y_const = 0.0
-        _, axs = plt.subplots(nrow, 2, figsize=(2*fig_tools.default_figsz[0],nrow*fig_tools.default_figsz[1]))
+        fig, axs = plt.subplots(nrow, 2, figsize=(2*fig_tools.default_figsz[0],nrow*fig_tools.default_figsz[1]))
         axs = axs.flatten()
         iplot = 0
         if z_const != None:
@@ -617,9 +481,7 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
                 axs[iplot].plot(x_grid, n_src, label=r"$\dot n$ "+name, linestyle="-")
             axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
             axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
-            axs[iplot].set_xlabel("x-grid [m]")
-            axs[iplot].set_ylabel(r"1/m$^3/s$")
-            axs[iplot].legend()
+            fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel=r"1/m$^3/s$", legend=True)
             iplot += 1
             # Plot the temperature profiles at constant x and z
             for (name, source) in simulation.sources.items():
@@ -629,9 +491,7 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
                 axs[iplot].plot(x_grid, Ti_src, label=r"$T_i$ "+name, linestyle="-.")
             axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
             axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
-            axs[iplot].set_xlabel("x-grid [m]")
-            axs[iplot].set_ylabel("eV")
-            axs[iplot].legend()
+            fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="eV", legend=True)
             iplot += 1
 
         # Plot the density and temperature profiles at constant x and y
@@ -639,18 +499,14 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
             for (name, source) in simulation.sources.items():
                 n_src = [source.density_src(x_const, y_const, z) for z in z_grid]
                 axs[iplot].plot(z_grid, n_src, label=r"$\dot n$ "+name, linestyle="-")
-            axs[iplot].set_xlabel("z-grid [rad]")
-            axs[iplot].set_ylabel(r"1/m$^3/s$")
-            axs[iplot].legend()
+            fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="z-grid [rad]", ylabel=r"1/m$^3/s$", legend=True)
             iplot += 1
             for (name, source) in simulation.sources.items():
                 Te_src = [source.temp_profile_elc(x_const, y_const, z)/simulation.phys_param.eV for z in z_grid]
                 Ti_src = [source.temp_profile_ion(x_const, y_const, z)/simulation.phys_param.eV for z in z_grid]
                 axs[iplot].plot(z_grid, Te_src, label=r"$T_e$ "+name, linestyle="--")
                 axs[iplot].plot(z_grid, Ti_src, label=r"$T_i$ "+name, linestyle="-.")
-            axs[iplot].set_xlabel("z-grid [rad]")
-            axs[iplot].set_ylabel("eV")
-            axs[iplot].legend()
+            fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="z-grid [rad]", ylabel="eV", legend=True)
             iplot += 1
         
         # Build the total source profiles on a xz meshgrid
@@ -664,26 +520,20 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
         # Plot the total density source profile
         pcm = axs[iplot].pcolormesh(XX, ZZ, total_dens_src, cmap='inferno')
         cbar = plt.colorbar(pcm, ax=axs[iplot])
-        cbar.set_label(r"1/m$^3/s$")
-        axs[iplot].set_xlabel("x-grid [m]")
-        axs[iplot].set_ylabel("z-grid [rad]")
-        axs[iplot].set_title(r"Total $\dot n$ src")
         axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
         axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
+        fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", title=r"Total $\dot n$ src",
+                                cbar=cbar, clabel=r"1/m$^3$", legend=False)
         iplot += 1
 
         # Plot the total power
         pcm = axs[iplot].pcolormesh(XX, ZZ, total_pow_src, cmap='inferno')
         cbar = plt.colorbar(pcm, ax=axs[iplot])
-        cbar.set_label(r"MW/m$^3$")
-        axs[iplot].set_xlabel("x-grid [m]")
-        axs[iplot].set_ylabel("z-grid [rad]")
-        axs[iplot].set_title(r"Total power src")
         axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
         axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS' % banana_width, alpha=0.7)
+        fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", title="Total power src",
+                                cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
-        plt.tight_layout()
-        plt.show()
 
 
 #----- Retrocompatibility
