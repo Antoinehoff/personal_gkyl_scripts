@@ -59,6 +59,9 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                 values = 100.0*values/average_data
                 vlabel = re.sub(r'\(.*?\)', '', vlabel)
                 vlabel = vlabel + ' (\%)'
+        # handle fourier plot
+        colorscale = 'linear' if not fourier_y else 'log'
+        values = np.clip(values, vmin, None) if fourier_y else values 
         if space_time:
             if ((field in ['phi','upare','upari']) or cmap0=='bwr' or fluctuation) and not fourier_y:
                 cmap = 'bwr'
@@ -68,10 +71,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                 cmap = cmap0
                 vmax = np.max(np.abs(values)) 
                 vmin = 0.0
-            # handle fourier plot
-            colorscale = 'linear' if not fourier_y else 'log'
             vmin = np.power(10,np.log10(vmax)-4) if fourier_y else vmin
-            values = np.clip(values, vmin, None) if fourier_y else values 
             # make the plot
             fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
                               xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
@@ -80,7 +80,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             norm = plt.Normalize(min(t), max(t))
             colormap = cm.viridis  # You can choose any colormap
             for it in range(len(t)):
-                ax.plot(x,values[it][:],label=r'$t=%2.2e$ (ms)'%(t[it]),
+                ax.plot(x,values[:,it],label=r'$t=%2.2e$ (ms)'%(t[it]),
                         color=colormap(norm(t[it])))
             # Add a colorbar to the figure
             sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
