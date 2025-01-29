@@ -12,7 +12,7 @@ def get_2D_movie_data(simulation,cut_dir,cut_coord,time_frames, fieldnames, fluc
         fields_t = []
         for field in fieldnames:
             frame = Frame(simulation, field, tf, load=True)
-            frame.slice_2D(cut_dir, cut_coord)
+            frame.slice(cut_dir, cut_coord)
             fields_t.append(frame)
         movie_frames.append(fields_t)
     if fluctuation:
