@@ -523,8 +523,9 @@ def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False):
         # Plot the total density source profile
         pcm = axs[iplot].pcolormesh(XX, ZZ, total_dens_src, cmap='inferno')
         cbar = plt.colorbar(pcm, ax=axs[iplot])
-        axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
-        axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
+        axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
+        if show_LCFS:
+            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
         fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", title=r"Total $\dot n$ src",
                                 cbar=cbar, clabel=r"1/m$^3$", legend=False)
         iplot += 1
@@ -532,8 +533,9 @@ def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False):
         # Plot the total power
         pcm = axs[iplot].pcolormesh(XX, ZZ, total_pow_src, cmap='inferno')
         cbar = plt.colorbar(pcm, ax=axs[iplot])
-        axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
-        axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS' % banana_width, alpha=0.7)
+        axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
+        if show_LCFS:
+            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS' % banana_width, alpha=0.7)
         fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", title="Total power src",
                                 cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
