@@ -11,7 +11,7 @@ Modules:
 """
 
 from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam, GBsource, Source
-from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools
+from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools, DG_tools
 from .utils import file_utils, math_utils, plot_utils
 
 __all__ = [
@@ -31,5 +31,6 @@ __all__ = [
     'fig_tools',
     'file_utils',
     'math_utils',
-    'plot_utils'
+    'plot_utils',
+    'DG_tools'
 ]
