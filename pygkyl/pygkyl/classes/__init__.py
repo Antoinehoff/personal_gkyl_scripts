@@ -7,6 +7,7 @@ from .frame      import Frame
 from .geomparam  import GeomParam
 from .gbsource   import GBsource
 from .source     import Source
+from .integrated_moment import Integrated_moment
 __all__ = [
     'Species', 
     'Simulation',
@@ -15,4 +16,6 @@ __all__ = [
     'Frame',
     'GeomParam',
     'GBsource',
-    'Source']
+    'Source',
+    'IntegratedMoment'
+    ]
