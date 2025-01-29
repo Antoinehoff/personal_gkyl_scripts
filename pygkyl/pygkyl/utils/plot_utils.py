@@ -459,7 +459,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
         fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, xlim=xlim, ylim=ylim)
     return int_mom.time
 
-def plot_sources_info(simulation,x_const=0,z_const=0):
+def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False):
     """
     Plot the profiles of all sources in the sources dictionary using various cuts.
     """
@@ -471,6 +471,7 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
     if len(simulation.sources) > 0:
         x_grid, _, z_grid = simulation.geom_param.grids
         y_const = 0.0
+        x0 = x_grid[0]
         fig, axs = plt.subplots(nrow, 2, figsize=(2*fig_tools.default_figsz[0],nrow*fig_tools.default_figsz[1]))
         axs = axs.flatten()
         iplot = 0
@@ -479,8 +480,9 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
             for (name, source) in simulation.sources.items():
                 n_src = [source.density_src(x, y_const, z_const) for x in x_grid]
                 axs[iplot].plot(x_grid, n_src, label=r"$\dot n$ "+name, linestyle="-")
-            axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
-            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
+            axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
+            if show_LCFS:
+                axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
             fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel=r"1/m$^3/s$", legend=True)
             iplot += 1
             # Plot the temperature profiles at constant x and z
@@ -489,8 +491,9 @@ def plot_sources_info(simulation,x_const=0,z_const=0):
                 Ti_src = [source.temp_profile_ion(x, y_const, z_const)/simulation.phys_param.eV for x in x_grid]
                 axs[iplot].plot(x_grid, Te_src, label=r"$T_e$ "+name, linestyle="--")
                 axs[iplot].plot(x_grid, Ti_src, label=r"$T_i$ "+name, linestyle="-.")
-            axs[iplot].axvline(x=banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
-            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
+            axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
+            if show_LCFS:
+                axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
             fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="eV", legend=True)
             iplot += 1
 
