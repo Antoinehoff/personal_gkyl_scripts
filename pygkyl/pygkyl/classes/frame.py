@@ -245,7 +245,7 @@ class Frame:
         self.refresh_title()
 
     def slice(self, axs, ccoord):
-        ccoord = [ccoord] if isinstance(ccoord, float) else ccoord
+        ccoord = [ccoord] if not isinstance(ccoord, list) else ccoord
         ax_to_cut = 'xyz'
         for i_ in range(len(axs)):
             ax_to_cut = ax_to_cut.replace(axs[i_], '')
