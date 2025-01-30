@@ -237,7 +237,10 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
     for i, tf in enumerate(time_frames, 1):  # Start the index at 1
         figout = []
         cutout = []
-        clim = clim if clim else vlims
+        if clim == 'free':
+            clim = []
+        else:
+            clim = clim if clim else vlims
         plot_2D_cut(
             simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
             cmap=cmap, full_plot=full_plot,
@@ -257,7 +260,7 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
     # Naming
     cutout=cutout[0]
     cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = movieprefix+'_movie_'+dataname+cutname[0]
+    moviename = movieprefix+'_'+dataname+cutname[0] if movieprefix else dataname+cutname[0]
     moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
     moviename+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
     moviename += '.gif'
