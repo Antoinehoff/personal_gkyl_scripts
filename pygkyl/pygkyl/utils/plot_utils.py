@@ -61,7 +61,6 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                 vlabel = vlabel + ' (\%)'
         # handle fourier plot
         colorscale = 'linear' if not fourier_y else 'log'
-        values = np.clip(values, vmin, None) if fourier_y else values 
         if space_time:
             if ((field in ['phi','upare','upari']) or cmap0=='bwr' or fluctuation) and not fourier_y:
                 cmap = 'bwr'
@@ -72,6 +71,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                 vmax = np.max(np.abs(values)) 
                 vmin = 0.0
             vmin = np.power(10,np.log10(vmax)-4) if fourier_y else vmin
+            values = np.clip(values, vmin, None) if fourier_y else values 
             # make the plot
             fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
                               xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
