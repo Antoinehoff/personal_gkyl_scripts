@@ -247,8 +247,10 @@ class Frame:
     def slice(self, axs, ccoord):
         ccoord = [ccoord] if not isinstance(ccoord, list) else ccoord
         ax_to_cut = 'xyz'
-        for i_ in range(len(axs)):
-            ax_to_cut = ax_to_cut.replace(axs[i_], '')
+        if axs == 'scalar':
+            ax_to_cut = 'xyz'
+        else:
+            for i_ in range(len(axs)): ax_to_cut = ax_to_cut.replace(axs[i_], '')
         for i_ in range(len(ax_to_cut)):
             self.select_slice(direction=ax_to_cut[i_], cut=ccoord[i_])
         self.refresh(values=False)
