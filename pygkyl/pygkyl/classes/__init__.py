@@ -8,6 +8,7 @@ from .geomparam  import GeomParam
 from .gbsource   import GBsource
 from .source     import Source
 from .integrated_moment import Integrated_moment
+from .time_serie import Time_serie
 __all__ = [
     'Species', 
     'Simulation',
@@ -17,5 +18,6 @@ __all__ = [
     'GeomParam',
     'GBsource',
     'Source',
-    'IntegratedMoment'
+    'Integrated_moment',
+    'Time_serie'
     ]

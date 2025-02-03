@@ -10,7 +10,7 @@ Modules:
 - utils: Includes utility functions for file handling, plotting, and mathematical operations.
 """
 
-from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam, GBsource, Source
+from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam, GBsource, Source, Time_serie
 from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools, DG_tools
 from .utils import file_utils, math_utils, plot_utils
 
@@ -32,5 +32,7 @@ __all__ = [
     'file_utils',
     'math_utils',
     'plot_utils',
-    'DG_tools'
+    'DG_tools',
+    'Time_serie',
+    'Source'
 ]
