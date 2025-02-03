@@ -20,7 +20,7 @@ Functions:
 # personnal classes and routines
 from ..utils import math_utils
 from .. utils import file_utils
-from ..tools import fig_tools
+from ..tools import fig_tools, DG_tools
 from ..utils import data_utils
 from ..classes import Frame, Integrated_moment
 # other commonly used libs
@@ -543,6 +543,13 @@ def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False):
                                 cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
 
+def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], show_cells=False):
+    """
+    Plot the DG representation of a field at a given time frame.
+    """
+    frame = Frame(simulation, fieldname,tf=sim_frame)
+    field_DG = frame.get_DG_coeff()
+    simulation.DG_basis.plot_proj(field_DG, cutdir, cutcoord, xlim = xlim, show_cells = show_cells)   
 
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
