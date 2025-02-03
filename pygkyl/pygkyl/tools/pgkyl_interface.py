@@ -47,3 +47,6 @@ def get_cells(Gdata):
 
 def integrate(Gdata):
     return Gdata.integrate()
+
+def get_gkyl_data(file):
+    return pg.data.GData(file)

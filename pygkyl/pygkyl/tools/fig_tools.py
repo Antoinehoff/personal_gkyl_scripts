@@ -1,7 +1,5 @@
 """
-fig_utils.py
-
-This module provides various utilities for handling and plotting figures.
+fig_tools.py -- Various utilities for handling and plotting figures.
 
 Functions:
 - label_from_simnorm: Generates a label from simulation normalization.
@@ -14,11 +12,17 @@ Functions:
 - load_figout: Loads figure data from a pickle file.
 - plot_figout: Plots figure data from a pickle file.
 - compare_figouts: Compares and plots data from two figure data dictionaries.
+- finalize_plot: Finalizes a plot with labels, limits, and other settings.
 
 """
 
+from ..tools import math_tools
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 import pickle
+import numpy as np
+
 default_figsz = [5,3.5]
 
 def label_from_simnorm(simulation,name):
@@ -56,6 +60,29 @@ def setup_figure(fieldnames):
     else:
         axs = axs.flatten()
     return fields,fig,axs
+
+def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
+            xlabel='', ylabel='', clabel='', title='',
+            cmap='viridis', colorscale='linear', plot_type='pcolormesh'):
+    z = np.squeeze(z)
+    if colorscale == 'log':
+        norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
+    else:
+        norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+    if plot_type == 'pcolormesh':
+        x,y = math_tools.custom_meshgrid(x,y)
+        im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)
+    elif plot_type == 'contourf':
+        im = ax.contourf(x, y, z, cmap=cmap, norm=norm)
+    elif plot_type == 'smoothed':
+        # smooth the data
+        from scipy.ndimage import gaussian_filter
+        z = gaussian_filter(z, sigma=0.5)
+        im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)
+    cbar = fig.colorbar(im, ax=ax)
+    finalize_plot(ax,fig,xlabel=xlabel,ylabel=ylabel,title=title,xlim=xlim,ylim=ylim,
+                  cbar=cbar,clabel=clabel,clim=clim,pcm=im)
+    return fig
 
 def get_figdatadict(fig):
     """
@@ -96,15 +123,12 @@ def plot_figdatadict(figdatadict):
         axs = [axs]
     else:
         axs = axs.flatten()
-        
     n_ = 0
     for ax in axs:
         a_ = figdatadict[n_]
         for l_ in a_['curves']:
             ax.plot(l_['xdata'], l_['ydata'], label=l_['label'])
-        ax.set_xlabel(a_['xlabel'])
-        ax.set_ylabel(a_['ylabel'])
-        ax.legend()
+        finalize_plot(ax,fig,xlabel=a_['xlabel'],ylabel=a_['ylabel'],legend=True)
         n_ = n_ + 1
 
 def save_figout(figout,fname):
@@ -135,10 +159,8 @@ def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnu
         file2 = file2[:-4]
     fdict1 = load_figout(file1)    
     fdict2 = load_figout(file2)
-    
     ax1 = fdict1[plot_idx]    
     ax2 = fdict2[plot_idx]
-    
     lnums,fig,axs = setup_figure(lnums)
     for ax,lnum in zip(axs,lnums):
         for lnums_sub in lnum:
@@ -155,8 +177,23 @@ def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnu
                     ax.plot(l_['xdata'], l_['ydata'], label=name2)
                     ylabel = l_['label']
                 il += 1
-        ax.set_ylabel(ylabel)
-        ax.set_xlabel(ax1['xlabel'])
-        ax.legend()
-    plt.tight_layout()
-    plt.show()
+        finalize_plot(ax,fig,xlabel=ax1['xlabel'],ylabel=ylabel,legend=True)
+
+def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
+                  cbar=None, xlabel='',ylabel='',clabel='', title='', pcm = None,
+                  legend=False, figout=[], aspect='', grid=False):
+    if xlim: ax.set_xlim(xlim)
+    if ylim: ax.set_ylim(ylim)
+    if clim and pcm : pcm.set_clim(clim)
+    if xscale: ax.set_xscale(xscale)
+    if yscale: ax.set_yscale(yscale)
+    if xlabel: ax.set_xlabel(xlabel)
+    if ylabel: ax.set_ylabel(ylabel)
+    if cbar and clabel:
+        cbar.set_label(clabel)
+    if legend: ax.legend()
+    if title: ax.set_title(title)
+    if aspect: ax.set_aspect(aspect)
+    if grid: ax.grid(True)
+    fig.tight_layout()
+    figout.append(fig)

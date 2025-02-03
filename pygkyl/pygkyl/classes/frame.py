@@ -28,11 +28,12 @@ class Frame:
     - compute_volume_integral: Computes the volume integral of the data.
     - compute_surface_integral: Computes the surface integral of the data.
     - free_values: Frees the values to save memory.
-    - fourrier_y: Applies FFT along the y dimension and updates the frame data.
+    - fourier_y: Applies FFT along the y dimension and updates the frame data.
     - info: Prints out key information about the frame.
 
     """
-    def __init__(self, simulation, name, tf, load=False, polyorder=1, polytype='ms', normalize=True):
+    def __init__(self, simulation, name, tf, load=False, fourier_y=False,
+                 polyorder=1, polytype='ms', normalize=True):
         """
         Initialize a Frame instance with all attributes set to None.
         """
@@ -77,7 +78,7 @@ class Frame:
         self.fulltitle = ''
 
         if load:
-            self.load(polyorder=polyorder, polytype=polytype, normalize=normalize)
+            self.load(polyorder=polyorder, polytype=polytype, normalize=normalize, fourier_y=fourier_y)
 
     def process_field_name(self):
         """
@@ -100,7 +101,13 @@ class Frame:
         self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']
         self.vunits = self.simulation.normalization.dict[self.name + 'units']
 
-    def load(self, polyorder=1, polytype='ms', normalize=True):
+    def get_DG_coeff(self):
+        """
+        Get the DG coefficients.
+        """
+        return pg.data.GData(self.filenames[0])
+
+    def load(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
         """
         Load the data from the file and interpolate it.
         """
@@ -116,11 +123,10 @@ class Frame:
         self.cells = Gdata.ctx['cells']
         self.ndims = len(self.cells)
         self.dim_idx = list(range(self.ndims))
-        if not self.time:
-            self.time = 0
+        if not self.time: self.time = 0
         self.refresh()
-        if normalize:
-            self.normalize()
+        if normalize: self.normalize()
+        if fourier_y: self.fourier_y()
 
     def load_DG(self, polyorder=1, polytype='ms'):
         """
@@ -238,24 +244,13 @@ class Frame:
         self.slicecoords[direction] = cut_coord
         self.refresh_title()
 
-    def slice_1D(self, cutdirection, ccoords):
-        """
-        Slice the data to 1D along the specified direction and coordinates.
-        """
-        axes = 'xyz'.replace(cutdirection, '')
-        for i_ in range(len(axes)):
-            self.select_slice(direction=axes[i_], cut=ccoords[i_])
-        self.refresh(values=False)
-
-    def slice_2D(self, plane, ccoord):
-        """
-        Slice the data to 2D along the specified plane and coordinate.
-        """
-        i1 = getgrid_index(plane[0])
-        i2 = getgrid_index(plane[1])
-        i3 = 2 * (i1 == 0 and i2 == 1) + 1 * (i1 == 0 and i2 == 2) + 0 * (i1 == 1 and i2 == 2)
-        sdir = self.gnames[i3]
-        self.select_slice(direction=sdir, cut=ccoord)
+    def slice(self, axs, ccoord):
+        ccoord = [ccoord] if not isinstance(ccoord, list) else ccoord
+        ax_to_cut = 'xyz'
+        for i_ in range(len(axs)):
+            ax_to_cut = ax_to_cut.replace(axs[i_], '')
+        for i_ in range(len(ax_to_cut)):
+            self.select_slice(direction=ax_to_cut[i_], cut=ccoord[i_])
         self.refresh(values=False)
 
     def compute_volume_integral(self, jacob_squared=False, average=False):
@@ -321,7 +316,7 @@ class Frame:
         """
         self.values = None
 
-    def fourrier_y(self):
+    def fourier_y(self):
         """
         Apply FFT along the y dimension and update the frame data.
         """

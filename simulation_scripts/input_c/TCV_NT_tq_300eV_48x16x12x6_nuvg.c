@@ -836,7 +836,7 @@ main(int argc, char **argv)
 
   // GK app
   struct gkyl_gk gk = {
-    .name = "gk_tcv_negD_trueq_iwl_2x2v",
+    .name = "gk_tcv_NT_iwl_2x2v",
 
     .cdim = 2, .vdim = 2,
     .lower = { ctx.x_min, ctx.z_min },

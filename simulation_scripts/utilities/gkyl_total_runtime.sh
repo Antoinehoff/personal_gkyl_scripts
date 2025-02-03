@@ -1,4 +1,6 @@
 #!/bin/bash
+#this script calculates the total runtime of all the slurm scripts in the specified folder
+#it multiplies the runtime by the number of nodes specified in the slurm script
 
 # Check if a folder was provided as an argument, otherwise use the current directory
 folder=${1:-"."}
