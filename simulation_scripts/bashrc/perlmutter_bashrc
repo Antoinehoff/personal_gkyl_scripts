@@ -24,7 +24,7 @@ alias go_scratch='cd $SCRATCH'
 alias bashrc_check='cat ~/.bashrc'
 alias bashrc_refresh='. ~/.bashrc'
 alias bashrc_edit='vi ~/.bashrc'
-
+alias replace_filename_pattern='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/replace_filename_pattern.sh'
 alias pgkyl_env_setup='source ~/py_venv/pgkyl/bin/activate'
 alias gkyl_module='module load PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.0 nccl/2.18.3-cu12'
 alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_total_runtime.sh'
