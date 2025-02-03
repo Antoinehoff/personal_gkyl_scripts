@@ -48,7 +48,6 @@ class GeomParam:
         self.R0         = 0.5*(self.Rmid_min+self.Rmid_max)  # Major radius of the simulation box [m].
         self.r0         = self.R0-R_axis          # Minor radius of the simulation box [m].
         self.geom_type  = geom_type
-        # self.a_mid      = R_LCFSmid-R_axis
         self.a_mid      = \
             R_axis/a_shift - np.sqrt(R_axis*(R_axis - 2*a_shift*R_LCFSmid + 2*a_shift*R_axis))/a_shift
         self.g_ij       = None
@@ -251,3 +250,15 @@ class GeomParam:
         print(f"R0: {self.R0}")
         print(f"r0: {self.r0}")
         print(f"a_mid: {self.a_mid}")
+
+    def plot_qprofile(self,x=None):
+        import matplotlib.pyplot as plt
+        if x is None: x = np.linspace(self.Rmid_min,self.Rmid_max,100)
+        q = self.qprofile(x)
+        plt.plot(x,q)
+        # show domain limits
+        plt.axvline(x=self.Rmid_min, color='k', linestyle='--', alpha=0.5)
+        plt.axvline(x=self.Rmid_max, color='k', linestyle='--', alpha=0.5)
+        plt.xlabel('R [m]')
+        plt.ylabel('q')
+        plt.show()
