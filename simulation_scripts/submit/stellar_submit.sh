@@ -6,7 +6,7 @@ JOB_NAME="gk_tcv_3x2v_AH"
 #.Request the queue. See stellar docs online.
 QOS="pppl-short"
 #.Number of nodes to request (Stellar has 96 cores and 2 GPUs per node).
-NODES=2
+NODES=1
 #.Specify GPUs per node (stellar-amd has 2):
 GPU_PER_NODE=2
 #.Request wall time
@@ -21,21 +21,39 @@ MODULES="cudatoolkit/12.4 openmpi/cuda-11.1/gcc/4.1.1"
 NTASKS_PER_NODE=$GPU_PER_NODE
 #.Calculate total number of GPUs (nodes * GPUs per node)
 TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
+# default value to check a possible restart
+LAST_FRAME=-1 
 
-#.------- RESTART HELPER
-#.Default value
-LAST_FRAME=-1
-# Function to display help
+# help function
 show_help() {
-    echo "Usage: $0 [-r N] [-h]"
-    echo ""
-    echo "Options:"
-    echo "  -r N      Restart the simulation from frame N (optional)."
-    echo "  -h        Display this help message."
+    echo "Usage: $0 [-q QOS] [-n JOB_NAME] [-t TIME] [-h]"
+    echo "Submit a job to Perlmutter"
+    echo "  -q QOS      QOS to use (default: regular)"
+    echo "  -n JOB_NAME Name of the job (default: $JOB_NAME)"
+    echo "  -t TIME     Wall time for the job (default: $TIME)"
+    echo "  -N numnodes Number of nodes required (default: $NODES)"
+    echo "  -h          Display this help and exit"
 }
-# Parse command-line options
-while getopts ":r:h" opt; do
+# check the following options : -q -n -t -h
+while getopts ":q:n:t:r:N:h" opt; do
     case ${opt} in
+        q )
+            QOS=$OPTARG
+            #if its debug add _dbg to jobname
+            if [ "$QOS" == "debug" ]; then
+                JOB_NAME="${JOB_NAME}_dbg"
+                TIME="00:30:00"
+            fi
+            ;;
+        n )
+            JOB_NAME=$OPTARG
+            ;;
+        N )
+            NODES=$OPTARG
+            ;;
+        t )
+            TIME=$OPTARG
+            ;;
         r )
             LAST_FRAME=$OPTARG
             ;;
@@ -45,11 +63,11 @@ while getopts ":r:h" opt; do
             ;;
         \? )
             echo "Invalid option: -$OPTARG" >&2
-            show_help
             exit 1
             ;;
     esac
 done
+
 if (( LAST_FRAME < 0 )); then
     #.Find the most recent frame for restart
     # Loop through all files ending with .gkyl in the current directory
