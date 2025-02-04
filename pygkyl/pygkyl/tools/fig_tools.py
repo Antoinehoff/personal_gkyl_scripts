@@ -182,6 +182,41 @@ def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnu
 def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
                   cbar=None, xlabel='',ylabel='',clabel='', title='', pcm = None,
                   legend=False, figout=[], aspect='', grid=False):
+    '''
+    Finalize a plot with labels, limits, and other settings.
+
+    Parameters:
+    ax : matplotlib.axes.Axes
+        The axes to finalize.
+    fig : matplotlib.figure.Figure
+        The figure containing the axes.
+    xlim : list, optional
+        The x-axis limits.
+    ylim : list, optional
+        The y-axis limits.
+    clim : list, optional
+        The colorbar limits.
+    xscale : str, optional
+        The x-axis scale.
+    yscale : str, optional
+        The y-axis scale.
+    cbar : matplotlib.colorbar.Colorbar, optional
+        The colorbar to finalize.
+    xlabel : str, optional
+        The x-axis label.
+    ylabel : str, optional
+        The y-axis label.
+    clabel : str, optional
+        The colorbar label.
+    title : str, optional
+        The plot title.
+    aspect : str, optional
+        The plot aspect ratio.
+    grid : bool, optional
+        Whether to show the grid.
+    figout : list, optional
+        The list of figures to append to.
+    '''
     if xlim: ax.set_xlim(xlim)
     if ylim: ax.set_ylim(ylim)
     if clim and pcm : pcm.set_clim(clim)
