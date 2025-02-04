@@ -543,13 +543,66 @@ def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False):
                                 cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
 
-def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], show_cells=False):
+def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], show_cells=True, figout=[]):
     """
     Plot the DG representation of a field at a given time frame.
     """
-    frame = Frame(simulation, fieldname,tf=sim_frame)
-    field_DG = frame.get_DG_coeff()
-    simulation.DG_basis.plot_proj(field_DG, cutdir, cutcoord, xlim = xlim, show_cells = show_cells)   
+    frame = Frame(simulation, fieldname,tf=sim_frame, load=True)
+    frame.slice(cutdir, cutcoord)
+    field_DG = frame.get_DG_coeff()    
+    if cutdir == 'x':
+        ix = 0
+        ic0 = 1
+        ic1 = 2
+    elif cutdir == 'y':
+        ix = 1
+        ic0 = 0
+        ic1 = 2
+    elif cutdir == 'z':
+        ix = 2
+        ic0 = 0
+        ic1 = 1
+    else:
+        raise Exception("Invalid direction")
+    cells = field_DG.grid[ix]
+    c0 = cutcoord[0] + 0.5*(field_DG.grid[ic0][1]-field_DG.grid[ic0][0])
+    c1 = cutcoord[1] + 0.5*(field_DG.grid[ic1][1]-field_DG.grid[ic1][0])
 
+    def coord_swap(z): 
+        out = [0,0,0]
+        out[ix] = z
+        out[ic0] = c0
+        out[ic1] = c1
+        return out
+    dx = cells[1]-cells[0]
+    DG_proj = []
+    x_proj  = []
+    xscale = simulation.normalization.dict[cutdir+'scale']
+    xshift = simulation.normalization.dict[cutdir+'shift']
+    yscale = simulation.normalization.dict[fieldname+'scale']
+    for ic in range(len(cells)-1):
+        xi = cells[ic]+0.01*dx
+        fi = simulation.DG_basis.eval_proj(field_DG, coord_swap(xi))
+        xip1 = cells[ic]+0.99*dx
+        fip1 = simulation.DG_basis.eval_proj(field_DG, coord_swap(xip1))
+        DG_proj.append(fi/yscale)
+        x_proj.append(xi/xscale - xshift)
+        DG_proj.append(fip1/yscale)
+        x_proj.append(xip1/xscale - xshift)
+        DG_proj.append(None)
+        x_proj.append(cells[ic]/xscale - xshift)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(x_proj, DG_proj,'-')
+    # add a vertical line to mark each cell boundary
+    if show_cells:
+        for xc in cells:
+                ax.axvline(xc/xscale - xshift, color='k', linestyle='-', alpha=0.15)
+
+    xlabel = fig_tools.label_from_simnorm(simulation,cutdir)
+    ylabel = fig_tools.label_from_simnorm(simulation,fieldname)
+    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=frame.slicetitle, figout=figout, xlim=xlim)
+    
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
