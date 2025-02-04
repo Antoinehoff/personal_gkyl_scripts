@@ -42,7 +42,7 @@ import os, re
     
 def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                            twindow=[],space_time=False, cmap='inferno',
-                           fluctuation=False,
+                           fluctuation=False, plot_type='pcolormesh',
                            xlim=[], ylim=[], clim=[], figout=[]):
     if not isinstance(twindow,list): twindow = [twindow]
     cmap0 = cmap
@@ -75,7 +75,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             # make the plot
             fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
                               xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
-                              cmap=cmap, vmin=vmin, vmax=vmax, colorscale=colorscale)
+                              cmap=cmap, vmin=vmin, vmax=vmax, colorscale=colorscale, plot_type=plot_type)
         else:
             norm = plt.Normalize(min(t), max(t))
             colormap = cm.viridis  # You can choose any colormap
@@ -222,7 +222,7 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
 
 def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
                       cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
-                      full_plot=False, movieprefix=''):
+                      full_plot=False, movieprefix='', plot_type='pcolormesh'):
     os.makedirs('gif_tmp', exist_ok=True)
     
     if isinstance(fieldnames,str):
@@ -243,7 +243,7 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
             clim = clim if clim else vlims
         plot_2D_cut(
             simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
-            cmap=cmap, full_plot=full_plot,
+            cmap=cmap, full_plot=full_plot, plot_type=plot_type,
             xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
             cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
         )
