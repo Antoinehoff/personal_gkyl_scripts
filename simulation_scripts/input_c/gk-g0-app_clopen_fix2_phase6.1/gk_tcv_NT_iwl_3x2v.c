@@ -754,7 +754,7 @@ main(int argc, char **argv)
     .poisson_bcs = {.lo_type = {GKYL_POISSON_DIRICHLET},
                     .up_type = {GKYL_POISSON_DIRICHLET},
                     .lo_value = {0.0}, .up_value = {0.0}},
-    .static_TCBC = true, // use static target corner boundary conditions (TCBC)
+    .dynamic_TCBC = false, // use static target corner boundary conditions (TCBC)
     .phi_TC = 0.0, // set phi to 0.0 [V] at the target corner
   };
 
