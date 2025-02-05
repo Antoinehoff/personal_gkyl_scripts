@@ -14,7 +14,7 @@ TIME="10:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load
-MODULES="cudatoolkit/12.4 openmpi/cuda-11.1/gcc/4.1.1"
+MODULES="cudatoolkit/12.0 openmpi/cuda-11.1/gcc/4.1.1"
 
 #.AUXILIARY SLURM VARIABLES
 #.Total number of cores/tasks/MPI processes.
