@@ -552,7 +552,6 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     frame.slice(cutdir, cutcoord)
     # get the coordinates of the slice
     slice_coords = [c for c in frame.slicecoords.values()]
-    print(frame.slicecoords)
     field_DG = frame.get_DG_coeff()
     if cutdir == 'x':
         ix = 0
@@ -574,7 +573,6 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     cells = field_DG.grid[ix]
     c0 = slice_coords[0] + 0.5*(field_DG.grid[ic0][1]-field_DG.grid[ic0][0])
     c1 = slice_coords[1] + 0.5*(field_DG.grid[ic1][1]-field_DG.grid[ic1][0])
-    print(c0,c1)
     dx = cells[1]-cells[0]
     DG_proj = []
     x_proj  = []
