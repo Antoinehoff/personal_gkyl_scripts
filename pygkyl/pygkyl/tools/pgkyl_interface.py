@@ -16,6 +16,7 @@ import postgkyl as pg
 import numpy as np
 
 def get_values(Gdata):
+    # handle 2D and 3D data differently
     if Gdata.get_values().ndim == 3 :
         values = np.expand_dims(Gdata.get_values(), axis=1)
         return np.concatenate((values, values), axis=1)

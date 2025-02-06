@@ -52,8 +52,8 @@ class Frame:
         self.process_field_name()  # this initializes the above attributes
 
         self.time = None
-        self.tsymbol = None
-        self.tunits = None
+        self.tsymbol = ''
+        self.tunits = ''
         self.Gdata = []
         self.dims = None
         self.ndims = None
@@ -105,7 +105,15 @@ class Frame:
         """
         Get the DG coefficients.
         """
-        return pg.data.GData(self.filenames[0])
+        Gdata_list = []
+        for (f_, c_) in zip(self.filenames, self.comp):
+            gdata_ = copy.deepcopy(pg.data.GData(f_))
+            gdata_.values = gdata_.values[:,:,:,c_*8:(c_+1)*8]
+            Gdata_list.append(gdata_)
+        values = copy.deepcopy(self.receipe(Gdata_list))
+        Gdata_out = copy.deepcopy(Gdata_list[0])
+        Gdata_out.values = values
+        return Gdata_out
 
     def load(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
         """
@@ -127,23 +135,6 @@ class Frame:
         self.refresh()
         if normalize: self.normalize()
         if fourier_y: self.fourier_y()
-
-    def load_DG(self, polyorder=1, polytype='ms'):
-        """
-        Load the data from the file without interpolation.
-        """
-        self.Gdata = []
-        Gdata = pg.data.GData(self.filenames[0])
-        self.Gdata.append(Gdata)
-        if Gdata.ctx['time']:
-            self.time = Gdata.ctx['time']
-        self.grids = [g for g in pgkyl_.get_grid(Gdata) if len(g) > 2]
-        self.cells = Gdata.ctx['cells']
-        self.ndims = len(self.cells)
-        self.dim_idx = list(range(self.ndims))
-        if not self.time:
-            self.time = 0
-        self.values = pgkyl_.get_values(Gdata)
 
     def refresh(self, values=True):
         """
@@ -245,6 +236,11 @@ class Frame:
         self.refresh_title()
 
     def slice(self, axs, ccoord):
+        """
+        Slice the data along specified axes and coordinates.
+        1. axs: string of axes to slice along (e.g., 'xy', 'yz', 'xz', 'scalar')
+        2. ccoord: list of coordinates to slice at (e.g., [x, y, z])
+        """
         ccoord = [ccoord] if not isinstance(ccoord, list) else ccoord
         ax_to_cut = 'xyz'
         if axs == 'scalar':

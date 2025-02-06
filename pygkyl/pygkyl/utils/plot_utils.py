@@ -26,6 +26,7 @@ from ..classes import Frame, Integrated_moment
 # other commonly used libs
 import numpy as np
 import sys
+import copy
 from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
@@ -549,31 +550,31 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     """
     frame = Frame(simulation, fieldname,tf=sim_frame, load=True)
     frame.slice(cutdir, cutcoord)
-    field_DG = frame.get_DG_coeff()    
+    # get the coordinates of the slice
+    slice_coords = [c for c in frame.slicecoords.values()]
+    print(frame.slicecoords)
+    field_DG = frame.get_DG_coeff()
     if cutdir == 'x':
         ix = 0
         ic0 = 1
         ic1 = 2
+        def coord_swap(x): return [x,c0,c1]
     elif cutdir == 'y':
         ix = 1
         ic0 = 0
         ic1 = 2
+        def coord_swap(x): return [c0,x,c1]
     elif cutdir == 'z':
         ix = 2
         ic0 = 0
         ic1 = 1
+        def coord_swap(x): return [c0,c1,x]
     else:
         raise Exception("Invalid direction")
     cells = field_DG.grid[ix]
-    c0 = cutcoord[0] + 0.5*(field_DG.grid[ic0][1]-field_DG.grid[ic0][0])
-    c1 = cutcoord[1] + 0.5*(field_DG.grid[ic1][1]-field_DG.grid[ic1][0])
-
-    def coord_swap(z): 
-        out = [0,0,0]
-        out[ix] = z
-        out[ic0] = c0
-        out[ic1] = c1
-        return out
+    c0 = slice_coords[0] + 0.5*(field_DG.grid[ic0][1]-field_DG.grid[ic0][0])
+    c1 = slice_coords[1] + 0.5*(field_DG.grid[ic1][1]-field_DG.grid[ic1][0])
+    print(c0,c1)
     dx = cells[1]-cells[0]
     DG_proj = []
     x_proj  = []
