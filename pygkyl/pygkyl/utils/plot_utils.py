@@ -577,9 +577,8 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     else:
         raise Exception("Invalid direction")
     cells = field_DG.grid[ix]
-    c0 = slice_coords[0] #+ 0.5*(field_DG.grid[ic0][1]-field_DG.grid[ic0][0])
-    c1 = slice_coords[1] #+ 0.5*(field_DG.grid[ic1][1]-field_DG.grid[ic1][0])
-    print(c0,c1)
+    c0 = slice_coords[0]
+    c1 = slice_coords[1]
     dx = cells[1]-cells[0]
     DG_proj = []
     x_proj  = []
