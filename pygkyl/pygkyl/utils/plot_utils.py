@@ -557,22 +557,29 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
         ix = 0
         ic0 = 1
         ic1 = 2
+        slice_coords[0] *= simulation.normalization.dict['yscale']
+        slice_coords[1] *= simulation.normalization.dict['zscale']
         def coord_swap(x): return [x,c0,c1]
     elif cutdir == 'y':
         ix = 1
         ic0 = 0
         ic1 = 2
+        slice_coords[0] *= simulation.normalization.dict['xscale']
+        slice_coords[1] *= simulation.normalization.dict['zscale']
         def coord_swap(x): return [c0,x,c1]
     elif cutdir == 'z':
         ix = 2
         ic0 = 0
         ic1 = 1
+        slice_coords[0] *= simulation.normalization.dict['xscale']
+        slice_coords[1] *= simulation.normalization.dict['yscale']
         def coord_swap(x): return [c0,c1,x]
     else:
         raise Exception("Invalid direction")
     cells = field_DG.grid[ix]
-    c0 = slice_coords[0] + 0.5*(field_DG.grid[ic0][1]-field_DG.grid[ic0][0])
-    c1 = slice_coords[1] + 0.5*(field_DG.grid[ic1][1]-field_DG.grid[ic1][0])
+    c0 = slice_coords[0] #+ 0.5*(field_DG.grid[ic0][1]-field_DG.grid[ic0][0])
+    c1 = slice_coords[1] #+ 0.5*(field_DG.grid[ic1][1]-field_DG.grid[ic1][0])
+    print(c0,c1)
     dx = cells[1]-cells[0]
     DG_proj = []
     x_proj  = []
