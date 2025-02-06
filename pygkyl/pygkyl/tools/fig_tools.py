@@ -186,6 +186,62 @@ def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnu
                 il += 1
         finalize_plot(ax,fig,xlabel=ax1['xlabel'],ylabel=ylabel,legend=True)
 
+def figdatadict_get_data(filename, fieldname):
+    """
+    Get x and y data from a figure data dictionary.
+
+    Parameters:
+    filename : str
+        The file name to extract data for.
+    fieldname : str
+        The field name to extract data for.
+    
+    Returns:
+    xdata : list
+        The x data.
+    ydata : list
+        The y data.
+    xlabel : str
+        The x-axis label.
+    ylabel : str
+        The y-axis label.
+    vlabel : str
+        The variable label.
+    """
+    figdatadict = load_figout(filename) if filename else figdatadict
+    xdata = []
+    ydata = []
+    for ax in figdatadict:
+        for l_ in ax['curves']:
+            label = l_['label']
+            # remove all latex characters
+            label = label.replace('$','')
+            label = label.replace('{','')
+            label = label.replace('}','')
+            label = label.replace('^','')
+            label = label.replace('_','')
+            label = label.replace('\\','')
+            label = label.replace(',','')
+            label = label.replace(' ','')
+            # check if the filename is a substring of label
+            if fieldname in label:
+                xdata = l_['xdata']
+                ydata = l_['ydata']
+                xlabel = ax['xlabel']
+                ylabel = ax['ylabel']
+                vlabel = l_['label']
+    if len(xdata) == 0:
+        #print availale fields
+        print('Available fields:')
+        available_field = []
+        for ax in figdatadict:
+            for l_ in ax['curves']:
+                available_field.append(l_['label'])
+        #print unique fields
+        print(list(set(available_field)))
+        raise ValueError('Field not found in figure data dictionary')
+    return xdata, ydata, xlabel, ylabel, vlabel
+
 def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
                   cbar=None, xlabel='',ylabel='',clabel='', title='', pcm = None,
                   legend=False, figout=[], aspect='', grid=False):
