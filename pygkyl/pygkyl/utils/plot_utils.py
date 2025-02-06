@@ -607,7 +607,8 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 
     xlabel = fig_tools.label_from_simnorm(simulation,cutdir)
     ylabel = fig_tools.label_from_simnorm(simulation,fieldname)
-    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=frame.slicetitle, figout=figout, xlim=xlim)
+    title = frame.slicetitle + ' at ' + frame.timetitle
+    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title, figout=figout, xlim=xlim)
     
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
