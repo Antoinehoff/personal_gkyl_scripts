@@ -618,6 +618,11 @@ main(int argc, char **argv)
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
 
+    // .init_from_file = {
+    //   .type = GKYL_IC_IMPORT_F,
+    //   .file_name = "older_restart_file-ion.gkyl",
+    // },
+
     .mapc2p = {
       .mapping = mapc2p_vel_elc,
       .ctx = &ctx,
@@ -686,6 +691,11 @@ main(int argc, char **argv)
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
 
+    // .init_from_file = {
+    //   .type = GKYL_IC_IMPORT_F,
+    //   .file_name = "older_restart_file-ion.gkyl",
+    // },
+
     .mapc2p = {
       .mapping = mapc2p_vel_ion,
       .ctx = &ctx,
@@ -753,9 +763,10 @@ main(int argc, char **argv)
     .polarization_bmag = ctx.Bref,
     .poisson_bcs = {.lo_type = {GKYL_POISSON_DIRICHLET},
                     .up_type = {GKYL_POISSON_DIRICHLET},
-                    .lo_value = {0.0}, .up_value = {0.0}},
-    .dynamic_TCBC = false, // use static target corner boundary conditions (TCBC)
-    .phi_TC = 0.0, // set phi to 0.0 [V] at the target corner
+                    .lo_value = {0.0}, .up_value = {0.0},
+                    .tcbc_type = GKYL_POISSON_TCBC_DIRICHLET,
+                    .tc_bias = 0.0,
+                  },
   };
 
   // GK app
