@@ -141,7 +141,7 @@ def plot_figdatadict(figdatadict):
 def save_figout(figout,fname):
     figdatadict = get_figdatadict(figout[0])
     if not fname[-4:] == '.pkl':
-        fname+'.pkl'
+        fname+='.pkl'
     # Save the dictionary to a JSON file
     with open(fname, 'wb') as f:
         pickle.dump(figdatadict, f)
@@ -149,7 +149,7 @@ def save_figout(figout,fname):
 
 def load_figout(fname):
     if not fname[-4:] == '.pkl':
-         fname+'.pkl'
+         fname+='.pkl'
    # Load the dictionary from the pickle file
     with open(fname, 'rb') as f:
         figdatadict = pickle.load(f)
