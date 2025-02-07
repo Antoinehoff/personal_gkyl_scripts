@@ -104,6 +104,7 @@ class Normalization:
             shift  = 0
             symbol = r'$z/\pi$'
             units  = ''
+
         #-- Velocity normalization
         elif norm in ['vt', 'thermal velocity']:
             for spec in self.simulation.species.values():
@@ -137,6 +138,7 @@ class Normalization:
                 symbol = r'$W$'
             shift = 0
             units = r'MJ/m$^3$'
+
         #-- Temperature normalization
         elif norm == 'eV':
             for spec in self.simulation.species.values():
@@ -182,6 +184,19 @@ class Normalization:
             units = r'Pa'
             if not self.simulation.data_param.BiMaxwellian:
                 scale /= self.simulation.phys_param.eV / 3.0
+        
+        #-- Current density normalization
+        elif norm == 'MA':
+            scale = 1e6
+            symbol = r'$j$'
+            units = r'MA/m$^3$'
+            shift = 0
+        elif norm == 'kA':
+            scale = 1e3
+            symbol = r'$j$'
+            units = r'kA/m$^3$'
+            shift = 0
+
         #-- Grouped normalization
         if key.lower() == 'temperatures':
             for spec in self.simulation.species.values():
@@ -210,7 +225,8 @@ class Normalization:
                 self.set('Wflu%s'%spec.nshort,norm)
                 self.set('Wpot%s'%spec.nshort,norm)
                 self.set('Wtot%s'%spec.nshort,norm)
-
+        elif key.lower() == 'current':
+            self.set('jpar',norm)
         else:
             #-- Apply normalization or handle unknown norm
             if scale != 0:
