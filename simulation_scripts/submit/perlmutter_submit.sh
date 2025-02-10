@@ -22,16 +22,18 @@ LAST_FRAME=-1
 
 # help function
 show_help() {
-    echo "Usage: $0 [-q QOS] [-n JOB_NAME] [-t TIME] [-h]"
+    echo "Usage: $0 [-q QOS] [-n JOB_NAME] [-t TIME] [-h] [-d job_id]"
     echo "Submit a job to Perlmutter"
     echo "  -q QOS      QOS to use (default: regular)"
     echo "  -n JOB_NAME Name of the job (default: $JOB_NAME)"
     echo "  -t TIME     Wall time for the job (default: $TIME)"
     echo "  -N numnodes Number of nodes required (default: $NODES)"
+    echo "  -r frame    Restart from frame (default: $LAST_FRAME)"
+    echo "  -d job_id   Job ID to create a dependency (default: none)"
     echo "  -h          Display this help and exit"
 }
-# check the following options : -q -n -t -h
-while getopts ":q:n:t:r:N:h" opt; do
+# check the following options : -q -n -t -h -N -r -d
+while getopts ":q:n:t:r:N:d:h" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG
@@ -52,6 +54,9 @@ while getopts ":q:n:t:r:N:h" opt; do
             ;;
         r )
             LAST_FRAME=$OPTARG
+            ;;
+        d )
+            DEPENDENCY_JOB_ID=$OPTARG
             ;;
         h )
             show_help
@@ -128,6 +133,13 @@ cat <<EOT > $SCRIPTNAME
 #SBATCH --output $OUTPUT
 #SBATCH --error $ERROR
 #SBATCH --account $ACCOUNT
+EOT
+
+if [ -n "$DEPENDENCY_JOB_ID" ]; then
+    echo "#SBATCH --dependency=afterany:$DEPENDENCY_JOB_ID" >> $SCRIPTNAME
+fi
+
+cat <<EOT >> $SCRIPTNAME
 module load $MODULES
 export MPICH_GPU_SUPPORT_ENABLED=0
 export DVS_MAXNODES=32_
@@ -147,7 +159,10 @@ read -p "Proceed and submit the job? ((y)/n) " proceed
 
 if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     module load $MODULES
-    make
+    # make only if there is no job dependency
+    if [ -z "$DEPENDENCY_JOB_ID" ]; then
+        make
+    fi
     mkdir -p history
     cp input.c history/input_sf_$LAST_FRAME.c
     cp $SCRIPTNAME wk/.
