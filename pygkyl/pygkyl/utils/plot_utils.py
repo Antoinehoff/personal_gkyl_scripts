@@ -544,10 +544,16 @@ def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False):
                                 cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
 
-def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], show_cells=True, figout=[]):
+def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], show_cells=True, figout=[],
+                           derivative=False):
     """
     Plot the DG representation of a field at a given time frame.
     """
+    if derivative in ['x','y','z']:
+        id = 0 * (derivative == 'x') + 1 * (derivative == 'y') + 2 * (derivative == 'z')
+    else :
+        id = None
+
     frame = Frame(simulation, fieldname,tf=sim_frame, load=True)
     frame.slice(cutdir, cutcoord)
     # get the coordinates of the slice
@@ -555,22 +561,16 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     field_DG = frame.get_DG_coeff()
     if cutdir == 'x':
         ix = 0
-        ic0 = 1
-        ic1 = 2
         slice_coords[0] *= simulation.normalization.dict['yscale']
         slice_coords[1] *= simulation.normalization.dict['zscale']
         def coord_swap(x): return [x,c0,c1]
     elif cutdir == 'y':
         ix = 1
-        ic0 = 0
-        ic1 = 2
         slice_coords[0] *= simulation.normalization.dict['xscale']
         slice_coords[1] *= simulation.normalization.dict['zscale']
         def coord_swap(x): return [c0,x,c1]
     elif cutdir == 'z':
         ix = 2
-        ic0 = 0
-        ic1 = 1
         slice_coords[0] *= simulation.normalization.dict['xscale']
         slice_coords[1] *= simulation.normalization.dict['yscale']
         def coord_swap(x): return [c0,c1,x]
@@ -587,9 +587,9 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     yscale = simulation.normalization.dict[fieldname+'scale']
     for ic in range(len(cells)-1):
         xi = cells[ic]+0.01*dx
-        fi = simulation.DG_basis.eval_proj(field_DG, coord_swap(xi))
+        fi = simulation.DG_basis.eval_proj(field_DG, coord_swap(xi), id=id)
         xip1 = cells[ic]+0.99*dx
-        fip1 = simulation.DG_basis.eval_proj(field_DG, coord_swap(xip1))
+        fip1 = simulation.DG_basis.eval_proj(field_DG, coord_swap(xip1), id=id)
         DG_proj.append(fi/yscale)
         x_proj.append(xi/xscale - xshift)
         DG_proj.append(fip1/yscale)
@@ -607,6 +607,11 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 
     xlabel = fig_tools.label_from_simnorm(simulation,cutdir)
     ylabel = fig_tools.label_from_simnorm(simulation,fieldname)
+    if derivative in ['x','y','z']:
+        ylabel.replace(')','')
+        ylabel = r'$\partial_%s$'%derivative+ylabel
+        if frame.gunits[id] != '':
+            ylabel += '/'+ frame.gunits[id] + ')'
     title = frame.slicetitle + ' at ' + frame.timetitle
     fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title, figout=figout, xlim=xlim)
     
