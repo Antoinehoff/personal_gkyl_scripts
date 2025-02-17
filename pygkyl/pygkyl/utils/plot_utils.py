@@ -463,7 +463,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
         fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, xlim=xlim, ylim=ylim, legend=True)
     return int_mom.time
 
-def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False):
+def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False, type='profile'):
     """
     Plot the profiles of all sources in the sources dictionary using various cuts.
     """
