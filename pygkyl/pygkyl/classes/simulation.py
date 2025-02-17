@@ -10,6 +10,7 @@ from .normalization import Normalization
 from .frame import Frame
 from ..tools import math_tools, phys_tools, DG_tools
 import matplotlib.pyplot as plt
+import copy
 
 class Simulation:
     """
@@ -42,8 +43,6 @@ class Simulation:
         self.num_param  = None  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
         self.data_param = None  # Data parameters (e.g., file paths)
         self.geom_param = None  # Geometric parameters (e.g., axis positions)
-        self.GBsource   = None  # Source model of the simulation
-        self.OMPsources = None  # Energy source analytical profiles
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
         self.normalization = None # Normalization units for the simulation data
         self.sources = {}  # Dictionary to store sources
@@ -200,7 +199,7 @@ class Simulation:
         return GBloss, time, GBloss_z
 
     def add_source(self, name, source):
-        self.sources[name] = source
+        self.sources[name] = copy.deepcopy(source)
 
     def get_source_power(self, type='profile', remove_GB_loss=False):
         [x, y, z] = self.geom_param.get_conf_grid()
@@ -211,10 +210,12 @@ class Simulation:
             for source in self.sources.values():
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_elc(X, Y, Z)
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_ion(X, Y, Z)
-        else:  # Compute the input power from the source term diagnostic
+        elif (type == 'src_diag'):  # Compute the input power from the source term diagnostic
             M2e = Frame(self, 'M2e_src', tf=0, load=True)
             M2i = Frame(self, 'M2i_src', tf=0, load=True)
             integrant = 0.5 * self.species['elc'].m * M2e.values + 0.5 * self.species['ion'].m * M2i.values
+        else:
+            raise ValueError("Invalid type. Choose 'profile' or 'src_diag'.")
         # multiply by Jacobian
         integrant *= self.geom_param.Jacobian
         # Integrate source terms (volume or surface)
