@@ -188,12 +188,12 @@ class Normalization:
         #-- Current density normalization
         elif norm == 'MA':
             scale = 1e6
-            symbol = r'$j$'
+            symbol = r'$j_\parallel$'
             units = r'MA/m$^3$'
             shift = 0
         elif norm == 'kA':
             scale = 1e3
-            symbol = r'$j$'
+            symbol = r'$j_\parallel$'
             units = r'kA/m$^3$'
             shift = 0
 
