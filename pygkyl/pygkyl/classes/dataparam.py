@@ -30,14 +30,15 @@ class DataParam:
     - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
-                 fileprefix='', wkdir='', BiMaxwellian=True, species = {}):
+                 prefix='', wkdir='', BiMaxwellian=True, species = {}):
         self.expdatadir = expdatadir
         self.g0simdir = g0simdir
         self.simname = simname
         self.simdir = g0simdir + simdir
         self.wkdir = wkdir
         self.datadir = g0simdir + simdir + simname +'/' + wkdir
-        self.fileprefix = self.datadir + fileprefix
+        self.prefix = prefix # prefix for the data files
+        self.fileprefix = self.datadir + prefix # prefix for the data files + full path
         self.data_files_dict = {}
         self.BiMaxwellian = BiMaxwellian
         self.set_data_field_dict(BiMaxwellian=BiMaxwellian, species=species)
