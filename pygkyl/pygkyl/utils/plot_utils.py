@@ -617,3 +617,35 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
+
+def poloidal_projection(simulation, fieldName='', timeFrames=0, outFilename='',nzInterp=32, scaleFac=1.,
+                        colorMap = 'inferno', doInset=True, xlim=[], ylim=[],clim=[]):
+    '''
+    This function plots the poloidal projection of a field.
+
+    Inputs:
+        simulation: Simulation object.
+        fieldName: Name of the field to plot.
+        timeFrames: Time frames to plot.
+        outFilename: Name of the output file.
+        nzInterp: Number of points to interpolate along z.
+        scaleFac: Scale factor for the field.
+        colorMap: Color map to use.
+        doInset: Whether to plot an inset. (not adapted well yet)
+        xlim: x-axis limits.
+        ylim: y-axis limits.
+        clim: Color limits.
+    '''
+    # from ..tools import poloidal_projection_utils as ppu
+    from .poloidal_projection_utils import poloidal_projection_def
+    poloidal_projection_def(simulation=simulation, 
+       fieldName=fieldName, 
+       timeFrames=timeFrames, 
+       outFilename=outFilename,
+       nzInterp=nzInterp, 
+       scaleFac=scaleFac,
+       colorMap=colorMap, 
+       doInset=doInset, 
+       xlim=xlim,
+       ylim=ylim,
+       clim=clim)

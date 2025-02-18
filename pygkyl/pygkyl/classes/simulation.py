@@ -47,7 +47,8 @@ class Simulation:
         self.normalization = None # Normalization units for the simulation data
         self.sources = {}  # Dictionary to store sources
         self.DG_basis = DG_tools.DG_basis(porder,ptype,dimensionality)  # DG basis functions for projection
-
+        self.polyOrder = porder
+        self.basisType = ptype
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """
         Set physical parameters like permittivity, electron volts, masses, and magnetic field.
@@ -202,6 +203,17 @@ class Simulation:
         self.sources[name] = copy.deepcopy(source)
 
     def get_source_power(self, type='profile', remove_GB_loss=False):
+        """
+        Compute the input power from the source term.
+
+        Parameters:
+        type (str): Type of source term ('profile' or 'src_diag').
+        remove_GB_loss (bool): Whether to remove the grad-B drift loss.
+
+        Returns:
+        pow_in (float): Input power.
+        """
+
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
         
