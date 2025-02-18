@@ -123,6 +123,8 @@ class Frame:
         for (f_, c_) in zip(self.filenames, self.comp):
             Gdata = pg.data.GData(f_)
             dg = pg.data.GInterpModal(Gdata, poly_order=polyorder, basis_type=polytype, periodic=False)
+            xNodal, _ = dg.interpolate(c_)
+            self.xNodal = xNodal
             dg.interpolate(c_, overwrite=True)
             self.Gdata.append(Gdata)
             if Gdata.ctx['time']:
@@ -266,6 +268,13 @@ class Frame:
                                  int_bounds=['all', 'all'], surf_coord='all'):
         """
         Compute the surface integral of the data.
+
+        Parameters:
+        - direction: string of axes to slice along (e.g., 'xy', 'yz', 'xz')
+        - ccoord: list of coordinates to slice at (e.g., [x, y, z])
+        - integrant_filter: string to filter the integrant ('all', 'pos', 'neg')
+        - int_bounds: list of bounds for the integration (e.g., [[x1, x2], [y1, y2]])
+        - surf_coord: coordinate for the surface integral (e.g., 'x', 'y', 'z')
         """
         [x, y, z] = self.simulation.geom_param.grids
         dir_dict = {'x': [0, x], 'y': [1, y], 'z': [2, z]}
@@ -284,8 +293,9 @@ class Frame:
         if isinstance(int_bounds[1], list):
             il2 = np.argmin(np.abs(grid2 - int_bounds[1][0]))
             iu2 = np.argmin(np.abs(grid2 - int_bounds[1][1]))
+        
+        self.slice(axs=direction, ccoord=ccoord)
 
-        self.slice_2D(plane=direction, ccoord=ccoord)
         integrant = self.values * self.Jacobian
 
         slices = [slice(None)] * 3
