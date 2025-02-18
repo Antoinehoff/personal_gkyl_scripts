@@ -57,12 +57,12 @@ struct gk_app_ctx {
   double Ti_srcOMP;       // Ti for the OMP source.
   double sigma_srcOMP;    // Radial spread of the OMP source.
 
-  double n_srcSPUT;        // Amplitude of the sputtering source
-  double x_srcSPUT;     
-  double Te_srcSPUT;     
-  double Ti_srcSPUT;      
-  double sigmax_srcSPUT;
-  double sigmaz_srcSPUT;
+  double n_srcRECY;        // Amplitude of the RECYtering source
+  double x_srcRECY;     
+  double Te_srcRECY;     
+  double Ti_srcRECY;      
+  double sigmax_srcRECY;
+  double sigmaz_srcRECY;
 
   double floor_src;       // Source floor.
 
@@ -261,36 +261,36 @@ void temp_ion_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RES
     fout[0] = Ti_srcOMP*3./8.;
   }
 }
-// Sputtering source
-void density_srcSPUT(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+// Recycling source
+void density_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
   double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
-  double n_src = app->n_srcSPUT;
-  double x_src = app->x_srcSPUT;
-  double sigmax_src = app->sigmax_srcSPUT;
-  double sigmaz_src = app->sigmaz_srcSPUT;
+  double n_src = app->n_srcRECY;
+  double x_src = app->x_srcRECY;
+  double sigmax_src = app->sigmax_srcRECY;
+  double sigmaz_src = app->sigmaz_srcRECY;
   double floor_src = app->floor_src;
   
   double z_envelope = exp(-(pow(z + M_PI,2)) / (2.0 * pow(sigmaz_src,2))) + exp(-(pow(z - M_PI,2)) / (2.0 * pow(sigmaz_src,2)));
   fout[0] = z_envelope * n_src * (exp(-(pow(x - x_src,2)) / (2.0 * pow(sigmax_src,2))) + floor_src);
 }
-void temp_elc_srcSPUT(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+void temp_elc_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
   double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
-  double Te_src = app->Te_srcSPUT;
+  double Te_src = app->Te_srcRECY;
 
   fout[0] = Te_src*3./8.;
 }
-void temp_ion_srcSPUT(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+void temp_ion_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
   double x = xn[0], z = xn[2];
 
   struct gk_app_ctx *app = ctx;
-  double Ti_src = app->Ti_srcSPUT;
+  double Ti_src = app->Ti_srcRECY;
 
   fout[0] = Ti_src;
 }
@@ -531,13 +531,13 @@ create_ctx(void)
   double sigma_srcOMP = 0.03*Lx;
   double floor_src = 1e-2;
 
-  // Sputtering source parameters
-  double n_srcSPUT = 0.3*n_srcOMP;
-  double x_srcSPUT = 0.75*x_LCFS;
-  double Te_srcSPUT = 10*eV;
-  double Ti_srcSPUT = 10*eV;
-  double sigmax_srcSPUT = 0.5*(x_LCFS - x_srcSPUT);
-  double sigmaz_srcSPUT = 0.07*Lz;
+  // RECYtering source parameters
+  double n_srcRECY = 0.3*n_srcOMP;
+  double x_srcRECY = 0.75*x_LCFS;
+  double Te_srcRECY = 10*eV;
+  double Ti_srcRECY = 10*eV;
+  double sigmax_srcRECY = 0.5*(x_LCFS - x_srcRECY);
+  double sigmaz_srcRECY = 0.07*Lz;
 
   // Grid parameters
   int num_cell_x = 24;
@@ -592,12 +592,12 @@ create_ctx(void)
     .Ti_srcOMP    = Ti_srcOMP   ,
     .sigma_srcOMP = sigma_srcOMP,
 
-    .n_srcSPUT     = n_srcSPUT    ,
-    .x_srcSPUT     = x_srcSPUT    ,
-    .Te_srcSPUT    = Te_srcSPUT   ,
-    .Ti_srcSPUT    = Ti_srcSPUT   ,
-    .sigmax_srcSPUT = sigmax_srcSPUT,
-    .sigmaz_srcSPUT = sigmaz_srcSPUT,
+    .n_srcRECY     = n_srcRECY    ,
+    .x_srcRECY     = x_srcRECY    ,
+    .Te_srcRECY    = Te_srcRECY   ,
+    .Ti_srcRECY    = Ti_srcRECY   ,
+    .sigmax_srcRECY = sigmax_srcRECY,
+    .sigmaz_srcRECY = sigmaz_srcRECY,
   
     .floor_src    = floor_src   ,
   
@@ -731,9 +731,9 @@ main(int argc, char **argv)
         .ctx_density = &ctx,
         .ctx_upar = &ctx,
         .ctx_temp = &ctx,
-        .density = density_srcSPUT,
+        .density = density_srcRECY,
         .upar = zero_func,
-        .temp = temp_elc_srcSPUT,
+        .temp = temp_elc_srcRECY,
       },
     },
     .bcx = {
@@ -810,9 +810,9 @@ main(int argc, char **argv)
         .ctx_density = &ctx,
         .ctx_upar = &ctx,
         .ctx_temp = &ctx,
-        .density = density_srcSPUT,
+        .density = density_srcRECY,
         .upar = zero_func,
-        .temp = temp_elc_srcSPUT,
+        .temp = temp_elc_srcRECY,
       },
     },
     .bcx = {
