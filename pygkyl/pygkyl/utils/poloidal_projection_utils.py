@@ -276,7 +276,13 @@ def poloidal_projection_def(simulation, fieldName='', timeFrames=0, outFilename=
 
         #.Plot lcfs
         ax1a[0].plot(RInt_lcfs,ZInt_lcfs,linewidth=1.5,linestyle='--',color='white',alpha=.8)
-        ax1a[0].add_patch(Rectangle((0.6,Z_axis-0.01),0.085,0.02,color='gray'))
+
+        #.Plot the limiter
+        xWidth = np.min(RInt_lcfs) - np.min(RIntN)
+        xCorner = np.min(RIntN)
+        yWidth = 0.01
+        yCorner = Z_axis - 0.5*yWidth
+        ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
 
         if doInset: 
             #.inset data
