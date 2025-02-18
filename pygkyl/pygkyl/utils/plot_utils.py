@@ -132,8 +132,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
                                 figout=figout, grid=grid, xlim=xlim, ylim=ylim, xscale=xscale, yscale=yscale)
 
 def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
-                fieldnames='', cmap='inferno', full_plot=False,
-                time_average=False, fluctuation=False, plot_type='pcolormesh',
+                fieldnames='', cmap='inferno', time_average=False, fluctuation=False, plot_type='pcolormesh',
                 xlim=[], ylim=[], clim=[], colorscale = 'linear',
                 figout=[],cutout=[], val_out=[], frames_to_plot = None):
     # Check if we provide multiple time frames (time average or fluctuation plot)
@@ -223,8 +222,8 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
 
 def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
                       cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
-                      full_plot=False, movieprefix='', plot_type='pcolormesh'):
-    os.makedirs('gif_tmp', exist_ok=True)
+                      movieprefix='', plot_type='pcolormesh'):
+    os.makedirs('movie_frames_tmp', exist_ok=True)
     
     if isinstance(fieldnames,str):
         dataname = fieldnames + '_'
@@ -244,13 +243,13 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
             clim = clim if clim else vlims
         plot_2D_cut(
             simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
-            cmap=cmap, full_plot=full_plot, plot_type=plot_type,
+            cmap=cmap, plot_type=plot_type,
             xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
             cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
         )
         fig = figout[0]
         fig.tight_layout()
-        fig.savefig(f'gif_tmp/plot_{tf}.png')
+        fig.savefig(f'movie_frames_tmp/frame_{tf}.png')
         plt.close()
 
         # Update progress
@@ -266,11 +265,16 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
     moviename+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
     moviename += '.gif'
     # Compiling the movie images
-    images = [Image.open(f'gif_tmp/plot_{tf}.png') for tf in time_frames]
+    images = [Image.open(f'movie_frames_tmp/frame_{tf}.png') for tf in time_frames]
     # Save as gif
     images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
     print("movie "+moviename+" created.")
-
+    # Remove the temporary files
+    for tf in time_frames:
+        os.remove(f'movie_frames_tmp/frame_{tf}.png')
+    # Remove the temporary folder
+    os.rmdir('movie_frames_tmp')
+    
 def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
     geometry.set_domain(geom_type,vessel_corners)
     fig = plt.figure(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
