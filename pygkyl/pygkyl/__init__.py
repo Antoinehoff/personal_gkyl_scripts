@@ -13,6 +13,7 @@ Modules:
 from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam, GBsource, Source, Time_serie
 from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools, DG_tools
 from .utils import file_utils, math_utils, plot_utils
+from .configs import simulation_configs
 
 __all__ = [
     'Species',
@@ -34,5 +35,6 @@ __all__ = [
     'plot_utils',
     'DG_tools',
     'Time_serie',
-    'Source'
+    'Source',
+    'simulation_configs'
 ]

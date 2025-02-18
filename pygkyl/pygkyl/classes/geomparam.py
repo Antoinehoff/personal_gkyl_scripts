@@ -3,6 +3,7 @@ import numpy as np
 import scipy.integrate as integrate
 from ..tools import pgkyl_interface as pgkyl_
 from ..tools import math_tools as mt
+import os
 
 class GeomParam:
     """
@@ -77,6 +78,9 @@ class GeomParam:
     def load_metric(self,fileprefix):
         #-- load B (bmag)
         fname = fileprefix+'-'+'bmag.gkyl'
+        # check if fname exist
+        if not os.path.exists(fname):
+            raise Exception(f"File {fname} does not exist, please review simDir and filePrefix.")
         Gdata = pg.data.GData(fname)
         dg = pg.data.GInterpModal(Gdata,1,'ms')
         dg.interpolate(0,overwrite=True)

@@ -123,3 +123,11 @@ class DG_basis:
         gradc[2] = 2/(z1-z0)
 
         return ix,iy,iz, xc,yc,zc, gradc
+    
+    def info(self):
+        '''
+        Print the attributes
+        '''
+        print('order = ',self.order)
+        print('type = ',self.type)
+        print('dimensionality = ',self.dimensionality)

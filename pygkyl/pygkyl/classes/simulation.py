@@ -94,8 +94,7 @@ class Simulation:
             filename = file2
         # If neither file is found, print a message
         else:
-            print("Neither 'xyz.gkyl' nor 'PREFIX-nodes.gkyl' was found with prefix:")
-            print(self.data_param.fileprefix)
+            print("Neither 'xyz.gkyl' nor 'PREFIX-nodes.gkyl' was found with prefix: "+ self.data_param.fileprefix)
         # Load
         data = pg.data.GData(filename)
         normgrids = data.get_grid()
@@ -317,3 +316,27 @@ class Simulation:
         banana_width = phys_tools.banana_width(
             self.species[spec].q, self.species[spec].m, Ti_iw, Bfield, qfactor, epsilon)
         return banana_width
+    
+    def info(self):
+        """
+        Print the simulation information.
+        """
+        print("Simulation info:")
+        print("geom_param:")
+        print(self.geom_param.info())
+        print("phys_param:")
+        print(self.phys_param.info())
+        print("num_param:")
+        print(self.num_param.info())
+        print("data_param:")
+        print(self.data_param.info())
+        print("species:")
+        for spec in self.species.values():
+            print(spec.info())
+        print("normalization:")
+        print(self.normalization.info())
+        print("sources:")
+        for source in self.sources.values():
+            print(source.info())
+        print("DG_basis:")
+        print(self.DG_basis.info())

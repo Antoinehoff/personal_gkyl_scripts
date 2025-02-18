@@ -18,3 +18,12 @@ class PhysParam:
         self.eV = eV          # Elementary charge (eV)
         self.mp = mp          # Proton mass
         self.me = me          # Electron mass
+
+    def info(self):
+        """
+        Prints the physical parameters.
+        """
+        print(f"eps0 = {self.eps0}")
+        print(f"eV = {self.eV}")
+        print(f"mp = {self.mp}")
+        print(f"me = {self.me}")

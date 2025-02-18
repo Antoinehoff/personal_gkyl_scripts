@@ -1,4 +1,4 @@
-# src/classes/__init__.py
+# pygkyl/classes/__init__.py
 from .species    import Species
 from .simulation import Simulation
 from .numparam   import NumParam
