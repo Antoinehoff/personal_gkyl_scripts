@@ -47,6 +47,7 @@ class GeomParam:
         self.Rmid_max   = R_LCFSmid+x_out  # Maximum midplane major radius of simulation box [m].
         self.R0         = 0.5*(self.Rmid_min+self.Rmid_max)  # Major radius of the simulation box [m].
         self.r0         = self.R0-R_axis          # Minor radius of the simulation box [m].
+        self.B0         = B_axis*(R_axis/self.R0) # Magnetic field magnitude in the simulation box [T].
         self.geom_type  = geom_type
         self.a_mid      = \
             R_axis/a_shift - np.sqrt(R_axis*(R_axis - 2*a_shift*R_LCFSmid + 2*a_shift*R_axis))/a_shift
@@ -119,11 +120,6 @@ class GeomParam:
         J_z           = np.trapz(J_yz,self.y,axis=0)
         self.intJac   = np.trapz(J_z,self.z,axis=0)
 
-        #.Minor radius as a function of x:
-    def r_x(self,xIn):
-        return self.a_mid - self.x_LCFS + xIn
-        #return self.Rmid_min-self.R_axis+xIn
-    
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field
         gradB = np.array([self.dBdx, self.dBdy, self.dBdz])
@@ -165,19 +161,22 @@ class GeomParam:
         qa = [497.3420166252413,-1408.736172826569,1331.4134861681464,-419.00692601227627]
         return qa[0]*(rIn+self.R_axis)**3 + qa[1]*(rIn+self.R_axis)**2 + qa[2]*(rIn+self.R_axis) + qa[3]
 
+    #.Function that wraps x to [xMin,xMax].
+    def wrap(x, xMin, xMax):
+        return (((x-xMin) % (xMax-xMin)) + (xMax-xMin)) % (xMax-xMin) + xMin
+
+    #.Minor radius as a function of x:
+    def r_x(self,xIn):
+        return self.Rmid_min - self.R_axis + xIn
+    #.Major radius as a function of x:
+    def R_x(self,xIn):
+        return self.R_LCFSmid - self.x_LCFS + xIn
+
     ## Geometric relations for Miller geometry
     def R_f(self, r, theta):
         return self.R_axis + r*np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
     def Z_f(self, r, theta):
         return self.kappa*r*np.sin(theta)
-
-    #.Minor radius as a function of x:
-    def r_x(self,xIn):
-        return self.a_mid + xIn
-    
-    #.Major radius as a function of x:
-    def R_x(self,xIn):
-        return self.R_LCFSmid - self.x_LCFS + xIn
 
     #.Analytic derivatives.
     def R_f_r(self, r,theta): 
@@ -204,23 +203,16 @@ class GeomParam:
         t = theta
         while (t < -np.pi):
             t = t+2.*np.pi
-
         while ( np.pi < t):
             t = t-2.*np.pi
-
         if (0. < t):
             intV, intE = integrate.quad(self.integrand, 0., t, args=(r), epsabs=1.e-8)
             integral   = intV
         else:
             intV, intE = integrate.quad(self.integrand, t, 0., args=(r), epsabs=1.e-8)
             integral   = -intV
-
         return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r,theta)
     
-    #.Function that wraps x to [xMin,xMax].
-    def wrap(self, x, xMin, xMax):
-        return (((x-xMin) % (xMax-xMin)) + (xMax-xMin)) % (xMax-xMin) + xMin
-
     def get_conf_grid(self):
         return [self.x, self.y, self.z]
     
@@ -238,7 +230,7 @@ class GeomParam:
         print(f"R_axis: {self.R_axis}")
         print(f"Z_axis: {self.Z_axis}")
         print(f"R_LCFSmid: {self.R_LCFSmid}")
-        print(f"B0: {self.B0}")
+        print(f"B_axis: {self.B_axis}")
         print(f"a_shift: {self.a_shift}")
         print(f"q0: {self.q0}")
         print(f"kappa: {self.kappa}")
@@ -249,6 +241,7 @@ class GeomParam:
         print(f"Rmid_max: {self.Rmid_max}")
         print(f"R0: {self.R0}")
         print(f"r0: {self.r0}")
+        print(f"B0: {self.B0}")
         print(f"a_mid: {self.a_mid}")
 
     def plot_qprofile(self,x=None):
