@@ -91,6 +91,22 @@ class DataParam:
         data_field_dict['Jacobian'+'comp']   = 0
         data_field_dict['Jacobian'+'gnames'] = gnames[0:3]
 
+        # metric coefficients
+        counter_ = 0
+        for i_ in range(3):
+            iname = gnames[i_]
+            for j_ in range(i_,3):
+                jname = gnames[j_]
+                gijname = 'g_'+iname+jname
+                data_field_dict[gijname+'file']   = 'g_ij'
+                data_field_dict[gijname+'comp']   = counter_
+                data_field_dict[gijname+'gnames'] = gnames[0:3]
+                gijname = 'g'+iname+jname
+                data_field_dict[gijname+'file']   = 'gij'
+                data_field_dict[gijname+'comp']   = counter_
+                data_field_dict[gijname+'gnames'] = gnames[0:3]
+                counter_ += 1
+
         # add electrostatic field info
         data_field_dict['phi'+'file'] = 'field'
         data_field_dict['phi'+'comp'] = 0
@@ -203,7 +219,19 @@ class DataParam:
             ['b_y', r'$b_y$', ''],
             ['b_z', r'$b_z$', ''],
             ['Jacobian', r'$J$', '[Jacobian]'],
-            ['Bmag', r'$B$','T']
+            ['Bmag', r'$B$','T'],
+            ['g_xx', r'$g_{xx}$', ''],
+            ['g_xy', r'$g_{xy}$', ''],
+            ['g_xz', r'$g_{xz}$', ''],
+            ['g_yy', r'$g_{yy}$', ''],
+            ['g_yz', r'$g_{yz}$', ''],
+            ['g_zz', r'$g_{zz}$', ''],
+            ['gxx', r'$g^{xx}$', ''],
+            ['gxy', r'$g^{xy}$', ''],
+            ['gxz', r'$g^{xz}$', ''],
+            ['gyy', r'$g^{yy}$', ''],
+            ['gyz', r'$g^{yz}$', ''],
+            ['gzz', r'$g^{zz}$', ''],
             ]
         # add routinely other quantities of interest
         for spec in species.values():
