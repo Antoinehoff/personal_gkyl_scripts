@@ -1,6 +1,7 @@
-from ..classes import Simulation, Species
+import numpy as np
+from ..classes import Simulation, Species, Source
 
-def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True):
+def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True, add_source=True):
     if configName == 'TCV_PT':
         sim = get_TCV_PT_sim_config(simDir, filePrefix, x_LCFS, x_out)
     elif configName == 'TCV_NT':
@@ -11,6 +12,9 @@ def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, l
     
     if load_metric:
         sim.geom_param.load_metric(sim.data_param.fileprefix)
+
+    if add_source:
+        sim = add_source_baseline(sim)
 
     return sim
 
@@ -101,4 +105,31 @@ def get_TCV_NT_sim_config(simdir,fileprefix, x_LCFS, x_out):
 
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
+    return simulation
+
+def add_source_baseline(simulation):
+    n_srcOMP=2.4e23
+    x_srcOMP=0.0
+    Te_srcOMP=2 * simulation.species['elc'].T0
+    Ti_srcOMP=2 * simulation.species['ion'].T0
+    sigmax_srcOMP=0.03 * simulation.geom_param.Lx
+    floor_src=1e-2
+    def custom_density_src_profile(x,y,z):
+        return n_srcOMP * (np.exp(-((x - x_srcOMP) ** 2) / (2.0 * sigmax_srcOMP ** 2)) + floor_src)
+    def custom_temp_src_profile_elc(x, y = None, z = None):
+        mask = x < (x_srcOMP + 3 * sigmax_srcOMP)
+        fout = np.empty_like(x)
+        fout[mask] = Te_srcOMP; fout[~mask] = Te_srcOMP * 3.0 / 8.0
+        return fout  
+    def custom_temp_src_profile_ion( x, y = None, z = None):
+        mask = x < (x_srcOMP + 3 * sigmax_srcOMP)
+        fout = np.empty_like(x)
+        fout[mask] = Ti_srcOMP; fout[~mask] = Ti_srcOMP * 3.0 / 8.0
+        return fout   
+    OMPsource = Source(n_src=n_srcOMP,x_src=x_srcOMP,Te_src=Te_srcOMP,Ti_src=Ti_srcOMP,
+                    sigma_src=sigmax_srcOMP,floor_src=floor_src,
+                    density_src_profile=custom_density_src_profile,
+                    temp_src_profile_elc=custom_temp_src_profile_elc,
+                    temp_src_profile_ion=custom_temp_src_profile_ion)
+    simulation.add_source('Core src',OMPsource)
     return simulation

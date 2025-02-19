@@ -22,6 +22,8 @@ import matplotlib.cm as cm
 import matplotlib.colors as mcolors
 import pickle
 import numpy as np
+from PIL import Image
+import os
 
 default_figsz = [5,3.5]
 
@@ -90,6 +92,34 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
     finalize_plot(ax,fig,xlabel=xlabel,ylabel=ylabel,title=title,xlim=xlim,ylim=ylim,
                   cbar=cbar,clabel=clabel,clim=clim,pcm=im)
     return fig
+
+def compile_movie(frameFileList,movieName,extension='gif',rmFrames=True):
+    '''
+    Compiles a movie from a list of frames.
+
+    Parameters:
+    frameFileList : list
+        The list of frame files.
+    movieName : str
+        The name of the movie.
+    extension : str, optional
+        The extension of the movie file.
+    rmFrames : bool, optional
+        Whether to remove the frame files after compiling the movie.
+    '''
+    movieName += '.'+extension
+    # Compiling the movie images
+    images = [Image.open(frameFile) for frameFile in frameFileList]
+    # Save as gif
+    print("Creating movie "+movieName+"...")
+    images[0].save(movieName, save_all=True, append_images=images[1:], duration=200, loop=1)
+    print("movie "+movieName+" created.")
+    # Remove the temporary files
+    if rmFrames:
+        for frameFile in frameFileList:
+            os.remove(frameFile)
+        # Remove the temporary folder
+        os.rmdir(os.path.dirname(frameFileList[0]))
 
 def get_figdatadict(fig):
     """

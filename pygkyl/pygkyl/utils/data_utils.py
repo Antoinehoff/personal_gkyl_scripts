@@ -41,6 +41,18 @@ def get_2D_movie_data(simulation,cut_dir,cut_coord,time_frames, fieldnames, fluc
     vlims = [[fmin[kf],fmax[kf]] if fmin[kf] >= 0 else [-absfmax[kf],absfmax[kf]] for kf in range(len(fieldnames))]
     return movie_frames, vlims
 
+def get_minmax_values(simulation, fieldname, time_frames):
+    for tf in time_frames:
+        frame = Frame(simulation, fieldname, tf, load=True)
+        fmin = np.min(frame.values) if tf == time_frames[0] else min(fmin, np.min(frame.values))
+        fmax = np.max(frame.values) if tf == time_frames[0] else max(fmax, np.max(frame.values))
+        nx_mid = frame.values.shape[0]//2
+        nz_mid = frame.values.shape[2]//2
+        f_OBMP_SOL = frame.values[nx_mid:,:,nz_mid]
+        f_OBMP_SOL_min = np.min(f_OBMP_SOL) if tf == time_frames[0] else min(f_OBMP_SOL_min, np.min(f_OBMP_SOL))
+        f_OBMP_SOL_max = np.max(f_OBMP_SOL) if tf == time_frames[0] else max(f_OBMP_SOL_max, np.max(f_OBMP_SOL))
+    return [fmin, fmax], [f_OBMP_SOL_min, f_OBMP_SOL_max]
+
 def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
                     tfs):
     tfs = [tfs] if not isinstance(tfs,list) else tfs

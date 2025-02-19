@@ -20,17 +20,15 @@ Functions:
 # personnal classes and routines
 from ..utils import math_utils
 from .. utils import file_utils
-from ..tools import fig_tools, DG_tools
+from ..tools import fig_tools
 from ..utils import data_utils
-from ..classes import Frame, Integrated_moment
+from ..classes import Frame, Integrated_moment, PoloidalProjection
+
 # other commonly used libs
 import numpy as np
 import sys
-import copy
-from PIL import Image
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
-import matplotlib.colors as mcolors
 
 # set the font to be LaTeX
 if file_utils.check_latex_installed(verbose=False):
@@ -223,7 +221,9 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
 def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
                       cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
                       movieprefix='', plot_type='pcolormesh'):
-    os.makedirs('movie_frames_tmp', exist_ok=True)
+    # Create a temporary folder to store the movie frames
+    movDirTmp = 'movie_frames_tmp'
+    os.makedirs(movDirTmp, exist_ok=True)
     
     if isinstance(fieldnames,str):
         dataname = fieldnames + '_'
@@ -231,50 +231,78 @@ def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
         dataname = ''
         for f_ in fieldnames:
             dataname += 'd'+f_+'_' if fluctuation else f_+'_'
+    if 'RZ' in cut_dir:
+        vlims, vlims_SOL = data_utils.get_minmax_values(simulation, fieldnames[0], time_frames)
+        if cmap == 'inferno': 
+            vlims[0] = np.max([0,vlims[0]])
+            vlims_SOL[0] = np.max([0,vlims_SOL[0]])
+        elif cmap == 'bwr':
+            vmax = np.max(np.abs(vlims))
+            vlims = [-vmax, vmax]
+            vmax_SOL = np.max(np.abs(vlims_SOL))
+            vlims_SOL = [-vmax_SOL, vmax_SOL]
+
+        # Harvest a possible number with the cut_dir
+        nzInterp = cut_dir.replace('RZ','')
+        nzInterp = int(nzInterp) if nzInterp else 32
+        # Setup poloidal projection plot
+        polproj = PoloidalProjection()
+        polproj.setup(simulation, fieldName=fieldnames[0], timeFrame=time_frames[0], nzInterp=nzInterp)
+
+    else:
+        movie_frames, vlims = data_utils.get_2D_movie_data(simulation, cut_dir, cut_coord, 
+                                                            time_frames, fieldnames, fluctuation) 
     
-    movie_frames, vlims = data_utils.get_2D_movie_data(simulation, cut_dir, cut_coord, time_frames, fieldnames, fluctuation) 
     total_frames = len(time_frames)
-    for i, tf in enumerate(time_frames, 1):  # Start the index at 1
+    frameFileList = []
+    for i, tf in enumerate(time_frames, 1):  # Start the index at 1  
+
+        frameFileName = f'movie_frames_tmp/frame_{tf}.png'
+        frameFileList.append(f'movie_frames_tmp/frame_{tf}.png')
+
         figout = []
         cutout = []
         if clim == 'free':
             clim = []
         else:
             clim = clim if clim else vlims
-        plot_2D_cut(
-            simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
-            cmap=cmap, plot_type=plot_type,
-            xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
-            cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
-        )
-        fig = figout[0]
-        fig.tight_layout()
-        fig.savefig(f'movie_frames_tmp/frame_{tf}.png')
-        plt.close()
+
+        if 'RZ' in cut_dir:
+            polproj.plot(timeFrame=tf, outFilename=frameFileName,
+                         colorMap = cmap, doInset=True, xlim=xlim, ylim=ylim, 
+                         clim=clim, climSOL=vlims_SOL)
+            cutname = ['RZ'+str(nzInterp)]
+        else:
+            plot_2D_cut(
+                simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
+                cmap=cmap, plot_type=plot_type,
+                xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
+                cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
+            )
+            fig = figout[0]
+            fig.tight_layout()
+            fig.savefig(frameFileName)
+            plt.close()
+            cutout=cutout[0]
+            cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
 
         # Update progress
         progress = f"Processing frames: {i}/{total_frames}... "
         sys.stdout.write("\r" + progress)
         sys.stdout.flush()
+
     sys.stdout.write("\n")
-    # Naming
-    cutout=cutout[0]
-    cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
-    moviename = movieprefix+'_'+dataname+cutname[0] if movieprefix else dataname+cutname[0]
-    moviename+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
-    moviename+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
-    moviename += '.gif'
-    # Compiling the movie images
-    images = [Image.open(f'movie_frames_tmp/frame_{tf}.png') for tf in time_frames]
-    # Save as gif
-    images[0].save(moviename, save_all=True, append_images=images[1:], duration=200, loop=1)
-    print("movie "+moviename+" created.")
-    # Remove the temporary files
-    for tf in time_frames:
-        os.remove(f'movie_frames_tmp/frame_{tf}.png')
-    # Remove the temporary folder
-    os.rmdir('movie_frames_tmp')
     
+    # Naming
+
+    movieName = movieprefix+'_'+dataname+cutname[0] if movieprefix else dataname+cutname[0]
+    movieName+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
+    movieName+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
+
+    # Compiling the movie images
+    fig_tools.compile_movie(frameFileList, movieName, rmFrames=True)
+
+
 def plot_domain(geometry,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.7]]):
     geometry.set_domain(geom_type,vessel_corners)
     fig = plt.figure(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
@@ -467,13 +495,13 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
         fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, xlim=xlim, ylim=ylim, legend=True)
     return int_mom.time
 
-def plot_sources_info(simulation,x_const=0,z_const=0,show_LCFS=False, type='profile'):
+def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profileORgkyldata='profile'):
     """
     Plot the profiles of all sources in the sources dictionary using various cuts.
     """
     print("-- Source Informations --")
-    simulation.get_source_particle(type=type, remove_GB_loss=True)
-    simulation.get_source_power(type=type, remove_GB_loss=True)
+    simulation.get_source_particle(profileORgkyldata=profileORgkyldata, remove_GB_loss=True)
+    simulation.get_source_power(profileORgkyldata=profileORgkyldata, remove_GB_loss=True)
     banana_width = simulation.get_banana_width(x=0.0, z=z_const, spec='ion')
     nrow = 1*(x_const != None) + 1*(z_const != None) + 1
     if len(simulation.sources) > 0:
@@ -622,7 +650,7 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
 
-def poloidal_projection(simulation, fieldName='', timeFrames=0, outFilename='',nzInterp=32, scaleFac=1.,
+def plot_poloidal_projection(simulation, fieldName='', timeFrame=0, outFilename='',nzInterp=32, scaleFac=1.,
                         colorMap = 'inferno', doInset=True, xlim=[], ylim=[],clim=[]):
     '''
     This function plots the poloidal projection of a field.
@@ -640,16 +668,7 @@ def poloidal_projection(simulation, fieldName='', timeFrames=0, outFilename='',n
         ylim: y-axis limits.
         clim: Color limits.
     '''
-    # from ..tools import poloidal_projection_utils as ppu
-    from .poloidal_projection_utils import poloidal_projection_def
-    poloidal_projection_def(simulation=simulation, 
-       fieldName=fieldName, 
-       timeFrames=timeFrames, 
-       outFilename=outFilename,
-       nzInterp=nzInterp, 
-       scaleFac=scaleFac,
-       colorMap=colorMap, 
-       doInset=doInset, 
-       xlim=xlim,
-       ylim=ylim,
-       clim=clim)
+    polproj = PoloidalProjection()
+    polproj.setup(simulation, fieldName, timeFrame, nzInterp)
+
+    polproj.plot(timeFrame, outFilename, colorMap, doInset, scaleFac, xlim, ylim, clim)

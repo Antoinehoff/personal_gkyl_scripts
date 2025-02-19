@@ -201,7 +201,7 @@ class Simulation:
     def add_source(self, name, source):
         self.sources[name] = copy.deepcopy(source)
 
-    def get_source_power(self, type='profile', remove_GB_loss=False):
+    def get_source_power(self, profileORgkyldata='profile', remove_GB_loss=False):
         """
         Compute the input power from the source term.
 
@@ -216,17 +216,17 @@ class Simulation:
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
         
-        if (type == 'profile'):  # Compute the input power from the source term analytical profile
+        if (profileORgkyldata == 'profile'):  # Compute the input power from the source term analytical profile
             integrant = np.zeros_like(X)
             for source in self.sources.values():
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_elc(X, Y, Z)
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_ion(X, Y, Z)
-        elif (type == 'src_diag'):  # Compute the input power from the source term diagnostic
+        elif (profileORgkyldata == 'gkyldata'):  # Compute the input power from the source term diagnostic
             M2e = Frame(self, 'M2e_src', tf=0, load=True)
             M2i = Frame(self, 'M2i_src', tf=0, load=True)
             integrant = 0.5 * self.species['elc'].m * M2e.values + 0.5 * self.species['ion'].m * M2i.values
         else:
-            raise ValueError("Invalid type. Choose 'profile' or 'src_diag'.")
+            raise ValueError("Invalid type. Choose 'profile' or 'gkyldata'.")
         # multiply by Jacobian
         integrant *= self.geom_param.Jacobian
         # Integrate source terms (volume or surface)
@@ -252,21 +252,23 @@ class Simulation:
 
         return pow_in
 
-    def get_source_particle(self, type='profile', remove_GB_loss=False):
+    def get_source_particle(self, profileORgkyldata='profile', remove_GB_loss=False):
         """
         Compute the input particle from the source term.
         """
         [x, y, z] = self.geom_param.get_conf_grid()
         [X, Y, Z] = math_tools.custom_meshgrid(x, y, z)
 
-        if type == 'profile':  # Compute the input particle from the source term analytical profile
+        if profileORgkyldata == 'profile':  # Compute the input particle from the source term analytical profile
             integrant = np.zeros_like(X)
             for source in self.sources.values():
                 integrant += source.density_profile(X, Y, Z)
-        else:  # Compute the input particle from the source term diagnostic
+        elif profileORgkyldata == 'gkyldata':  # Compute the input particle from the source term diagnostic
             M0e = Frame(self, 'ne_src', tf=0, load=True)
             M0i = Frame(self, 'ni_src', tf=0, load=True)
             integrant = M0e.values + M0i.values
+        else:
+            raise ValueError("Invalid type. Choose 'profile' or 'gkyldata'.")
         integrant *= self.geom_param.Jacobian
 
         if self.dimensionality == '3x2v':
