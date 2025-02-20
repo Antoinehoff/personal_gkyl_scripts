@@ -218,7 +218,7 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
     cutout.append(frame.slicecoords)
     val_out.append(np.squeeze(plot_data))
 
-def make_2D_movie(simulation,cut_dir,cut_coord,time_frames, fieldnames,
+def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], fieldnames=['phi'],
                       cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
                       movieprefix='', plot_type='pcolormesh'):
     # Create a temporary folder to store the movie frames
