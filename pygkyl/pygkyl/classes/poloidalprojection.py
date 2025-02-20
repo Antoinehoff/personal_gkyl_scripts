@@ -1,16 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-#.Scipy is used for interpolation and integration.
-import scipy.integrate as integrate
-from scipy.interpolate import griddata
 from scipy.interpolate import pchip_interpolate
-#.JAX is used for automatic differentiation (AD).
-import jax.numpy as jnp
-from jax import grad, jit, vmap
 from matplotlib.patches import Rectangle
 
-from mpl_toolkits.axes_grid1.inset_locator import (inset_axes, InsetPosition,
-                                                mark_inset)
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from matplotlib import ticker
 
