@@ -219,8 +219,10 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
     val_out.append(np.squeeze(plot_data))
 
 def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], fieldnames=['phi'],
-                      cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
-                      movieprefix='', plot_type='pcolormesh'):
+                  cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
+                  movieprefix='', plot_type='pcolormesh', 
+                  colorScale='lin', scaleFac=1.0, logScaleFloor=1e-3,
+                  polProj=None):
     # Create a temporary folder to store the movie frames
     movDirTmp = 'movie_frames_tmp'
     os.makedirs(movDirTmp, exist_ok=True)
@@ -232,7 +234,7 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
         for f_ in fieldnames:
             dataname += 'd'+f_+'_' if fluctuation else f_+'_'
     if 'RZ' in cut_dir:
-        vlims, vlims_SOL = data_utils.get_minmax_values(simulation, fieldnames[0], time_frames)
+        vlims, vlims_SOL = data_utils.get_minmax_values(simulation, fieldnames, time_frames)
         if cmap == 'inferno': 
             vlims[0] = np.max([0,vlims[0]])
             vlims_SOL[0] = np.max([0,vlims_SOL[0]])
@@ -246,8 +248,9 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
         nzInterp = cut_dir.replace('RZ','')
         nzInterp = int(nzInterp) if nzInterp else 32
         # Setup poloidal projection plot
-        polproj = PoloidalProjection()
-        polproj.setup(simulation, fieldName=fieldnames[0], timeFrame=time_frames[0], nzInterp=nzInterp)
+        if not polProj:
+            polProj = PoloidalProjection()
+            polProj.setup(simulation, fieldName=fieldnames, timeFrame=time_frames, nzInterp=nzInterp)
 
     else:
         movie_frames, vlims = data_utils.get_2D_movie_data(simulation, cut_dir, cut_coord, 
@@ -268,9 +271,10 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
             clim = clim if clim else vlims
 
         if 'RZ' in cut_dir:
-            polproj.plot(timeFrame=tf, outFilename=frameFileName,
-                         colorMap = cmap, doInset=True, xlim=xlim, ylim=ylim, 
-                         clim=clim, climSOL=vlims_SOL)
+            polProj.plot(fieldName=fieldnames, timeFrame=tf, outFilename=frameFileName,
+                         colorMap = cmap, doInset=True, scaleFac=scaleFac,
+                         colorScale=colorScale, logScaleFloor=logScaleFloor,
+                         xlim=xlim, ylim=ylim, clim=clim, climSOL=vlims_SOL)
             cutname = ['RZ'+str(nzInterp)]
         else:
             plot_2D_cut(
@@ -650,8 +654,8 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
 
-def plot_poloidal_projection(simulation, fieldName='', timeFrame=0, outFilename='',nzInterp=32, scaleFac=1.,
-                        colorMap = 'inferno', doInset=True, xlim=[], ylim=[],clim=[]):
+def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32, scaleFac=1.,
+                        colorMap = 'inferno', colorScale = 'lin', doInset=True, xlim=[], ylim=[],clim=[], logScaleFloor=1e-3):
     '''
     This function plots the poloidal projection of a field.
 
@@ -669,6 +673,9 @@ def plot_poloidal_projection(simulation, fieldName='', timeFrame=0, outFilename=
         clim: Color limits.
     '''
     polproj = PoloidalProjection()
-    polproj.setup(simulation, fieldName, timeFrame, nzInterp)
 
-    polproj.plot(timeFrame, outFilename, colorMap, doInset, scaleFac, xlim, ylim, clim)
+    polproj.setup(simulation, fieldName=fieldName, timeFrame=timeFrame, nzInterp=nzInterp)
+
+    polproj.plot(fieldName=fieldName, timeFrame=timeFrame, colorScale=colorScale,
+                 outFilename=outFilename, colorMap=colorMap, doInset=doInset, 
+                 scaleFac=scaleFac, xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor)

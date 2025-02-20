@@ -34,14 +34,13 @@ class GeomParam:
 
     """
     def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B_axis=1.4, x_out = 0.08,
-                 a_shift=0.0, q0=1.6, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile='default'):
+                 a_shift=0.0, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile='default'):
         self.B_axis     = B_axis
         self.R_axis     = R_axis
         self.Z_axis     = Z_axis
         self.a_shift    = a_shift
         self.kappa      = kappa
         self.delta      = delta
-        self.q0         = q0
         self.x_LCFS     = x_LCFS
         self.R_LCFSmid  = R_LCFSmid
         self.Rmid_min   = R_LCFSmid-x_LCFS # Minimum midplane major radius of simulation box [m].
@@ -70,10 +69,13 @@ class GeomParam:
         self.z          = None # z-grid
         self.Lz         = None # z box size
         self.n0         = None # Toroidal mode number
+        self.x_in       = x_LCFS
+        self.x_out      = x_out
         if callable(qprofile):
             self.qprofile = qprofile
         elif qprofile == 'default':
             self.qprofile = self.qprofile_default
+        self.q0 = self.qprofile(self.r0)
 
     def load_metric(self,fileprefix):
         #-- load B (bmag)

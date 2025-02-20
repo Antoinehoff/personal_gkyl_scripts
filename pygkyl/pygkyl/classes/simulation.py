@@ -45,10 +45,12 @@ class Simulation:
         self.geom_param = None  # Geometric parameters (e.g., axis positions)
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
         self.normalization = None # Normalization units for the simulation data
+        self.fields_info = {} # Dictionary to store field informations like symbols, units etc.
         self.sources = {}  # Dictionary to store sources
         self.DG_basis = DG_tools.DG_basis(porder,ptype,dimensionality)  # DG basis functions for projection
         self.polyOrder = porder
         self.basisType = ptype
+
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """
         Set physical parameters like permittivity, electron volts, masses, and magnetic field.
@@ -56,13 +58,13 @@ class Simulation:
         self.phys_param = PhysParam(eps0, eV, mp, me)
     
     def set_geom_param(self, R_axis=None, Z_axis=None, R_LCFSmid=None, a_shift=None, kappa=None, B_axis = None,
-                       delta=None, x_LCFS=None, q0 = None, x_out = None, geom_type='Miller', qprofile='default'):
+                       delta=None, x_LCFS=None, x_out = None, geom_type='Miller', qprofile='default'):
         """
         Set geometric parameters related to the shape and size of the plasma (e.g., axis positions, LCFS).
         """
         self.geom_param = GeomParam(
             R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
-            a_shift=a_shift, q0=q0, kappa=kappa, delta=delta, 
+            a_shift=a_shift, kappa=kappa, delta=delta, 
             x_LCFS=x_LCFS, geom_type=geom_type, B_axis=B_axis,
             x_out = x_out, qprofile=qprofile
         )
@@ -118,6 +120,7 @@ class Simulation:
         self.species[species.name] = species
         # Update the normalization with all available species
         self.normalization = Normalization(self) 
+        self.fields_info = self.normalization.dict
 
     def get_c_s(self):
         """
@@ -308,8 +311,8 @@ class Simulation:
         iw_iz = np.argmin(np.abs(z))
         # get temperature of the source at the inner wall
         spec_short = spec[0]
-        M2i = Frame(self, 'M2'+spec_short+'_src', tf=0, load=True, normalize=False)
-        M0i = Frame(self, 'n'+spec_short+'_src', tf=0, load=True, normalize=False)
+        M2i = Frame(self, 'M2_src'+spec_short, tf=0, load=True, normalize=False)
+        M0i = Frame(self, 'n_src'+spec_short, tf=0, load=True, normalize=False)
         Ti_iw = self.species[spec].m * M2i.values[iw_ix, iw_iy, iw_iz] / M0i.values[iw_ix, iw_iy, iw_iz] 
         # get magnetic field at the inner wall
         Bfield = Frame(self, 'Bmag', tf=0, load=True).values[iw_ix, iw_iy, iw_iz]

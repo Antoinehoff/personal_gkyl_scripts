@@ -19,7 +19,6 @@ class DataParam:
     - datadir (str): Directory for data storage.
     - data_files_dict (dict): Dictionary mapping data fields to file specifications.
     - BiMaxwellian (bool): Flag indicating if BiMaxwellian moments are used.
-    - spec_undep_quantities (list): List of quantities independent of species.
     
     Methods:
     --------
@@ -43,9 +42,8 @@ class DataParam:
         self.BiMaxwellian = BiMaxwellian
         self.set_data_field_dict(BiMaxwellian=BiMaxwellian, species=species)
         self.species = species
-        # We set here an array where all quantities that does not depend on species are stored. 
-        # This helps in the treatment of input in the plot functions
-        self.spec_undep_quantities = ['phi','Apar','b_x','b_y','b_z','Jacobian','Bmag','Wtot']
+        self.all_field_list = []
+
     def info(self):
         """
         Display the information of the directory parameters.
@@ -149,7 +147,7 @@ class DataParam:
         keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
         for spec in species.values():
             s_        = spec.name+'_source'
-            shortname = spec.nshort+'_src'
+            shortname = '_src'+spec.nshort
             if BiMaxwellian:
                 comps  = [0,1,2,3,0,0]
                 prefix = 6*[s_+'_BiMaxwellianMoments']
@@ -170,7 +168,7 @@ class DataParam:
         keys  = ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
         for spec in species.values():
             s_        = spec.name+'_source'
-            shortname = spec.nshort+'_src'
+            shortname = '_src'+spec.nshort
             comps  = [0,0,0,0,0,0,0]
             prefix = [s_+'_M0',s_+'_M1',s_+'_M2',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
             for i in range(len(keys)):
@@ -238,7 +236,7 @@ class DataParam:
             s_ = spec.nshort
             # distribution functions
             default_qttes.append(['f%s'%(s_), r'$f_%s$'%(s_), '[f]'])
-            default_qttes.append(['f%s_src'%(s_), r'$f_%s$'%(s_), '[f]'])
+            default_qttes.append(['f_src%s'%(s_), r'$f_%s$'%(s_), '[f]'])
             # densities
             default_qttes.append(['M0%s'%(s_), r'$M_{0%s}$'%(s_), r'm$^{-3}$'])
             default_qttes.append(['n%s'%(s_), r'$n_%s$'%(s_), r'm$^{-3}$'])
@@ -252,13 +250,13 @@ class DataParam:
             default_qttes.append(['Tpar%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
             default_qttes.append(['Tperp%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
             # source moments
-            default_qttes.append(['M0%s_src'%(s_), r'$\dot M_{0%s}$'%(s_), r'm$^{-3}$/s'])
-            default_qttes.append(['M1%s_src'%(s_), r'$\dot M_{1%s}$'%(s_), r'm$^{-2}$/s'])
-            default_qttes.append(['M2%s_src'%(s_), r'$\dot M_{2%s}$'%(s_), r'J/kg/m$^{3}$/s'])
-            default_qttes.append(['n%s_src'%(s_), r'$\dot n_%s$'%(s_), r'm$^{-3}$/s'])
-            default_qttes.append(['upar%s_src'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
-            default_qttes.append(['Tpar%s_src'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
-            default_qttes.append(['Tperp%s_src'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
+            default_qttes.append(['M0_src%s'%(s_), r'$\dot M_{0%s}$'%(s_), r'm$^{-3}$/s'])
+            default_qttes.append(['M1_src%s'%(s_), r'$\dot M_{1%s}$'%(s_), r'm$^{-2}$/s'])
+            default_qttes.append(['M2_src%s'%(s_), r'$\dot M_{2%s}$'%(s_), r'J/kg/m$^{3}$/s'])
+            default_qttes.append(['n_src%s'%(s_), r'$\dot n_%s$'%(s_), r'm$^{-3}$/s'])
+            default_qttes.append(['upar_src%s'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
+            default_qttes.append(['Tpar_src%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
+            default_qttes.append(['Tperp_src%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
         def identity(gdata_list):
@@ -668,15 +666,15 @@ class DataParam:
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
 
         #source power
-        name       = 'src_pow'
+        name       = 'pow_src'
         symbol     = r'$P_{src}$'
         units      = r'W/m$^3$'
         field2load = []
         for spec in species.values():
             s_ = spec.nshort
-            field2load.append('n%s_src'%s_)
-            field2load.append('Tpar%s_src'%(s_))
-            field2load.append('Tperp%s_src'%(s_))
+            field2load.append('n_src%s'%s_)
+            field2load.append('Tpar_src%s'%(s_))
+            field2load.append('Tperp_src%s'%(s_))
         def receipe_src_pow(gdata_list,species=species):
             fout = 0.0
             k    = 0
@@ -775,6 +773,26 @@ class DataParam:
             default_units_dict[key+'units']    = units[key]
             default_units_dict[key+'compo']    = compo[key]
             default_units_dict[key+'receipe']  = receipe[key]
+
+        # now that all fields where declared, we create a list of all the available fields
+        all_field_list = []
+        for key in default_units_dict:
+            if key.endswith('symbol'):
+                all_field_list.append(key[:-6])
+
+        # add default colormap for each fields
+        positive_fields = ['Bmag','pow_src'] # spec. indep
+
+        spec_dep_fields = ['M0','M2','M2par','M2perp','n','T','Tpar','Tperp','p','n_src','f']
+        for sdepfield in spec_dep_fields:
+            for spec in species.values():
+                positive_fields.append(sdepfield+spec.nshort)
+        
+        for field in all_field_list:
+            if field in positive_fields:
+                default_units_dict[field+'colormap'] = 'inferno'
+            else:
+                default_units_dict[field+'colormap'] = 'bwr'
 
         # Return a copy of the units dictionary
         return copy.copy(default_units_dict)
