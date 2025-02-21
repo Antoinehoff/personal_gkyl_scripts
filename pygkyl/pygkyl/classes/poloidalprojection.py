@@ -12,7 +12,7 @@ from matplotlib import colors
 
 from . import Frame
 from ..utils import data_utils
-from ..tools import fig_tools
+from ..tools import fig_tools, math_tools
 
 #.Some fontsizes used in plots.
 xyLabelFontSize       = 18
@@ -24,33 +24,21 @@ class PoloidalProjection:
   def __init__(self):
     self.sim = None
     self.geom = None
-    self.xi_lcfs = 0
+    self.ixLCFS_C = 0
     self.bcPhaseShift = 0
-    self.kxIntC = 0
-    self.z_ex = None
-    self.z_int = None
-    self.nxIntC = 0
-    self.zNumInt = 0
+    self.kyDimsC = 0
+    self.zGridEx = None
+    self.zgridI = None
+    self.dimsC = 0
+    self.nzI = 0
     self.xyz2RZ = None
     self.RIntN = None
     self.ZIntN = None
-    self.RInt_lcfs = None
-    self.ZInt_lcfs = None
+    self.Rlcfs = None
+    self.Zlcfs = None
     self.nzInterp = 0
 
-  def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16):
-    '''
-    This function sets up the grids and interpolation tools for the poloidal projection of a field.
-    We FFT along y, then follow a procedure similar to that in pseudospectral codes (see, e.g., 
-    Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
-    This code is mainly adapted from M. Francisquez's.
-
-    Inputs:
-      simulation: Simulation object.
-      fieldName: Name of a field to load and get dimensions for fourier. (default: 'phi')
-      timeFrame: frame id of the field to load. (default: 0)
-      nzInterp: Number of points to interpolate along z. (default: 16)
-    '''
+  def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16, intMethod='trapz32'):
 
     # Store simulation and a link to goeometry objects
     self.sim = simulation
@@ -59,101 +47,92 @@ class PoloidalProjection:
 
     # Load a frame to get the grid
     field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
-    self.xNodal = field_frame.xNodal
-    self.dimInt = len(self.xNodal)
+    self.gridsN = field_frame.xNodal # nodal grids
+    self.ndim = len(self.gridsN) # Dimensionality
 
-    nxInt = np.zeros(self.dimInt, dtype='int')
-    lxInt = np.zeros(self.dimInt, dtype='double')
-    dxInt = np.zeros(self.dimInt, dtype='double')
-    for i in range(self.dimInt):
-        nxInt[i] = np.size(self.xNodal[i])
-        lxInt[i] = self.xNodal[i][-1]-self.xNodal[i][0]
-        dxInt[i] = self.xNodal[i][ 1]-self.xNodal[i][0]
+    # Write down directions of conf space axis for readability
+    xDir = 0
+    yDir = 1
+    zDir = self.ndim-1
 
-    xIntC = [[] for i in range(self.dimInt)]
-    for i in range(self.dimInt):
-        nNodes  = len(self.xNodal[i])
-        xIntC[i] = np.zeros(nNodes-1)
-        xIntC[i] = np.multiply(0.5,self.xNodal[i][0:nNodes-1]+self.xNodal[i][1:nNodes])
-    self.nxIntC = np.zeros(self.dimInt, dtype='int')
-    lxIntC = np.zeros(self.dimInt, dtype='double')
-    dxIntC = np.zeros(self.dimInt, dtype='double')
-    for i in range(self.dimInt):
-        self.nxIntC[i] = np.size(xIntC[i])
-        lxIntC[i] = xIntC[i][-1]-xIntC[i][0]
-        dxIntC[i] = xIntC[i][ 1]-xIntC[i][0]
+    LyN = self.gridsN[yDir][-1]-self.gridsN[yDir][0] # length in the y direction of nodal grid
 
-    # xi_lcfs = int(nxIntC[0]*1/3)
-    self.xi_lcfs = np.argmin(np.abs(self.geom.grids[0] - self.geom.x_LCFS))
+    # Centered mesh creation
+    meshC = [[] for i in range(self.ndim)] 
+    for i in range(self.ndim):
+        nNodes  = len(self.gridsN[i])
+        meshC[i] = np.zeros(nNodes-1)
+        meshC[i] = np.multiply(0.5,self.gridsN[i][0:nNodes-1]+self.gridsN[i][1:nNodes])
+    self.dimsC = [np.size(meshC[i]) for i in range(self.ndim)]
 
-    self.zNumInt = nzInterp*self.nxIntC[2]
+    # Radial index of the last closed flux surface on the centered mesh
+    self.ixLCFS_C = np.argmin(np.abs(meshC[0] - self.geom.x_LCFS))
 
-    toroidal_mode_number = 2.*np.pi*self.geom.r0/self.geom.q0/lxIntC[1]  #.n_0 in Goerler et al.
+    #.n_0 in Goerler et al.
+    LyC = meshC[yDir][-1]-meshC[yDir][0] # length in the y direction
+    torModNum = 2.*np.pi * self.geom.r0 / self.geom.q0 / LyC # torroidal mode number (n_0 in Goerler thesis 2009)
+    xGridCore = meshC[xDir][:self.ixLCFS_C] # x grid on in the core region
+    self.bcPhaseShift = 1j*2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
 
-    #.......................................................................#
-    #.Precompute grids and arrays needed in transforming/plotting data below.
-    #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
-    #.codes (e.g. GENE, see Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
-
+    #.Precompute grids and arrays needed in transforming/plotting data
     field = np.squeeze(field_frame.values)
-    field_ky = np.fft.rfft(field, axis=1, norm="forward")
-    self.kxIntC = field_ky.shape
+    field_ky = np.fft.rfft(field, axis=yDir, norm="forward")
+    self.kyDimsC = field_ky.shape
 
     #.Extend along z by in each direction by applying twist-shift BCs in the 
     #.closed-flux region, and just copying the last values (along z) in the SOL.
-    self.z_ex = np.concatenate(([xIntC[2][0]-0.5*dxIntC[2]],xIntC[2],[xIntC[2][-1]+0.5*dxIntC[2]])) # TEST
+    # Number of points for the z interpolation (BIG)
+    self.nzI = nzInterp*self.dimsC[zDir]
 
-    self.bcPhaseShift = 1j*2.0*np.pi*toroidal_mode_number*self.geom.qprofile(self.geom.r_x(xIntC[0][:self.xi_lcfs]))
-    
+    z1, zN, dz = meshC[zDir][0], meshC[zDir][-1], meshC[zDir][1] - meshC[zDir][0]
+    self.zGridEx = np.concatenate( ([z1-0.5*dz], meshC[zDir], [zN+0.5*dz]) ) # TEST (??)
+
     #.Interpolate onto a finer mesh along z.
-    self.z_int = np.linspace(self.z_ex[0],self.z_ex[-1],self.zNumInt)
+    self.zgridI = np.linspace(self.zGridEx[0],self.zGridEx[-1],self.nzI)
 
-    #.Compute R(x,z) and Z(x,z).
-    numInt = [self.nxIntC[0], self.zNumInt]
-    RInt, ZInt = np.zeros((self.nxIntC[0],self.zNumInt)), np.zeros((self.nxIntC[0],self.zNumInt))
-    for i in range(self.nxIntC[0]):
-        for k in range(self.zNumInt):
-            x, z = self.geom.r_x(xIntC[0][i]), self.z_int[k]
-
-            RInt[i,k] = self.geom.R_axis + x*np.cos(z + self.geom.delta*np.sin(z))
-            ZInt[i,k] = self.geom.Z_axis + self.geom.kappa*x*np.sin(z)
+    #.Compute R(x,z) and Z(x,z) (this starts to be big)
+    xxI, zzI = math_tools.custom_meshgrid(meshC[xDir],self.zgridI)
+    dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
+    RInt = self.geom.R_axis + self.geom.r_x(xxI) * np.cos(zzI + self.geom.delta * np.sin(zzI))
+    ZInt = self.geom.Z_axis + self.geom.kappa * self.geom.r_x(xxI) * np.sin(zzI)
 
     #.Calculate R,Z for LCFS plotting
-    self.RInt_lcfs, self.ZInt_lcfs = np.zeros(self.zNumInt), np.zeros(self.zNumInt)
-    for k in range(self.zNumInt):
-        x, z = self.geom.r_x(xIntC[0][self.xi_lcfs]), self.z_int[k]
+    rLCFS = self.geom.r_x(meshC[xDir][self.ixLCFS_C])
+    self.Rlcfs = self.geom.R_axis + rLCFS * np.cos(self.zgridI + self.geom.delta * np.sin(self.zgridI))
+    self.Zlcfs = self.geom.Z_axis + self.geom.kappa * rLCFS * np.sin(self.zgridI)
         
-        self.RInt_lcfs[k] = self.geom.R_axis + x*np.cos(z + self.geom.delta*np.sin(z))
-        self.ZInt_lcfs[k] = self.geom.Z_axis + self.geom.kappa*x*np.sin(z)
+    #.Compute alpha(r,z,phi=0) which is independent of y.
+    alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
+    errAbs = 1.e-8
+    for i in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
+        for k in range(self.nzI):
+            alpha_rz_phi0[i,k]  = self.geom.alpha_f(self.geom.r_x(meshC[0][i]),self.zgridI[k],0.,method=intMethod)
         
-    #.Compute alpha(r,z,phi=0) which is independent of y:
-    alpha_rz_phi0 = np.zeros([self.nxIntC[0],self.zNumInt])
-    for i in range(self.nxIntC[0]):
-        for k in range(self.zNumInt):
-            alpha_rz_phi0[i,k]  = self.geom.alpha_f(self.geom.r_x(xIntC[0][i]),self.z_int[k],0.)
-        
-    #.Convert (x,y,z) data to (R,Z):
-    self.xyz2RZ = np.zeros([self.nxIntC[0],2*self.kxIntC[1],self.zNumInt], dtype=np.cdouble)
-    for j in range(self.kxIntC[1]):
-        for k in range(self.zNumInt):
+    # #.Convert (x,y,z) data to (R,Z):
+    phiTor = 0 #.phi=0. lx-->lxInt
+    # this is a very big array
+    self.xyz2RZ = np.zeros([self.dimsC[xDir],2*self.kyDimsC[yDir],self.nzI], dtype=np.cfloat)
+    exponent_fact = -2.*np.pi*1j * (self.geom.r0 / self.geom.q0) / LyN
+    for j in range(self.kyDimsC[1]):
+        for k in range(self.nzI):
             #.Positive ky's.
-            self.xyz2RZ[:,j,k]  = np.exp(2.*np.pi*1j*j*(-(self.geom.r0/self.geom.q0)*(0. + alpha_rz_phi0[:,k])/lxInt[1]))  #.phi=0. lx-->lxInt
+            self.xyz2RZ[:,j,k]  = np.exp(exponent_fact* j * (phiTor + alpha_rz_phi0[:,k]))  #.phi=0. lx-->lxInt
             #.Negative ky's.
             self.xyz2RZ[:,-j,k] = np.conj(self.xyz2RZ[:,j,k])
 
     #.Construct nodal coordinates needed for pcolormesh.
-    self.RIntN, self.ZIntN = np.zeros((numInt[0]+1,numInt[1]+1)), np.zeros((numInt[0]+1,numInt[1]+1))
-    for j in range(numInt[1]):
-        for i in range(numInt[0]):
+    self.RIntN, self.ZIntN = np.zeros((dimsI[0]+1,dimsI[1]+1)), np.zeros((dimsI[0]+1,dimsI[1]+1))
+    for j in range(dimsI[1]):
+        for i in range(dimsI[0]):
             self.RIntN[i,j] = RInt[i,j]-0.5*(RInt[1,j]-RInt[0,j])
-        self.RIntN[numInt[0],j] = RInt[-1,j]+0.5*(RInt[-1,j]-RInt[-2,j])
-        self.RIntN[:,numInt[1]] = self.RIntN[:,-2]
+        self.RIntN[dimsI[0],j] = RInt[-1,j]+0.5*(RInt[-1,j]-RInt[-2,j])
+        self.RIntN[:,dimsI[1]] = self.RIntN[:,-2]
 
-    for i in range(numInt[0]):
-        for j in range(numInt[1]):
+    for i in range(dimsI[0]):
+        for j in range(dimsI[1]):
             self.ZIntN[i,j] = ZInt[i,j]-0.5*(ZInt[i,1]-ZInt[i,0])
-        self.ZIntN[i,numInt[1]] = ZInt[i,-1]+0.5*(ZInt[i,-1]-ZInt[i,-2])
-        self.ZIntN[numInt[0],:] = self.ZIntN[-2,:]
+        self.ZIntN[i,dimsI[1]] = ZInt[i,-1]+0.5*(ZInt[i,-1]-ZInt[i,-2])
+        self.ZIntN[dimsI[0],:] = self.ZIntN[-2,:]
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', doInset=True, scaleFac=1., 
            xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3):
@@ -192,31 +171,31 @@ class PoloidalProjection:
 
     #.Extend along z by in each direction by applying twist-shift BCs in the 
     #.closed-flux region, and just copying the last values (along z) in the SOL.
-    field_kex = np.zeros(self.kxIntC+np.array([0,0,2]), dtype=np.cdouble)
+    field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
     field_kex[:,:,1:-1] = field_ky
-    for j in range(self.kxIntC[1]):
-        field_kex[:self.xi_lcfs,j,0]  = field_ky[:self.xi_lcfs,j,-1]*np.exp( self.bcPhaseShift*j)
-        field_kex[:self.xi_lcfs,j,-1] = field_ky[:self.xi_lcfs,j, 0]*np.exp(-self.bcPhaseShift*j)
-        field_kex[self.xi_lcfs:,j,0]  = field_ky[self.xi_lcfs:,j, 1]
-        field_kex[self.xi_lcfs:,j,-1] = field_ky[self.xi_lcfs:,j,-2]
+    for j in range(self.kyDimsC[1]):
+        field_kex[:self.ixLCFS_C,j,0]  = field_ky[:self.ixLCFS_C,j,-1]*np.exp( self.bcPhaseShift*j)
+        field_kex[:self.ixLCFS_C,j,-1] = field_ky[:self.ixLCFS_C,j, 0]*np.exp(-self.bcPhaseShift*j)
+        field_kex[self.ixLCFS_C:,j,0]  = field_ky[self.ixLCFS_C:,j, 1]
+        field_kex[self.ixLCFS_C:,j,-1] = field_ky[self.ixLCFS_C:,j,-2]
 
     #.Interpolate onto a finer mesh along z.
-    field_kintPos = np.zeros((self.kxIntC[0],self.kxIntC[1],self.zNumInt), dtype=np.cdouble)
-    for i in range(self.kxIntC[0]):
-        for j in range(self.kxIntC[1]):
-            field_kintPos[i,j,:] = pchip_interpolate(self.z_ex, field_kex[i,j,:], self.z_int)
+    field_kintPos = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.cdouble)
+    for i in range(self.kyDimsC[0]):
+        for j in range(self.kyDimsC[1]):
+            field_kintPos[i,j,:] = pchip_interpolate(self.zGridEx, field_kex[i,j,:], self.zgridI)
 
     #.Append negative ky values.
-    field_kint = np.zeros((self.kxIntC[0],2*self.kxIntC[1],self.zNumInt), dtype=np.cdouble)
-    for i in range(self.kxIntC[0]):
-        for j in range(self.kxIntC[1]):
+    field_kint = np.zeros((self.kyDimsC[0],2*self.kyDimsC[1],self.nzI), dtype=np.cdouble)
+    for i in range(self.kyDimsC[0]):
+        for j in range(self.kyDimsC[1]):
             field_kint[i,j,:]  = field_kintPos[i,j,:]
             field_kint[i,-j,:] = np.conj(field_kintPos[i,j,:])
 
     #.Convert (x,y,z) data to (R,Z):
-    field_RZ = np.zeros([self.nxIntC[0],self.zNumInt])
-    for i in range(self.nxIntC[0]):
-        for k in range(self.zNumInt):
+    field_RZ = np.zeros([self.dimsC[0],self.nzI])
+    for i in range(self.dimsC[0]):
+        for k in range(self.nzI):
             field_RZ[i,k] = np.real(np.sum(self.xyz2RZ[i,:,k]*field_kint[i,:,k]))
 
     # handle colormap and limits
@@ -274,10 +253,10 @@ class PoloidalProjection:
     hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
     #.Plot lcfs
-    ax1a[0].plot(self.RInt_lcfs,self.ZInt_lcfs,linewidth=1.5,linestyle='--',color='white',alpha=.8)
+    ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color='white',alpha=.8)
 
     #.Plot the limiter
-    xWidth = np.min(self.RInt_lcfs) - np.min(self.RIntN)
+    xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
     xCorner = np.min(self.RIntN)
     yWidth = 0.01
     yCorner = self.geom.Z_axis - 0.5*yWidth
@@ -289,7 +268,7 @@ class PoloidalProjection:
                                   bbox_to_anchor=(0.42,0.3),bbox_transform=ax1a[0].transAxes)
       img_in = axins2.pcolormesh(self.RIntN, self.ZIntN, np.squeeze(field_RZ)/scaleFac, 
                                   cmap=colorMap, shading='auto',vmin=minSOL,vmax=maxSOL)
-      axins2.plot(self.RInt_lcfs,self.ZInt_lcfs,linewidth=1.5,linestyle='--',color='white',alpha=.6)
+      axins2.plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color='white',alpha=.6)
       cax = inset_axes(axins2,
                       width="10%",  # width = 10% of parent_bbox width
                       height="100%",  # height : 50%

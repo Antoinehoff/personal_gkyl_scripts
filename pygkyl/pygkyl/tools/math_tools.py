@@ -16,6 +16,7 @@ Functions:
 """
 
 import numpy as np
+import scipy.integrate as scpy_int
 
 def func_time_ave(listIn):
     arrayOut = np.array(listIn)
@@ -44,6 +45,22 @@ def integral_surf(x,y,integrant_xy):
     integral     = np.trapz(integral_y,   x=y, axis=0)
     return integral
 
+def gradient(array,grid,axis):
+    if(len(array[axis])>1):
+        return np.gradient(array, grid, axis=axis)
+    else:
+        return np.zeros_like(array)
+    
+def integrate(function, a, b, args,  method='trapz', Np=16):
+    if method == 'quad':
+        return scpy_int.quad(function, a, b, args=args)
+    elif 'trapz' in method:
+        Np = method.replace('trapz','')
+        Np = int(Np) if Np else 32
+        x = np.linspace(a, b, Np)
+        integrant = function(x,args)
+        return np.trapz(integrant,x,axis=0), 0
+
 def custom_meshgrid(x,y,z=0):
     # custom meshgrid function to have natural orientation (x,y,z)
     if np.isscalar(z):
@@ -70,9 +87,3 @@ def create_uniform_array(a, N):
 
 def closest_index(array,value):
     return np.abs(array - value).argmin()
-
-def gradient(array,grid,axis):
-    if(len(array[axis])>1):
-        return np.gradient(array, grid, axis=axis)
-    else:
-        return np.zeros_like(array)

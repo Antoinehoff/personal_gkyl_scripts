@@ -1,6 +1,5 @@
 import postgkyl as pg
 import numpy as np
-import scipy.integrate as integrate
 from ..tools import pgkyl_interface as pgkyl_
 from ..tools import math_tools as mt
 import os
@@ -201,21 +200,21 @@ class GeomParam:
     def integrand(self, t, r):
         return self.Jr_f(r,t)/np.power(self.R_f(r,t),2)
 
-    def dPsidr_f(self, r, theta):
-        integral, _ = integrate.quad(self.integrand, 0., 2.*np.pi, args=(r), epsabs=1.e-8)
+    def dPsidr_f(self, r, theta, method='trapz32'):
+        integral, _ = mt.integrate(self.integrand, a=0., b=2.*np.pi, args=(r), method=method)
         return self.B0*self.R_axis/(2.*np.pi*self.qprofile(r))*integral
 
-    def alpha_f(self, r, theta, phi):
+    def alpha_f(self, r, theta, phi, method='trapz32'):
         t = theta
         while (t < -np.pi):
             t = t+2.*np.pi
         while ( np.pi < t):
             t = t-2.*np.pi
         if (0. < t):
-            intV, intE = integrate.quad(self.integrand, 0., t, args=(r), epsabs=1.e-8)
+            intV, _ = mt.integrate(self.integrand, 0, t, args=(r), method=method)
             integral   = intV
         else:
-            intV, intE = integrate.quad(self.integrand, t, 0., args=(r), epsabs=1.e-8)
+            intV, _ = mt.integrate(self.integrand, t, 0., args=(r), method=method)
             integral   = -intV
         return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r,theta)
     
