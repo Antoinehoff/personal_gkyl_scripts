@@ -861,7 +861,7 @@ main(int argc, char **argv)
 
   // GK app
   struct gkyl_gk gk = {
-    .name = "gk_tcv_negD_trueq_iwl_3x2v",
+    .name = "gk_tcv_NT_iwl_3x2v_coarse",
     .cfl_frac_omegaH = 1.0e9, // set to large value to avoid constraining time-step
     .cfl_frac = 1.0,
     .cdim = 3, .vdim = 2,
