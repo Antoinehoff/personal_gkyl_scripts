@@ -159,10 +159,7 @@ class IntegratedMoment:
         self.tunits = self.simulation.normalization.dict['tunits']
         self.symbol = symbol
         if self.bflux:
-            print(self.fluxname)
             self.symbol = self.fluxname+r'('+self.symbol+r')'
-            # self.symbol = self.fluxname+r'$_{'+self.symbol[1:-1]+r'}$'
-            print(self.symbol)
             self.vunits += '/s' if self.vunits else '1/s'
 
     def load(self):
