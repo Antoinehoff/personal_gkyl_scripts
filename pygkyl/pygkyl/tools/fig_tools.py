@@ -319,7 +319,14 @@ def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
     if ylabel: ax.set_ylabel(ylabel)
     if cbar and clabel:
         cbar.set_label(clabel)
-    if legend: ax.legend()
+    if legend: 
+        ncol = len(ax.get_legend_handles_labels()[1])
+        k = 1 if ncol <= 4 else 2 if ncol <= 10 else 3
+        ax.legend(ncol = k)
+        if k > 1:
+            leg = ax.get_legend()
+            leg.get_frame().set_alpha(0.5)
+        
     if title: ax.set_title(title)
     if aspect: ax.set_aspect(aspect)
     if grid: ax.grid(True)
