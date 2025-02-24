@@ -4,7 +4,7 @@ import copy
 from .frame import Frame
 from ..utils import file_utils
 
-class Time_serie:
+class TimeSerie:
 
     simulation = None
     name = None
@@ -64,7 +64,6 @@ class Time_serie:
                     frame.slice(self.cut_dir, self.cut_coord)
                 self.frames.append(frame)
                 self.time.append(frame.time)
-
 
     def get_values(self):
         '''

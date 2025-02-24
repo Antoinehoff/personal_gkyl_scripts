@@ -8,7 +8,7 @@ from .geomparam  import GeomParam
 from .gbsource   import GBsource
 from .source     import Source
 from .integrated_moment import IntegratedMoment
-from .time_serie import Time_serie
+from .timeserie import TimeSerie
 from .poloidalprojection import PoloidalProjection
 __all__ = [
     'Species', 
@@ -20,6 +20,6 @@ __all__ = [
     'GBsource',
     'Source',
     'IntegratedMoment',
-    'Time_serie',
+    'TimeSerie',
     'PoloidalProjection'
     ]
