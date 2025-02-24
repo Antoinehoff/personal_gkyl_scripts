@@ -31,26 +31,24 @@ class IntegratedMoment:
             self.fluxextension = 'bflux'
             nres = name
             nres = nres.replace('bflux_','')
-
+            self.fluxname = r'$F$'
             if nres[0] in ['x','z']:
                 self.direction = nres[0]
                 nres = nres.replace(self.direction+'_','')
                 self.fluxextension += nres[0] + '_'
-                self.fluxname += 'radial' if self.direction == 'x' else 'parallel'
+                self.fluxname += r'$_x$' if self.direction == 'x' else r'$_\parallel$'
                 if nres[0] in ['u','l']:
                     self.edge = nres[0]
                     nres = nres.replace(self.edge+'_','')
                     self.fluxextension += nres[0] + '_'
-                    self.fluxname = 'upper '+ self.fluxname if self.edge == 'u' else 'lower ' + self.fluxname
+                    self.fluxname += r'$^{up}$' if self.edge == 'u' else r'$^{lo}$'
                 elif nres[0:5] == 'total':
                     self.edge = ['u','l']
-                    self.fluxextension += 'total_'
                     nres = nres.replace('total_','')
             elif nres[0:5] == 'total':
                 self.direction = ['x','z']
-                self.fluxextension += 'total_'
+                self.fluxextension += r'$_{tot}$'
                 nres = nres.replace('total_','')
-            self.fluxname += ' loss'
 
             self.bflux_list = []
             dl = self.direction if isinstance(self.direction,list) else [self.direction] 
@@ -161,7 +159,10 @@ class IntegratedMoment:
         self.tunits = self.simulation.normalization.dict['tunits']
         self.symbol = symbol
         if self.bflux:
-            self.symbol += ' '+self.fluxname
+            print(self.fluxname)
+            self.symbol = self.fluxname+r'('+self.symbol+r')'
+            # self.symbol = self.fluxname+r'$_{'+self.symbol[1:-1]+r'}$'
+            print(self.symbol)
             self.vunits += '/s' if self.vunits else '1/s'
 
     def load(self):
