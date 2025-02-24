@@ -7,7 +7,7 @@ from .frame      import Frame
 from .geomparam  import GeomParam
 from .gbsource   import GBsource
 from .source     import Source
-from .integrated_moment import Integrated_moment
+from .integrated_moment import IntegratedMoment
 from .time_serie import Time_serie
 from .poloidalprojection import PoloidalProjection
 __all__ = [
@@ -19,7 +19,7 @@ __all__ = [
     'GeomParam',
     'GBsource',
     'Source',
-    'Integrated_moment',
+    'IntegratedMoment',
     'Time_serie',
     'PoloidalProjection'
     ]

@@ -22,7 +22,7 @@ from ..utils import math_utils
 from .. utils import file_utils
 from ..tools import fig_tools
 from ..utils import data_utils
-from ..classes import Frame, Integrated_moment, PoloidalProjection
+from ..classes import Frame, IntegratedMoment, PoloidalProjection
 
 # other commonly used libs
 import numpy as np
@@ -474,7 +474,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
         else:
             subfields = field # field is a combined plot
         for subfield in subfields:
-            int_mom = Integrated_moment(simulation=simulation, name=subfield, load=True, ddt=ddt)
+            int_mom = IntegratedMoment(simulation=simulation, name=subfield, ddt=ddt)
             # select the time window
             if twindow:
                 it0 = np.argmin(abs(int_mom.time-twindow[0]))
