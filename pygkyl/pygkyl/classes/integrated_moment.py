@@ -185,10 +185,9 @@ class IntegratedMoment:
         """
         Calculate the time derivative of the integrated moment.
         """
-        self.values = np.gradient(self.values, self.time)
-        if self.vunits[-1] == 'J':
-            self.vunits.replace('J','W')
-
+        self.values = np.gradient(self.values, self.time * self.simulation.normalization.dict['tscale'], edge_order=2)
+        if 'J' in self.vunits:
+            self.vunits = self.vunits.replace('J','W')
         else:
             self.vunits = self.vunits + '/s'
         self.symbol = r'$\partial$'+self.symbol+r'/$\partial t$'
