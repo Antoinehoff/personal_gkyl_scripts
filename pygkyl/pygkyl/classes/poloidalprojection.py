@@ -204,12 +204,14 @@ class PoloidalProjection:
     if colorMap == 'inferno': 
         vlims[0] = np.max([0,vlims[0]])
         vlims_SOL[0] = np.max([0,vlims_SOL[0]])
+        lcfColor = 'white'
         
     elif colorMap == 'bwr':
         vmax = np.max(np.abs(vlims))
         vlims = [-vmax, vmax]
         vmax_SOL = np.max(np.abs(vlims_SOL))
         vlims_SOL = [-vmax_SOL, vmax_SOL]
+        lcfColor = 'black'
 
     if clim:
       fldMin = clim[0]
@@ -252,7 +254,7 @@ class PoloidalProjection:
     hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
     #.Plot lcfs
-    ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color='white',alpha=.8)
+    ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
 
     #.Plot the limiter
     xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
@@ -267,7 +269,7 @@ class PoloidalProjection:
                                   bbox_to_anchor=(0.42,0.3),bbox_transform=ax1a[0].transAxes)
       img_in = axins2.pcolormesh(self.RIntN, self.ZIntN, field_RZ, 
                                   cmap=colorMap, shading='auto',vmin=minSOL,vmax=maxSOL)
-      axins2.plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color='white',alpha=.6)
+      axins2.plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.6)
       cax = inset_axes(axins2,
                       width="10%",  # width = 10% of parent_bbox width
                       height="100%",  # height : 50%
