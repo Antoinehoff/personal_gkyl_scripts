@@ -21,50 +21,11 @@ class IntegratedMoment:
     bflux_list = ''
 
     def __init__(self, simulation, name, load=True, ddt=False):
+        
         self.simulation = simulation
 
-        # convention: write bflux_x_u_fieldname with x the direction (x or z) and u the edge (u or l)
-        # or bflux_alldir
-        nres = '' # residual name after removing boundary flux extensions
-        if 'bflux' in name:
-            self.bflux = True
-            nres = name
-            nres = nres.replace('bflux_','')
-            self.fluxname = r'$F$'
-            if nres[0] in ['x','z']:
-                self.direction = nres[0]
-                nres = nres.replace(self.direction+'_','')
-                self.fluxname += r'$_x$' if self.direction == 'x' else r'$_\parallel$'
-                if nres[0] in ['u','l']:
-                    self.edge = nres[0]
-                    nres = nres.replace(self.edge+'_','')
-                    self.fluxname += r'$^{up}$' if self.edge == 'u' else r'$^{lo}$'
-                elif nres[0:5] == 'total':
-                    self.edge = ['u','l']
-                    nres = nres.replace('total_','')
-            elif nres[0:5] == 'total':
-                self.direction = ['x','z']
-                self.edge = ['u','l']
-                nres = nres.replace('total_','')
-
-            self.bflux_list = []
-            dl = self.direction if isinstance(self.direction,list) else [self.direction] 
-            el = self.edge if isinstance(self.edge,list) else [self.edge] 
-            for d_ in dl:
-                for e_ in el:
-                    edgestring = 'lower' if e_=='l' else 'upper'
-                    self.bflux_list.append('_'+'bflux_'+d_+edgestring)
-                    
-        else: self.bflux_list = ['']
-
-        self.momname = nres if nres else name
-
-        if name[-1] == 'e': self.spec_s = 'elc'
-        elif name[-1] == 'i': self.spec_s = 'ion'
-        elif name[-3:] == 'tot': self.spec_s = ['elc','ion']
-
+        self.process_name(name)
         self.detect_momtype()
-
         self.set_units_and_labels()
 
         if load: self.load()
@@ -73,7 +34,7 @@ class IntegratedMoment:
     def set_units_and_labels(self):
         simulation = self.simulation
         spec_s = self.spec_s
-        if self.momtype in ['BiMaxwellian','bimaxwellian']:
+        if self.momtype == 'BiMaxwellian':
             if self.momname[:-1] in ['n']:
                 def receipe(x): return x[:,0]
                 scale = 1.0
@@ -118,7 +79,7 @@ class IntegratedMoment:
                 print(self.momname + ' is not available as integrated moment.')
                 print('The available fields are: ns, upars, Tpars, tperps, Ts, Ws, Wtot, ntot. (for s=i,e).')
                 raise ValueError('Provided fieldname is not available')
-        elif self.momtype in ['Hamiltonian','hamiltonian']:
+        elif self.momtype == 'Hamiltonian':
             if self.momname[:-1] in ['n']:
                 def receipe(x): return x[:,0]
                 scale = 1.0
@@ -146,11 +107,9 @@ class IntegratedMoment:
                 symbol = r'$\bar n_{tot}$'    
             else:
                 print(self.momname + ' is not available as integrated moment.')
-                print('The available fields are: ns, upars, Tpars, tperps, Ts, Ws, Wtot, ntot. (for s=i,e).')
+                print('The available fields are: ns, upars, Hs, Htot, ntot. (for s=i,e).')
                 raise ValueError('Provided fieldname is not available')
-        else:
-            print(self.momtype+' not available. Must be BiMaxwellian or Hamiltonian')
-            raise ValueError('Provided momtype is not available')
+            
         self.receipe = receipe
         self.scale = scale if isinstance(scale,list) else [scale]
         self.vunits = vunits
@@ -202,4 +161,45 @@ class IntegratedMoment:
             species = self.spec_s[0]
         f_ = self.simulation.data_param.fileprefix+'-'+species+'_integrated_moms.gkyl'
         Gdata = pgkyl_.get_gkyl_data(f_)
-        self.momtype = 'BiMaxwellian' if Gdata.get_num_comps == 4 else 'Hamiltonian'
+        datashape = np.shape(pgkyl_.get_values(Gdata))
+        self.momtype = 'BiMaxwellian' if datashape[1] == 4 else 'Hamiltonian'
+        
+    def process_name(self,name):
+        # convention: write bflux_x_u_fieldname with x the direction (x or z) and u the edge (u or l)
+        # or bflux_alldir
+        nres = '' # residual name after removing boundary flux extensions
+        if 'bflux' in name:
+            self.bflux = True
+            nres = name
+            nres = nres.replace('bflux_','')
+            self.fluxname = r'$F$'
+            if nres[0] in ['x','z']:
+                self.direction = nres[0]
+                nres = nres.replace(self.direction+'_','')
+                self.fluxname += r'$_x$' if self.direction == 'x' else r'$_\parallel$'
+                if nres[0] in ['u','l']:
+                    self.edge = nres[0]
+                    nres = nres.replace(self.edge+'_','')
+                    self.fluxname += r'$^{up}$' if self.edge == 'u' else r'$^{lo}$'
+                elif nres[0:5] == 'total':
+                    self.edge = ['u','l']
+                    nres = nres.replace('total_','')
+            elif nres[0:5] == 'total':
+                self.direction = ['x','z']
+                self.edge = ['u','l']
+                nres = nres.replace('total_','')
+
+            self.bflux_list = []
+            dl = self.direction if isinstance(self.direction,list) else [self.direction] 
+            el = self.edge if isinstance(self.edge,list) else [self.edge] 
+            for d_ in dl:
+                for e_ in el:
+                    edgestring = 'lower' if e_=='l' else 'upper'
+                    self.bflux_list.append('_'+'bflux_'+d_+edgestring)
+                    
+        else: self.bflux_list = ['']
+        self.momname = nres if nres else name
+        
+        if name[-1] == 'e': self.spec_s = 'elc'
+        elif name[-1] == 'i': self.spec_s = 'ion'
+        elif name[-3:] == 'tot': self.spec_s = ['elc','ion']
