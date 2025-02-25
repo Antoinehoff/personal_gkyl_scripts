@@ -28,26 +28,23 @@ class IntegratedMoment:
         nres = '' # residual name after removing boundary flux extensions
         if 'bflux' in name:
             self.bflux = True
-            self.fluxextension = 'bflux'
             nres = name
             nres = nres.replace('bflux_','')
             self.fluxname = r'$F$'
             if nres[0] in ['x','z']:
                 self.direction = nres[0]
                 nres = nres.replace(self.direction+'_','')
-                self.fluxextension += nres[0] + '_'
                 self.fluxname += r'$_x$' if self.direction == 'x' else r'$_\parallel$'
                 if nres[0] in ['u','l']:
                     self.edge = nres[0]
                     nres = nres.replace(self.edge+'_','')
-                    self.fluxextension += nres[0] + '_'
                     self.fluxname += r'$^{up}$' if self.edge == 'u' else r'$^{lo}$'
                 elif nres[0:5] == 'total':
                     self.edge = ['u','l']
                     nres = nres.replace('total_','')
             elif nres[0:5] == 'total':
                 self.direction = ['x','z']
-                self.fluxextension += r'$_{tot}$'
+                self.edge = ['u','l']
                 nres = nres.replace('total_','')
 
             self.bflux_list = []
@@ -57,6 +54,7 @@ class IntegratedMoment:
                 for e_ in el:
                     edgestring = 'lower' if e_=='l' else 'upper'
                     self.bflux_list.append('_'+'bflux_'+d_+edgestring)
+                    
         else: self.bflux_list = ['']
 
         self.momname = nres if nres else name
