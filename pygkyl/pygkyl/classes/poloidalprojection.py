@@ -211,7 +211,7 @@ class PoloidalProjection:
         vlims = [-vmax, vmax]
         vmax_SOL = np.max(np.abs(vlims_SOL))
         vlims_SOL = [-vmax_SOL, vmax_SOL]
-        lcfColor = 'black'
+        lcfColor = 'gray'
 
     if clim:
       fldMin = clim[0]
