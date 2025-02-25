@@ -133,40 +133,11 @@ class PoloidalProjection:
             self.ZIntN[i,j] = ZInt[i,j]-0.5*(ZInt[i,1]-ZInt[i,0])
         self.ZIntN[i,dimsI[1]] = ZInt[i,-1]+0.5*(ZInt[i,-1]-ZInt[i,-2])
         self.ZIntN[dimsI[0],:] = self.ZIntN[-2,:]
-
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', doInset=True, scaleFac=1., 
-           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3):
-    '''
-    Plot the color map of a field on the poloidal plane given the flux-tube data.
-    There are two options:
-      a) Perform all interpolations in field aligned coordinates and use an FFT
-         This may only be valid for the potential which is FEM and not DG.
-      b) Interpolate in the parallel direction onto a finer grid, then transform
-         to cylindrical and perform another interpolation onto the plotting points.
-
-    Inputs:
-        fieldName: Name of the field to plot.
-        timeFrame: Time frame to plot.
-        outFilename: If not empty, save the figure to this file.
-        colorMap: Colormap to use. (optional)
-        doInset: If True, plot an inset of the SOL region. (default: True)
-        scaleFac: Scale factor for the field. (default: 1.)
-        xlim: x-axis limits. (optional)
-        ylim: y-axis limits. (optional)
-        clim: Color limits. (optional)
-        climSOL: Color limits for the inset. (optional)
-        colorScale: Color scale. (default: 'linear')
-    '''
-
-    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
-    dataInterp = field_frame.values
-    field = np.squeeze(dataInterp)
+        
+  def project_field(self,field):
     
-    np.seterr(invalid='ignore') # cursed
-
     #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
     #.codes (e.g. GENE, see Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
-
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
 
     #.Extend along z by in each direction by applying twist-shift BCs in the 
@@ -197,7 +168,35 @@ class PoloidalProjection:
     for i in range(self.dimsC[0]):
         for k in range(self.nzI):
             field_RZ[i,k] = np.real(np.sum(self.xyz2RZ[i,:,k]*field_kint[i,:,k]))
+            
+    return field_RZ
 
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', doInset=True, 
+           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3):
+    '''
+    Plot the color map of a field on the poloidal plane given the flux-tube data.
+    There are two options:
+      a) Perform all interpolations in field aligned coordinates and use an FFT
+         This may only be valid for the potential which is FEM and not DG.
+      b) Interpolate in the parallel direction onto a finer grid, then transform
+         to cylindrical and perform another interpolation onto the plotting points.
+
+    Inputs:
+        fieldName: Name of the field to plot.
+        timeFrame: Time frame to plot.
+        outFilename: If not empty, save the figure to this file.
+        colorMap: Colormap to use. (optional)
+        doInset: If True, plot an inset of the SOL region. (default: True)
+        scaleFac: Scale factor for the field. (default: 1.)
+        xlim: x-axis limits. (optional)
+        ylim: y-axis limits. (optional)
+        clim: Color limits. (optional)
+        climSOL: Color limits for the inset. (optional)
+        colorScale: Color scale. (default: 'linear')
+    '''
+    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)    
+    field_RZ = self.project_field(field_frame.values)
+        
     # handle colormap and limits
     colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
 
@@ -237,7 +236,7 @@ class PoloidalProjection:
     cbar_ax1a = fig1a.add_axes(cax1aPos)
     
     hpl1a = list()
-    pcm1 = ax1a[0].pcolormesh(self.RIntN, self.ZIntN, np.squeeze(field_RZ)/scaleFac, shading='auto',cmap=colorMap,
+    pcm1 = ax1a[0].pcolormesh(self.RIntN, self.ZIntN, field_RZ, shading='auto',cmap=colorMap,
                               vmin=fldMin,vmax=fldMax)
     hpl1a.append(pcm1)
 
@@ -266,7 +265,7 @@ class PoloidalProjection:
       #.inset data
       axins2 = zoomed_inset_axes(ax1a[0], 1.5, loc='lower left', 
                                   bbox_to_anchor=(0.42,0.3),bbox_transform=ax1a[0].transAxes)
-      img_in = axins2.pcolormesh(self.RIntN, self.ZIntN, np.squeeze(field_RZ)/scaleFac, 
+      img_in = axins2.pcolormesh(self.RIntN, self.ZIntN, field_RZ, 
                                   cmap=colorMap, shading='auto',vmin=minSOL,vmax=maxSOL)
       axins2.plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color='white',alpha=.6)
       cax = inset_axes(axins2,
@@ -314,7 +313,7 @@ class PoloidalProjection:
     else:
         plt.show()
 
-  def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, doInset=True, scaleFac=1., 
+  def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, doInset=True,
           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3):
       # Create a temporary folder to store the movie frames
       movDirTmp = 'movie_frames_tmp'
@@ -341,7 +340,7 @@ class PoloidalProjection:
           frameFileList.append(f'movie_frames_tmp/frame_{tf}.png')
 
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
-                          colorMap = colorMap, doInset=doInset, scaleFac=scaleFac,
+                          colorMap = colorMap, doInset=doInset,
                           colorScale=colorScale, logScaleFloor=logScaleFloor,
                           xlim=xlim, ylim=ylim, clim=clim, climSOL=climSOL)
           cutname = ['RZ'+str(self.nzInterp)]

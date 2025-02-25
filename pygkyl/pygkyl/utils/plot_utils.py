@@ -654,7 +654,7 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
 
-def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32, scaleFac=1.,
+def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32,
                         colorMap = 'inferno', colorScale = 'lin', doInset=True, xlim=[], ylim=[],clim=[], logScaleFloor=1e-3):
     '''
     This function plots the poloidal projection of a field.
@@ -678,7 +678,7 @@ def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilena
 
     polproj.plot(fieldName=fieldName, timeFrame=timeFrame, colorScale=colorScale,
                  outFilename=outFilename, colorMap=colorMap, doInset=doInset, 
-                 scaleFac=scaleFac, xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor)
+                 xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor)
     
 def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
                     figout=[],xlim=[],ylim=[]):

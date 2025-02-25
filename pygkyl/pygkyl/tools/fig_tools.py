@@ -77,12 +77,7 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
     elif plot_type == 'contourf':
         x,y = math_tools.custom_meshgrid(x,y)
         im = ax.contourf(x, y, z, cmap=cmap, norm=norm)
-    elif plot_type == 'smoothed':
-        # smooth the data
-        from scipy.ndimage import gaussian_filter
-        z = gaussian_filter(z, sigma=0.5)
-        im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)
-    elif plot_type == 'imshow':
+    elif plot_type in ['imshow','smooth']:
         # transpose z
         z = z.T
         im = ax.imshow(z, cmap=cmap, norm=norm, extent=[x[0], x[-1], y[0], y[-1]], origin='lower', interpolation='quadric')
