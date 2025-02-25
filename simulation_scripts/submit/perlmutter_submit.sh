@@ -80,7 +80,7 @@ TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
 if (( LAST_FRAME < 0 )); then
     #.Find the most recent frame for restart
     # Loop through all files ending with .gkyl in the current directory
-    for file in wk/*.gkyl; do
+    for file in wk/*-ion_[0-9]*.gkyl; do
         # Check if the file exists to avoid errors when no .gkyl files are present
         if [[ -e "$file" ]]; then
             # Extract the numeric part before .gkyl (assuming it's the last part of the filename)
