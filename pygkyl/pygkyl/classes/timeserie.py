@@ -47,7 +47,7 @@ class TimeSerie:
         if self.verbose: print('Available time frames of ',self.filename,' :',all_tf)
         # select only the ones in the time frames if time_frames is provided
         if self.time_frames:
-            time_frames = [tf for tf in all_tf if tf <= self.time_frames[1] and tf >= self.time_frames[0]]
+            time_frames = [tf for tf in all_tf if tf in self.time_frames]
         else:
             time_frames = all_tf
         # get the frames
@@ -72,4 +72,4 @@ class TimeSerie:
         values = []
         for frame in self.frames:
             values.append(np.squeeze(frame.values))
-        return copy.deepcopy(values), copy.deepcopy(self.time)
+        return copy.deepcopy(self.time), copy.deepcopy(values)

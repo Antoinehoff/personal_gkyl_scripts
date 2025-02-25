@@ -22,7 +22,7 @@ from ..utils import math_utils
 from .. utils import file_utils
 from ..tools import fig_tools
 from ..utils import data_utils
-from ..classes import Frame, IntegratedMoment, PoloidalProjection
+from ..classes import Frame, IntegratedMoment, PoloidalProjection, TimeSerie
 
 # other commonly used libs
 import numpy as np
@@ -679,3 +679,22 @@ def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilena
     polproj.plot(fieldName=fieldName, timeFrame=timeFrame, colorScale=colorScale,
                  outFilename=outFilename, colorMap=colorMap, doInset=doInset, 
                  scaleFac=scaleFac, xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor)
+    
+def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
+                    figout=[],xlim=[],ylim=[]):
+    fields,fig,axs = fig_tools.setup_figure(fieldnames)
+    for ax,field in zip(axs,fields):
+        if not isinstance(field, list):
+            subfields = [field]  # Simple plot
+        else:
+            subfields = field  # Field is a combined plot
+
+        for subfield in subfields:
+            timeserie = TimeSerie(simulation=simulation,name=subfield,time_frames=time_frames,
+                                cut_dir='scalar',cut_coord=cut_coords,load=True)
+            f0 = timeserie.frames[0]
+            t,v = timeserie.get_values()
+            ax.plot(t,v,label=f0.vsymbol)
+            
+        fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=f0.vunits, figout=figout,
+                                xlim=xlim, ylim=ylim, legend=True, title=f0.slicetitle)
