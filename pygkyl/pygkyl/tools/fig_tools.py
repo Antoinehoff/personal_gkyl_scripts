@@ -89,7 +89,7 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
     return fig
 
 def compile_movie(frameFileList,movieName,extension='gif',rmFrames=True,
-                  pilOptimize=True, pilLoop=0, pilDuration=200):
+                  pilOptimize=False, pilLoop=0, pilDuration=100):
     '''
     Compiles a movie from a list of frames.
 
