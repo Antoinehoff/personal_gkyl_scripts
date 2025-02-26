@@ -88,7 +88,8 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
                   cbar=cbar,clabel=clabel,clim=clim,pcm=im)
     return fig
 
-def compile_movie(frameFileList,movieName,extension='gif',rmFrames=True):
+def compile_movie(frameFileList,movieName,extension='gif',rmFrames=True,
+                  pilOptimize=True, pilLoop=0, pilDuration=200):
     '''
     Compiles a movie from a list of frames.
 
@@ -107,7 +108,8 @@ def compile_movie(frameFileList,movieName,extension='gif',rmFrames=True):
     images = [Image.open(frameFile) for frameFile in frameFileList]
     # Save as gif
     print("Creating movie "+movieName+"...")
-    images[0].save(movieName, save_all=True, append_images=images[1:], duration=200, loop=1)
+    images[0].save(movieName, save_all=True, append_images=images[1:], 
+                   duration=pilDuration, loop=pilLoop, optimize=pilOptimize)
     print("movie "+movieName+" created.")
     # Remove the temporary files
     if rmFrames:
