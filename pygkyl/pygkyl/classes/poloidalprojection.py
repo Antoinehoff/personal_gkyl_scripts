@@ -319,7 +319,7 @@ class PoloidalProjection:
 
   def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, doInset=True,
           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3,
-          pilLoop=1, pilOptimize=True, pilDuration=100):
+          pilLoop=0, pilOptimize=True, pilDuration=100):
       # Create a temporary folder to store the movie frames
       movDirTmp = 'movie_frames_tmp'
       os.makedirs(movDirTmp, exist_ok=True)   
