@@ -225,8 +225,8 @@ class Simulation:
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_elc(X, Y, Z)
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_ion(X, Y, Z)
         elif (profileORgkyldata == 'gkyldata'):  # Compute the input power from the source term diagnostic
-            M2e = Frame(self, 'M2e_src', tf=0, load=True)
-            M2i = Frame(self, 'M2i_src', tf=0, load=True)
+            M2e = Frame(self, 'M2_srce', tf=0, load=True)
+            M2i = Frame(self, 'M2_srci', tf=0, load=True)
             integrant = 0.5 * self.species['elc'].m * M2e.values + 0.5 * self.species['ion'].m * M2i.values
         else:
             raise ValueError("Invalid type. Choose 'profile' or 'gkyldata'.")
@@ -267,8 +267,8 @@ class Simulation:
             for source in self.sources.values():
                 integrant += source.density_profile(X, Y, Z)
         elif profileORgkyldata == 'gkyldata':  # Compute the input particle from the source term diagnostic
-            M0e = Frame(self, 'ne_src', tf=0, load=True)
-            M0i = Frame(self, 'ni_src', tf=0, load=True)
+            M0e = Frame(self, 'n_srce', tf=0, load=True)
+            M0i = Frame(self, 'n_srci', tf=0, load=True)
             integrant = M0e.values + M0i.values
         else:
             raise ValueError("Invalid type. Choose 'profile' or 'gkyldata'.")
