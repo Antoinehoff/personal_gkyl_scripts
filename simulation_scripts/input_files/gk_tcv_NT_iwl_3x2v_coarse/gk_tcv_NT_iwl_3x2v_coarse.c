@@ -856,7 +856,7 @@ main(int argc, char **argv)
   struct gkyl_gk *gk = gkyl_malloc(sizeof *gk);
   memset(gk, 0, sizeof(*gk));
 
-  strcpy(gk->name, "gk_tcv_negD_trueq_iwl_3x2v");
+  strcpy(gk->name, "gk_tcv_NT_iwl_3x2v");
 
   gk->cfl_frac_omegaH = 1.0e9;
   gk->cfl_frac = 1.0;
