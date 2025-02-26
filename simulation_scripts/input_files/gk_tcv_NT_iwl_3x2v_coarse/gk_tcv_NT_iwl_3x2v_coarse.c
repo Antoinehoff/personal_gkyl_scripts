@@ -651,7 +651,7 @@ main(int argc, char **argv)
 /*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
-       .file_name = "restart_600mus-ion.gkyl"
+       .file_name = "restart_600mus-elc.gkyl"
     },
 */  
     .mapc2p = {
@@ -715,8 +715,8 @@ main(int argc, char **argv)
               .aux_ctx = &ctx,
       },
     },
-    .num_diag_moments = 5,
-    .diag_moments = { "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp"},
+    .num_diag_moments = 8,
+    .diag_moments = { "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp", "M2", "M3par", "M3perp"},
     .num_integrated_diag_moments = 1,
     .integrated_diag_moments = { "HamiltonianMoments" },
     .boundary_flux_diagnostics = {
@@ -736,7 +736,7 @@ main(int argc, char **argv)
 /*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
-       .file_name = "restart_600mus-elc.gkyl"
+       .file_name = "restart_600mus-ion.gkyl"
     },
 */
     .mapc2p = {
@@ -800,8 +800,8 @@ main(int argc, char **argv)
               .aux_ctx = &ctx,
       },
     },
-    .num_diag_moments = 5,
-    .diag_moments = { "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp"},
+    .num_diag_moments = 8,
+    .diag_moments = { "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp", "M2", "M3par", "M3perp"},
     .num_integrated_diag_moments = 1,
     .integrated_diag_moments = { "HamiltonianMoments" },
     .boundary_flux_diagnostics = {
