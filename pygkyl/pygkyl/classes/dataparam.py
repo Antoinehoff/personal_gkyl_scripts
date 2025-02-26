@@ -249,10 +249,16 @@ class DataParam:
             default_qttes.append(['M2perp%s'%(s_), r'$M_{2\perp %s}$'%(s_), r'J/kg/m$^{3}$'])
             default_qttes.append(['Tpar%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
             default_qttes.append(['Tperp%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
+            default_qttes.append(['M3par%s'%(s_), r'$M_{3\paralell %s}$'%(s_), r'J/kg/m$^{3}$'])
+            default_qttes.append(['M3perp%s'%(s_), r'$M_{3\perp %s}$'%(s_), r'J/kg/m$^{3}$'])
             # source moments
             default_qttes.append(['M0_src%s'%(s_), r'$\dot M_{0%s}$'%(s_), r'm$^{-3}$/s'])
             default_qttes.append(['M1_src%s'%(s_), r'$\dot M_{1%s}$'%(s_), r'm$^{-2}$/s'])
             default_qttes.append(['M2_src%s'%(s_), r'$\dot M_{2%s}$'%(s_), r'J/kg/m$^{3}$/s'])
+            default_qttes.append(['M2par_src%s'%(s_), r'$\dot M_{2\parallel %s}$'%(s_), r'J/kg/m$^{3}$/s'])
+            default_qttes.append(['M2perp_src%s'%(s_), r'$\dot M_{2\perp %s}$'%(s_), r'J/kg/m$^{3}$/s'])
+            default_qttes.append(['M3par_src%s'%(s_), r'$\dot M_{3\parallel %s}$'%(s_), r'J/kg/m$^{3}$/s'])
+            default_qttes.append(['M3perp_src%s'%(s_), r'$\dot M_{3\perp %s}$'%(s_), r'J/kg/m$^{3}$/s'])            
             default_qttes.append(['n_src%s'%(s_), r'$\dot n_%s$'%(s_), r'm$^{-3}$/s'])
             default_qttes.append(['upar_src%s'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
             default_qttes.append(['Tpar_src%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
@@ -779,11 +785,17 @@ class DataParam:
         for key in default_units_dict:
             if key.endswith('symbol'):
                 all_field_list.append(key[:-6])
-
+        # eliminate duplicates
+        all_field_list = list(set(all_field_list))
+        
         # add default colormap for each fields
         positive_fields = ['Bmag','pow_src'] # spec. indep
-
-        spec_dep_fields = ['M0','M2','M2par','M2perp','n','T','Tpar','Tperp','p','n_src','f']
+        
+        spec_dep_fields = ['M0','M2','M2par','M2perp','M3par','M3perp',
+                           'n','T','Tpar','Tperp','p',
+                           'M0_src','M2_src','M2par_src','M2perp_src','M3par_src','M3perp_src',
+                           'n_src','T_src','Tpar_src','Tperp_src',
+                           'f','f_src']
         for sdepfield in spec_dep_fields:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)
