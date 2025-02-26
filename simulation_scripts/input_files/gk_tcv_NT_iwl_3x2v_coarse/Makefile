@@ -23,7 +23,7 @@ else
         SUPERLU_LIB = $(PREFIX)/superlu/lib/libsuperlu.a
 endif
 # Include config.mak file (if it exists)
--include $(HOME)/gkyl_clopen_tsbc_fix/gkylsoft/gkylzero/share/config.mak
+-include $(HOME)/gkyl_main/gkylsoft/gkylzero/share/config.mak
 CFLAGS = -O3 -g -ffast-math -I.
 G0_INC_DIR = ${PREFIX}/gkylzero/include
 G0_LIB_DIR = ${PREFIX}/gkylzero/lib
