@@ -37,13 +37,16 @@ class PoloidalProjection:
     self.Rlcfs = None
     self.Zlcfs = None
     self.nzInterp = 0
+    self.figSize = None
 
-  def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16, intMethod='trapz32'):
+  def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16,
+            intMethod='trapz32',figSize = (8.5,9.5)):
 
-    # Store simulation and a link to goeometry objects
+    # Store simulation and a link to geometry objects
     self.sim = simulation
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
+    self.figSize = figSize
 
     # Load a frame to get the grid
     field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
@@ -228,10 +231,9 @@ class PoloidalProjection:
       maxSOL = vlims_SOL[1]
 
     #.Create the figure.
-    figProp1a = (8.5,9.5)
     ax1aPos   = [ [0.10, 0.08, 0.76, 0.88] ]
     cax1aPos  = [0.88, 0.08, 0.02, 0.88]
-    fig1a     = plt.figure(figsize=figProp1a)
+    fig1a     = plt.figure(figsize=self.figSize)
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))
@@ -316,7 +318,8 @@ class PoloidalProjection:
         plt.show()
 
   def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, doInset=True,
-          xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3):
+          xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3,
+          pilLoop=1, pilOptimize=True, pilDuration=200):
       # Create a temporary folder to store the movie frames
       movDirTmp = 'movie_frames_tmp'
       os.makedirs(movDirTmp, exist_ok=True)   
@@ -362,4 +365,5 @@ class PoloidalProjection:
       movieName+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
 
       # Compiling the movie images
-      fig_tools.compile_movie(frameFileList, movieName, rmFrames=True)
+      fig_tools.compile_movie(frameFileList, movieName, rmFrames=True,
+                              pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
