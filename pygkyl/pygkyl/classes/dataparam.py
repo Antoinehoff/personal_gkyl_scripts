@@ -118,7 +118,7 @@ class DataParam:
             # add Hamiltonian moments
             keys  = ['mv','H']
             comps  = [1,2]
-            prefix = 2*[s_+'_HamitlonianMoments']
+            prefix = 2*[s_+'_HamiltonianMoments']
             for i in range(len(keys)):
                 data_file_dict[keys[i]+shortname+'file']   = prefix[i]
                 data_file_dict[keys[i]+shortname+'comp']   = comps[i]
@@ -159,7 +159,7 @@ class DataParam:
             # add Hamiltonian source info
             keys  = ['mv_src','H_src']
             comps  = [1,2]
-            prefix = 2*[s_+'_source_HamitlonianMoments']
+            prefix = 2*[s_+'_source_HamiltonianMoments']
             for i in range(len(keys)):
                 data_file_dict[keys[i]+shortname+'file']   = prefix[i]
                 data_file_dict[keys[i]+shortname+'comp']   = comps[i]
