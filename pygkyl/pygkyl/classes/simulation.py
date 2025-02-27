@@ -70,14 +70,13 @@ class Simulation:
         )
 
     def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",
-                       wkdir = "", BiMaxwellian=True, Hamiltonian=False, species = {}):
+                       wkdir = "", BiMaxwellian=True, species = {}):
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
         self.data_param = DataParam(
             expdatadir=expdatadir, g0simdir=g0simdir, simname=simname, simdir=simdir, 
-            prefix=fileprefix, wkdir=wkdir, BiMaxwellian=BiMaxwellian, Hamiltonian=Hamiltonian, 
-            species=species
+            prefix=fileprefix, wkdir=wkdir, BiMaxwellian=BiMaxwellian, species=species
         )
         self.set_num_param()  # Automatically set numerical parameters based on data
 

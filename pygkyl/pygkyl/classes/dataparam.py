@@ -29,7 +29,7 @@ class DataParam:
     - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
-                 prefix='', wkdir='', BiMaxwellian=True,  Hamiltonian=False, species = {}):
+                 prefix='', wkdir='', BiMaxwellian=True,  species = {}):
         self.expdatadir = expdatadir
         self.g0simdir = g0simdir
         self.simname = simname
@@ -40,7 +40,6 @@ class DataParam:
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
         self.data_file_dict = {}
         self.BiMaxwellian = BiMaxwellian
-        self.Hamiltonian = Hamiltonian
         self.species = species
         self.data_file_dict = {}
         self.set_data_file_dict()
@@ -117,14 +116,13 @@ class DataParam:
                 data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
             # add Hamiltonian moments
-            if self.Hamiltonian:
-                keys  = ['mv','H']
-                comps  = [1,2]
-                prefix = 2*[s_+'_HamitlonianMoments']
-                for i in range(len(keys)):
-                    data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                    data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                    data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+            keys  = ['mv','H']
+            comps  = [1,2]
+            prefix = 2*[s_+'_HamitlonianMoments']
+            for i in range(len(keys)):
+                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
                     
             # add distribution functions
             data_file_dict['f'+shortname+'file'] = s_
@@ -159,14 +157,13 @@ class DataParam:
             data_file_dict['f'+shortname+'gnames'] = gnames
 
             # add Hamiltonian source info
-            if self.Hamiltonian:
-                keys  = ['mv_src','H_src']
-                comps  = [1,2]
-                prefix = 2*[s_+'_source_HamitlonianMoments']
-                for i in range(len(keys)):
-                    data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                    data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                    data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+            keys  = ['mv_src','H_src']
+            comps  = [1,2]
+            prefix = 2*[s_+'_source_HamitlonianMoments']
+            for i in range(len(keys)):
+                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
             # add source moments info        
             keys  = ['M0_src','M1_src','M2_src','M2par_src','M2perp_src','M3par_src','M3perp_src']
