@@ -98,8 +98,8 @@ double r_x(double x, double a_mid, double x_inner)
 double qprofile(double r, double R_axis) 
 {
   // Magnetic safety factor as a function of minor radius r.
-  double a[4] = {484.0615913225881, -1378.25993228584, 1309.3099150729233, 
-    -414.13270311478726};
+  double a[4] = {497.3420166252413, -1408.736172826569, 1331.4134861681464,
+    -419.00692601227627};
   return a[0]*pow(r+R_axis,3.0) + a[1]*pow(r+R_axis,2.0) + a[2]*(r+R_axis) + a[3];
 }
 
@@ -434,11 +434,11 @@ create_ctx(void)
   double qi = eV; // ion charge
   double qe = -eV; // electron charge
   // Geometry and magnetic field.
-  double a_shift   = 0.5;               // Parameter in Shafranov shift.
+  double a_shift   = 0.25;               // Parameter in Shafranov shift.
   double Z_axis    = 0.1414361745;       // Magnetic axis height [m].
-  double R_axis    = 0.8867856264;       // Magnetic axis major radius [m].
+  double R_axis    = 0.8727315068;       // Magnetic axis major radius [m].
   double B_axis    = 1.4;                // Magnetic field at the magnetic axis [T].
-  double R_LCFSmid = 1.0870056099999; // Major radius of the LCFS at the outboard midplane [m
+  double R_LCFSmid = 1.0968432365089495; // Major radius of the LCFS at the outboard midplane [m].
   double x_inner   = 0.04;               // Radial extent inside LCFS    
   double x_outer   = 0.08;               // Radial extent outside LCFS
   double Rmid_min  = R_LCFSmid - x_inner;      // Minimum midplane major radius of simulation box [m].
@@ -449,8 +449,8 @@ create_ctx(void)
   a_mid = R_axis/a_shift - sqrt(R_axis*(R_axis - 2*a_shift*R_LCFSmid + 2*a_shift*R_axis))/a_shift;
   double r0        = R0-R_axis;           // Minor radius of the simulation box [m].
   double B0        = B_axis*(R_axis/R0);  // Magnetic field magnitude in the simulation box [T].
-  double kappa     = 1.4;                // Elongation (=1 for no elongation).
-  double delta     = -0.38;                // Triangularity (=0 for no triangularity).
+  double kappa     = 1.45;                // Elongation (=1 for no elongation).
+  double delta     = 0.35;                // Triangularity (=0 for no triangularity).
   // Plasma parameters. Chosen based on the value of a cubic sline
   // between the last TS data inside the LCFS and the probe data in
   // in the far SOL, near R=0.475 m.
