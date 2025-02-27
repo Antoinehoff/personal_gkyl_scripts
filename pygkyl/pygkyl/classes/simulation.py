@@ -55,7 +55,7 @@ class Simulation:
         """
         Set physical parameters like permittivity, electron volts, masses, and magnetic field.
         """
-        self.phys_param = PhysParam(eps0, eV, mp, me)
+        self.phys_param = PhysParam(eps0=eps0, eV=eV, mp=mp, me=me)
     
     def set_geom_param(self, R_axis=None, Z_axis=None, R_LCFSmid=None, a_shift=None, kappa=None, B_axis = None,
                        delta=None, x_LCFS=None, x_out = None, geom_type='Miller', qprofile='default'):
@@ -70,13 +70,14 @@ class Simulation:
         )
 
     def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",
-                       wkdir = "", BiMaxwellian=True, species = {}):
+                       wkdir = "", BiMaxwellian=True, Hamiltonian=False, species = {}):
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
         self.data_param = DataParam(
-            expdatadir, g0simdir, simname, simdir, 
-            fileprefix, wkdir, BiMaxwellian, species
+            expdatadir=expdatadir, g0simdir=g0simdir, simname=simname, simdir=simdir, 
+            prefix=fileprefix, wkdir=wkdir, BiMaxwellian=BiMaxwellian, Hamiltonian=Hamiltonian, 
+            species=species
         )
         self.set_num_param()  # Automatically set numerical parameters based on data
 
@@ -135,7 +136,7 @@ class Simulation:
         return self.get_c_s()/self.species['ion'].omega_c
     
     def get_filename(self,fieldname,tf):
-        dataname = self.data_param.data_files_dict[fieldname+'file']
+        dataname = self.data_param.data_file_dict[fieldname+'file']
         return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)
     
     def get_GBloss_t(self, spec, twindow, ix=0, losstype='particle', integrate = False):

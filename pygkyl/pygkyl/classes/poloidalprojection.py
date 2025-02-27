@@ -40,7 +40,7 @@ class PoloidalProjection:
     self.figSize = None
 
   def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16,
-            intMethod='trapz32',figSize = (8.5,9.5)):
+            intMethod='trapz32',figSize = (8,9)):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation

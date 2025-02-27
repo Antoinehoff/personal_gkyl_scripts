@@ -29,7 +29,7 @@ class DataParam:
     - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
-                 prefix='', wkdir='', BiMaxwellian=True, species = {}):
+                 prefix='', wkdir='', BiMaxwellian=True,  Hamiltonian=False, species = {}):
         self.expdatadir = expdatadir
         self.g0simdir = g0simdir
         self.simname = simname
@@ -38,26 +38,15 @@ class DataParam:
         self.datadir = g0simdir + simdir + simname +'/' + wkdir
         self.prefix = prefix # prefix for the data files
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
-        self.data_files_dict = {}
+        self.data_file_dict = {}
         self.BiMaxwellian = BiMaxwellian
-        self.set_data_field_dict(BiMaxwellian=BiMaxwellian, species=species)
+        self.Hamiltonian = Hamiltonian
         self.species = species
+        self.data_file_dict = {}
+        self.set_data_file_dict()
         self.all_field_list = []
-
-    def info(self):
-        """
-        Display the information of the directory parameters.
-        """
-        print(f"Directory Parameters:\n"
-              f"  Experiment Data Directory (expdatadir): {self.expdatadir}\n"
-              f"  G0 Simulation Directory (g0simdir): {self.g0simdir}\n"
-              f"  Simulation Name (simname): {self.simname}\n"
-              f"  Simulation Directory (simdir): {self.simdir}\n"
-              f"  File Prefix (fileprefix): {self.fileprefix}\n"
-              f"  Working Directory (wkdir): {self.wkdir}\n"
-              f"  Data Directory (datadir): {self.datadir}\n")
         
-    def set_data_field_dict(self,keys=[],files=[],comps=[],BiMaxwellian=True,species={}):
+    def set_data_file_dict(self):
         '''
         Sets up the data field dictionary which indicates how each 
         possible scalar field can be found.
@@ -69,25 +58,25 @@ class DataParam:
         - BiMaxwellian (bool): Flag indicating if BiMaxwellian moments are used.
         - species (dict): Dictionary of species information.
         '''
-        data_field_dict = {}
+        data_file_dict = {}
         gnames   = ['x','y','z','vpar','mu']
 
         # add equilibrium info
         # Magnetic field amplitude
-        data_field_dict['Bmag'+'file']   = 'bmag'
-        data_field_dict['Bmag'+'comp']   = 0
-        data_field_dict['Bmag'+'gnames'] = gnames[0:3]
+        data_file_dict['Bmag'+'file']   = 'bmag'
+        data_file_dict['Bmag'+'comp']   = 0
+        data_file_dict['Bmag'+'gnames'] = gnames[0:3]
 
         # normalized b field
         for i_ in range(3):
-            data_field_dict['b_'+gnames[i_]+'file']   = 'b_i'
-            data_field_dict['b_'+gnames[i_]+'comp']   = i_
-            data_field_dict['b_'+gnames[i_]+'gnames'] = gnames[0:3]
+            data_file_dict['b_'+gnames[i_]+'file']   = 'b_i'
+            data_file_dict['b_'+gnames[i_]+'comp']   = i_
+            data_file_dict['b_'+gnames[i_]+'gnames'] = gnames[0:3]
 
         # Jacobian
-        data_field_dict['Jacobian'+'file']   = 'jacobgeo'
-        data_field_dict['Jacobian'+'comp']   = 0
-        data_field_dict['Jacobian'+'gnames'] = gnames[0:3]
+        data_file_dict['Jacobian'+'file']   = 'jacobgeo'
+        data_file_dict['Jacobian'+'comp']   = 0
+        data_file_dict['Jacobian'+'gnames'] = gnames[0:3]
 
         # metric coefficients
         counter_ = 0
@@ -96,87 +85,99 @@ class DataParam:
             for j_ in range(i_,3):
                 jname = gnames[j_]
                 gijname = 'g_'+iname+jname
-                data_field_dict[gijname+'file']   = 'g_ij'
-                data_field_dict[gijname+'comp']   = counter_
-                data_field_dict[gijname+'gnames'] = gnames[0:3]
+                data_file_dict[gijname+'file']   = 'g_ij'
+                data_file_dict[gijname+'comp']   = counter_
+                data_file_dict[gijname+'gnames'] = gnames[0:3]
                 gijname = 'g'+iname+jname
-                data_field_dict[gijname+'file']   = 'gij'
-                data_field_dict[gijname+'comp']   = counter_
-                data_field_dict[gijname+'gnames'] = gnames[0:3]
+                data_file_dict[gijname+'file']   = 'gij'
+                data_file_dict[gijname+'comp']   = counter_
+                data_file_dict[gijname+'gnames'] = gnames[0:3]
                 counter_ += 1
 
         # add electrostatic field info
-        data_field_dict['phi'+'file'] = 'field'
-        data_field_dict['phi'+'comp'] = 0
-        data_field_dict['phi'+'gnames'] = gnames[0:3]
+        data_file_dict['phi'+'file'] = 'field'
+        data_file_dict['phi'+'comp'] = 0
+        data_file_dict['phi'+'gnames'] = gnames[0:3]
         
-        # add bimax moments and dist func info        
-        keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
-        for spec in species.values():
+        for spec in self.species.values():
             s_        = spec.name
             shortname = spec.nshort
-            if BiMaxwellian:
+            
+            # add bimax moments and dist func info        
+            keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
+            if self.BiMaxwellian:
                 comps  = [0,1,2,3,0,0]
                 prefix = 6*[s_+'_BiMaxwellianMoments']
             else:
                 comps  = [0,0,0,0,0,0]
                 prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp',s_+'_M0',s_+'_M0']
             for i in range(len(keys)):
-                data_field_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_field_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_field_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
+            # add Hamiltonian moments
+            if self.Hamiltonian:
+                keys  = ['mv','H']
+                comps  = [1,2]
+                prefix = 2*[s_+'_HamitlonianMoments']
+                for i in range(len(keys)):
+                    data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                    data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                    data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+                    
             # add distribution functions
-            data_field_dict['f'+shortname+'file'] = s_
-            data_field_dict['f'+shortname+'comp'] = 0
-            data_field_dict['f'+shortname+'gnames'] = gnames
-
-        # add moments info        
-        keys  = ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
-        for spec in species.values():
-            s_        = spec.name
-            shortname = spec.nshort
+            data_file_dict['f'+shortname+'file'] = s_
+            data_file_dict['f'+shortname+'comp'] = 0
+            data_file_dict['f'+shortname+'gnames'] = gnames
+                    
+            # add moments info        
+            keys  = ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
             comps  = [0,0,0,0,0,0,0]
             prefix = [s_+'_M0',s_+'_M1',s_+'_M2',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
             for i in range(len(keys)):
-                data_field_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_field_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_field_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
-        # add source info        
-        keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
-        for spec in species.values():
-            s_        = spec.name+'_source'
-            shortname = '_src'+spec.nshort
-            if BiMaxwellian:
+            # add source info        
+            keys  = ['n_src','upar_src','Tpar_src','Tperp_src','ppar_src','pperp_src']
+            if self.BiMaxwellian:
                 comps  = [0,1,2,3,0,0]
-                prefix = 6*[s_+'_BiMaxwellianMoments']
+                prefix = 6*[s_+'_source_BiMaxwellianMoments']
             else:
                 comps  = [0,0,0,0,0,0]
-                prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp',s_+'_M0',s_+'_M0']
+                prefix = [s_+'_source_M0',s_+'_source_M1',s_+'_source_M2par',s_+'_source_M2perp',s_+'_source_M3par',s_+'__source_M3perp']
             for i in range(len(keys)):
-                data_field_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_field_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_field_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
             # add distribution functions
-            data_field_dict['f'+shortname+'file'] = s_
-            data_field_dict['f'+shortname+'comp'] = 0
-            data_field_dict['f'+shortname+'gnames'] = gnames
+            data_file_dict['f'+shortname+'file'] = s_
+            data_file_dict['f'+shortname+'comp'] = 0
+            data_file_dict['f'+shortname+'gnames'] = gnames
 
-        # add source moments info        
-        keys  = ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
-        for spec in species.values():
-            s_        = spec.name+'_source'
-            shortname = '_src'+spec.nshort
+            # add Hamiltonian source info
+            if self.Hamiltonian:
+                keys  = ['mv_src','H_src']
+                comps  = [1,2]
+                prefix = 2*[s_+'_source_HamitlonianMoments']
+                for i in range(len(keys)):
+                    data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                    data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                    data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+
+            # add source moments info        
+            keys  = ['M0_src','M1_src','M2_src','M2par_src','M2perp_src','M3par_src','M3perp_src']
             comps  = [0,0,0,0,0,0,0]
-            prefix = [s_+'_M0',s_+'_M1',s_+'_M2',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
+            prefix = [s_+'_source_M0',s_+'_source_M1',s_+'_source_M2',s_+'_source_M2par',s_+'_source_M2perp',s_+'_source_M3par',s_+'_source_M3perp']
             for i in range(len(keys)):
-                data_field_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_field_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_field_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
-
-        self.data_files_dict = data_field_dict
+                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
+                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
+                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+        
+        self.data_file_dict = data_file_dict
         
     @staticmethod
     def get_default_units_dict(species):
