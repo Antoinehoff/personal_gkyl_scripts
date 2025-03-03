@@ -18,3 +18,4 @@ pygkyl/install.log
 .DS_Store
 pygkyl/postgkyl_install.log
 pygkyl/pygkyl_install.log
+*.pdf
