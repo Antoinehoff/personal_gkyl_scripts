@@ -21,73 +21,29 @@
 #include <gkyl_math.h>
 #include <rt_arg_parse.h>
 
-// Define the context of the simulation. This is basically all the globals
+// Define the context of the simulation. This stores global parameters.
 struct gk_app_ctx {
-  int cdim, vdim; // Dimensionality.
-
-  // Geometry and magnetic field.
-  double a_shift;   // Parameter in Shafranov shift.
-  double Z_axis;    // Magnetic axis height [m].
-  double R_axis;    // Magnetic axis major radius [m].
-
-  double R0;        // Major radius of the simulation box [m].
-  double a_mid;     // Minor radius at outboard midplane [m].
-  double x_inner;   // Domain extent inside LCFS [m].
-  double r0;        // Minor radius of the simulation box [m].
-  double B0;        // Magnetic field magnitude in the simulation box [T].
-  double kappa;     // Elongation (=1 for no elongation).
-  double delta;     // Triangularity (=0 for no triangularity).
-  double q0;        // Magnetic safety factor in the center of domain.
-  double Bref;      // Reference magnetic field [T].
-
-  double x_LCFS;    // Radial location of the last closed flux surface.
-
-  // Plasma parameters.
-  double me;  double qe;
-  double mi;  double qi;
-  double n0;  double Te0;  double Ti0; 
-
-  // Collisions.
-  double nuFrac;  double nuElc;  double nuIon;
-
-  // Source parameters.
-  double n_srcOMP;        // Amplitude of the OMP source
-  double x_srcOMP;        // Radial location of the OMP source.
-  double Te_srcOMP;       // Te for the OMP source.
-  double Ti_srcOMP;       // Ti for the OMP source.
-  double sigma_srcOMP;    // Radial spread of the OMP source.
-
-  double n_srcRECY;        // Amplitude of the RECYtering source
-  double x_srcRECY;     
-  double Te_srcRECY;     
-  double Ti_srcRECY;      
-  double sigmax_srcRECY;
-  double sigmaz_srcRECY;
-
-  double floor_src;       // Source floor.
-
-  // Grid parameters.
-  double Lx;        // Domain size in radial direction.
-  double Ly;        // Domain size in binormal direction.
-  double Lz;        // Domain size along magnetic field.
-  double x_min;  double x_max;
-  double y_min;  double y_max;
-  double z_min;  double z_max;
-  int num_cell_x;
-  int num_cell_y;  // Cell count in binormal direction
-  int num_cell_z;
-  int num_cell_vpar;
-  int num_cell_mu;
-  int cells[GKYL_MAX_DIM]; // Number of cells in all directions.
-  int poly_order;
-  double vpar_max_elc;  double mu_max_elc;
-  double vpar_max_ion;  double mu_max_ion;
-
-  double final_time;   int num_frames;
-  double write_phase_freq;
-  int int_diag_calc_num; // Number of integrated diagnostics computations (=INT_MAX for every step).
-  double dt_failure_tol; // Minimum allowable fraction of initial time-step.
-  int num_failures_max; // Maximum allowable number of consecutive small time-steps.
+  int cdim, vdim;
+  // Geometry and magnetic field parameters
+  double a_shift, Z_axis, R_axis, R0, a_mid, x_inner, r0, B0, kappa, delta, q0, Bref, x_LCFS;
+  // Plasma parameters
+  double me, qe, mi, qi, n0, Te0, Ti0;
+  // Collision parameters
+  double nuFrac, nuElc, nuIon;
+  // Source parameters
+  double num_sources;
+  double n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP;
+  double n_srcRECY, x_srcRECY, Te_srcRECY, Ti_srcRECY, sigmax_srcRECY, sigmaz_srcRECY, floor_src;
+  // Grid parameters
+  double Lx, Ly, Lz;
+  double x_min, x_max, y_min, y_max, z_min, z_max;
+  int num_cell_x, num_cell_y, num_cell_z, num_cell_vpar, num_cell_mu;
+  int cells[GKYL_MAX_DIM], poly_order;
+  double vpar_max_elc, mu_max_elc, vpar_max_ion, mu_max_ion;
+  // Simulation control parameters
+  double final_time, write_phase_freq;
+  int num_frames, int_diag_calc_num, num_failures_max;
+  double dt_failure_tol;
 };
 
 double r_x(double x, double a_mid, double x_inner)
