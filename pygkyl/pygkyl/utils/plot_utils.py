@@ -72,9 +72,10 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             vmin = np.power(10,np.log10(vmax)-4) if fourier_y else vmin
             values = np.clip(values, vmin, None) if fourier_y else values 
             # make the plot
-            fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
+            fig = fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
                               xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
                               cmap=cmap, vmin=vmin, vmax=vmax, colorscale=colorscale, plot_type=plot_type)
+            figout.append(fig)
         else:
             norm = plt.Normalize(min(t), max(t))
             colormap = cm.viridis  # You can choose any colormap
@@ -84,7 +85,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             # Add a colorbar to the figure
             sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
             cbar = fig.colorbar(sm, ax=ax)
-            fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2], figout=figout, xlim=xlim, ylim=ylim,
+            fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2], xlim=xlim, ylim=ylim, figout=figout,
                                     xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar)
 
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
@@ -356,7 +357,7 @@ def plot_GBsource(simulation,species,tf=0,ix=0,b=1.2,figout=[]):
     ax[0].plot(zgrid,fz,label='GB source model')
     Ssimul = np.trapz(Gammaz,x=zgrid, axis=0)
     Smodel = np.trapz(fz    ,x=zgrid, axis=0)
-    fig_tools.finalize_plot(ax[0], fig, xlabel=r'$z$', ylabel=r'$\int \Gamma_{\nabla B,x} dy$', legend=True,
+    fig_tools.finalize_plot(ax[0], fig, xlabel=r'$z$', ylabel=r'$\int \Gamma_{\nabla B,x} dy$', legend=True, figout=figout,
                             title = 'Total source simul: %2.2e 1/s, total source model: %2.2e 1/s'%(Ssimul,Smodel))
 
 def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
