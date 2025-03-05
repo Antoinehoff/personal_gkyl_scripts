@@ -37,6 +37,12 @@ class TimeSerie:
         subname = self.simulation.normalization.dict[name+'compo'][0]
         self.filename = self.simulation.data_param.data_file_dict[subname + 'file']
         if load: self.load()
+        
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.free_values()
 
     def load(self):
         '''
@@ -73,3 +79,26 @@ class TimeSerie:
         for frame in self.frames:
             values.append(np.squeeze(frame.values))
         return copy.deepcopy(self.time), copy.deepcopy(values)
+    
+    def get_time_average(self):
+        '''
+        Get the time average of the time serie
+        '''
+        v_tavg = self.frames[0].values
+        time = self.frames[0].time
+        for it,frame in enumerate(self.frames[1:]):
+            dt = frame.time - time
+            v_tavg += frame.values * dt
+            time = frame.time
+        v_tavg /= time - self.frames[0].time
+        return copy.deepcopy(v_tavg)
+
+    def free_values(self):
+        '''
+        Free the values of the time serie
+        '''
+        for frame in self.frames:
+            frame.free_values()
+        self.frames = []
+        self.time = []
+        self.values = None

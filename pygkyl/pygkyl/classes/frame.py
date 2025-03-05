@@ -80,6 +80,12 @@ class Frame:
         if load:
             self.load(polyorder=polyorder, polytype=polytype, normalize=normalize, fourier_y=fourier_y)
 
+    def __enter__(self):
+        return self
+    
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.free_values()
+    
     def process_field_name(self):
         """
         Process the field name and set up the composition and filenames.

@@ -10,7 +10,7 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from matplotlib import ticker
 from matplotlib import colors
 
-from . import Frame
+from . import Frame, TimeSerie
 from ..utils import data_utils
 from ..tools import fig_tools, math_tools
 
@@ -174,7 +174,7 @@ class PoloidalProjection:
             
     return field_RZ
 
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', doInset=True, 
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', doInset=True, fluctuation=False,
            xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
@@ -197,13 +197,29 @@ class PoloidalProjection:
         climSOL: Color limits for the inset. (optional)
         colorScale: Color scale. (default: 'linear')
     '''
-    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)    
-    field_RZ = self.project_field(field_frame.values)
-        
-    # handle colormap and limits
-    colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    if isinstance(timeFrame, list):
+      avg_window = timeFrame
+      timeFrame = timeFrame[-1]
+    
+    with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+      time = field_frame.time
+      vsymbol = field_frame.vsymbol
+      vunits = field_frame.vunits
+      toproject = field_frame.values
 
-    vlims, vlims_SOL = data_utils.get_minmax_values(self.sim, fieldName, [timeFrame])
+    if fluctuation:
+      with TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True) as field_frames:
+        toproject -= field_frames.get_time_average()
+      vsymbol = r'$\delta$'+vsymbol
+      colorMap = colorMap if colorMap else 'bwr'
+    else:
+      colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+
+    field_RZ = self.project_field(toproject)
+    
+    vlims = [np.min(field_RZ), np.max(field_RZ)]
+    vlims_SOL = [np.min(field_RZ[self.ixLCFS_C:,:]), np.max(field_RZ[self.ixLCFS_C:,:])]
+    
     if colorMap == 'inferno': 
         vlims[0] = np.max([0,vlims[0]])
         vlims_SOL[0] = np.max([0,vlims_SOL[0]])
@@ -245,13 +261,13 @@ class PoloidalProjection:
     hpl1a.append(pcm1)
 
     #fig1a.suptitle
-    ax1a[0].set_title('t = %.2f'%(field_frame.time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
+    ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
     ax1a[0].set_xlabel(r'$R$ (m)',fontsize=xyLabelFontSize, labelpad=-2)
     #setTickFontSize(ax1a[0],tickFontSize)
     ax1a[0].set_ylabel(r'$Z$ (m)',fontsize=xyLabelFontSize, labelpad=-10)
     cbar = plt.colorbar(hpl1a[0],ax=ax1a,cax=cbar_ax1a)
     cbar.ax.tick_params(labelsize=10)#tickFontSize)
-    cbar.set_label(field_frame.vsymbol+r'$(R,\varphi=0,Z)$'+'['+field_frame.vunits+']', 
+    cbar.set_label(vsymbol+r'$(R,\varphi=0,Z)$'+'['+vunits+']', 
                     rotation=270, labelpad=18, fontsize=colorBarLabelFontSize)
     hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
@@ -325,7 +341,7 @@ class PoloidalProjection:
       os.makedirs(movDirTmp, exist_ok=True)   
 
       # handle color limits to fix the colorbar
-      vlims, vlims_SOL = data_utils.get_minmax_values(self.sim, fieldName, timeFrames)
+      vlims, vlims_SOL = data_utils.get_minmax_values(simulation=self.sim, fieldname=fieldName, time_frames=timeFrames)
       colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
       if colorMap == 'inferno': 
         vlims[0] = np.max([logScaleFloor if colorScale=='log' else 0, vlims[0]])
