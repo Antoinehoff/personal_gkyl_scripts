@@ -175,7 +175,7 @@ class PoloidalProjection:
     return field_RZ
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', doInset=True, fluctuation=False,
-           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3):
+           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3, favg = None):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -208,8 +208,12 @@ class PoloidalProjection:
       toproject = field_frame.values
 
     if fluctuation:
-      with TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True) as field_frames:
-        toproject -= field_frames.get_time_average()
+      if favg is not None:
+        toproject -= favg
+      else:
+        with TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True) \
+        as field_frames:
+          toproject -= field_frames.get_time_average()
       vsymbol = r'$\delta$'+vsymbol
       colorMap = colorMap if colorMap else 'bwr'
     else:
@@ -335,24 +339,33 @@ class PoloidalProjection:
 
   def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, doInset=True,
           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3,
-          pilLoop=0, pilOptimize=False, pilDuration=100):
+          pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False):
       # Create a temporary folder to store the movie frames
       movDirTmp = 'movie_frames_tmp'
       os.makedirs(movDirTmp, exist_ok=True)   
 
-      # handle color limits to fix the colorbar
-      vlims, vlims_SOL = data_utils.get_minmax_values(simulation=self.sim, fieldname=fieldName, time_frames=timeFrames)
-      colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
-      if colorMap == 'inferno': 
-        vlims[0] = np.max([logScaleFloor if colorScale=='log' else 0, vlims[0]])
-        vlims_SOL[0] = np.max([logScaleFloor if colorScale=='log' else 0, vlims_SOL[0]])
-      elif colorMap == 'bwr':
-          vmax = np.max(np.abs(vlims))
-          vlims = [-vmax, vmax]
-          vmax_SOL = np.max(np.abs(vlims_SOL))
-          vlims_SOL = [-vmax_SOL, vmax_SOL]
-      clim = clim if clim else vlims
-      climSOL = climSOL if climSOL else vlims_SOL
+      if fluctuation:
+        with TimeSerie(simulation=self.sim, name=fieldName, time_frames=timeFrames, load=True) \
+          as field_frames:
+            favg = field_frames.get_time_average()
+      else:
+        favg = None
+        # handle color limits to fix the colorbar
+        # vlims, vlims_SOL = data_utils.get_minmax_values(simulation=self.sim, fieldname=fieldName, time_frames=timeFrames)
+        # colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+        # if colorMap == 'inferno': 
+        #   vlims[0] = np.max([logScaleFloor if colorScale=='log' else 0, vlims[0]])
+        #   vlims_SOL[0] = np.max([logScaleFloor if colorScale=='log' else 0, vlims_SOL[0]])
+        # elif colorMap == 'bwr':
+        #     vmax = np.max(np.abs(vlims))
+        #     vlims = [-vmax, vmax]
+        #     vmax_SOL = np.max(np.abs(vlims_SOL))
+        #     vlims_SOL = [-vmax_SOL, vmax_SOL]
+        # clim = clim if clim else vlims
+        # climSOL = climSOL if climSOL else vlims_SOL
+        
+      clim = clim if clim else []
+      climSOL = climSOL if climSOL else []
       
       frameFileList = []
       total_frames = len(timeFrames)
@@ -363,7 +376,8 @@ class PoloidalProjection:
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
                           colorMap = colorMap, doInset=doInset,
                           colorScale=colorScale, logScaleFloor=logScaleFloor,
-                          xlim=xlim, ylim=ylim, clim=clim, climSOL=climSOL)
+                          xlim=xlim, ylim=ylim, clim=clim, climSOL=climSOL,
+                          fluctuation=fluctuation, favg=favg)
           cutname = ['RZ'+str(self.nzInterp)]
 
           # Update progress
@@ -375,6 +389,7 @@ class PoloidalProjection:
 
       # Naming
       movieName = fieldName+'_RZ'
+      if fluctuation: movieName += 'd'
       if colorScale == 'log': movieName = 'log'+movieName
       movieName = moviePrefix + movieName
       movieName+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
