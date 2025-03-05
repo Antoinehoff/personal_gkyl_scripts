@@ -38,6 +38,7 @@ class PoloidalProjection:
     self.Zlcfs = None
     self.nzInterp = 0
     self.figSize = None
+    self.inset = Inset()
 
   def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16,
             intMethod='trapz32',figSize = (8,9)):
@@ -137,6 +138,9 @@ class PoloidalProjection:
         self.ZIntN[i,dimsI[1]] = ZInt[i,-1]+0.5*(ZInt[i,-1]-ZInt[i,-2])
         self.ZIntN[dimsI[0],:] = self.ZIntN[-2,:]
         
+  def reset_inset(self):
+    self.inset = Inset()
+        
   def project_field(self,field):
     
     #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
@@ -174,8 +178,9 @@ class PoloidalProjection:
             
     return field_RZ
 
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', doInset=True, fluctuation=False,
-           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3, favg = None):
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation=False,
+           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
+           shading='auto'):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -260,7 +265,7 @@ class PoloidalProjection:
     cbar_ax1a = fig1a.add_axes(cax1aPos)
     
     hpl1a = list()
-    pcm1 = ax1a[0].pcolormesh(self.RIntN, self.ZIntN, field_RZ, shading='auto',cmap=colorMap,
+    pcm1 = ax1a[0].pcolormesh(self.RIntN, self.ZIntN, field_RZ, shading=shading,cmap=colorMap,
                               vmin=fldMin,vmax=fldMax)
     hpl1a.append(pcm1)
 
@@ -285,41 +290,10 @@ class PoloidalProjection:
     yCorner = self.geom.Z_axis - 0.5*yWidth
     ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
 
-    if doInset: 
-      #.inset data
-      axins2 = zoomed_inset_axes(ax1a[0], 1.5, loc='lower left', 
-                                  bbox_to_anchor=(0.42,0.3),bbox_transform=ax1a[0].transAxes)
-      img_in = axins2.pcolormesh(self.RIntN, self.ZIntN, field_RZ, 
-                                  cmap=colorMap, shading='auto',vmin=minSOL,vmax=maxSOL)
-      axins2.plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.6)
-      cax = inset_axes(axins2,
-                      width="10%",  # width = 10% of parent_bbox width
-                      height="100%",  # height : 50%
-                      loc='lower left',
-                      bbox_to_anchor=(1.05, 0., 1, 1),
-                      bbox_transform=axins2.transAxes,
-                      borderpad=0,)
-      fig1a.colorbar(img_in,cax=cax)
-      
-      # sub region of the original image
-      x1, x2, y1, y2 = 1.07, 1.16, self.geom.Z_axis-.1, self.geom.Z_axis+.1
-      axins2.set_xlim(x1, x2)
-      axins2.set_ylim(y1, y2)
-      if colorScale == 'log':
-        colornorm = colors.LogNorm(vmax=maxSOL, vmin=logScaleFloor*maxSOL) if minSOL > 0 \
-            else colors.SymLogNorm(vmax=maxSOL, vmin=minSOL, linscale=1.0, linthresh=logScaleFloor*maxSOL)
-        img_in.set_norm(colornorm)
-      if climSOL: img_in.set_clim(climSOL)
-      axins2.set_xticks([])
-      axins2.set_yticks([])
-      # fix the number of ticks on the inset axes
-      axins2.yaxis.get_major_locator().set_params(nbins=7)
-      axins2.xaxis.get_major_locator().set_params(nbins=2)
-      axins2.xaxis.set_major_formatter(ticker.StrMethodFormatter("{x:.2f}"))
-
-      # draw a bbox of the region of the inset axes in the parent axes and
-      # connecting lines between the bbox and the inset axes area
-      mark_inset(ax1a[0], axins2, loc1=1, loc2=4, fc="none", ec="0.5")
+    if inset:
+      self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
+                           colorScale, minSOL, maxSOL, climSOL, logScaleFloor, shading,
+                           LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
@@ -337,7 +311,7 @@ class PoloidalProjection:
     else:
         plt.show()
 
-  def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, doInset=True,
+  def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, inset=True,
           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3,
           pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False):
       # Create a temporary folder to store the movie frames
@@ -350,19 +324,6 @@ class PoloidalProjection:
             favg = field_frames.get_time_average()
       else:
         favg = None
-        # handle color limits to fix the colorbar
-        # vlims, vlims_SOL = data_utils.get_minmax_values(simulation=self.sim, fieldname=fieldName, time_frames=timeFrames)
-        # colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
-        # if colorMap == 'inferno': 
-        #   vlims[0] = np.max([logScaleFloor if colorScale=='log' else 0, vlims[0]])
-        #   vlims_SOL[0] = np.max([logScaleFloor if colorScale=='log' else 0, vlims_SOL[0]])
-        # elif colorMap == 'bwr':
-        #     vmax = np.max(np.abs(vlims))
-        #     vlims = [-vmax, vmax]
-        #     vmax_SOL = np.max(np.abs(vlims_SOL))
-        #     vlims_SOL = [-vmax_SOL, vmax_SOL]
-        # clim = clim if clim else vlims
-        # climSOL = climSOL if climSOL else vlims_SOL
         
       clim = clim if clim else []
       climSOL = climSOL if climSOL else []
@@ -374,7 +335,7 @@ class PoloidalProjection:
           frameFileList.append(f'movie_frames_tmp/frame_{tf}.png')
 
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
-                          colorMap = colorMap, doInset=doInset,
+                          colorMap = colorMap, inset=inset,
                           colorScale=colorScale, logScaleFloor=logScaleFloor,
                           xlim=xlim, ylim=ylim, clim=clim, climSOL=climSOL,
                           fluctuation=fluctuation, favg=favg)
@@ -398,3 +359,84 @@ class PoloidalProjection:
       # Compiling the movie images
       fig_tools.compile_movie(frameFileList, movieName, rmFrames=True,
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
+      
+class Inset:
+  """
+  Class to add an inset to a plot.
+  """
+  def __init__(self, zoom=1.5, 
+               zoom_loc='lower left', 
+               inset_rel_pos=(0.35,0.35), 
+               vmin=0, vmax=1,
+               width="10%", 
+               height="100%", 
+               loc='lower left', 
+               borderpad=0,
+               xlim=(1.07, 1.16),
+               ylim=(0.04, 0.24),
+               nbinsx=7, nbinsy=2,
+               format="{x:.2f}",
+               shading='auto',
+               anchor_colorbar = (1.05, 0., 1, 1),
+               markloc = [1, 4]):
+    self.zoom = zoom
+    self.zoom_loc = zoom_loc
+    self.lower_corner_rel_pos = inset_rel_pos
+    self.vmin = vmin
+    self.vmax = vmax
+    self.width = width
+    self.height = height
+    self.loc = loc
+    self.borderpad = borderpad
+    self.xlim = xlim
+    self.ylim = ylim
+    self.nbinsx = nbinsx
+    self.nbinsy = nbinsy
+    self.format = format
+    self.shading = shading
+    self.anchor_colorbar = anchor_colorbar
+    self.markloc = markloc
+      
+  def add_inset(self, fig, ax, R, Z, field_RZ, colorMap, colorScale, 
+                minSOL, maxSOL, climSOL, logScaleFloor, shading, LCFS=[], limiter=[]):
+    # sub region of the original image
+    axins = zoomed_inset_axes(ax, self.zoom, loc=self.zoom_loc, 
+                              bbox_to_anchor=self.lower_corner_rel_pos,bbox_transform=ax.transAxes)
+    img_in = axins.pcolormesh(R, Z, field_RZ,
+                              cmap=colorMap, shading=shading,vmin=minSOL,vmax=maxSOL)
+      
+    cax = inset_axes(axins,
+                    width=self.width,
+                    height=self.height,
+                    loc=self.loc,
+                    bbox_to_anchor=self.anchor_colorbar,
+                    bbox_transform=axins.transAxes,
+                    borderpad=self.borderpad)
+    fig.colorbar(img_in,cax=cax)
+    axins.set_xlim(self.xlim)
+    axins.set_ylim(self.ylim)
+    if colorScale == 'log':
+      colornorm = colors.LogNorm(vmax=maxSOL, vmin=logScaleFloor*maxSOL) if minSOL > 0 \
+          else colors.SymLogNorm(vmax=maxSOL, vmin=minSOL, linscale=1.0, linthresh=logScaleFloor*maxSOL)
+      img_in.set_norm(colornorm)
+    if climSOL: img_in.set_clim(climSOL)
+    axins.set_xticks([])
+    axins.set_yticks([])
+    axins.yaxis.get_major_locator().set_params(nbins=self.nbinsy)
+    axins.xaxis.get_major_locator().set_params(nbins=self.nbinsx)
+    axins.xaxis.set_major_formatter(ticker.StrMethodFormatter(self.format))
+    
+    if len(LCFS) > 0:
+      axins.plot(LCFS[0],LCFS[1],linewidth=1.5,linestyle='--',color=LCFS[2],alpha=.8)
+
+    if len(limiter) > 0:
+      xWidth = np.min(LCFS[0]) - np.min(R)
+      xCorner = np.min(R)
+      yWidth = limiter[0]
+      yCorner = 0.5*(np.min(Z)+np.max(Z)) - 0.5*yWidth
+      axins.add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
+
+    
+    # draw a bbox of the region of the inset axes in the parent axes and
+    # connecting lines between the bbox and the inset axes area
+    mark_inset(ax, axins, loc1=self.markloc[0], loc2=self.markloc[1], fc="none", ec="0.5")
