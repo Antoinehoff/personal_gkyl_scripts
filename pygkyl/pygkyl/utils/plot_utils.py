@@ -275,7 +275,7 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
             polProj.plot(fieldName=fieldnames, timeFrame=tf, outFilename=frameFileName,
                          colorMap = cmap, doInset=True, scaleFac=scaleFac,
                          colorScale=colorScale, logScaleFloor=logScaleFloor,
-                         xlim=xlim, ylim=ylim, clim=clim, climSOL=vlims_SOL)
+                         xlim=xlim, ylim=ylim, clim=clim, climInset=vlims_SOL)
             cutname = ['RZ'+str(nzInterp)]
         else:
             plot_2D_cut(

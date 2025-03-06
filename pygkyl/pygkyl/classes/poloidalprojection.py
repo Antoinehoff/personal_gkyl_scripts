@@ -38,7 +38,7 @@ class PoloidalProjection:
     self.Zlcfs = None
     self.nzInterp = 0
     self.figSize = None
-    self.inset = Inset()
+    self.inset = None
 
   def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16,
             intMethod='trapz32',figSize = (8,9)):
@@ -48,6 +48,10 @@ class PoloidalProjection:
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
     self.figSize = figSize
+    if self.sim.polprojInset is not None:
+      self.inset = self.sim.polprojInset
+    else:
+      self.inset = Inset()
 
     # Load a frame to get the grid
     field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
@@ -179,7 +183,7 @@ class PoloidalProjection:
     return field_RZ
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation=False,
-           xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
+           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
            shading='auto'):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
@@ -199,7 +203,7 @@ class PoloidalProjection:
         xlim: x-axis limits. (optional)
         ylim: y-axis limits. (optional)
         clim: Color limits. (optional)
-        climSOL: Color limits for the inset. (optional)
+        climInset: Color limits for the inset. (optional)
         colorScale: Color scale. (default: 'linear')
     '''
     if isinstance(timeFrame, list):
@@ -248,9 +252,9 @@ class PoloidalProjection:
       fldMin = vlims[0]
       fldMax = vlims[1]
 
-    if climSOL:
-      minSOL = climSOL[0]
-      maxSOL = climSOL[1]
+    if climInset:
+      minSOL = climInset[0]
+      maxSOL = climInset[1]
     else:
       minSOL = vlims_SOL[0]
       maxSOL = vlims_SOL[1]
@@ -292,7 +296,7 @@ class PoloidalProjection:
 
     if inset:
       self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
-                           colorScale, minSOL, maxSOL, climSOL, logScaleFloor, shading,
+                           colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
                            LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
@@ -312,7 +316,7 @@ class PoloidalProjection:
         plt.show()
 
   def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, inset=True,
-          xlim=[],ylim=[],clim=[],climSOL=[], colorScale='linear', logScaleFloor = 1e-3,
+          xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
           pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False):
       # Create a temporary folder to store the movie frames
       movDirTmp = 'movie_frames_tmp'
@@ -326,7 +330,7 @@ class PoloidalProjection:
         favg = None
         
       clim = clim if clim else []
-      climSOL = climSOL if climSOL else []
+      climInset = climInset if climInset else []
       
       frameFileList = []
       total_frames = len(timeFrames)
@@ -337,7 +341,7 @@ class PoloidalProjection:
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
                           colorMap = colorMap, inset=inset,
                           colorScale=colorScale, logScaleFloor=logScaleFloor,
-                          xlim=xlim, ylim=ylim, clim=clim, climSOL=climSOL,
+                          xlim=xlim, ylim=ylim, clim=clim, climInset=climInset,
                           fluctuation=fluctuation, favg=favg)
           cutname = ['RZ'+str(self.nzInterp)]
 
@@ -350,7 +354,7 @@ class PoloidalProjection:
 
       # Naming
       movieName = fieldName+'_RZ'
-      if fluctuation: movieName += 'd'
+      if fluctuation: movieName = 'd' + movieName
       if colorScale == 'log': movieName = 'log'+movieName
       movieName = moviePrefix + movieName
       movieName+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
@@ -398,7 +402,7 @@ class Inset:
     self.markloc = markloc
       
   def add_inset(self, fig, ax, R, Z, field_RZ, colorMap, colorScale, 
-                minSOL, maxSOL, climSOL, logScaleFloor, shading, LCFS=[], limiter=[]):
+                minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):
     # sub region of the original image
     axins = zoomed_inset_axes(ax, self.zoom, loc=self.zoom_loc, 
                               bbox_to_anchor=self.lower_corner_rel_pos,bbox_transform=ax.transAxes)
@@ -419,7 +423,7 @@ class Inset:
       colornorm = colors.LogNorm(vmax=maxSOL, vmin=logScaleFloor*maxSOL) if minSOL > 0 \
           else colors.SymLogNorm(vmax=maxSOL, vmin=minSOL, linscale=1.0, linthresh=logScaleFloor*maxSOL)
       img_in.set_norm(colornorm)
-    if climSOL: img_in.set_clim(climSOL)
+    if climInset: img_in.set_clim(climInset)
     axins.set_xticks([])
     axins.set_yticks([])
     axins.yaxis.get_major_locator().set_params(nbins=self.nbinsy)

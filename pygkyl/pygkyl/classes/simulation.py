@@ -50,6 +50,7 @@ class Simulation:
         self.DG_basis = DG_tools.DG_basis(porder,ptype,dimensionality)  # DG basis functions for projection
         self.polyOrder = porder
         self.basisType = ptype
+        self.polprojInset = None # Custom poloidal projection inset.
 
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """

@@ -1,5 +1,6 @@
 import numpy as np
 from ..classes import Simulation, Species, Source
+from ..classes.poloidalprojection import Inset
 
 def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True, add_source=True):
     if configName == 'TCV_PT':
@@ -61,6 +62,11 @@ def get_TCV_PT_sim_config(simdir, fileprefix, x_LCFS, x_out):
                 n0=2.0e19))
 
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    inset = Inset() # all default but the lower corner position
+    inset.lower_corner_rel_pos = [0.3,0.32]
+    simulation.polprojInset = inset
 
     return simulation
 
@@ -104,6 +110,11 @@ def get_TCV_NT_sim_config(simdir,fileprefix, x_LCFS, x_out):
                 n0=2.0e19))
 
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    inset = Inset() # all default but the lower corner position
+    inset.lower_corner_rel_pos = [0.35,0.3]
+    simulation.inset = inset
 
     return simulation
 
