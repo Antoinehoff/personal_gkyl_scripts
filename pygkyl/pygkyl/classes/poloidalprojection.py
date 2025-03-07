@@ -163,9 +163,16 @@ class PoloidalProjection:
 
     #.Interpolate onto a finer mesh along z.
     field_kintPos = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.cdouble)
+    # separate real and imaginary part
+    field_kintPos_real = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.double)
+    field_kintPos_imag = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.double)
+    # interpolate real and imaginary part separately
     for i in range(self.kyDimsC[0]):
         for j in range(self.kyDimsC[1]):
-            field_kintPos[i,j,:] = pchip_interpolate(self.zGridEx, field_kex[i,j,:], self.zgridI)
+            field_kintPos_real[i,j,:] = pchip_interpolate(self.zGridEx, np.real(field_kex[i,j,:]), self.zgridI)
+            field_kintPos_imag[i,j,:] = pchip_interpolate(self.zGridEx, np.imag(field_kex[i,j,:]), self.zgridI)
+    # combine real and imaginary part
+    field_kintPos = field_kintPos_real + 1j*field_kintPos_imag
 
     #.Append negative ky values.
     field_kint = np.zeros((self.kyDimsC[0],2*self.kyDimsC[1],self.nzI), dtype=np.cdouble)
