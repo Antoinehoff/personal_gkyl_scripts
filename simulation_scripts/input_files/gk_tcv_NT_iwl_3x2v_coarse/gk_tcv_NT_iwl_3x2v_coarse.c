@@ -23,365 +23,55 @@
 
 // Define the context of the simulation. This stores global parameters.
 struct gk_app_ctx {
-  int cdim, vdim;
-  // Geometry and magnetic field parameters
-  double a_shift, Z_axis, R_axis, R0, a_mid, x_inner, r0, B0, kappa, delta, q0, Bref, x_LCFS;
-  // Plasma parameters
-  double me, qe, mi, qi, n0, Te0, Ti0;
-  // Collision parameters
-  double nuFrac, nuElc, nuIon;
-  // Source parameters
-  double num_sources;
-  double n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP;
-  double n_srcRECY, x_srcRECY, Te_srcRECY, Ti_srcRECY, sigmax_srcRECY, sigmaz_srcRECY, floor_src;
-  // Grid parameters
-  double Lx, Ly, Lz;
-  double x_min, x_max, y_min, y_max, z_min, z_max;
-  int num_cell_x, num_cell_y, num_cell_z, num_cell_vpar, num_cell_mu;
-  int cells[GKYL_MAX_DIM], poly_order;
-  double vpar_max_elc, mu_max_elc, vpar_max_ion, mu_max_ion;
-  // Simulation control parameters
-  double final_time, write_phase_freq;
-  int num_frames, int_diag_calc_num, num_failures_max;
-  double dt_failure_tol;
+    int cdim, vdim;
+    // Geometry and magnetic field parameters
+    double a_shift, Z_axis, R_axis, R0, a_mid, x_inner, r0, B0, kappa, delta, q0, Bref, x_LCFS;
+    // Plasma parameters
+    double me, qe, mi, qi, n0, Te0, Ti0;
+    // Collision parameters
+    double nuFrac, nuElc, nuIon;
+    // Source parameters
+    double num_sources;
+    double n_srcOMP, x_srcOMP, Te_srcOMP, Ti_srcOMP, sigma_srcOMP;
+    double n_srcRECY, x_srcRECY, Te_srcRECY, Ti_srcRECY, sigmax_srcRECY, sigmaz_srcRECY, floor_src;
+    // Grid parameters
+    double Lx, Ly, Lz;
+    double x_min, x_max, y_min, y_max, z_min, z_max;
+    int num_cell_x, num_cell_y, num_cell_z, num_cell_vpar, num_cell_mu;
+    int cells[GKYL_MAX_DIM], poly_order;
+    double vpar_max_elc, mu_max_elc, vpar_max_ion, mu_max_ion;
+    // Simulation control parameters
+    double final_time, write_phase_freq;
+    int num_frames, int_diag_calc_num, num_failures_max;
+    double dt_failure_tol;
 };
 
-double r_x(double x, double a_mid, double x_inner)
-{
-  return x+a_mid-x_inner;
-}
+// Function prototypes (defined at the end of the file)
+static double r_x(double x, double a_mid, double x_inner);
+static double qprofile(double r, double R_axis);
+static void zero_func(double t, const double *xn, double *fout, void *ctx);
+static void density_srcOMP(double t, const double *xn, double *fout, void *ctx);
+static void temp_elc_srcOMP(double t, const double *xn, double *fout, void *ctx);
+static void temp_ion_srcOMP(double t, const double *xn, double *fout, void *ctx);
+static void density_srcRECY(double t, const double *xn, double *fout, void *ctx);
+static void temp_elc_srcRECY(double t, const double *xn, double *fout, void *ctx);
+static void temp_ion_srcRECY(double t, const double *xn, double *fout, void *ctx);
+static void density_init(double t, const double *xn, double *fout, void *ctx);
+static void temp_elc(double t, const double *xn, double *fout, void *ctx);
+static void temp_ion(double t, const double *xn, double *fout, void *ctx);
+static void nuElc(double t, const double *xn, double *fout, void *ctx);
+static void nuIon(double t, const double *xn, double *fout, void *ctx);
+static void mapc2p(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx);
+static void mapc2p_vel_elc(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx);
+static void mapc2p_vel_ion(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx);
+static void bmag_func(double t, const double *xn, double *bmag, void *ctx);
+static void bc_shift_func_lo(double t, const double *xn, double *fout, void *ctx);
+static void bc_shift_func_up(double t, const double *xn, double *fout, void *ctx);
+static void write_data(struct gkyl_tm_trigger *iot_conf, struct gkyl_tm_trigger *iot_phase,
+                       gkyl_gyrokinetic_app *app, double t_curr, bool force_write);
+static void calc_integrated_diagnostics(struct gkyl_tm_trigger *iot, gkyl_gyrokinetic_app *app, double t_curr, bool force_write);
 
-double qprofile(double r, double R_axis) 
-{
-  // Magnetic safety factor as a function of minor radius r.
-  double a[4] = {484.0615913225881, -1378.25993228584, 1309.3099150729233, 
-    -414.13270311478726};
-  return a[0]*pow(r+R_axis,3.0) + a[1]*pow(r+R_axis,2.0) + a[2]*(r+R_axis) + a[3];
-}
-
-double R_rtheta(double r, double theta, void *ctx)
-{
-  // Major radius as a function of minor radius r and poloidal angle theta.
-  struct gk_app_ctx *app = ctx;
-  double a_shift = app->a_shift;
-  double R_axis = app->R_axis;
-  double delta = app->delta;
-  return R_axis - a_shift*r*r/(2.*R_axis) + r*cos(theta + asin(delta)*sin(theta));
-}
-
-double Z_rtheta(double r, double theta, void *ctx)
-{
-  // Z (height) as a function of minor radius r and poloidal angle theta.
-  struct gk_app_ctx *app = ctx;
-  double Z_axis = app->Z_axis;
-  double kappa = app->kappa;
-  return Z_axis + kappa*r*sin(theta);
-}
-
-// Partial derivatives of R(r,theta) and Z(r,theta)
-double dRdr(double r, double theta, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  double a_shift = app->a_shift;
-  double R_axis = app->R_axis;
-  double delta = app->delta;
-  return - a_shift*r/(R_axis) + cos(theta + asin(delta)*sin(theta));
-}
-double dRdtheta(double r, double theta, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  double delta = app->delta;
-  return -r*sin(theta + asin(delta)*sin(theta))*(1.+asin(delta)*cos(theta));
-}
-double dZdr(double r, double theta, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  double kappa = app->kappa;
-  return kappa*sin(theta);
-}
-double dZdtheta(double r, double theta, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  double kappa = app->kappa;
-  return kappa*r*cos(theta);
-}
-
-double Jr(double r, double theta, void *ctx)
-{
-  return R_rtheta(r,theta,ctx)*( dRdr(r,theta,ctx) * dZdtheta(r,theta,ctx)
-		                -dRdtheta(r,theta,ctx) * dZdr(r,theta,ctx) );
-}
-
-struct integrand_ctx {
-  struct gk_app_ctx *app_ctx;
-  double r;
-};
-double integrand(double t, void *int_ctx)
-{
-  struct integrand_ctx *inctx = int_ctx;
-  double r = inctx->r;
-  struct gk_app_ctx *app = inctx->app_ctx;
-  return Jr(r,t,app) / pow(R_rtheta(r,t,app),2);
-}
-double dPsidr(double r, double theta, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  struct integrand_ctx tmp_ctx = {.app_ctx = app, .r = r};
-  struct gkyl_qr_res integral;
-  integral = gkyl_dbl_exp(integrand, &tmp_ctx, 0., 2.*M_PI, 7, 1e-10);
-
-  double B0 = app->B0;
-  double a_mid = app->a_mid;
-  double R_axis = app->R_axis;
-  return ( B0*R_axis/(2.*M_PI*qprofile(r,R_axis)))*integral.res;
-}
-
-double alpha(double r, double theta, double phi, void *ctx)
-{
-  double twrap = theta;
-  while (twrap < -M_PI) twrap = twrap+2.*M_PI;
-  while (M_PI < twrap) twrap = twrap-2.*M_PI;
-
-  struct gk_app_ctx *app = ctx;
-  struct integrand_ctx tmp_ctx = {.app_ctx = app, .r = r};
-  struct gkyl_qr_res integral;
-  if (0. < twrap) {
-    integral = gkyl_dbl_exp(integrand, &tmp_ctx, 0., twrap, 7, 1e-10);
-  } else {
-    integral = gkyl_dbl_exp(integrand, &tmp_ctx, twrap, 0., 7, 1e-10);
-    integral.res = -integral.res;
-  }
-
-  double B0 = app->B0;
-  double R_axis = app->R_axis;
-
-  return phi - B0*R_axis*integral.res/dPsidr(r,theta,ctx);
-}
-
-double Bphi(double R, void *ctx)
-{
-  // Toroidal magnetic field.
-  struct gk_app_ctx *app = ctx;
-  double B0 = app->B0;
-  double R0 = app->R0;
-  return B0*R0/R;
-}
-double gradr(double r, double theta, void *ctx)
-{
-  return (R_rtheta(r,theta,ctx)/Jr(r,theta,ctx))*sqrt(pow(dRdtheta(r,theta,ctx),2) + pow(dZdtheta(r,theta,ctx),2));
-}
-
-void zero_func(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  fout[0] = 0.0;
-}
-
-void density_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-
-  struct gk_app_ctx *app = ctx;
-  double n_srcOMP = app->n_srcOMP;
-  double x_srcOMP = app->x_srcOMP;
-  double sigma_srcOMP = app->sigma_srcOMP;
-  double floor_src = app->floor_src;
-
-  fout[0] = n_srcOMP*(exp(-(pow(x-x_srcOMP,2))/(2.*pow(sigma_srcOMP,2)))+floor_src);
-}
-void temp_elc_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-
-  struct gk_app_ctx *app = ctx;
-  double x_srcOMP = app->x_srcOMP;
-  double sigma_srcOMP = app->sigma_srcOMP;
-  double Te_srcOMP = app->Te_srcOMP;
-
-  if (x < x_srcOMP + 3*sigma_srcOMP) {
-    fout[0] = Te_srcOMP;
-  } else {
-    fout[0] = Te_srcOMP*3./8.;
-  }
-}
-void temp_ion_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-
-  struct gk_app_ctx *app = ctx;
-  double x_srcOMP = app->x_srcOMP;
-  double sigma_srcOMP = app->sigma_srcOMP;
-  double Ti_srcOMP = app->Ti_srcOMP;
-
-  if (x < x_srcOMP + 3*sigma_srcOMP) {
-    fout[0] = Ti_srcOMP;
-  } else {
-    fout[0] = Ti_srcOMP*3./8.;
-  }
-}
-// Recycling source
-void density_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-
-  struct gk_app_ctx *app = ctx;
-  double n_src = app->n_srcRECY;
-  double x_src = app->x_srcRECY;
-  double sigmax_src = app->sigmax_srcRECY;
-  double sigmaz_src = app->sigmaz_srcRECY;
-  double floor_src = app->floor_src;
-  
-  double z_envelope = exp(-(pow(z + M_PI,2)) / (2.0 * pow(sigmaz_src,2))) + exp(-(pow(z - M_PI,2)) / (2.0 * pow(sigmaz_src,2)));
-  fout[0] = z_envelope * n_src * (exp(-(pow(x - x_src,2)) / (2.0 * pow(sigmax_src,2))) + floor_src);
-}
-void temp_elc_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-
-  struct gk_app_ctx *app = ctx;
-  double Te_src = app->Te_srcRECY;
-
-  fout[0] = Te_src*3./8.;
-}
-void temp_ion_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-
-  struct gk_app_ctx *app = ctx;
-  double Ti_src = app->Ti_srcRECY;
-
-  fout[0] = Ti_src;
-}
-
-
-// Density initial condition
-void density_init(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-  struct gk_app_ctx *app = ctx;
-  double n0 = app->n0;
-  fout[0] = n0*(0.5*(1.+tanh(3.*(.1-10.*x)))+0.01);
-}
-
-// Electron temperature initial conditions
-void temp_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-  struct gk_app_ctx *app = ctx;
-  double Te0 = app->Te0;
-  fout[0] = 6.*Te0*(0.5*(1.+tanh(3.*(-.1-10.*x)))+0.01);
-}
-
-// Ion temperature initial conditions
-void temp_ion(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-  struct gk_app_ctx *app = ctx;
-  double Ti0 = app->Ti0;
-  fout[0] = 6.*Ti0*(0.5*(1.+tanh(3.*(-.1-10.*x)))+0.01);
-}
-
-// Collision frequencies.
-void nuElc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  fout[0] = app->nuElc;
-}
-void nuIon(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  fout[0] = app->nuIon;
-}
-
-// Geometry evaluation functions for the gk app
-void mapc2p(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx)
-{
-  double x = xc[0], y = xc[1], z = xc[2];
-  struct gk_app_ctx *app = ctx;
-  double r0 = app->r0;
-  double q0 = app->q0;
-  double a_mid = app->a_mid;
-  double x_inner = app->x_inner;
-  double r = r_x(x,a_mid,x_inner);
-  // Map to cylindrical (R, Z, phi) coordinates.
-  double R   = R_rtheta(r, z, ctx);
-  double Z   = Z_rtheta(r, z, ctx);
-  double phi = -q0/r0*y - alpha(r, z, 0, ctx);
-  // Map to Cartesian (X, Y, Z) coordinates.
-  double X = R*cos(phi);
-  double Y = R*sin(phi);
-  xp[0] = X; xp[1] = Y; xp[2] = Z;
-}
-
-// Taken from rt gk d3d 3x2c, is this the non uniform v grid mapping?
-void mapc2p_vel_elc(double t, const double *vc, double* GKYL_RESTRICT vp, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  double vpar_max_elc = app->vpar_max_elc;
-  double mu_max_elc = app->mu_max_elc;
-  double cvpar = vc[0], cmu = vc[1];
-  // Linear map up to vpar_max/2, then quadratic.
-  if (fabs(cvpar) <= 0.5)
-    vp[0] = vpar_max_elc*cvpar;
-  else if (cvpar < -0.5)
-    vp[0] = -vpar_max_elc*2.0*pow(cvpar,2);
-  else
-    vp[0] =  vpar_max_elc*2.0*pow(cvpar,2);
-  // Quadratic map in mu.
-  vp[1] = mu_max_elc*pow(cmu,2);
-}
-
-void mapc2p_vel_ion(double t, const double *vc, double* GKYL_RESTRICT vp, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  double vpar_max_ion = app->vpar_max_ion;
-  double mu_max_ion = app->mu_max_ion;
-  double cvpar = vc[0], cmu = vc[1];
-  // Linear map up to vpar_max/2, then quadratic.
-  if (fabs(cvpar) <= 0.5)
-    vp[0] = vpar_max_ion*cvpar;
-  else if (cvpar < -0.5)
-    vp[0] = -vpar_max_ion*2.0*pow(cvpar,2);
-  else
-    vp[0] =  vpar_max_ion*2.0*pow(cvpar,2);
-  // Quadratic map in mu.
-  vp[1] = mu_max_ion*pow(cmu,2);
-}
-
-void bmag_func(double t, const double *xc, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xc[0], y = xc[1], z = xc[2];
-  struct gk_app_ctx *app = ctx;
-  double a_mid = app->a_mid;
-  double x_inner = app->x_inner;
-  double r = r_x(x,a_mid,x_inner);
-  double Bt = Bphi(R_rtheta(r,z,ctx),ctx);
-  double Bp = dPsidr(r,z,ctx)/R_rtheta(r,z,ctx)*gradr(r,z,ctx);
-  fout[0] = sqrt(Bt*Bt + Bp*Bp);
-}
-
-// Taken from rt gk d3d 3x2v
-void bc_shift_func_lo(double t, const double *xc, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xc[0];
-  struct gk_app_ctx *app = ctx;
-  double r0 = app->r0;
-  double q0 = app->q0;
-  double a_mid = app->a_mid;
-  double Lz = app->Lz;
-  double x_inner = app->x_inner;
-  double r = r_x(x,a_mid,x_inner);
-  double R_axis = app->R_axis;
-  fout[0] = -r0/q0*qprofile(r,R_axis)*Lz;
-}
-
-void bc_shift_func_up(double t, const double *xc, double* GKYL_RESTRICT fout, void *ctx)
-{
-  bc_shift_func_lo(t, xc, fout, ctx);
-  fout[0] *= -1;
-}
-
-struct gk_app_ctx
-create_ctx(void)
+struct gk_app_ctx create_ctx(void)
 {
   int cdim = 3, vdim = 2; // Dimensionality.
   // Universal constant parameters.
@@ -424,7 +114,6 @@ create_ctx(void)
   double Lx        = Rmid_max-Rmid_min;   // Domain size along x.
   double Lz        = 2.*M_PI-1e-10;       // Domain size along magnetic field.
   double Ly        = 150*rho_s;                 // from rt_gk_d3d_iwl_3x2v_p1
-  //double Ly        = 0.07;                // Tess simulations
   double x_min     = 0.;
   double x_max     = Lx;
   double y_min     = -Ly/2.;
@@ -444,6 +133,8 @@ create_ctx(void)
   double logLambdaIon = 6.6 - 0.5 * log(n0/1e20) + 1.5 * log(Ti0/eV);
   double nuIon = nuFrac * logLambdaIon * pow(eV, 4) * n0 /
     (12 * pow(M_PI,3./2.) * pow(eps0,2) * sqrt(mi) * pow(Ti0,3./2.));
+  // Source parameters
+  double num_sources = 1; // only OBMP here
   // OMP source parameters
   double n_srcOMP = 2.4e23;
   double x_srcOMP = x_min;
@@ -459,8 +150,8 @@ create_ctx(void)
   double sigmax_srcRECY = 0.2*x_LCFS;
   double sigmaz_srcRECY = 0.1*Lz;
   // Grid parameters
-  int num_cell_x = 32;
-  int num_cell_y = 24;
+  int num_cell_x = 24;
+  int num_cell_y = 16;
   int num_cell_z = 16;
   int num_cell_vpar = 12;
   int num_cell_mu = 6;
@@ -470,8 +161,8 @@ create_ctx(void)
   double mu_max_elc   = 1*me*pow(4*vte,2)/(2*B0);
   double vpar_max_ion = 5.*vti;
   double mu_max_ion   = 1*mi*pow(4*vti,2)/(2*B0);
-  double final_time = 5.e-3;
-  int num_frames = 500;
+  double final_time = 3.e-3;
+  int num_frames = 600;
   double write_phase_freq = 0.5;
   int int_diag_calc_num = num_frames*100;
   double dt_failure_tol = 1.0e-3; // Minimum allowable fraction of initial time-step.
@@ -502,6 +193,7 @@ create_ctx(void)
     .mi = mi,  .qi = qi,
     .n0 = n0,  .Te0 = Te0,  .Ti0 = Ti0,
     .nuFrac = nuFrac,  .nuElc = nuElc,  .nuIon = nuIon,
+    .num_sources = num_sources,
     .n_srcOMP     = n_srcOMP    ,
     .x_srcOMP     = x_srcOMP    ,
     .Te_srcOMP    = Te_srcOMP   ,
@@ -530,40 +222,6 @@ create_ctx(void)
     .num_failures_max = num_failures_max,
   };
   return ctx;
-}
-
-void
-calc_integrated_diagnostics(struct gkyl_tm_trigger* iot, gkyl_gyrokinetic_app* app, double t_curr, bool force_calc)
-{
-  if (gkyl_tm_trigger_check_and_bump(iot, t_curr) || force_calc) {
-    gkyl_gyrokinetic_app_calc_field_energy(app, t_curr);
-    gkyl_gyrokinetic_app_calc_integrated_mom(app, t_curr);
-  }
-}
-
-void
-write_data(struct gkyl_tm_trigger* iot_conf, struct gkyl_tm_trigger* iot_phase,
-  gkyl_gyrokinetic_app* app, double t_curr, bool force_write)
-{
-  bool trig_now_conf = gkyl_tm_trigger_check_and_bump(iot_conf, t_curr);
-  if (trig_now_conf || force_write) {
-    int frame = (!trig_now_conf) && force_write? iot_conf->curr : iot_conf->curr-1;
-
-    gkyl_gyrokinetic_app_write_conf(app, t_curr, frame);
-
-    gkyl_gyrokinetic_app_calc_field_energy(app, t_curr);
-    gkyl_gyrokinetic_app_write_field_energy(app);
-
-    gkyl_gyrokinetic_app_calc_integrated_mom(app, t_curr);
-    gkyl_gyrokinetic_app_write_integrated_mom(app);
-  }
-
-  bool trig_now_phase = gkyl_tm_trigger_check_and_bump(iot_phase, t_curr);
-  if (trig_now_phase || force_write) {
-    int frame = (!trig_now_conf) && force_write? iot_conf->curr : iot_conf->curr-1;
-
-    gkyl_gyrokinetic_app_write_phase(app, t_curr, frame);
-  }
 }
 
 int 
@@ -604,10 +262,18 @@ main(int argc, char **argv)
     .upper = {  1.0/sqrt(2.0), 1.0},
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
+
+/*
+    .flr = {
+      .type = GKYL_GK_FLR_PADE_CONST,
+      .Tperp = 2*ctx.Te0 //200eV
+    },
+*/
+
 /*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
-       .file_name = "restart_600mus-elc.gkyl"
+       .file_name = "restart_24x12_1.2ms-elc.gkyl"
     },
 */  
     .mapc2p = {
@@ -635,7 +301,7 @@ main(int argc, char **argv)
 
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
-      .num_sources = 2,
+      .num_sources = ctx.num_sources,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
         .ctx_density = &ctx,
@@ -654,6 +320,12 @@ main(int argc, char **argv)
         .upar = zero_func,
         .temp = temp_elc_srcRECY,
       },
+      .diagnostics = {
+        .num_diag_moments = 1,
+        .diag_moments = {"M2" },
+        .num_integrated_diag_moments = 1,
+        .integrated_diag_moments = {"M2" },
+      }
     },
     .bcx = {
       .lower={.type = GKYL_SPECIES_ABSORB,},
@@ -671,8 +343,8 @@ main(int argc, char **argv)
               .aux_ctx = &ctx,
       },
     },
-    .num_diag_moments = 8,
-    .diag_moments = { "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp", "M2", "M3par", "M3perp"},
+    .num_diag_moments = 9,
+    .diag_moments = {"HamiltonianMoments", "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp", "M2", "M3par", "M3perp"},
     .num_integrated_diag_moments = 1,
     .integrated_diag_moments = { "HamiltonianMoments" },
     .boundary_flux_diagnostics = {
@@ -690,9 +362,15 @@ main(int argc, char **argv)
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
 /*
+    .flr = {
+      .type = GKYL_GK_FLR_PADE_CONST,
+      .Tperp = 2*ctx.Ti0 //200eV
+    },
+*/
+/*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
-       .file_name = "restart_600mus-ion.gkyl"
+       .file_name = "restart_24x12_1.2ms-ion.gkyl"
     },
 */
     .mapc2p = {
@@ -720,7 +398,7 @@ main(int argc, char **argv)
 
     .source = {
       .source_id = GKYL_PROJ_SOURCE,
-      .num_sources = 2,
+      .num_sources = ctx.num_sources,
       .projection[0] = {
         .proj_id = GKYL_PROJ_MAXWELLIAN_PRIM,
         .ctx_density = &ctx,
@@ -737,8 +415,14 @@ main(int argc, char **argv)
         .ctx_temp = &ctx,
         .density = density_srcRECY,
         .upar = zero_func,
-        .temp = temp_elc_srcRECY,
+        .temp = temp_ion_srcRECY,
       },
+      .diagnostics = {
+        .num_diag_moments = 1,
+        .diag_moments = {"M2"},
+        .num_integrated_diag_moments = 1,
+        .integrated_diag_moments = {"M2"},
+      }
     },
     .bcx = {
       .lower={.type = GKYL_SPECIES_ABSORB,},
@@ -756,8 +440,8 @@ main(int argc, char **argv)
               .aux_ctx = &ctx,
       },
     },
-    .num_diag_moments = 8,
-    .diag_moments = { "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp", "M2", "M3par", "M3perp"},
+    .num_diag_moments = 9,
+    .diag_moments = {"HamiltonianMoments", "BiMaxwellianMoments", "M0", "M1", "M2par", "M2perp", "M2", "M3par", "M3perp"},
     .num_integrated_diag_moments = 1,
     .integrated_diag_moments = { "HamiltonianMoments" },
     .boundary_flux_diagnostics = {
@@ -964,4 +648,384 @@ main(int argc, char **argv)
 #endif
   
   return 0;
+}
+
+// End of main function
+// ---------------------------------------------------------------
+
+// Function definitions
+// ---------------------------------------------------------------
+
+// Geometry related functions 
+double r_x(double x, double a_mid, double x_inner)
+{
+  return x+a_mid-x_inner;
+}
+
+double qprofile(double r, double R_axis) 
+{
+  // Magnetic safety factor as a function of minor radius r.
+  double a[4] = {484.0615913225881, -1378.25993228584, 1309.3099150729233, 
+    -414.13270311478726};
+  return a[0]*pow(r+R_axis,3.0) + a[1]*pow(r+R_axis,2.0) + a[2]*(r+R_axis) + a[3];
+}
+
+double R_rtheta(double r, double theta, void *ctx)
+{
+  // Major radius as a function of minor radius r and poloidal angle theta.
+  struct gk_app_ctx *app = ctx;
+  double a_shift = app->a_shift;
+  double R_axis = app->R_axis;
+  double delta = app->delta;
+  return R_axis - a_shift*r*r/(2.*R_axis) + r*cos(theta + asin(delta)*sin(theta));
+}
+
+double Z_rtheta(double r, double theta, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  double Z_axis = app->Z_axis;
+  double kappa = app->kappa;
+  return Z_axis + kappa*r*sin(theta);
+}
+
+double dRdr(double r, double theta, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  double a_shift = app->a_shift;
+  double R_axis = app->R_axis;
+  double delta = app->delta;
+  return - a_shift*r/(R_axis) + cos(theta + asin(delta)*sin(theta));
+}
+
+double dRdtheta(double r, double theta, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  double delta = app->delta;
+  return -r*sin(theta + asin(delta)*sin(theta))*(1.+asin(delta)*cos(theta));
+}
+
+double dZdr(double r, double theta, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  double kappa = app->kappa;
+  return kappa*sin(theta);
+}
+
+double dZdtheta(double r, double theta, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  double kappa = app->kappa;
+  return kappa*r*cos(theta);
+}
+
+double Jr(double r, double theta, void *ctx)
+{
+  return R_rtheta(r,theta,ctx)*( dRdr(r,theta,ctx) * dZdtheta(r,theta,ctx)
+		                -dRdtheta(r,theta,ctx) * dZdr(r,theta,ctx) );
+}
+
+struct integrand_ctx {
+  struct gk_app_ctx *app_ctx;
+  double r;
+};
+
+double integrand(double t, void *int_ctx)
+{
+  struct integrand_ctx *inctx = int_ctx;
+  double r = inctx->r;
+  struct gk_app_ctx *app = inctx->app_ctx;
+  return Jr(r,t,app) / pow(R_rtheta(r,t,app),2);
+}
+
+double dPsidr(double r, double theta, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  struct integrand_ctx tmp_ctx = {.app_ctx = app, .r = r};
+  struct gkyl_qr_res integral;
+  integral = gkyl_dbl_exp(integrand, &tmp_ctx, 0., 2.*M_PI, 7, 1e-10);
+
+  double B0 = app->B0;
+  double a_mid = app->a_mid;
+  double R_axis = app->R_axis;
+  return ( B0*R_axis/(2.*M_PI*qprofile(r,R_axis)))*integral.res;
+}
+
+double alpha(double r, double theta, double phi, void *ctx)
+{
+  double twrap = theta;
+  while (twrap < -M_PI) twrap = twrap+2.*M_PI;
+  while (M_PI < twrap) twrap = twrap-2.*M_PI;
+
+  struct gk_app_ctx *app = ctx;
+  struct integrand_ctx tmp_ctx = {.app_ctx = app, .r = r};
+  struct gkyl_qr_res integral;
+  if (0. < twrap) {
+    integral = gkyl_dbl_exp(integrand, &tmp_ctx, 0., twrap, 7, 1e-10);
+  } else {
+    integral = gkyl_dbl_exp(integrand, &tmp_ctx, twrap, 0., 7, 1e-10);
+    integral.res = -integral.res;
+  }
+
+  double B0 = app->B0;
+  double R_axis = app->R_axis;
+
+  return phi - B0*R_axis*integral.res/dPsidr(r,theta,ctx);
+}
+
+double Bphi(double R, void *ctx)
+{
+  // Toroidal magnetic field.
+  struct gk_app_ctx *app = ctx;
+  double B0 = app->B0;
+  double R0 = app->R0;
+  return B0*R0/R;
+}
+
+double gradr(double r, double theta, void *ctx)
+{
+  return (R_rtheta(r,theta,ctx)/Jr(r,theta,ctx))*sqrt(pow(dRdtheta(r,theta,ctx),2) + pow(dZdtheta(r,theta,ctx),2));
+}
+
+void zero_func(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  fout[0] = 0.0;
+}
+
+// Source functions
+void density_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+
+  struct gk_app_ctx *app = ctx;
+  double n_srcOMP = app->n_srcOMP;
+  double x_srcOMP = app->x_srcOMP;
+  double sigma_srcOMP = app->sigma_srcOMP;
+  double floor_src = app->floor_src;
+
+  fout[0] = n_srcOMP*(exp(-(pow(x-x_srcOMP,2))/(2.*pow(sigma_srcOMP,2)))+floor_src);
+}
+void temp_elc_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+
+  struct gk_app_ctx *app = ctx;
+  double x_srcOMP = app->x_srcOMP;
+  double sigma_srcOMP = app->sigma_srcOMP;
+  double Te_srcOMP = app->Te_srcOMP;
+
+  if (x < x_srcOMP + 3*sigma_srcOMP) {
+    fout[0] = Te_srcOMP;
+  } else {
+    fout[0] = Te_srcOMP*3./8.;
+  }
+}
+void temp_ion_srcOMP(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+
+  struct gk_app_ctx *app = ctx;
+  double x_srcOMP = app->x_srcOMP;
+  double sigma_srcOMP = app->sigma_srcOMP;
+  double Ti_srcOMP = app->Ti_srcOMP;
+
+  if (x < x_srcOMP + 3*sigma_srcOMP) {
+    fout[0] = Ti_srcOMP;
+  } else {
+    fout[0] = Ti_srcOMP*3./8.;
+  }
+}
+// Recycling source
+void density_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+
+  struct gk_app_ctx *app = ctx;
+  double n_src = app->n_srcRECY;
+  double x_src = app->x_srcRECY;
+  double sigmax_src = app->sigmax_srcRECY;
+  double sigmaz_src = app->sigmaz_srcRECY;
+  double floor_src = app->floor_src;
+  
+  double z_envelope = exp(-(pow(z + M_PI,2)) / (2.0 * pow(sigmaz_src,2))) + exp(-(pow(z - M_PI,2)) / (2.0 * pow(sigmaz_src,2)));
+  fout[0] = z_envelope * n_src * (exp(-(pow(x - x_src,2)) / (2.0 * pow(sigmax_src,2))) + floor_src);
+}
+void temp_elc_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+
+  struct gk_app_ctx *app = ctx;
+  double Te_src = app->Te_srcRECY;
+
+  fout[0] = Te_src*3./8.;
+}
+void temp_ion_srcRECY(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+
+  struct gk_app_ctx *app = ctx;
+  double Ti_src = app->Ti_srcRECY;
+
+  fout[0] = Ti_src;
+}
+
+// Density initial condition
+void density_init(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+  struct gk_app_ctx *app = ctx;
+  double n0 = app->n0;
+  fout[0] = n0*(0.5*(1.+tanh(3.*(.1-10.*x)))+0.01);
+}
+
+// Electron temperature initial conditions
+void temp_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+  struct gk_app_ctx *app = ctx;
+  double Te0 = app->Te0;
+  fout[0] = 6.*Te0*(0.5*(1.+tanh(3.*(-.1-10.*x)))+0.01);
+}
+
+// Ion temperature initial conditions
+void temp_ion(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xn[0], z = xn[2];
+  struct gk_app_ctx *app = ctx;
+  double Ti0 = app->Ti0;
+  fout[0] = 6.*Ti0*(0.5*(1.+tanh(3.*(-.1-10.*x)))+0.01);
+}
+
+// Collision frequencies.
+void nuElc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  fout[0] = app->nuElc;
+}
+void nuIon(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  fout[0] = app->nuIon;
+}
+
+// Geometry evaluation functions for the gk app
+void mapc2p(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx)
+{
+  double x = xc[0], y = xc[1], z = xc[2];
+  struct gk_app_ctx *app = ctx;
+  double r0 = app->r0;
+  double q0 = app->q0;
+  double a_mid = app->a_mid;
+  double x_inner = app->x_inner;
+  double r = r_x(x,a_mid,x_inner);
+  // Map to cylindrical (R, Z, phi) coordinates.
+  double R   = R_rtheta(r, z, ctx);
+  double Z   = Z_rtheta(r, z, ctx);
+  double phi = -q0/r0*y - alpha(r, z, 0, ctx);
+  // Map to Cartesian (X, Y, Z) coordinates.
+  double X = R*cos(phi);
+  double Y = R*sin(phi);
+  xp[0] = X; xp[1] = Y; xp[2] = Z;
+}
+
+// Taken from rt gk d3d 3x2c, is this the non uniform v grid mapping?
+void mapc2p_vel_elc(double t, const double *vc, double* GKYL_RESTRICT vp, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  double vpar_max_elc = app->vpar_max_elc;
+  double mu_max_elc = app->mu_max_elc;
+  double cvpar = vc[0], cmu = vc[1];
+  // Linear map up to vpar_max/2, then quadratic.
+  if (fabs(cvpar) <= 0.5)
+    vp[0] = vpar_max_elc*cvpar;
+  else if (cvpar < -0.5)
+    vp[0] = -vpar_max_elc*2.0*pow(cvpar,2);
+  else
+    vp[0] =  vpar_max_elc*2.0*pow(cvpar,2);
+  // Quadratic map in mu.
+  vp[1] = mu_max_elc*pow(cmu,2);
+}
+
+void mapc2p_vel_ion(double t, const double *vc, double* GKYL_RESTRICT vp, void *ctx)
+{
+  struct gk_app_ctx *app = ctx;
+  double vpar_max_ion = app->vpar_max_ion;
+  double mu_max_ion = app->mu_max_ion;
+  double cvpar = vc[0], cmu = vc[1];
+  // Linear map up to vpar_max/2, then quadratic.
+  if (fabs(cvpar) <= 0.5)
+    vp[0] = vpar_max_ion*cvpar;
+  else if (cvpar < -0.5)
+    vp[0] = -vpar_max_ion*2.0*pow(cvpar,2);
+  else
+    vp[0] =  vpar_max_ion*2.0*pow(cvpar,2);
+  // Quadratic map in mu.
+  vp[1] = mu_max_ion*pow(cmu,2);
+}
+
+void bmag_func(double t, const double *xc, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xc[0], y = xc[1], z = xc[2];
+  struct gk_app_ctx *app = ctx;
+  double a_mid = app->a_mid;
+  double x_inner = app->x_inner;
+  double r = r_x(x,a_mid,x_inner);
+  double Bt = Bphi(R_rtheta(r,z,ctx),ctx);
+  double Bp = dPsidr(r,z,ctx)/R_rtheta(r,z,ctx)*gradr(r,z,ctx);
+  fout[0] = sqrt(Bt*Bt + Bp*Bp);
+}
+
+// Taken from rt gk d3d 3x2v
+void bc_shift_func_lo(double t, const double *xc, double* GKYL_RESTRICT fout, void *ctx)
+{
+  double x = xc[0];
+  struct gk_app_ctx *app = ctx;
+  double r0 = app->r0;
+  double q0 = app->q0;
+  double a_mid = app->a_mid;
+  double Lz = app->Lz;
+  double x_inner = app->x_inner;
+  double r = r_x(x,a_mid,x_inner);
+  double R_axis = app->R_axis;
+  fout[0] = -r0/q0*qprofile(r,R_axis)*Lz;
+}
+
+void bc_shift_func_up(double t, const double *xc, double* GKYL_RESTRICT fout, void *ctx)
+{
+  bc_shift_func_lo(t, xc, fout, ctx);
+  fout[0] *= -1;
+}
+
+
+void
+calc_integrated_diagnostics(struct gkyl_tm_trigger* iot, gkyl_gyrokinetic_app* app, double t_curr, bool force_calc)
+{
+  if (gkyl_tm_trigger_check_and_bump(iot, t_curr) || force_calc) {
+    gkyl_gyrokinetic_app_calc_field_energy(app, t_curr);
+    gkyl_gyrokinetic_app_calc_integrated_mom(app, t_curr);
+  }
+}
+
+void
+write_data(struct gkyl_tm_trigger* iot_conf, struct gkyl_tm_trigger* iot_phase,
+  gkyl_gyrokinetic_app* app, double t_curr, bool force_write)
+{
+  bool trig_now_conf = gkyl_tm_trigger_check_and_bump(iot_conf, t_curr);
+  if (trig_now_conf || force_write) {
+    int frame = (!trig_now_conf) && force_write? iot_conf->curr : iot_conf->curr-1;
+
+    gkyl_gyrokinetic_app_write_conf(app, t_curr, frame);
+
+    gkyl_gyrokinetic_app_calc_field_energy(app, t_curr);
+    gkyl_gyrokinetic_app_write_field_energy(app);
+
+    gkyl_gyrokinetic_app_calc_integrated_mom(app, t_curr);
+    gkyl_gyrokinetic_app_write_integrated_mom(app);
+  }
+
+  bool trig_now_phase = gkyl_tm_trigger_check_and_bump(iot_phase, t_curr);
+  if (trig_now_phase || force_write) {
+    int frame = (!trig_now_conf) && force_write? iot_conf->curr : iot_conf->curr-1;
+
+    gkyl_gyrokinetic_app_write_phase(app, t_curr, frame);
+  }
 }
