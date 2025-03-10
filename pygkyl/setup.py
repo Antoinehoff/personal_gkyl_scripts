@@ -10,7 +10,7 @@ setup(
         'matplotlib',
     ],
     author='Antoine C.D. Hoffmann',
-    author_email='your.email@example.com',
+    author_email='ahoffman@pppl.gov',
     description='A collection of Python utilities for Gkeyll simulations',
     long_description=open('README.md').read(),
     long_description_content_type='text/markdown',
