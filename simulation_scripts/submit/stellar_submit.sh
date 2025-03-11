@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 #.SLURM PARAMETERS (user oriented)
-#.Declare a name for this job, preferably with 16 or fewer characters.
-JOB_NAME="gk_tcv_3x2v_AH"
 #.Request the queue. See stellar docs online.
 QOS="pppl-short"
 #.Number of nodes to request (Stellar has 96 cores and 2 GPUs per node).
@@ -10,7 +8,7 @@ NODES=1
 #.Specify GPUs per node (stellar-amd has 2):
 GPU_PER_NODE=2
 #.Request wall time
-TIME="10:00:00"  # HH:MM:SS
+TIME="24:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load
@@ -23,6 +21,8 @@ NTASKS_PER_NODE=$GPU_PER_NODE
 TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
 # default value to check a possible restart
 LAST_FRAME=-1 
+#.Get the job name from the directory name
+JOB_NAME=$(basename $(pwd))
 
 # help function
 show_help() {

@@ -1,24 +1,24 @@
 #!/bin/bash
 set -e
 #.SLURM PARAMETERS (user oriented)
-#.Declare a name for this job, preferably with 16 or fewer characters.
-JOB_NAME="gk_tcv_3x2v"
 #.Number of nodes to request.
 NODES=1
 #.Specify the QOS
 QOS="regular"
-#.Specify GPUs per node (Perlmutter has 4 GPUs per node):
+#.Specify GPUs per node (Perlmutter has 4 GPUs per node).
 GPU_PER_NODE=4
-#.Request wall time
-TIME="20:00:00"  # HH:MM:SS
+#.Request wall time.
+TIME="24:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
-#.Module to load
+#.Module to load.
 MODULES="PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12"
-#.Set the account
+#.Set the account.
 ACCOUNT="m2116"
-# default value to check a possible restart
+#.Default value to check a possible restart.
 LAST_FRAME=-1 
+#.Get the job name from the directory name
+JOB_NAME=$(basename $(pwd))
 
 # help function
 show_help() {
