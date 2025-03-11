@@ -117,7 +117,7 @@ class Simulation:
         """
         Add an existing species object to the simulation and compute its gyromotion.
         """
-        species.set_gyromotion(self.geom_param.B_axis)
+        species.set_gyromotion(self.geom_param.B0)
         self.species[species.name] = species
         # Update the normalization with all available species
         self.normalization = Normalization(self) 
