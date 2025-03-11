@@ -72,9 +72,8 @@ d) verify the slurm script and proceed with the job
 e) submit.sh automatically make, copy the executable in /wk, go to /wk, submit the job in /wk
 f) notes can (and should) be taken in the sim_log.txt to keep trace of the restart changes
 EOT
-cp $HOME/personal_gkyl_scripts/simulation_scripts/input_c/TCV_NT_tq_300eV_48x32x16x12x6_nuvg.c $new_dir/input.c
+cp $HOME/personal_gkyl_scripts/simulation_scripts/input_files/gk_tcv_NT_iwl_3x2v_coarse/*.c $new_dir/input.c
 cp $HOME/personal_gkyl_scripts/simulation_scripts/makefiles/perlmutter_makefile $new_dir/Makefile
-cp $HOME/personal_gkyl_scripts/simulation_scripts/submit/perlmutter_submit.sh $new_dir
 cp $HOME/personal_gkyl_scripts/example.ipynb $new_dir/$new_dir.ipynb
 mkdir $new_dir/wk
 mkdir $new_dir/history
