@@ -15,6 +15,7 @@ from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam,
 from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools, DG_tools
 from .utils import file_utils, math_utils, plot_utils
 from .configs import simulation_configs
+from .tools.pgkyl_interface import get_gkyl_data, get_gkyl_values, get_gkyl_grid
 
 __all__ = [
     'Species',
@@ -39,5 +40,8 @@ __all__ = [
     'Source',
     'simulation_configs',
     'PoloidalProjection',
-    'IntegratedMoment'
+    'IntegratedMoment',
+    'get_gkyl_data',
+    'get_gkyl_values',
+    'get_gkyl_grid'
 ]
