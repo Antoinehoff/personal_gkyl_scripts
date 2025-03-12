@@ -51,3 +51,12 @@ def integrate(Gdata):
 
 def get_gkyl_data(file):
     return pg.data.GData(file)
+
+def get_gkyl_values(file):
+    return get_values(pg.data.GData(file))
+
+def get_gkyl_grid(file):
+    return get_grid(pg.data.GData(file))
+
+def get_gkyl_cells(file):
+    return get_cells(pg.data.GData(file))
