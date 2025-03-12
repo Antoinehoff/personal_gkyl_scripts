@@ -19,6 +19,8 @@ class IntegratedMoment:
     fluxextension = ''
     fluxname = ''
     bflux_list = ''
+    issource = False
+    src = ''
 
     def __init__(self, simulation, name, load=True, ddt=False):
         
@@ -109,7 +111,6 @@ class IntegratedMoment:
                 print(self.momname + ' is not available as integrated moment.')
                 print('The available fields are: ns, upars, Hs, Htot, ntot. (for s=i,e).')
                 raise ValueError('Provided fieldname is not available')
-            
         self.receipe = receipe
         self.scale = scale if isinstance(scale,list) else [scale]
         self.vunits = vunits
@@ -118,6 +119,9 @@ class IntegratedMoment:
         if self.bflux:
             self.symbol = self.fluxname+r'('+self.symbol+r')'
             self.vunits += '/s' if self.vunits else '1/s'
+        if self.issource:
+            self.symbol = r'S('+self.symbol+r')'
+            self.vunits += '/s'
 
     def load(self):
         """
@@ -127,7 +131,7 @@ class IntegratedMoment:
         species_list = self.spec_s if isinstance(self.spec_s,list) else [self.spec_s]
         for s_ in species_list:
             for bf_ in self.bflux_list:
-                f_ = self.simulation.data_param.fileprefix+'-'+s_+bf_+'_integrated_moms.gkyl'
+                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+'_integrated_moms.gkyl'
                 Gdata = pgkyl_.get_gkyl_data(f_)
                 self.values += pgkyl_.get_values(Gdata) * self.scale[species_list.index(s_)]
 
@@ -200,6 +204,10 @@ class IntegratedMoment:
         else: self.bflux_list = ['']
         self.momname = nres if nres else name
         
+        if 'src_' in self.momname:
+            self.src = '_source'
+            self.momname = self.momname.replace('src_','')
+            self.issource = True
         if name[-1] == 'e': self.spec_s = 'elc'
         elif name[-1] == 'i': self.spec_s = 'ion'
         elif name[-3:] == 'tot': self.spec_s = ['elc','ion']
