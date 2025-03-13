@@ -354,6 +354,12 @@ class Frame:
         self.gunits[1] = self.simulation.normalization.dict[gname + 'units']
 
         self.refresh(values=False)
+        
+    def copy(self):
+        """
+        Copy the frame.
+        """
+        return copy.deepcopy(self)
 
     def info(self):
         """

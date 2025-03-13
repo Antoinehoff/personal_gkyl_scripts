@@ -2,6 +2,23 @@ from ..tools import pgkyl_interface as pgkyl_
 import numpy as np
 
 class IntegratedMoment:
+    """
+    Class to load and analyze integrated moments from a simulation.
+    
+    Possible integrated moments are:
+    - ns: number density
+    - upars: parallel velocity
+    - Tpars: parallel temperature
+    - Tperps: perpendicular temperature
+    - Ts: total temperature
+    - Ws: kinetic energy
+    - Wtot: total kinetic energy
+    - ntot: total number density
+    - Hs: Hamiltonian
+    - Htot: total Hamiltonian
+    - you can add 'src_' in front of the name to get the source term of the integrated moment
+    - you can add 'bflux_d_e_' to get the boundary flux d=x,y,z direction at the e=u,l edge
+    """
     simulation = None
     momname = None
     spec_s = None

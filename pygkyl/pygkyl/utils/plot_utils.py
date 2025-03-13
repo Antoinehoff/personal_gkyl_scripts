@@ -130,10 +130,11 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
         fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title, legend=show_legend,
                                 figout=figout, grid=grid, xlim=xlim, ylim=ylim, xscale=xscale, yscale=yscale)
 
-def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
-                fieldnames='', cmap='inferno', time_average=False, fluctuation=False, plot_type='pcolormesh',
+def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
+                fieldnames='', cmap='inferno', time_average=False, fluctuation='', plot_type='pcolormesh',
                 xlim=[], ylim=[], clim=[], colorscale = 'linear',
                 figout=[],cutout=[], val_out=[], frames_to_plot = None):
+    if isinstance(fluctuation,bool): fluctuation = 'tavg' if fluctuation else ''
     # Check if we provide multiple time frames (time average or fluctuation plot)
     if isinstance(time_frame, int):
         time_frame = [time_frame]
@@ -156,27 +157,29 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
             frame = frames_to_plot[kf]
             plot_data = frame.values
         else:
-            # Load and process data for all time frames
-            frames = []
-            for t in time_frame:
-                frame = Frame(simulation, field, t, load=True)                
-                if fourier_y: frame.fourier_y()
-                frame.slice(cut_dir, cut_coord)
-                # frame.slice_2D(cut_dir, cut_coord)
-                frames.append(frame)
-
-            # Determine what to plot
-            if fluctuation and len(time_frame) > 1:
-                mean_values = np.mean([frame.values for frame in frames], axis=0)
-                plot_data = frames[-1].values - mean_values[np.newaxis, ...]
-                if fluctuation == "relative":
-                    plot_data = 100.0*plot_data/mean_values[np.newaxis, ...]
-            elif time_average and len(time_frame) > 1:
-                plot_data = np.mean([frame.values for frame in frames], axis=0)  # Time-averaged data
+            serie = TimeSerie(simulation=simulation, name=field, time_frames=time_frame, load=True)
+            if len(fluctuation) > 0:
+                if 'tavg' in fluctuation:
+                    serie.slice(cut_dir, cut_coord)
+                    mean_values = serie.get_time_average()
+                elif 'yavg' in fluctuation:
+                    mean_values = serie.get_y_average(cut_dir, cut_coord)
+                    serie.slice(cut_dir, cut_coord)
+                    
+                plot_data = serie.frames[-1].values - mean_values
+                if 'relative' in fluctuation:
+                    plot_data = 100.0*plot_data/mean_values
+                frame = serie.frames[-1].copy()
+            elif time_average :
+                serie.slice(cut_dir, cut_coord)
+                plot_data = serie.get_time_average()
+                frame = serie.frames[-1].copy()
             else:
-                plot_data = frames[-1].values  # Single time frame data
-            frame = frames[-1] # keep only the last one
-
+                frame = serie.frames[-1].copy()
+                frame.slice(cut_dir, cut_coord)
+                plot_data = frame.values
+            del serie
+        
         if ((field == 'phi' or field[:-1] == 'upar') or cmap0 == 'bwr'\
             or fluctuation) and not fourier_y:
             cmap = 'bwr'
@@ -194,16 +197,17 @@ def plot_2D_cut(simulation,cut_dir,cut_coord,time_frame,
 
         vsymbol = frame.vsymbol
         if fluctuation:
-            vsymbol = r'$\delta$'+ vsymbol
+            if 'yavg' in fluctuation:
+                vsymbol = r'$\delta_y$'+ vsymbol
+            if 'tavg' in fluctuation:
+                vsymbol = r'$\delta_t$'+ vsymbol
         elif time_average:
             vsymbol = r'$\langle$'+ vsymbol + r'$\rangle$'
         lbl = fig_tools.label(vsymbol,frame.vunits)
 
-        if fluctuation == "relative" :
+        if "relative" in fluctuation :
             lbl = re.sub(r'\(.*?\)', '', lbl)
             lbl = lbl + ' (\%)'
-            if fluctuation or time_average:
-                lbl += ' (avg %2.2d to %2.2d)'%(frames[0].time,frames[-1].time)
 
         climf = clim[kf] if clim else None
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 

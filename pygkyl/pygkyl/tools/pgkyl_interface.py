@@ -22,9 +22,10 @@ def get_values(Gdata):
         return np.concatenate((values, values), axis=1)
     else:
         return Gdata.get_values()
-    
-def interpolate(dg,comp,overwrite):
-    values = interpolate(comp,overwrite)
+
+def interpolate(Gdata,comp,polyorder=1, polytype='ms'):
+    dg = pg.data.GInterpModal(Gdata, poly_order=polyorder, basis_type=polytype, periodic=False)
+    values = dg.interpolate(comp)
     if values.ndim == 3:
         return values
     if values.ndim == 2:
@@ -52,8 +53,11 @@ def integrate(Gdata):
 def get_gkyl_data(file):
     return pg.data.GData(file)
 
-def get_gkyl_values(file):
-    return get_values(pg.data.GData(file))
+def get_gkyl_values(file,comp=0,polyorder=1,polytype='ms'):
+    if comp is None:
+        return get_values(pg.data.GData(file))
+    else:
+        return interpolate(pg.data.GData(file),comp=comp,polyorder=polyorder, polytype=polytype)
 
 def get_gkyl_grid(file):
     return get_grid(pg.data.GData(file))

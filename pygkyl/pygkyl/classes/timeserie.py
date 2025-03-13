@@ -18,11 +18,12 @@ class TimeSerie:
     verbose = False
 
     def __init__(self, simulation, name, time_window = [], time_frames = [], load=False, fourier_y=False,
-                 polyorder=1, polytype='ms', normalize=True, cut_dir=None, cut_coord=None, verbose = False):
+                 polyorder=1, polytype='ms', normalize=True, cut_dir=None, cut_coord=None, verbose = False
+                 , frames = None):
         self.simulation = simulation
         self.name = name
         self.time_window = time_window
-        self.time_frames = time_frames
+        self.time_frames = time_frames if isinstance(time_frames, list) else [time_frames]
         self.polyorder = polyorder
         self.polytype = polytype
         self.normalize = normalize
@@ -37,6 +38,7 @@ class TimeSerie:
         subname = self.simulation.normalization.dict[name+'compo'][0]
         self.filename = self.simulation.data_param.data_file_dict[subname + 'file']
         if load: self.load()
+        elif frames is not None: self.init_from_frames(frames)
         
     def __enter__(self):
         return self
@@ -70,6 +72,13 @@ class TimeSerie:
                     frame.slice(self.cut_dir, self.cut_coord)
                 self.frames.append(frame)
                 self.time.append(frame.time)
+                
+    def init_from_frames(self, frames):
+        '''
+        Initialize the time serie from a list of frames
+        '''
+        self.frames = frames
+        self.time = [frame.time for frame in frames]
 
     def get_values(self):
         '''
@@ -85,13 +94,40 @@ class TimeSerie:
         Get the time average of the time serie
         '''
         v_tavg = self.frames[0].values
-        time = self.frames[0].time
-        for it,frame in enumerate(self.frames[1:]):
-            dt = frame.time - time
-            v_tavg += frame.values * dt
-            time = frame.time
-        v_tavg /= time - self.frames[0].time
-        return copy.deepcopy(v_tavg)
+        # time = self.frames[0].time
+        # for frame in self.frames[1:]:
+        #     dt = frame.time - time
+        #     v_tavg += frame.values * dt
+        #     time = frame.time
+        # v_tavg /= time - self.frames[0].time
+        for frame in self.frames[1:]:
+            v_tavg += frame.values
+        v_tavg /= len(self.frames)    
+        return v_tavg
+    
+    def get_y_average(self, output_plane='xz', cut_coord=0):
+        '''
+        Get the y average of the time serie
+        '''
+        avg_frame = self.frames[-1].copy()
+        if output_plane == 'xz':
+            avg_frame.slice('xz', 'avg')
+            mean_values = avg_frame.values
+        elif output_plane == 'xy':
+            avg_frame.slice('x', ['avg',cut_coord])
+            mean_values = np.repeat(avg_frame.values, self.frames[-1].values.shape[1], axis=1)
+        elif output_plane == 'yz':
+            avg_frame.slice('z', ['avg',cut_coord])
+            mean_values = np.repeat(avg_frame.values, self.frames[-1].values.shape[0], axis=0)
+        return copy.deepcopy(mean_values)
+    
+    def slice(self, cut_dir, cut_coord):
+        '''
+        Slice the time serie
+        '''
+        for frame in self.frames:
+            frame.slice(cut_dir, cut_coord)
+            
 
     def free_values(self):
         '''
