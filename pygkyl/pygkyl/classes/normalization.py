@@ -19,10 +19,19 @@ class Normalization:
         self.dict = DataParam.get_default_units_dict(simulation.species)
         self.norm_log = []
 
-    def reset(self,key):
+    def reset(self,key = None):
         # Get the default dictionary
-        default_dict = DataParam.get_default_units_dict(self.species)
-        # allows to reset the normalization of key to the default value
+        default_dict = DataParam.get_default_units_dict(self.simulation.species)
+        if key is None:
+            # reset all keys to default values
+            for k in self.dict.keys():
+                if k in default_dict.keys():
+                    self.dict[k] = default_dict[k]
+            return
+        if key not in default_dict.keys():
+            print(f"Warning: The key '{key}' is not recognized. No reset performed.")
+            return
+        # Reset the normalization of key to the default value
         adds = ['scale','shift','symbol','units']
         for add in adds:
             self.dict[key+add]  = default_dict[key+add]

@@ -29,18 +29,22 @@ class DG_basis:
         Initialize the basis functions
         '''
         if self.dimensionality == 3:
-            coeff = 1./2.**(1.5)
             def psi_i(i,x,y,z):
-                if  (i == 0): return coeff
-                elif(i == 1): return coeff * np.sqrt(3) * x
-                elif(i == 2): return coeff * np.sqrt(3) * y
-                elif(i == 3): return coeff * np.sqrt(3) * z
-                elif(i == 4): return coeff * 3 * x * y
-                elif(i == 5): return coeff * 3 * x * z
-                elif(i == 6): return coeff * 3 * y * z
-                elif(i == 7): return coeff * 3**(1.5) * x * y * z
+                c = 1./2.**(1.5)
+                x *= np.sqrt(3.)
+                y *= np.sqrt(3.)
+                z *= np.sqrt(3.)
+                if  (i == 0): return c
+                elif(i == 1): return c * x
+                elif(i == 2): return c * y
+                elif(i == 3): return c * z
+                elif(i == 4): return c * x * y
+                elif(i == 5): return c * x * z
+                elif(i == 6): return c * y * z
+                elif(i == 7): return c * x * y * z
                 else: raise Exception("Invalid basis function index")
             def gradpsi_i (i,x,y,z,j):
+                coeff = 1./2.**(1.5)
                 if  (i == 0): return 0.0
                 elif(i == 1): return coeff * np.sqrt(3) if j == 0 else 0.0
                 elif(i == 2): return coeff * np.sqrt(3) if j == 1 else 0.0
@@ -51,14 +55,17 @@ class DG_basis:
                 elif(i == 7): return coeff * 3**(1.5) * (y * z * (j == 0) + x * z * (j == 1) + x * y * (j == 2))
                 else: raise Exception("Invalid basis function index")
         elif self.dimensionality == 2: 
-            coeff = 1./2.
             def psi_i(i,x,y):
+                coeff = 1./2.
+                x *= np.sqrt(3.)
+                y *= np.sqrt(3.)
                 if  (i == 0): return coeff
-                elif(i == 1): return coeff * np.sqrt(3) * x
-                elif(i == 2): return coeff * np.sqrt(3) * y
-                elif(i == 3): return coeff * 3 * x * y
+                elif(i == 1): return coeff * x
+                elif(i == 2): return coeff * y
+                elif(i == 3): return coeff * x * y
                 else: raise Exception("Invalid basis function index")
             def gradpsi_i (i,x,y,j):
+                coeff = 1./2.
                 if  (i == 0): return 0.0
                 elif(i == 1): return coeff * np.sqrt(3) if j == 0 else 0.0
                 elif(i == 2): return coeff * np.sqrt(3) if j == 1 else 0.0
@@ -78,10 +85,10 @@ class DG_basis:
             coords (list): list of coordinates [x,y,z]
             id (int): index of the component to evaluate the gradient
         '''
-        val = 0.0
-
+        # [ix,iy,iz], [xc,yc,zc], gradc = self.grid_to_cell(Gdata, coords)
         ix,iy,iz, xc,yc,zc, gradc = self.grid_to_cell(Gdata, coords)
 
+        val = 0.0
         if id is None:
             for i in range(8):
                 val += self.psi_i(i,xc,yc,zc)*Gdata.values[ix,iy,iz,i]
@@ -100,6 +107,17 @@ class DG_basis:
         z = coords[2]
         
         gradc = np.zeros(3)
+        coordc = np.zeros(3)
+        idxc = np.zeros(3, dtype=int)
+        
+        # for d in range(3):
+        #     ic = np.argmin(np.abs(Gdata.grid[d]-coords[d]))
+        #     if( coords[d] < Gdata.grid[d][ic] or coords[d] >= max(Gdata.grid[d]) ): ic -= 1
+        #     idxc[d] = ic
+        #     gradc[d] = 2/(Gdata.grid[d][ic+1]-Gdata.grid[d][ic])
+        #     coordc[d] = (coords[d]-Gdata.grid[d][ic]) * gradc[d] - 1
+            
+        # return idxc, coordc, gradc
 
         ix = np.argmin(np.abs(xnodes-x))
         if( x < xnodes[ix] or x >= max(xnodes) ): ix -= 1

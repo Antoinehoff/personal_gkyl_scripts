@@ -444,7 +444,8 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
                 ax.plot(time,ddtWsrc_t,'--k',label='Source input (%2.2f MW)'%(src_power/1e6))
             else:
                 # plot the accumulate energy from the source
-                Wsrc_t = ftot_t[0] + src_power*simulation.normalization.dict['tscale']*time/simulation.normalization.dict['Wtotscale']
+                Wsrc_t = ftot_t[0] + src_power*simulation.normalization.dict['tscale']*\
+                    time/simulation.normalization.dict['Wtotscale']
                 ax.plot(time,Wsrc_t,'--k',label='Source input')
 
         # Print a newline after completing all frames for the current subfield
@@ -501,7 +502,8 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
                 ax.plot(int_mom.time,Wsrc_t,'--k',label='Source input')
             
         # add labels and show legend
-        fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, xlim=xlim, ylim=ylim, legend=True)
+        fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, 
+                                xlim=xlim, ylim=ylim, legend=True)
     return int_mom.time
 
 def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profileORgkyldata='profile'):
@@ -525,7 +527,8 @@ def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profi
             for (name, source) in simulation.sources.items():
                 n_src = [source.density_src(x, y_const, z_const) for x in x_grid]
                 axs[iplot].plot(x_grid, n_src, label=r"$\dot n$ "+name, linestyle="-")
-            axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
+            axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', 
+                               label='Banana width' % banana_width, alpha=0.5)
             if show_LCFS:
                 axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
             fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel=r"1/m$^3/s$", legend=True)
@@ -536,7 +539,8 @@ def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profi
                 Ti_src = [source.temp_profile_ion(x, y_const, z_const)/simulation.phys_param.eV for x in x_grid]
                 axs[iplot].plot(x_grid, Te_src, label=r"$T_e$ "+name, linestyle="--")
                 axs[iplot].plot(x_grid, Ti_src, label=r"$T_i$ "+name, linestyle="-.")
-            axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='Banana width' % banana_width, alpha=0.5)
+            axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', 
+                               label='Banana width' % banana_width, alpha=0.5)
             if show_LCFS:
                 axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
             fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="eV", legend=True)
@@ -563,16 +567,18 @@ def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profi
         total_pow_src = np.zeros_like(XX)
         for (name, source) in simulation.sources.items():
             total_dens_src += source.density_src(XX, y_const, ZZ)
-            total_pow_src += source.density_src(XX, y_const, ZZ) * (source.temp_profile_elc(XX, y_const, ZZ) + source.temp_profile_ion(XX, y_const, ZZ))/1e6
+            total_pow_src += source.density_src(XX, y_const, ZZ) * \
+                (source.temp_profile_elc(XX, y_const, ZZ) + source.temp_profile_ion(XX, y_const, ZZ))/1e6
 
         # Plot the total density source profile
         pcm = axs[iplot].pcolormesh(XX, ZZ, total_dens_src, cmap='inferno')
         cbar = plt.colorbar(pcm, ax=axs[iplot])
         axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
         if show_LCFS:
-            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS', alpha=0.7)
-        fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", title=r"Total $\dot n$ src",
-                                cbar=cbar, clabel=r"1/m$^3$", legend=False)
+            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', 
+                               linestyle='-', label='LCFS', alpha=0.7)
+        fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", 
+                                title=r"Total $\dot n$ src", cbar=cbar, clabel=r"1/m$^3$", legend=False)
         iplot += 1
 
         # Plot the total power
@@ -580,13 +586,14 @@ def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profi
         cbar = plt.colorbar(pcm, ax=axs[iplot])
         axs[iplot].axvline(x=x0+banana_width, color='cyan', linestyle='-', label='bw' % banana_width, alpha=0.7)
         if show_LCFS:
-            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', linestyle='-', label='LCFS' % banana_width, alpha=0.7)
-        fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", title="Total power src",
-                                cbar=cbar, clabel=r"MW/m$^3$", legend=False)
+            axs[iplot].axvline(x=simulation.geom_param.x_LCFS, color='gray', 
+                               linestyle='-', label='LCFS' % banana_width, alpha=0.7)
+        fig_tools.finalize_plot(ax=axs[iplot], fig=fig, xlabel="x-grid [m]", ylabel="z-grid [rad]", 
+                                title="Total power src", cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
 
-def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], show_cells=True, figout=[],
-                           derivative=False):
+def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], 
+                           show_cells=True, figout=[], derivative=False):
     """
     Plot the DG representation of a field at a given time frame.
     """
@@ -597,54 +604,60 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 
     frame = Frame(simulation, fieldname,tf=sim_frame, load=True)
     frame.slice(cutdir, cutcoord)
+    
     # get the coordinates of the slice
     slice_coords = [c for c in frame.slicecoords.values()]
     field_DG = frame.get_DG_coeff()
+    
+    # get the index of the slice direction
+    dir = 0 * (cutdir == 'x') + 1 * (cutdir == 'y') + 2 * (cutdir == 'z')
+    slice_coord_map = 'xyz'.replace(cutdir,'')
+    
     if cutdir == 'x':
-        ix = 0
-        slice_coords[0] *= simulation.normalization.dict['yscale']
-        slice_coords[1] *= simulation.normalization.dict['zscale']
-        def coord_swap(x): return [x,c0,c1]
+        def coord_swap(s,c0,c1): return [s,c0,c1]
     elif cutdir == 'y':
-        ix = 1
-        slice_coords[0] *= simulation.normalization.dict['xscale']
-        slice_coords[1] *= simulation.normalization.dict['zscale']
-        def coord_swap(x): return [c0,x,c1]
+        def coord_swap(s,c0,c1): return [c0,s,c1]
     elif cutdir == 'z':
-        ix = 2
-        slice_coords[0] *= simulation.normalization.dict['xscale']
-        slice_coords[1] *= simulation.normalization.dict['yscale']
-        def coord_swap(x): return [c0,c1,x]
+        def coord_swap(s,c0,c1): return [c0,c1,s]
     else:
         raise Exception("Invalid direction")
-    cells = field_DG.grid[ix]
+    
+    # get the numerical coordinates
+    for i, name in enumerate(slice_coord_map):
+        shift = simulation.normalization.dict[name+'shift']
+        scale = simulation.normalization.dict[name+'scale']
+        slice_coords[i] = (slice_coords[i] + shift) * scale
+        
+    print(slice_coords)
+    
+    cells = field_DG.grid[dir]
     c0 = slice_coords[0]
     c1 = slice_coords[1]
-    dx = cells[1]-cells[0]
+    ds = cells[1]-cells[0]
     DG_proj = []
-    x_proj  = []
-    xscale = simulation.normalization.dict[cutdir+'scale']
-    xshift = simulation.normalization.dict[cutdir+'shift']
+    s_proj  = []
+    sscale = simulation.normalization.dict[cutdir+'scale']
+    sshift = simulation.normalization.dict[cutdir+'shift']
     yscale = simulation.normalization.dict[fieldname+'scale']
     for ic in range(len(cells)-1):
-        xi = cells[ic]+0.01*dx
-        fi = simulation.DG_basis.eval_proj(field_DG, coord_swap(xi), id=id)
-        xip1 = cells[ic]+0.99*dx
-        fip1 = simulation.DG_basis.eval_proj(field_DG, coord_swap(xip1), id=id)
+        si = cells[ic]+0.01*ds
+        fi = simulation.DG_basis.eval_proj(field_DG, coord_swap(si,c0,c1), id=id)
+        sip1 = cells[ic]+0.99*ds
+        fip1 = simulation.DG_basis.eval_proj(field_DG, coord_swap(sip1,c0,c1), id=id)
         DG_proj.append(fi/yscale)
-        x_proj.append(xi/xscale - xshift)
+        s_proj.append(si/sscale - sshift)
         DG_proj.append(fip1/yscale)
-        x_proj.append(xip1/xscale - xshift)
+        s_proj.append(sip1/sscale - sshift)
         DG_proj.append(None)
-        x_proj.append(cells[ic]/xscale - xshift)
+        s_proj.append(cells[ic]/sscale - sshift)
 
     fig = plt.figure()
     ax = fig.add_subplot(111)
-    ax.plot(x_proj, DG_proj,'-')
+    ax.plot(s_proj, DG_proj,'-')
     # add a vertical line to mark each cell boundary
     if show_cells:
-        for xc in cells:
-                ax.axvline(xc/xscale - xshift, color='k', linestyle='-', alpha=0.15)
+        for sc in cells:
+                ax.axvline(sc/sscale - sshift, color='k', linestyle='-', alpha=0.15)
 
     xlabel = fig_tools.label_from_simnorm(simulation,cutdir)
     ylabel = fig_tools.label_from_simnorm(simulation,fieldname)
@@ -660,7 +673,8 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 plot_1D_time_avg = plot_1D
 
 def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32,
-                        colorMap = 'inferno', colorScale = 'lin', doInset=True, xlim=[], ylim=[],clim=[], logScaleFloor=1e-3):
+                             colorMap = 'inferno', colorScale = 'lin', doInset=True, 
+                             xlim=[], ylim=[],clim=[], logScaleFloor=1e-3):
     '''
     This function plots the poloidal projection of a field.
 
