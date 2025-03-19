@@ -148,7 +148,14 @@ class IntegratedMoment:
         species_list = self.spec_s if isinstance(self.spec_s,list) else [self.spec_s]
         for s_ in species_list:
             for bf_ in self.bflux_list:
-                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+'_integrated_moms.gkyl'
+                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+'_integrated'
+                if not pgkyl_.file_exists(f_+'_moms.gkyl'):
+                    f_ += self.momtype+'moments.gkyl'
+                    if not pgkyl_.file_exists(f_):
+                        print('File %s not found, skipping...' % f_)
+                        continue
+                else:
+                    f_ += '_moms.gkyl'
                 Gdata = pgkyl_.get_gkyl_data(f_)
                 self.values += pgkyl_.get_values(Gdata) * self.scale[species_list.index(s_)]
 
@@ -181,10 +188,6 @@ class IntegratedMoment:
         else:
             species = self.spec_s[0]
         f_ = self.simulation.data_param.fileprefix+'-'+species+'_integrated_moms.gkyl'
-        if not pgkyl_.file_exists(f_): # test with HamitlonianMoments naming (compensate for current inconsistency)
-            f_ = self.simulation.data_param.fileprefix+'-'+species+'_integrated_HamiltonianMoments.gkyl'
-        if not pgkyl_.file_exists(f_):
-            raise FileNotFoundError(f"File {f_} does not exist. Cannot determine moment type.")
         Gdata = pgkyl_.get_gkyl_data(f_)
         datashape = np.shape(pgkyl_.get_values(Gdata))
         self.momtype = 'BiMaxwellian' if datashape[1] == 4 else 'Hamiltonian'
