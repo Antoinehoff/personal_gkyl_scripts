@@ -148,14 +148,13 @@ class IntegratedMoment:
         species_list = self.spec_s if isinstance(self.spec_s,list) else [self.spec_s]
         for s_ in species_list:
             for bf_ in self.bflux_list:
-                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+'_integrated'
-                if not pgkyl_.file_exists(f_+'_moms.gkyl'):
-                    f_ += self.momtype+'moments.gkyl'
+                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+'_integrated_'
+                if not pgkyl_.file_exists(f_+'moms.gkyl'):
+                    f_ += self.momtype+'_moments.gkyl'
                     if not pgkyl_.file_exists(f_):
-                        print('File %s not found, skipping...' % f_)
-                        continue
+                        raise FileNotFoundError(f_ + ' does not exist.')
                 else:
-                    f_ += '_moms.gkyl'
+                    f_ += 'moms.gkyl'
                 Gdata = pgkyl_.get_gkyl_data(f_)
                 self.values += pgkyl_.get_values(Gdata) * self.scale[species_list.index(s_)]
 
