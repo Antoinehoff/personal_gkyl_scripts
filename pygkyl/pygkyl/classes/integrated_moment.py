@@ -150,7 +150,7 @@ class IntegratedMoment:
             for bf_ in self.bflux_list:
                 f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+'_integrated_'
                 if not pgkyl_.file_exists(f_+'moms.gkyl'):
-                    f_ += self.momtype+'_moments.gkyl'
+                    f_ += self.momtype+'Moments.gkyl'
                     if not pgkyl_.file_exists(f_):
                         raise FileNotFoundError(f_ + ' does not exist.')
                 else:
