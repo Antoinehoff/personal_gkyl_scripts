@@ -64,3 +64,10 @@ def get_gkyl_grid(file):
 
 def get_gkyl_cells(file):
     return get_cells(pg.data.GData(file))
+
+def file_exists(file):
+    try:
+        with open(file, 'r') as f:
+            return True
+    except FileNotFoundError:
+        return False
