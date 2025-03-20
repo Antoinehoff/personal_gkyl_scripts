@@ -250,11 +250,11 @@ class PoloidalProjection:
     vlims = [np.min(field_RZ), np.max(field_RZ)]
     vlims_SOL = [np.min(field_RZ[self.ixLCFS_C:,:]), np.max(field_RZ[self.ixLCFS_C:,:])]
     
+    lcfColor = 'white' # default color for LCFS
     if colorMap == 'inferno': 
         vlims[0] = np.max([0,vlims[0]])
         vlims_SOL[0] = np.max([0,vlims_SOL[0]])
         lcfColor = 'white'
-        
     elif colorMap == 'bwr':
         vmax = np.max(np.abs(vlims))
         vlims = [-vmax, vmax]
