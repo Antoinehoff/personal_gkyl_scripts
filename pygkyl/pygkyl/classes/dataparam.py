@@ -248,7 +248,8 @@ class DataParam:
             default_qttes.append(['Tpar%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
             default_qttes.append(['Tperp%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
             # Hamiltonian moments
-            default_qttes.append(['mv%s'%(s_), r'$p_%s$'%(s_), r'kg m/s m$^{-3}$'])            
+            default_qttes.append(['H_n%s'%(s_), r'$n_%s$'%(s_), r'm$^{-3}$'])            
+            default_qttes.append(['H_mv%s'%(s_), r'$p_%s$'%(s_), r'kg m/s m$^{-3}$'])            
             default_qttes.append(['H%s'%(s_), r'$H_%s$'%(s_), r'J m$^{-3}$'])            
             # source moments
             default_qttes.append(['M0_src%s'%(s_), r'$\dot M_{0%s}$'%(s_), r'm$^{-3}$/s'])
@@ -262,7 +263,8 @@ class DataParam:
             default_qttes.append(['upar_src%s'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
             default_qttes.append(['Tpar_src%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
             default_qttes.append(['Tperp_src%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
-            default_qttes.append(['mv_src%s'%(s_), r'$\dot p_%s$'%(s_), r'kg m/s^{2} m$^{-3}$'])            
+            default_qttes.append(['H_n_src%s'%(s_), r'$\dot n_%s$'%(s_), r'm$^{-3}$/s'])            
+            default_qttes.append(['H_mv_src%s'%(s_), r'$\dot p_%s$'%(s_), r'kg m/s^{2} m$^{-3}$'])            
             default_qttes.append(['H_src%s'%(s_), r'$\dot H_%s$'%(s_), r'J m$^{-3}/s$'])     
             default_qttes.append(['f_src%s'%(s_), r'$f_%s$'%(s_), '[f]'])
             
