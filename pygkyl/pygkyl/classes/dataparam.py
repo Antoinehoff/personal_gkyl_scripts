@@ -103,22 +103,22 @@ class DataParam:
             shortname = spec.nshort
             
             # add bimax moments and dist func info        
-            keys  = ['n','upar','Tpar','Tperp','ppar','pperp']
+            keys  = ['n','upar','Tpar','Tperp','qpar','qperp']
             if self.BiMaxwellian:
                 comps  = [0,1,2,3,0,0]
                 prefix = 6*[s_+'_BiMaxwellianMoments']
             else:
                 comps  = [0,0,0,0,0,0]
-                prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp',s_+'_M0',s_+'_M0']
+                prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
             for i in range(len(keys)):
                 data_file_dict[keys[i]+shortname+'file']   = prefix[i]
                 data_file_dict[keys[i]+shortname+'comp']   = comps[i]
                 data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
             # add Hamiltonian moments
-            keys  = ['mv','H']
-            comps  = [1,2]
-            prefix = 2*[s_+'_HamiltonianMoments']
+            keys  = ['H_n','H_mv','H_H']
+            comps  = [0,1,2]
+            prefix = 3*[s_+'_HamiltonianMoments']
             for i in range(len(keys)):
                 data_file_dict[keys[i]+shortname+'file']   = prefix[i]
                 data_file_dict[keys[i]+shortname+'comp']   = comps[i]
@@ -139,7 +139,7 @@ class DataParam:
                 data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
             # add source info        
-            keys  = ['n_src','upar_src','Tpar_src','Tperp_src','ppar_src','pperp_src']
+            keys  = ['n_src','upar_src','Tpar_src','Tperp_src','qpar_src','qperp_src']
             if self.BiMaxwellian:
                 comps  = [0,1,2,3,0,0]
                 prefix = 6*[s_+'_source_BiMaxwellianMoments']
@@ -157,9 +157,9 @@ class DataParam:
             data_file_dict['f'+shortname+'gnames'] = gnames
 
             # add Hamiltonian source info
-            keys  = ['mv_src','H_src']
-            comps  = [1,2]
-            prefix = 2*[s_+'_source_HamiltonianMoments']
+            keys  = ['H_n_src','H_mv_src','H_H_src']
+            comps  = [0,1,2]
+            prefix = 3*[s_+'_source_HamiltonianMoments']
             for i in range(len(keys)):
                 data_file_dict[keys[i]+shortname+'file']   = prefix[i]
                 data_file_dict[keys[i]+shortname+'comp']   = comps[i]
