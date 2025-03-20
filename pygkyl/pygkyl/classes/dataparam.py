@@ -116,7 +116,7 @@ class DataParam:
                 data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
 
             # add Hamiltonian moments
-            keys  = ['H_n','H_mv','H_H']
+            keys  = ['H_n','H_mv','H']
             comps  = [0,1,2]
             prefix = 3*[s_+'_HamiltonianMoments']
             for i in range(len(keys)):
@@ -157,7 +157,7 @@ class DataParam:
             data_file_dict['f'+shortname+'gnames'] = gnames
 
             # add Hamiltonian source info
-            keys  = ['H_n_src','H_mv_src','H_H_src']
+            keys  = ['H_n_src','H_mv_src','H_src']
             comps  = [0,1,2]
             prefix = 3*[s_+'_source_HamiltonianMoments']
             for i in range(len(keys)):
