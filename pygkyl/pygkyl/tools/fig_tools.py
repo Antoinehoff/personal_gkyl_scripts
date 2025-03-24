@@ -185,6 +185,21 @@ def load_figout(fname):
 def plot_figout(fname):
     fdict = load_figout(fname)
     plot_figdatadict(fdict)
+    
+def add_figout_plot(fname, axis, subplotidx=0, curveidx = 0, fmt = ''):
+    '''
+    Add the data in fname to the given plot axis.
+    '''
+    fdict = load_figout(fname)
+    l_ = fdict[subplotidx]['curves'][curveidx]
+    if fmt:
+        axis.plot(l_['xdata'], l_['ydata'], fmt, label=l_['label'])
+    else:
+        axis.plot(l_['xdata'], l_['ydata'], label=l_['label'])
+        
+    axis.set_xlabel(fdict[subplotidx]['xlabel'])
+    axis.set_ylabel(fdict[subplotidx]['ylabel'])
+    return axis
 
 def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnums='all'):
     if file1[-4:] == '.pkl':
