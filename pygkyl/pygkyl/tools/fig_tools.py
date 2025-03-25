@@ -186,16 +186,18 @@ def plot_figout(fname):
     fdict = load_figout(fname)
     plot_figdatadict(fdict)
     
-def add_figout_plot(fname, axis, subplotidx=0, curveidx = 0, fmt = ''):
+def add_figout_plot(fname, axis, subplotidx=0, curveidx = 0, format = '', label = ''):
     '''
     Add the data in fname to the given plot axis.
     '''
     fdict = load_figout(fname)
     l_ = fdict[subplotidx]['curves'][curveidx]
-    if fmt:
-        axis.plot(l_['xdata'], l_['ydata'], fmt, label=l_['label'])
+    
+    label = l_['label'] if not label else label
+    if format:
+        axis.plot(l_['xdata'], l_['ydata'], format, label=label)
     else:
-        axis.plot(l_['xdata'], l_['ydata'], label=l_['label'])
+        axis.plot(l_['xdata'], l_['ydata'], label=label)
         
     axis.set_xlabel(fdict[subplotidx]['xlabel'])
     axis.set_ylabel(fdict[subplotidx]['ylabel'])
