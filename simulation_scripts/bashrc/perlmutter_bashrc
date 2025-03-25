@@ -35,4 +35,6 @@ alias gkyl_new_sim='sh ~/personal_gkyl_scripts/simulation_scripts/new_sim/perlmu
 alias gkyl_setup_gpu='gkyl_module; export MPICH_GPU_SUPPORT_ENABLED=0; export DVS_MAXNODES=32_; export MPICH_MPIIO_DVS_MAXNODES=32;'
 alias ll='ls -l'
 alias gkyl_submit='sh ~/personal_gkyl_scripts/simulation_scripts/submit/perlmutter_submit.sh'
+alias gkyl_get_makefile='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_get_makefile.sh'
+
 gkyl_setup_gpu

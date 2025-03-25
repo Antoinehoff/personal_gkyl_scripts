@@ -9,9 +9,11 @@ alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilitie
 alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_available_frames.sh'
 alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'
 alias gkyl_new_sim='sh ~/personal_gkyl_scripts/simulation_scripts/new_sim/perlmutter_new_sim.sh'
+alias gkyl_get_makefile='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_get_makefile.sh'
+alias gkylmpirun='~/gkylsoft/openmpi/bin/mpirun'
 alias ll='ls -l'
-
-# Personnal functions
+alias refresh_fish='source ~/.config/fish/config.fish'
+alias replace_pattern_filename='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/replace_pattern_filename.sh'
 
 # Path manipulation
 # Add latex binary file

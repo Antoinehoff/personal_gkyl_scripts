@@ -35,4 +35,6 @@ alias gkyl_new_sim='sh ~/personal_gkyl_scripts/simulation_scripts/new_sim/stella
 alias gkyl_mkdeps='sh machines/mkdeps.stellar-amd.sh'
 alias gkyl_configure='sh machines/configure.stellar-amd.sh'
 alias gkyl_submit='sh ~/personal_gkyl_scripts/simulation_scripts/submit/stellar_submit.sh'
+alias gkyl_get_makefile='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_get_makefile.sh'
+
 alias ll='ls -l'
