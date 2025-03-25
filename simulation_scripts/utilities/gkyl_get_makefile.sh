@@ -24,9 +24,17 @@ head -n $((LINE_NUM - 1)) "$INPUT" > "$OUTPUT"
 
 # Manually append the modified content
 cat <<EOF >> "$OUTPUT"
-all:
-	# Custom build rules go here
-	echo "Building project..."
+all: input setup
+
+input: input.c
+	${CC} ${CFLAGS} ${INCLUDES} input.c -o g0 -L${G0_LIB_DIR} ${G0_RPATH} ${G0_LIBS} ${LIB_DIRS} ${EXT_LIBS}
+
+setup: g0
+	mkdir -p wk
+	cp g0 wk
+
+clean:
+	rm -rf g0 g0.dSYM wk/g0
 EOF
 
 echo "The Makefile has been successfully created."
