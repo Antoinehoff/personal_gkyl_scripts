@@ -627,9 +627,7 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
         shift = simulation.normalization.dict[name+'shift']
         scale = simulation.normalization.dict[name+'scale']
         slice_coords[i] = (slice_coords[i] + shift) * scale
-        
-    print(slice_coords)
-    
+            
     cells = field_DG.grid[dir]
     c0 = slice_coords[0]
     c1 = slice_coords[1]
