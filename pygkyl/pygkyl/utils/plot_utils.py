@@ -157,7 +157,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             frame = frames_to_plot[kf]
             plot_data = frame.values
         else:
-            serie = TimeSerie(simulation=simulation, name=field, time_frames=time_frame, load=True)
+            serie = TimeSerie(simulation=simulation, name=field, time_frames=time_frame, load=True, fourier_y=fourier_y)
             if len(fluctuation) > 0:
                 if 'tavg' in fluctuation:
                     serie.slice(cut_dir, cut_coord)
@@ -165,7 +165,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
                 elif 'yavg' in fluctuation:
                     mean_values = serie.get_y_average(cut_dir, cut_coord)
                     serie.slice(cut_dir, cut_coord)
-                    
+                
                 plot_data = serie.frames[-1].values - mean_values
                 if 'relative' in fluctuation:
                     plot_data = 100.0*plot_data/mean_values
@@ -191,8 +191,8 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             vmin = np.min(plot_data)
 
         if fourier_y:
-            vmin  = np.power(10,np.log10(vmax)-4)
-            plot_data = np.clip(plot_data, vmin, None)  # We plot 4 orders of magnitude
+            vmin  = np.power(10,np.log10(vmax)-3)
+            plot_data = np.clip(plot_data, vmin, None)  # We plot 3 orders of magnitude
             colorscale = 'log'
 
         vsymbol = frame.vsymbol
@@ -651,7 +651,7 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
         DG_proj.append(None)
         s_proj.append(cells[ic]/sscale - sshift)
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(fig_tools.default_figsz[0],fig_tools.default_figsz[1]))
     ax = fig.add_subplot(111)
     ax.plot(s_proj, DG_proj,'-')
     # add a vertical line to mark each cell boundary
