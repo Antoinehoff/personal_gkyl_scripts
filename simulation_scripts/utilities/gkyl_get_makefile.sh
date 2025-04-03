@@ -23,7 +23,7 @@ fi
 head -n $((LINE_NUM - 1)) "$INPUT" > "$OUTPUT"
 
 # Manually append the modified content
-cat <<EOF >> "$OUTPUT"
+cat <<'EOF' >> "$OUTPUT"
 all: input setup
 
 input: input.c
