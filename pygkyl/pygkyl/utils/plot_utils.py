@@ -637,10 +637,11 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     sscale = simulation.normalization.dict[cutdir+'scale']
     sshift = simulation.normalization.dict[cutdir+'shift']
     yscale = simulation.normalization.dict[fieldname+'scale']
+    dint = 1e-6 # interior of the cell
     for ic in range(len(cells)-1):
-        si = cells[ic]+0.01*ds
+        si = cells[ic]+dint*ds
         fi = simulation.DG_basis.eval_proj(field_DG, coord_swap(si,c0,c1), id=id)
-        sip1 = cells[ic]+0.99*ds
+        sip1 = cells[ic]+(1-dint)*ds
         fip1 = simulation.DG_basis.eval_proj(field_DG, coord_swap(sip1,c0,c1), id=id)
         DG_proj.append(fi/yscale)
         s_proj.append(si/sscale - sshift)
