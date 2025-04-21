@@ -592,7 +592,7 @@ def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profi
                                 title="Total power src", cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
 
-def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], 
+def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], ylim=[],
                            show_cells=True, figout=[], derivative=False):
     """
     Plot the DG representation of a field at a given time frame.
@@ -665,7 +665,7 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
         if frame.gunits[id] != '':
             ylabel += '/'+ frame.gunits[id] + ')'
     title = frame.slicetitle + ' at ' + frame.timetitle
-    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title, figout=figout, xlim=xlim)
+    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title, figout=figout, xlim=xlim, ylim=ylim)
     
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
@@ -715,3 +715,26 @@ def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
             
         fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=f0.vunits, figout=figout,
                                 xlim=xlim, ylim=ylim, legend=True, title=f0.slicetitle)
+        
+def plot_nodes(simulation):
+    from matplotlib.collections import LineCollection
+    import postgkyl as pg
+    simName = simulation.data_param.fileprefix
+    plt.figure()
+    data = pg.GData(simName+"-nodes.gkyl")
+    vals = data.get_values()
+    X = vals[:,0,:,0]
+    Y = vals[:,0,:,1]
+    Z = vals[:,0,:,2]
+    R=np.sqrt(X**2+Y**2)
+
+    plt.plot(R,Z,marker=".", color="k", linestyle="none")
+    plt.scatter(R,Z, marker=".")
+    segs1 = np.stack((R,Z), axis=2)
+    segs2 = segs1.transpose(1,0,2)
+    plt.gca().add_collection(LineCollection(segs1))
+    plt.gca().add_collection(LineCollection(segs2))
+    plt.grid()
+
+    plt.axis('equal')
+    plt.show()
