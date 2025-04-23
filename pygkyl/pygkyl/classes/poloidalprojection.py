@@ -110,14 +110,15 @@ class PoloidalProjection:
     self.Zlcfs = self.geom.Z_axis + self.geom.kappa * rLCFS * np.sin(self.zgridI)
         
     #.Compute alpha(r,z,phi=0) which is independent of y.
+    phi0 = 22*np.pi # this is a magic number to center alpha at z=0 may not work for other cases...
     alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
     errAbs = 1.e-8
     for i in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
         for k in range(self.nzI):
-            alpha_rz_phi0[i,k]  = self.geom.alpha_f(self.geom.r_x(meshC[0][i]),self.zgridI[k],0.,method=intMethod)
+            alpha_rz_phi0[i,k]  = self.geom.alpha_f(self.geom.r_x(meshC[0][i]),self.zgridI[k],phi0,method=intMethod)
         
     # #.Convert (x,y,z) data to (R,Z):
-    phiTor = 0 #.phi=0. lx-->lxInt
+    phiTor = 0.0 #.phi=0. lx-->lxInt
     # this is a very big array
     self.xyz2RZ = np.zeros([self.dimsC[xDir],2*self.kyDimsC[yDir],self.nzI], dtype=np.cfloat)
     exponent_fact = -2.*np.pi*1j * (self.geom.r0 / self.geom.q0) / LyN
