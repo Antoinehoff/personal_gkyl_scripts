@@ -200,7 +200,7 @@ class GeomParam:
     def integrand(self, t, r):
         return self.Jr_f(r,t)/np.power(self.R_f(r,t),2)
 
-    def dPsidr_f(self, r, theta, method='trapz32'):
+    def dPsidr_f(self, r, method='trapz32'):
         integral, _ = mt.integrate(self.integrand, a=0., b=2.*np.pi, args=(r), method=method)
         return self.B0*self.R_axis/(2.*np.pi*self.qprofile(r))*integral
 
@@ -216,7 +216,23 @@ class GeomParam:
         else:
             intV, _ = mt.integrate(self.integrand, t, 0., args=(r), method=method)
             integral   = -intV
-        return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r,theta)
+        return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r)
+    
+    
+    def alpha0_f(self, r, theta, method='trapz32'):
+        '''Compute alpha(r, theta, phi=0) without the dPsidr division.'''
+        t = theta
+        while (t < -np.pi):
+            t = t+2.*np.pi
+        while ( np.pi < t):
+            t = t-2.*np.pi
+        if (0. < t):
+            intV, _ = mt.integrate(self.integrand, 0, t, args=(r), method=method)
+            integral   = intV
+        else:
+            intV, _ = mt.integrate(self.integrand, t, 0., args=(r), method=method)
+            integral   = -intV
+        return - self.B0*self.R_axis*integral
     
     def get_conf_grid(self):
         return [self.x, self.y, self.z]
