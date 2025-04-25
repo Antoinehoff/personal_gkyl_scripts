@@ -90,7 +90,6 @@ class PoloidalProjection:
     z1, zN, dz = zGrid[0], zGrid[-1], zGrid[1] - zGrid[0]
     #. This handles the conection between +pi and -pi regions
     shift = dz
-    print('z1, zN, dz, shift',z1, zN, dz, shift)
     self.zGridEx = np.concatenate( ([z1-dz/2], zGrid, [zN+dz/2]) ) # TEST (??)
     
     #.Interpolate onto a finer mesh along z.
