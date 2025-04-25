@@ -63,7 +63,8 @@ class PoloidalProjection:
     yDir = 1
     zDir = self.ndim-1
 
-    LyN = self.gridsN[yDir][-1]-self.gridsN[yDir][0] # length in the y direction of nodal grid
+    # Not used anymore, we use only LyC now, this helps with the discontinuity at z=\pm pi
+    # LyN = self.gridsN[yDir][-1]-self.gridsN[yDir][0] # length in the y direction of nodal grid
 
     # Centered mesh creation
     meshC = [[] for i in range(self.ndim)] 
@@ -76,10 +77,11 @@ class PoloidalProjection:
     # Radial index of the last closed flux surface on the centered mesh
     self.ixLCFS_C = np.argmin(np.abs(meshC[0] - self.geom.x_LCFS))
 
+    xGridCore = meshC[xDir][:self.ixLCFS_C] # x grid on in the core region
+
     #.n_0 in Goerler et al.
     LyC = meshC[yDir][-1]-meshC[yDir][0] # length in the y direction
     torModNum = 2.*np.pi * self.geom.r0 / self.geom.q0 / LyC # torroidal mode number (n_0 in Goerler thesis 2009)
-    xGridCore = meshC[xDir][:self.ixLCFS_C] # x grid on in the core region
     self.bcPhaseShift = 1j*2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
 
     #.Precompute grids and arrays needed in transforming/plotting data
@@ -91,10 +93,11 @@ class PoloidalProjection:
     #.closed-flux region, and just copying the last values (along z) in the SOL.
     # Number of points for the z interpolation (BIG)
     self.nzI = nzInterp*self.dimsC[zDir]
-
+  
     z1, zN, dz = meshC[zDir][0], meshC[zDir][-1], meshC[zDir][1] - meshC[zDir][0]
+    #. This handles the conection between +pi and -pi regions
     self.zGridEx = np.concatenate( ([z1-0.5*dz], meshC[zDir], [zN+0.5*dz]) ) # TEST (??)
-
+    
     #.Interpolate onto a finer mesh along z.
     self.zgridI = np.linspace(self.zGridEx[0],self.zGridEx[-1],self.nzI)
 
@@ -115,17 +118,17 @@ class PoloidalProjection:
     errAbs = 1.e-8
     for i in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
         for k in range(self.nzI):
-            alpha_rz_phi0[i,k]  = self.geom.alpha_f(self.geom.r_x(meshC[0][i]),self.zgridI[k],phi0,method=intMethod)
+            alpha_rz_phi0[i,k]  = self.geom.alpha_f(self.geom.r_x(meshC[xDir][i]),self.zgridI[k],phi0,method=intMethod)
         
     # #.Convert (x,y,z) data to (R,Z):
     phiTor = 0.0 #.phi=0. lx-->lxInt
     # this is a very big array
     self.xyz2RZ = np.zeros([self.dimsC[xDir],2*self.kyDimsC[yDir],self.nzI], dtype=np.cfloat)
-    exponent_fact = -2.*np.pi*1j * (self.geom.r0 / self.geom.q0) / LyN
+    exponent_fact = -2.*np.pi*1j * (self.geom.r0 / self.geom.q0) / LyC
     for j in range(self.kyDimsC[1]):
         for k in range(self.nzI):
             #.Positive ky's.
-            self.xyz2RZ[:,j,k]  = np.exp(exponent_fact* j * (phiTor + alpha_rz_phi0[:,k]))  #.phi=0. lx-->lxInt
+            self.xyz2RZ[:,j,k]  = np.exp(exponent_fact* j * (phiTor + alpha_rz_phi0[:,k]))
             #.Negative ky's.
             self.xyz2RZ[:,-j,k] = np.conj(self.xyz2RZ[:,j,k])
 
