@@ -43,9 +43,6 @@ class PoloidalProjection:
     self.alpha_rz_phi0 = None
     self.dimsI = 0
     self.meshC = None
-    self.RInt = None
-    self.ZInt = None
-    self.torModNum = 0
 
   def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16, phiTor=0,
             intMethod='trapz32',figSize = (8,9)):
@@ -74,16 +71,10 @@ class PoloidalProjection:
         meshC[i] = np.multiply(0.5,self.gridsN[i][0:nNodes-1]+self.gridsN[i][1:nNodes])
     self.dimsC = [np.size(meshC[i]) for i in range(self.ndim)]
     self.meshC = meshC
+    self.LyC = meshC[1][-1] - meshC[1][0] # length in the y direction
 
     # Radial index of the last closed flux surface on the centered mesh
     self.ixLCFS_C = np.argmin(np.abs(meshC[0] - self.geom.x_LCFS))
-
-    xGridCore = meshC[0][:self.ixLCFS_C] # x grid on in the core region
-
-    #.n_0 in Goerler et al.
-    self.LyC = meshC[1][-1]-meshC[1][0] # length in the y direction
-    self.torModNum = 2.*np.pi * self.geom.r0 / self.geom.q0 / self.LyC # torroidal mode number (n_0 in Goerler thesis 2009)
-    self.bcPhaseShift = 1j*2.0*np.pi * self.torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
 
     #.Precompute grids and arrays needed in transforming/plotting data
     field = np.squeeze(field_frame.values)
@@ -98,7 +89,9 @@ class PoloidalProjection:
     zGrid = meshC[2]
     z1, zN, dz = zGrid[0], zGrid[-1], zGrid[1] - zGrid[0]
     #. This handles the conection between +pi and -pi regions
-    self.zGridEx = np.concatenate( ([z1-0.5*dz], zGrid, [zN+0.5*dz]) ) # TEST (??)
+    shift = dz
+    print('z1, zN, dz, shift',z1, zN, dz, shift)
+    self.zGridEx = np.concatenate( ([z1-dz/2], zGrid, [zN+dz/2]) ) # TEST (??)
     
     #.Interpolate onto a finer mesh along z.
     self.zgridI = np.linspace(self.zGridEx[0],self.zGridEx[-1],self.nzI)
@@ -138,20 +131,20 @@ class PoloidalProjection:
     #.Compute R(x,z) and Z(x,z) (this starts to be big)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
     self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
-    self.RInt = self.geom.R_axis + self.geom.r_x(xxI) * np.cos(zzI + self.geom.delta * np.sin(zzI))
-    self.ZInt = self.geom.Z_axis + self.geom.kappa * self.geom.r_x(xxI) * np.sin(zzI)
+    Rint = self.geom.R_axis + self.geom.r_x(xxI) * np.cos(zzI + self.geom.delta * np.sin(zzI))
+    Zint = self.geom.Z_axis + self.geom.kappa * self.geom.r_x(xxI) * np.sin(zzI)
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
         for i in range(self.dimsI[0]):
-            self.RIntN[i,j] = self.RInt[i,j]-0.5*(self.RInt[1,j]-self.RInt[0,j])
-        self.RIntN[self.dimsI[0],j] = self.RInt[-1,j]+0.5*(self.RInt[-1,j]-self.RInt[-2,j])
+            self.RIntN[i,j] = Rint[i,j]-0.5*(Rint[1,j]-Rint[0,j])
+        self.RIntN[self.dimsI[0],j] = Rint[-1,j]+0.5*(Rint[-1,j]-Rint[-2,j])
         self.RIntN[:,self.dimsI[1]] = self.RIntN[:,-2]
 
     for i in range(self.dimsI[0]):
         for j in range(self.dimsI[1]):
-            self.ZIntN[i,j] = self.ZInt[i,j]-0.5*(self.ZInt[i,1]-self.ZInt[i,0])
-        self.ZIntN[i,self.dimsI[1]] = self.ZInt[i,-1]+0.5*(self.ZInt[i,-1]-self.ZInt[i,-2])
+            self.ZIntN[i,j] = Zint[i,j]-0.5*(Zint[i,1]-Zint[i,0])
+        self.ZIntN[i,self.dimsI[1]] = Zint[i,-1]+0.5*(Zint[i,-1]-Zint[i,-2])
         self.ZIntN[self.dimsI[0],:] = self.ZIntN[-2,:]
         
   def set_toroidal_rotation(self, phiTor=0.0):
@@ -164,17 +157,21 @@ class PoloidalProjection:
     #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
     #.codes (e.g. GENE, see Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
+    
+    # shift
+    xGridCore = self.meshC[0][:self.ixLCFS_C] # x grid on in the core region
 
-    #.Extend along z by in each direction by applying twist-shift BCs in the 
-    #.closed-flux region, and just copying the last values (along z) in the SOL.
+    #.n_0 in Goerler et al.
+    torModNum = 2.*np.pi * self.geom.r0 / self.geom.q0 / self.LyC # torroidal mode number (n_0 in Goerler thesis 2009)
+    bcPhaseShift = 1j*2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
+    #.Apply twist-shift BCs in the closed-flux region.
     field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
     field_kex[:,:,1:-1] = field_ky
     for j in range(self.kyDimsC[1]):
-        field_kex[:self.ixLCFS_C,j,0]  = field_ky[:self.ixLCFS_C,j,-1]*np.exp( self.bcPhaseShift*j)
-        field_kex[:self.ixLCFS_C,j,-1] = field_ky[:self.ixLCFS_C,j, 0]*np.exp(-self.bcPhaseShift*j)
-        field_kex[self.ixLCFS_C:,j,0]  = field_ky[self.ixLCFS_C:,j, 1]
-        field_kex[self.ixLCFS_C:,j,-1] = field_ky[self.ixLCFS_C:,j,-2]
-
+        field_kex[:self.ixLCFS_C,j, 0]  = field_ky[:self.ixLCFS_C,j,0]
+        field_kex[:self.ixLCFS_C,j,-1]  = field_ky[:self.ixLCFS_C,j,0]*np.exp(-bcPhaseShift*j)
+        field_kex[self.ixLCFS_C:,j, 0]  = field_ky[self.ixLCFS_C:,j,0]
+        field_kex[self.ixLCFS_C:,j,-1]  = field_ky[self.ixLCFS_C:,j,-1]        
     #.Interpolate onto a finer mesh along z.
     field_kintPos = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.cdouble)
     # separate real and imaginary part
