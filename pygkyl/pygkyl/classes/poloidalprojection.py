@@ -43,9 +43,10 @@ class PoloidalProjection:
     self.alpha_rz_phi0 = None
     self.dimsI = 0
     self.meshC = None
+    self.extz = True
 
   def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16, phiTor=0,
-            intMethod='trapz32',figSize = (8,9)):
+            intMethod='trapz32',figSize = (8,9), extz=True):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
@@ -57,6 +58,7 @@ class PoloidalProjection:
     else:
       self.inset = Inset()
     self.phiTor = phiTor
+    self.extz = extz
     
     # Load a frame to get the grid
     field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
@@ -88,10 +90,12 @@ class PoloidalProjection:
   
     zGrid = meshC[2]
     z1, zN, dz = zGrid[0], zGrid[-1], zGrid[1] - zGrid[0]
-    #. This handles the conection between +pi and -pi regions
-    shift = dz
-    self.zGridEx = np.concatenate( ([z1-dz/2], zGrid, [zN+dz/2]) ) # TEST (??)
-    
+    if self.extz:
+      #. This handles the conection between +pi and -pi regions
+      self.zGridEx = np.concatenate( ([z1-dz/2], zGrid, [zN+dz/2]) ) # TEST (??)
+    else:
+      self.zGridEx = zGrid
+      
     #.Interpolate onto a finer mesh along z.
     self.zgridI = np.linspace(self.zGridEx[0],self.zGridEx[-1],self.nzI)
 
@@ -119,15 +123,15 @@ class PoloidalProjection:
     # this can be a very big array
     self.xyz2RZ = np.zeros([self.dimsC[0],2*self.kyDimsC[1],self.nzI], dtype=np.cfloat)
     exponent_fact = -2.*np.pi*1j * (self.geom.r0 / self.geom.q0) / self.LyC
-    for j in range(self.kyDimsC[1]):
-        for k in range(self.nzI):
+    for k in range(self.kyDimsC[1]):
+        for iz in range(self.nzI):
             #.Positive ky's.
-            self.xyz2RZ[:,j,k]  = np.exp(exponent_fact* j * self.alpha_rz_phi0[:,k] + j*1j*phiTor)
+            self.xyz2RZ[:,k,iz]  = np.exp(exponent_fact* k * self.alpha_rz_phi0[:,iz] + 1j*k*phiTor)
             #.Negative ky's.
-            self.xyz2RZ[:,-j,k] = np.conj(self.xyz2RZ[:,j,k])
+            self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,k,iz])
             
   def compute_nodal_coordinates(self):
-    #.Compute R(x,z) and Z(x,z) (this starts to be big)
+    #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
     self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
     Rint = self.geom.R_axis + self.geom.r_x(xxI) * np.cos(zzI + self.geom.delta * np.sin(zzI))
@@ -160,42 +164,55 @@ class PoloidalProjection:
     # shift
     xGridCore = self.meshC[0][:self.ixLCFS_C] # x grid on in the core region
 
-    #.n_0 in Goerler et al.
-    torModNum = 2.*np.pi * self.geom.r0 / self.geom.q0 / self.LyC # torroidal mode number (n_0 in Goerler thesis 2009)
-    bcPhaseShift = 1j*2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
-    #.Apply twist-shift BCs in the closed-flux region.
-    field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
-    field_kex[:,:,1:-1] = field_ky
-    for j in range(self.kyDimsC[1]):
-        field_kex[:self.ixLCFS_C,j, 0]  = field_ky[:self.ixLCFS_C,j,0]
-        field_kex[:self.ixLCFS_C,j,-1]  = field_ky[:self.ixLCFS_C,j,0]*np.exp(-bcPhaseShift*j)
-        field_kex[self.ixLCFS_C:,j, 0]  = field_ky[self.ixLCFS_C:,j,0]
-        field_kex[self.ixLCFS_C:,j,-1]  = field_ky[self.ixLCFS_C:,j,-1]        
+    if self.extz:
+      #.Apply twist-shift BCs in the closed-flux region.
+      torModNum = 2.*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
+      bcPhaseShift = 2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
+      field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
+      field_kex[:,:,1:-1] = field_ky
+      lo, up = 0, -1
+      for ik in range(self.kyDimsC[1]):
+        f_lo = field_ky[:self.ixLCFS_C,ik,lo]
+        f_up = field_ky[:self.ixLCFS_C,ik,up]
+        ts_lu = np.exp(+1j*ik*bcPhaseShift)
+        ts_ul = np.exp(-1j*ik*bcPhaseShift)
+        # field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
+        # field_kex[:self.ixLCFS_C,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
+        field_kex[:self.ixLCFS_C,ik,lo]  = ts_lu * f_up
+        # field_kex[:self.ixLCFS_C,ik,up]  = ts_ul * f_lo
+        # field_kex[:self.ixLCFS_C,ik,lo]  = f_lo
+        field_kex[:self.ixLCFS_C,ik,up]  = f_up
+        field_kex[self.ixLCFS_C:,ik,lo]  = field_ky[self.ixLCFS_C:,ik,lo]
+        field_kex[self.ixLCFS_C:,ik,up]  = field_ky[self.ixLCFS_C:,ik,up]
+    else:
+      field_kex = field_ky
+      self.zGridEx = self.meshC[2]
+  
     #.Interpolate onto a finer mesh along z.
     field_kintPos = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.cdouble)
     # separate real and imaginary part
     field_kintPos_real = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.double)
     field_kintPos_imag = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.double)
     # interpolate real and imaginary part separately
-    for i in range(self.kyDimsC[0]):
-        for j in range(self.kyDimsC[1]):
-            field_kintPos_real[i,j,:] = pchip_interpolate(self.zGridEx, np.real(field_kex[i,j,:]), self.zgridI)
-            field_kintPos_imag[i,j,:] = pchip_interpolate(self.zGridEx, np.imag(field_kex[i,j,:]), self.zgridI)
+    for ix in range(self.kyDimsC[0]):
+        for ik in range(self.kyDimsC[1]):
+            field_kintPos_real[ix,ik,:] = pchip_interpolate(self.zGridEx, np.real(field_kex[ix,ik,:]), self.zgridI)
+            field_kintPos_imag[ix,ik,:] = pchip_interpolate(self.zGridEx, np.imag(field_kex[ix,ik,:]), self.zgridI)
     # combine real and imaginary part
     field_kintPos = field_kintPos_real + 1j*field_kintPos_imag
 
     #.Append negative ky values.
     field_kint = np.zeros((self.kyDimsC[0],2*self.kyDimsC[1],self.nzI), dtype=np.cdouble)
-    for i in range(self.kyDimsC[0]):
-        for j in range(self.kyDimsC[1]):
-            field_kint[i,j,:]  = field_kintPos[i,j,:]
-            field_kint[i,-j,:] = np.conj(field_kintPos[i,j,:])
+    for ix in range(self.kyDimsC[0]):
+        for ik in range(self.kyDimsC[1]):
+            field_kint[ix, ik,:]  = field_kintPos[ix,ik,:]
+            field_kint[ix,-ik,:] = np.conj(field_kintPos[ix,ik,:])
 
     #.Convert (x,y,z) data to (R,Z):
     field_RZ = np.zeros([self.dimsC[0],self.nzI])
-    for i in range(self.dimsC[0]):
-        for k in range(self.nzI):
-            field_RZ[i,k] = np.real(np.sum(self.xyz2RZ[i,:,k]*field_kint[i,:,k]))
+    for ix in range(self.dimsC[0]):
+        for ik in range(self.nzI):
+            field_RZ[ix,ik] = np.real(np.sum(self.xyz2RZ[ix,:,ik]*field_kint[ix,:,ik]))
             
     return field_RZ
 
