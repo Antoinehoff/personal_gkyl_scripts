@@ -70,6 +70,9 @@ class GeomParam:
         self.n0         = None # Toroidal mode number
         self.x_in       = x_LCFS
         self.x_out      = x_out
+        self.set_qprofile(qprofile=qprofile)
+
+    def set_qprofile(self, qprofile):
         if callable(qprofile):
             self.qprofile = qprofile
         elif qprofile == 'default':
