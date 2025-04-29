@@ -40,6 +40,10 @@ class TimeSerie:
         if load: self.load()
         elif frames is not None: self.init_from_frames(frames)
         
+        if fourier_y:
+            for frame in self.frames:
+                frame.fourier_y()
+        
     def __enter__(self):
         return self
     
