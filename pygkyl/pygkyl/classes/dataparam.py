@@ -111,7 +111,7 @@ class DataParam:
                 
                 # Find a file type where we can find the moment data.
                 mtype = -1
-                for moment_type in ['M0', 'MaxwellianMoments', 'BiMaxwellianMoments', 'HamiltonianMoments']:
+                for moment_type in ['MaxwellianMoments', 'BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
                     file_name = f"-{s_}_{moment_type}_0.gkyl"
                     file_name = self.fileprefix + file_name
                     if os.path.exists(file_name):
