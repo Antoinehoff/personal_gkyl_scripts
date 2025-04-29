@@ -85,7 +85,6 @@ class DG_basis:
             coords (list): list of coordinates [x,y,z]
             id (int): index of the component to evaluate the gradient
         '''
-        # [ix,iy,iz], [xc,yc,zc], gradc = self.grid_to_cell(Gdata, coords)
         ix,iy,iz, xc,yc,zc, gradc = self.grid_to_cell(Gdata, coords)
 
         val = 0.0
@@ -105,19 +104,7 @@ class DG_basis:
         x = coords[0]
         y = coords[1]
         z = coords[2]
-        
         gradc = np.zeros(3)
-        coordc = np.zeros(3)
-        idxc = np.zeros(3, dtype=int)
-        
-        # for d in range(3):
-        #     ic = np.argmin(np.abs(Gdata.grid[d]-coords[d]))
-        #     if( coords[d] < Gdata.grid[d][ic] or coords[d] >= max(Gdata.grid[d]) ): ic -= 1
-        #     idxc[d] = ic
-        #     gradc[d] = 2/(Gdata.grid[d][ic+1]-Gdata.grid[d][ic])
-        #     coordc[d] = (coords[d]-Gdata.grid[d][ic]) * gradc[d] - 1
-            
-        # return idxc, coordc, gradc
 
         ix = np.argmin(np.abs(xnodes-x))
         if( x < xnodes[ix] or x >= max(xnodes) ): ix -= 1
