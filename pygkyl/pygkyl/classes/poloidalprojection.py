@@ -48,7 +48,7 @@ class PoloidalProjection:
     self.TSBC = True
     
   def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16, phiTor=0,
-            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=False):
+            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
