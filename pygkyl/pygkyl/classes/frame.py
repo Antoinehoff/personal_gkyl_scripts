@@ -3,6 +3,7 @@ import numpy as np
 from ..tools import math_tools as mt
 import copy
 from ..tools import pgkyl_interface as pgkyl_
+from ..tools import DG_tools
 
 def getgrid_index(s):
     return (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm')) - 1
@@ -122,7 +123,26 @@ class Frame:
         Gdata_out = copy.deepcopy(Gdata_list[0])
         Gdata_out.values = values
         return Gdata_out
+    
+    def eval_DG_proj(self, grid=None):
+        DGbasis = DG_tools.DG_basis()
+        DGdata = self.get_DG_coeff()
+        
+        if grid is None:
+            grid = self.new_grids
 
+        xg = [grid[0]] if isinstance(grid[0], float) else grid[0]
+        yg = [grid[1]] if isinstance(grid[1], float) else grid[1]
+        zg = [grid[2]] if isinstance(grid[2], float) else grid[2]
+        
+        projection = np.zeros((len(xg), len(yg), len(zg)))
+        for i in range(len(xg)):
+            for j in range(len(yg)):
+                for k in range(len(zg)):
+                    projection[i, j, k] = DGbasis.eval_proj(DGdata, [xg[i], yg[j], zg[k]])
+                    
+        return projection.squeeze()
+    
     def load(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
         """
         Load the data from the file and interpolate it.
@@ -348,7 +368,7 @@ class Frame:
 
         self.values = np.abs(fft_ky)
         gname = 'ky'
-        self.grids[1] = ky
+        self.grids[1] = ky/self.simulation.normalization.dict[gname + 'scale']
         self.gnames[1] = gname
         self.gsymbols[1] = self.simulation.normalization.dict[gname + 'symbol']
         self.gunits[1] = self.simulation.normalization.dict[gname + 'units']
