@@ -43,10 +43,12 @@ class PoloidalProjection:
     self.alpha_rz_phi0 = None
     self.dimsI = 0
     self.meshC = None
-    self.extz = True
-
+    self.gridCheck = False
+    self.zExt = True
+    self.TSBC = True
+    
   def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16, phiTor=0,
-            intMethod='trapz32',figSize = (8,9), extz=True):
+            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=False):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
@@ -58,7 +60,9 @@ class PoloidalProjection:
     else:
       self.inset = Inset()
     self.phiTor = phiTor
-    self.extz = extz
+    self.gridCheck = gridCheck
+    self.TSBC = TSBC
+    self.zExt = True if (gridCheck or TSBC) else zExt
     
     # Load a frame to get the grid
     field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
@@ -90,7 +94,7 @@ class PoloidalProjection:
   
     zGrid = meshC[2]
     z1, zN, dz = zGrid[0], zGrid[-1], zGrid[1] - zGrid[0]
-    if self.extz:
+    if self.zExt:
       #. This handles the conection between +pi and -pi regions
       self.zGridEx = np.concatenate( ([z1-dz/2], zGrid, [zN+dz/2]) ) # TEST (??)
     else:
@@ -155,17 +159,46 @@ class PoloidalProjection:
     self.compute_xyz2RZ(phiTor=self.phiTor)
     self.compute_nodal_coordinates()
     
-  def project_field(self,field):
+  def project_field(self, field, frame):
     
+    if self.gridCheck:
+      field = np.zeros(self.dimsC + np.array([0,0,2]))
+      yGrid = self.meshC[1]
+      Ly = yGrid[-1] - yGrid[0]
+      sigma = Ly/16
+      mu = Ly/4
+      for ix in range(len(self.meshC[0])):
+        for iy in range(len(self.meshC[1])):
+          for iz in range(len(self.zGridEx)):
+            field[ix, iy, iz] = np.exp(-0.5 * ((yGrid[iy] - mu) / sigma) ** 2)
+      # or trace lines at the boundaries
+      # field[0, :, :] = 1.0
+      # field[-1, :, :] = 1.0
+      # field[:, 0, :] = 1.0
+      # field[:, -1, :] = 1.0
+      # field[:, :, 0] = 1.0
+      # field[:, :, -1] = 1.0
+      
+    if self.zExt and not (self.gridCheck or self.TSBC):
+      proj_zExt_lo = np.zeros((self.dimsC[0],self.dimsC[1]), dtype=np.double)
+      proj_zExt_up = np.zeros((self.dimsC[0],self.dimsC[1]), dtype=np.double)
+
+      proj_zExt_lo = frame.eval_DG_proj(grid = [self.meshC[0], self.meshC[1], -np.pi])
+      proj_zExt_up = frame.eval_DG_proj(grid = [self.meshC[0], self.meshC[1], np.pi])
+          
+      field_ex = np.zeros(self.dimsC + np.array([0,0,2]))
+      field_ex[:,:,1:-1] = field
+      field_ex[:,:,0] = proj_zExt_lo
+      field_ex[:,:, -1] = proj_zExt_up
+      field = field_ex
+      
     #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
     #.codes (e.g. GENE, see Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
     
-    # shift
-    xGridCore = self.meshC[0][:self.ixLCFS_C] # x grid on in the core region
-
-    if self.extz:
+    if (self.zExt and self.TSBC) and not self.gridCheck:
       #.Apply twist-shift BCs in the closed-flux region.
+      xGridCore = self.meshC[0][:self.ixLCFS_C] # x grid on in the core region
       torModNum = 2.*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
       bcPhaseShift = 2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
       field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
@@ -176,17 +209,16 @@ class PoloidalProjection:
         f_up = field_ky[:self.ixLCFS_C,ik,up]
         ts_lu = np.exp(+1j*ik*bcPhaseShift)
         ts_ul = np.exp(-1j*ik*bcPhaseShift)
-        # field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
-        # field_kex[:self.ixLCFS_C,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
-        field_kex[:self.ixLCFS_C,ik,lo]  = ts_lu * f_up
+        field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
+        field_kex[:self.ixLCFS_C,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
+        # field_kex[:self.ixLCFS_C,ik,lo]  = ts_lu * f_up
         # field_kex[:self.ixLCFS_C,ik,up]  = ts_ul * f_lo
         # field_kex[:self.ixLCFS_C,ik,lo]  = f_lo
-        field_kex[:self.ixLCFS_C,ik,up]  = f_up
+        # field_kex[:self.ixLCFS_C,ik,up]  = f_up
         field_kex[self.ixLCFS_C:,ik,lo]  = field_ky[self.ixLCFS_C:,ik,lo]
         field_kex[self.ixLCFS_C:,ik,up]  = field_ky[self.ixLCFS_C:,ik,up]
     else:
       field_kex = field_ky
-      self.zGridEx = self.meshC[2]
   
     #.Interpolate onto a finer mesh along z.
     field_kintPos = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.cdouble)
@@ -252,6 +284,7 @@ class PoloidalProjection:
       vsymbol = field_frame.vsymbol
       vunits = field_frame.vunits
       toproject = field_frame.values
+      frame_info = Frame(self.sim, name=fieldName, tf=timeFrame, load=False)
 
     if len(fluctuation) > 0:
       if favg is not None:
@@ -272,7 +305,7 @@ class PoloidalProjection:
     else:
       colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
 
-    field_RZ = self.project_field(toproject)
+    field_RZ = self.project_field(toproject, frame_info)
     
     vlims = [np.min(field_RZ), np.max(field_RZ)]
     vlims_SOL = [np.min(field_RZ[self.ixLCFS_C:,:]), np.max(field_RZ[self.ixLCFS_C:,:])]
