@@ -17,7 +17,7 @@ class IntegratedMoment:
     - Hs: Hamiltonian
     - Htot: total Hamiltonian
     - you can add 'src_' in front of the name to get the source term of the integrated moment
-    - you can add 'bflux_d_e_' to get the boundary flux d=x,y,z direction at the e=u,l edge
+    - you can add 'bflux_d_e_' to get the boundary flux d=x,y,z,total direction at the e=u,l,total edge
     """
     simulation = None
     momname = None
