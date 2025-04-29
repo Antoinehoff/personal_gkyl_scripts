@@ -24,7 +24,7 @@ def get_values(Gdata):
         return Gdata.get_values()
 
 def interpolate(Gdata,comp,polyorder=1, polytype='ms'):
-    dg = pg.data.GInterpModal(Gdata, poly_order=polyorder, basis_type=polytype, periodic=False)
+    dg = pg.data.GInterpModal(Gdata, poly_order=polyorder, basis_type=polytype, periodic=False, num_interp=polyorder+1)
     values = dg.interpolate(comp)
     if values.ndim == 3:
         return values
