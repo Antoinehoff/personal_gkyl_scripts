@@ -111,7 +111,7 @@ class DataParam:
                 
                 # Find a file type where we can find the moment data.
                 mtype = -1
-                for moment_type in ['MaxwellianMoments', 'BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
+                for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
                     file_name = f"-{s_}_{moment_type}_0.gkyl"
                     file_name = self.fileprefix + file_name
                     if os.path.exists(file_name):
@@ -119,7 +119,7 @@ class DataParam:
                         self.default_mom_type = mtype
                         break
                 if mtype == -1:
-                    print(f"No moments file found for species {s_}.")
+                    print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
                     continue
                 # add default moments interface        
                 keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
