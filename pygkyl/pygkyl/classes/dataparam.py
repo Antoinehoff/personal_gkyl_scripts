@@ -123,7 +123,7 @@ class DataParam:
                     continue
                 # add default moments interface        
                 keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
-                if mtype == 'M0':
+                if self.default_mom_type == 'M0':
                     comps  += [0,0,0,0,0,0]
                     prefix += [spec+'_M0',spec+'_M1',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
                 else:

@@ -220,8 +220,7 @@ class GeomParam:
             intV, _ = mt.integrate(self.integrand, t, 0., args=(r), method=method)
             integral   = -intV
         return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r)
-    
-    
+        
     def alpha0_f(self, r, theta, method='trapz32'):
         '''Compute alpha(r, theta, phi=0) without the dPsidr division.'''
         t = theta
