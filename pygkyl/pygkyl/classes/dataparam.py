@@ -1,5 +1,6 @@
 import copy
 import numpy as np
+import os
 from ..tools import pgkyl_interface as pgkyl_
 
 class DataParam:
@@ -29,7 +30,7 @@ class DataParam:
     - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
-                 prefix='', wkdir='', BiMaxwellian=True,  species = {}):
+                 prefix='', wkdir='', species = {}):
         self.expdatadir = expdatadir
         self.g0simdir = g0simdir
         self.simname = simname
@@ -39,11 +40,11 @@ class DataParam:
         self.prefix = prefix # prefix for the data files
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
         self.data_file_dict = {}
-        self.BiMaxwellian = BiMaxwellian
         self.species = species
         self.data_file_dict = {}
         self.set_data_file_dict()
         self.all_field_list = []
+        self.default_mom_type = None
         
     def set_data_file_dict(self):
         '''
@@ -102,77 +103,64 @@ class DataParam:
             s_        = spec.name
             shortname = spec.nshort
             
-            # add bimax moments and dist func info        
-            keys  = ['n','upar','Tpar','Tperp','qpar','qperp']
-            if self.BiMaxwellian:
-                comps  = [0,1,2,3,0,0]
-                prefix = 6*[s_+'_BiMaxwellianMoments']
-            else:
-                comps  = [0,0,0,0,0,0]
-                prefix = [s_+'_M0',s_+'_M1',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
-            for i in range(len(keys)):
-                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+            for add_source in [False,True]:
+                keys   = []
+                prefix = []
+                comps  = []
+                spec = s_ + '_source' if add_source else s_
+                
+                # Find a file type where we can find the moment data.
+                mtype = -1
+                for moment_type in ['MaxwellianMoments', 'BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
+                    file_name = f"-{s_}_{moment_type}_0.gkyl"
+                    file_name = self.fileprefix + file_name
+                    if os.path.exists(file_name):
+                        mtype = moment_type
+                        self.default_mom_type = mtype
+                        break
+                if mtype == -1:
+                    print(f"No moments file found for species {s_}.")
+                    continue
+                # add default moments interface        
+                keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
+                if mtype == 'M0':
+                    comps  += [0,0,0,0,0,0]
+                    prefix += [spec+'_M0',spec+'_M1',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
+                else:
+                    comps  += [0,1,2,3,0,0]
+                    prefix += 6*[spec+'_'+mtype]
 
-            # add Hamiltonian moments
-            keys  = ['H_n','H_mv','H']
-            comps  = [0,1,2]
-            prefix = 3*[s_+'_HamiltonianMoments']
-            for i in range(len(keys)):
-                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
-                    
-            # add distribution functions
-            data_file_dict['f'+shortname+'file'] = s_
-            data_file_dict['f'+shortname+'comp'] = 0
-            data_file_dict['f'+shortname+'gnames'] = gnames
-                    
-            # add moments info        
-            keys  = ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
-            comps  = [0,0,0,0,0,0,0]
-            prefix = [s_+'_M0',s_+'_M1',s_+'_M2',s_+'_M2par',s_+'_M2perp',s_+'_M3par',s_+'_M3perp']
-            for i in range(len(keys)):
-                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+                # Add Maxwellian moments
+                keys   += ['MM_n','MM_upar','MM_T']
+                comps  += [0,1,2]
+                prefix += 3*[spec+'_MaxwellianMoments']
 
-            # add source info        
-            keys  = ['n_src','upar_src','Tpar_src','Tperp_src','qpar_src','qperp_src']
-            if self.BiMaxwellian:
-                comps  = [0,1,2,3,0,0]
-                prefix = 6*[s_+'_source_BiMaxwellianMoments']
-            else:
-                comps  = [0,0,0,0,0,0]
-                prefix = [s_+'_source_M0',s_+'_source_M1',s_+'_source_M2par',s_+'_source_M2perp',s_+'_source_M3par',s_+'__source_M3perp']
-            for i in range(len(keys)):
-                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+                # Add biMaxwellian moments
+                keys   += ['BM_n','BM_upar','BM_Tpar','BM_Tperp']
+                comps  += [0,1,2,3]
+                prefix += 4*[spec+'_BiMaxwellianMoments']
 
-            # add distribution functions
-            data_file_dict['f'+shortname+'file'] = s_
-            data_file_dict['f'+shortname+'comp'] = 0
-            data_file_dict['f'+shortname+'gnames'] = gnames
-
-            # add Hamiltonian source info
-            keys  = ['H_n_src','H_mv_src','H_src']
-            comps  = [0,1,2]
-            prefix = 3*[s_+'_source_HamiltonianMoments']
-            for i in range(len(keys)):
-                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
-
-            # add source moments info        
-            keys  = ['M0_src','M1_src','M2_src','M2par_src','M2perp_src','M3par_src','M3perp_src']
-            comps  = [0,0,0,0,0,0,0]
-            prefix = [s_+'_source_M0',s_+'_source_M1',s_+'_source_M2',s_+'_source_M2par',s_+'_source_M2perp',s_+'_source_M3par',s_+'_source_M3perp']
-            for i in range(len(keys)):
-                data_file_dict[keys[i]+shortname+'file']   = prefix[i]
-                data_file_dict[keys[i]+shortname+'comp']   = comps[i]
-                data_file_dict[keys[i]+shortname+'gnames'] = gnames[0:3]
+                # add Hamiltonian moments
+                keys   += ['HM_n','HM_mv','HM_H']
+                comps  += [0,1,2]
+                prefix += 3*[spec+'_HamiltonianMoments']
+                        
+                # add moments info        
+                keys   += ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
+                comps  += [0,0,0,0,0,0,0]
+                prefix += [spec+'_M0',spec+'_M1',spec+'_M2',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
+                
+                # add distribution functions
+                keys   += ['f']
+                comps  += [0]
+                prefix += [spec]
+                  
+                # add to the data_file_dict
+                for i in range(len(keys)):
+                    k = 'src_'+keys[i]+shortname if add_source else keys[i]+shortname
+                    data_file_dict[k+'file'] = prefix[i]
+                    data_file_dict[k+'comp'] = comps[i]
+                    data_file_dict[k+'gnames'] = gnames[0:3]
         
         self.data_file_dict = data_file_dict
         
@@ -232,41 +220,37 @@ class DataParam:
         # add routinely other quantities of interest
         for spec in species.values():
             s_ = spec.nshort
-            # distribution functions
-            default_qttes.append(['f%s'%(s_), r'$f_%s$'%(s_), '[f]'])
-            # Moments
-            default_qttes.append(['M0%s'%(s_), r'$M_{0%s}$'%(s_), r'm$^{-3}$'])
-            default_qttes.append(['M1%s'%(s_), r'$M_{1%s}$'%(s_), r'm$^{-2}$/s'])
-            default_qttes.append(['M2%s'%(s_), r'$M_{2%s}$'%(s_), r'J/kg/m$^{3}$'])
-            default_qttes.append(['M2par%s'%(s_), r'$M_{2\parallel %s}$'%(s_), r'J/kg/m$^{3}$'])
-            default_qttes.append(['M2perp%s'%(s_), r'$M_{2\perp %s}$'%(s_), r'J/kg/m$^{3}$'])
-            default_qttes.append(['M3par%s'%(s_), r'$M_{3\parallel %s}$'%(s_), r'J/kg/m$^{2}/s$'])
-            default_qttes.append(['M3perp%s'%(s_), r'$M_{3\perp %s}$'%(s_), r'J/kg/m$^{2}/s$'])
-            # Bimaxwellian moments
-            default_qttes.append(['n%s'%(s_), r'$n_%s$'%(s_), r'm$^{-3}$'])
-            default_qttes.append(['upar%s'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
-            default_qttes.append(['Tpar%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
-            default_qttes.append(['Tperp%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
-            # Hamiltonian moments
-            default_qttes.append(['H_n%s'%(s_), r'$n_%s$'%(s_), r'm$^{-3}$'])            
-            default_qttes.append(['H_mv%s'%(s_), r'$p_%s$'%(s_), r'kg m/s m$^{-3}$'])            
-            default_qttes.append(['H%s'%(s_), r'$H_%s$'%(s_), r'J m$^{-3}$'])            
-            # source moments
-            default_qttes.append(['M0_src%s'%(s_), r'$\dot M_{0%s}$'%(s_), r'm$^{-3}$/s'])
-            default_qttes.append(['M1_src%s'%(s_), r'$\dot M_{1%s}$'%(s_), r'm$^{-2}$/s'])
-            default_qttes.append(['M2_src%s'%(s_), r'$\dot M_{2%s}$'%(s_), r'J/kg/m$^{3}$/s'])
-            default_qttes.append(['M2par_src%s'%(s_), r'$\dot M_{2\parallel %s}$'%(s_), r'J/kg/m$^{3}$/s'])
-            default_qttes.append(['M2perp_src%s'%(s_), r'$\dot M_{2\perp %s}$'%(s_), r'J/kg/m$^{3}$/s'])
-            default_qttes.append(['M3par_src%s'%(s_), r'$\dot M_{3\parallel %s}$'%(s_), r'J/kg/m$^{2}$/s^2'])
-            default_qttes.append(['M3perp_src%s'%(s_), r'$\dot M_{3\perp %s}$'%(s_), r'J/kg/m$^{2}$/s^2'])            
-            default_qttes.append(['n_src%s'%(s_), r'$\dot n_%s$'%(s_), r'm$^{-3}$/s'])
-            default_qttes.append(['upar_src%s'%(s_), r'$u_{\parallel %s}$'%(s_), 'm/s'])
-            default_qttes.append(['Tpar_src%s'%(s_), r'$T_{\parallel %s}$'%(s_), 'J/kg'])
-            default_qttes.append(['Tperp_src%s'%(s_), r'$T_{\perp %s}$'%(s_), 'J/kg'])
-            default_qttes.append(['H_n_src%s'%(s_), r'$\dot n_%s$'%(s_), r'm$^{-3}$/s'])            
-            default_qttes.append(['H_mv_src%s'%(s_), r'$\dot p_%s$'%(s_), r'kg m/s^{2} m$^{-3}$'])            
-            default_qttes.append(['H_src%s'%(s_), r'$\dot H_%s$'%(s_), r'J m$^{-3}/s$'])     
-            default_qttes.append(['f_src%s'%(s_), r'$f_%s$'%(s_), '[f]'])
+            for add_source in [False, True]:
+                src_ = 'src_' if add_source else ''
+                S_ = 'S' if add_source else ''
+                # distribution functions
+                default_qttes.append(['%sf%s'%(src_,s_), r'%s$f_%s$'%(S_,s_), '[f]'])
+                # Moments
+                default_qttes.append(['%sM0%s'%(src_,s_), r'%s$M_{0%s}$'%(S_,s_), r'm$^{-3}$'])
+                default_qttes.append(['%sM1%s'%(src_,s_), r'%s$M_{1%s}$'%(S_,s_), r'm$^{-2}$/s'])
+                default_qttes.append(['%sM2%s'%(src_,s_), r'%s$M_{2%s}$'%(S_,s_), r'J/kg/m$^{3}$'])
+                default_qttes.append(['%sM2par%s'%(src_,s_), r'%s$M_{2\parallel %s}$'%(S_,s_), r'J/kg/m$^{3}$'])
+                default_qttes.append(['%sM2perp%s'%(src_,s_), r'%s$M_{2\perp %s}$'%(S_,s_), r'J/kg/m$^{3}$'])
+                default_qttes.append(['%sM3par%s'%(src_,s_), r'%s$M_{3\parallel %s}$'%(S_,s_), r'J/kg/m$^{2}/s$'])
+                default_qttes.append(['%sM3perp%s'%(src_,s_), r'%s$M_{3\perp %s}$'%(S_,s_), r'J/kg/m$^{2}/s$'])
+                # Generic moments
+                default_qttes.append(['%sn%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
+                default_qttes.append(['%supar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
+                default_qttes.append(['%sTpar%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
+                default_qttes.append(['%sTperp%s'%(src_,s_), r'%s$T_{\perp %s}$'%(S_,s_), 'J/kg'])
+                # Maxwellian moments
+                default_qttes.append(['%sMM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
+                default_qttes.append(['%sMM_upar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
+                default_qttes.append(['%sMM_T%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
+                # BiMaxwellian moments
+                default_qttes.append(['%sBM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
+                default_qttes.append(['%sBM_upar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
+                default_qttes.append(['%sBM_Tpar%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
+                default_qttes.append(['%sBM_Tperp%s'%(src_,s_), r'%s$T_{\perp %s}$'%(S_,s_), 'J/kg'])
+                # Hamiltonian moments
+                default_qttes.append(['%sHM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])            
+                default_qttes.append(['%sHM_mv%s'%(src_,s_), r'%s$p_%s$'%(S_,s_), r'kg m/s m$^{-3}$'])            
+                default_qttes.append(['%sHM_H%s'%(src_,s_), r'%s$H_%s$'%(S_,s_), r'J m$^{-3}$'])            
             
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
@@ -796,11 +780,13 @@ class DataParam:
         # add default colormap for each fields
         positive_fields = ['Bmag','pow_src'] # spec. indep
         
-        spec_dep_fields = ['M0','M2','M2par','M2perp',
+        spec_dep_fields = ['M0','M2','M2par','M2perp', 'M3par','M3perp',
                            'n','T','Tpar','Tperp','p',
-                           'M0_src','M2_src','M2par_src','M2perp_src',
-                           'n_src','T_src','Tpar_src','Tperp_src',
-                           'f','f_src']
+                           'BM_n','BM_Tpar','BM_Tperp',
+                           'src_M0','src_M2','src_M2par','src_M2perp', 'src_M3par','src_M3perp',
+                           'src_n','src_T','src_Tpar','src_Tperp','src_p',
+                           'src_BM_n','src_BM_Tpar','src_BM_Tperp',
+                           'f','src_f']
         for sdepfield in spec_dep_fields:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)

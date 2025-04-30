@@ -71,13 +71,13 @@ class Simulation:
         )
 
     def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",
-                       wkdir = "", BiMaxwellian=True, species = {}):
+                       wkdir = "", species = {}):
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
         self.data_param = DataParam(
             expdatadir=expdatadir, g0simdir=g0simdir, simname=simname, simdir=simdir, 
-            prefix=fileprefix, wkdir=wkdir, BiMaxwellian=BiMaxwellian, species=species
+            prefix=fileprefix, wkdir=wkdir, species=species
         )
         self.set_num_param()  # Automatically set numerical parameters based on data
 
@@ -226,8 +226,8 @@ class Simulation:
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_elc(X, Y, Z)
                 integrant += 1.5 * source.density_profile(X, Y, Z) * source.temp_profile_ion(X, Y, Z)
         elif (profileORgkyldata == 'gkyldata'):  # Compute the input power from the source term diagnostic
-            M2e = Frame(self, 'M2_srce', tf=0, load=True)
-            M2i = Frame(self, 'M2_srci', tf=0, load=True)
+            M2e = Frame(self, 'src_M2e', tf=0, load=True)
+            M2i = Frame(self, 'src_M2i', tf=0, load=True)
             integrant = 0.5 * self.species['elc'].m * M2e.values + 0.5 * self.species['ion'].m * M2i.values
         else:
             raise ValueError("Invalid type. Choose 'profile' or 'gkyldata'.")
@@ -312,8 +312,8 @@ class Simulation:
         iw_iz = np.argmin(np.abs(z))
         # get temperature of the source at the inner wall
         spec_short = spec[0]
-        M2i = Frame(self, 'M2_src'+spec_short, tf=0, load=True, normalize=False)
-        M0i = Frame(self, 'n_src'+spec_short, tf=0, load=True, normalize=False)
+        M2i = Frame(self, 'src_M2'+spec_short, tf=0, load=True, normalize=False)
+        M0i = Frame(self, 'src_M0'+spec_short, tf=0, load=True, normalize=False)
         Ti_iw = self.species[spec].m * M2i.values[iw_ix, iw_iy, iw_iz] / M0i.values[iw_ix, iw_iy, iw_iz] 
         # get magnetic field at the inner wall
         Bfield = Frame(self, 'Bmag', tf=0, load=True).values[iw_ix, iw_iy, iw_iz]

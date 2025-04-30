@@ -44,8 +44,10 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
                            fluctuation=False, plot_type='pcolormesh',
                            xlim=[], ylim=[], clim=[], figout=[]):
     if not isinstance(twindow,list): twindow = [twindow]
+    if clim: clim = [clim] if not isinstance(clim[0], list) else clim
     cmap0 = cmap
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
+    kf = 0 # field counter
     for ax,field in zip(axs,fields):
         x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourier_y =\
               data_utils.get_1xt_diagram(simulation,field,cdirection,ccoords,tfs=twindow)
@@ -72,6 +74,7 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             vmin = np.power(10,np.log10(vmax)-4) if fourier_y else vmin
             values = np.clip(values, vmin, None) if fourier_y else values 
             # make the plot
+            clim = clim[kf] if clim else None
             fig = fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
                               xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
                               cmap=cmap, vmin=vmin, vmax=vmax, colorscale=colorscale, plot_type=plot_type)
@@ -87,7 +90,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             cbar = fig.colorbar(sm, ax=ax)
             fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2], xlim=xlim, ylim=ylim, figout=figout,
                                     xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar)
-
+        kf += 1 # field counter
+        
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             time_frames=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
             figout = [], errorbar = False):
@@ -293,7 +297,12 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
             fig.savefig(frameFileName)
             plt.close()
             cutout=cutout[0]
-            cutname = [key+('=%2.2f'%cutout[key]) for key in cutout]
+            cutname = []
+            for key in cutout:
+                if isinstance(cutout[key], float):
+                    cutname.append(key+('=%2.2f'%cutout[key]))
+                elif isinstance(cutout[key], str):
+                    cutname.append(key+cutout[key])
 
         # Update progress
         progress = f"Processing frames: {i}/{total_frames}... "

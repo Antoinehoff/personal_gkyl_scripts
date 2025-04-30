@@ -113,7 +113,19 @@ class Normalization:
             shift  = 0
             symbol = r'$z/\pi$'
             units  = ''
-
+            
+        #-- Wavenumber normalization
+        elif norm in ['rho_i']:
+            scale  = 1.0/self.simulation.species['ion'].rho
+            shift  = 0
+            symbol = r'$%s_{%s} \rho_{0i}$' %(key[0],key[-1])
+            units  = ''
+        elif norm in ['rho_e']:
+            scale  = 1.0/self.simulation.species['elc'].rho
+            shift  = 0
+            symbol = r'$%s \rho_{0e}$' % key
+            units  = ''
+            
         #-- Velocity normalization
         elif norm in ['vt', 'thermal velocity']:
             for spec in self.simulation.species.values():
@@ -124,8 +136,8 @@ class Normalization:
                     units  = ''
 
         #-- Energy normalization
-        elif norm == 'MJ':
-            scale = 1e6
+        elif norm in ['MJ','J']:
+            scale = 1e6 if norm == 'MJ' else 1.0
             for spec in self.simulation.species.values():
                 if key == 'Wkin%s'%spec.name[0]:
                     symbol = r'$W_{k,%s}$'%spec.name[0]
@@ -146,7 +158,7 @@ class Normalization:
             if key == 'Wtot':
                 symbol = r'$W$'
             shift = 0
-            units = r'MJ/m$^3$'
+            units = r'MJ/m$^3$' if norm == 'MJ' else r'J/m$^3$'
 
         #-- Temperature normalization
         elif norm == 'eV':
@@ -162,7 +174,7 @@ class Normalization:
                     symbol = r'$T_{\perp %s}$'%spec.name[0]
             shift = 0
             units = 'eV'
-            if not self.simulation.data_param.BiMaxwellian:
+            if self.simulation.data_param.default_mom_type == 'M0' :
                 scale /= self.phys_param.eV / 3.0
 
         #-- Preessure normalization
@@ -178,7 +190,7 @@ class Normalization:
                     symbol = r'$\beta_{%s}$'%spec.nshort
             shift = 0
             units = r'$\%$'
-            if not self.simulation.data_param.BiMaxwellian:
+            if self.simulation.data_param.default_mom_type == 'M0':
                 scale /= self.simulation.phys_param.eV / 3.0
         elif norm == 'Pa':
             for spec in self.simulation.species.values():
@@ -191,7 +203,7 @@ class Normalization:
                     symbol = r'$p_{%s}$'%spec.nshort
             shift = 0
             units = r'Pa'
-            if not self.simulation.data_param.BiMaxwellian:
+            if self.simulation.data_param.default_mom_type == 'M0':
                 scale /= self.simulation.phys_param.eV / 3.0
         
         #-- Current density normalization
