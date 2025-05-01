@@ -45,6 +45,7 @@ class DataParam:
         self.set_data_file_dict()
         self.all_field_list = []
         self.default_mom_type = None
+        self.dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
         
     def set_data_file_dict(self):
         '''
@@ -167,13 +168,13 @@ class DataParam:
     @staticmethod
     def get_default_units_dict(species):
         """
-        Returns the default units dictionary for various quantities.
+        This builds all the default units for the fields that we are able to plot.
 
         Parameters:
         - species (dict): Dictionary of species information.
 
         Returns:
-        - dict: Default units dictionary.
+        - dict: units, symbols, colormap, composition, and recipe for each field.
         """
         #-Here we define the default unit dictionary which is meant to gives 
         # the symbol, units, scale, shift, and composition 
@@ -769,14 +770,6 @@ class DataParam:
             default_units_dict[key+'compo']    = compo[key]
             default_units_dict[key+'receipe']  = receipe[key]
 
-        # now that all fields where declared, we create a list of all the available fields
-        all_field_list = []
-        for key in default_units_dict:
-            if key.endswith('symbol'):
-                all_field_list.append(key[:-6])
-        # eliminate duplicates
-        all_field_list = list(set(all_field_list))
-        
         # add default colormap for each fields
         positive_fields = ['Bmag','pow_src'] # spec. indep
         
@@ -791,12 +784,12 @@ class DataParam:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)
         
-        for field in all_field_list:
+        for field in names:
             if field in positive_fields:
                 default_units_dict[field+'colormap'] = 'inferno'
             else:
                 default_units_dict[field+'colormap'] = 'bwr'
-
+        
         # Return a copy of the units dictionary
         return copy.copy(default_units_dict)
 
