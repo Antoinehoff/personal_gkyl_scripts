@@ -142,7 +142,8 @@ class PoloidalProjection:
     for k in range(self.kyDimsC[1]):
         for iz in range(self.nzI):
             #.Positive ky's.
-            self.xyz2RZ[:,+k,iz]  = np.exp(-1j*k*(n0*self.alpha_rz_phi0[:,iz] + phiTor))
+            ### Not sure at all about this phase factor
+            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*(n0*self.alpha_rz_phi0[:,iz] + phiTor))
             #.Negative ky's.
             self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
             
