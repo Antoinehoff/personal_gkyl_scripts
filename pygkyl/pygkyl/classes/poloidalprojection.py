@@ -78,6 +78,12 @@ class PoloidalProjection:
     self.dimsC = [np.size(meshC[i]) for i in range(self.ndim)]
     self.meshC = meshC
     self.LyC = meshC[1][-1] - meshC[1][0] # length in the y direction
+    
+    # We need to rescale the y length to fill the integer toroidal mode number
+    Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC
+    Ntor = int(np.round(Ntor0))
+    self.LyC = 2*np.pi * (self.geom.r0 / self.geom.q0) / Ntor
+    self.meshC[1] = self.meshC[1] * (self.LyC / (meshC[1][-1] - meshC[1][0]))
 
     # Radial index of the last closed flux surface on the centered mesh
     self.ixLCFS_C = np.argmin(np.abs(meshC[0] - self.geom.x_LCFS))
@@ -125,14 +131,15 @@ class PoloidalProjection:
   def compute_xyz2RZ(self,phiTor=0.0):
     phiTor += np.pi # To match the obmp with varphi=0
     # this can be a very big array
-    self.xyz2RZ = np.zeros([self.dimsC[0],2*self.kyDimsC[1],self.nzI], dtype=np.cfloat)
-    exponent_fact = -2.*np.pi*1j * (self.geom.r0 / self.geom.q0) / self.LyC
+    self.xyz2RZ = np.zeros([self.dimsC[0],2*self.kyDimsC[1],self.nzI], dtype=np.cdouble)
+    Cy = self.geom.r0 / self.geom.q0
+    n0 = 2*np.pi * Cy/ self.LyC
     for k in range(self.kyDimsC[1]):
         for iz in range(self.nzI):
             #.Positive ky's.
-            self.xyz2RZ[:,k,iz]  = np.exp(exponent_fact* k * self.alpha_rz_phi0[:,iz] + 1j*k*phiTor)
+            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*(n0*self.alpha_rz_phi0[:,iz] + phiTor))
             #.Negative ky's.
-            self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,k,iz])
+            self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
             
   def compute_nodal_coordinates(self):
     #.Compute R(x,z) and Z(x,z)
@@ -211,10 +218,6 @@ class PoloidalProjection:
         ts_ul = np.exp(-1j*ik*bcPhaseShift)
         field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
         field_kex[:self.ixLCFS_C,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
-        # field_kex[:self.ixLCFS_C,ik,lo]  = ts_lu * f_up
-        # field_kex[:self.ixLCFS_C,ik,up]  = ts_ul * f_lo
-        # field_kex[:self.ixLCFS_C,ik,lo]  = f_lo
-        # field_kex[:self.ixLCFS_C,ik,up]  = f_up
         field_kex[self.ixLCFS_C:,ik,lo]  = field_ky[self.ixLCFS_C:,ik,lo]
         field_kex[self.ixLCFS_C:,ik,up]  = field_ky[self.ixLCFS_C:,ik,up]
     else:
@@ -237,14 +240,14 @@ class PoloidalProjection:
     field_kint = np.zeros((self.kyDimsC[0],2*self.kyDimsC[1],self.nzI), dtype=np.cdouble)
     for ix in range(self.kyDimsC[0]):
         for ik in range(self.kyDimsC[1]):
-            field_kint[ix, ik,:]  = field_kintPos[ix,ik,:]
+            field_kint[ix,+ik,:] = field_kintPos[ix,ik,:]
             field_kint[ix,-ik,:] = np.conj(field_kintPos[ix,ik,:])
 
     #.Convert (x,y,z) data to (R,Z):
     field_RZ = np.zeros([self.dimsC[0],self.nzI])
     for ix in range(self.dimsC[0]):
-        for ik in range(self.nzI):
-            field_RZ[ix,ik] = np.real(np.sum(self.xyz2RZ[ix,:,ik]*field_kint[ix,:,ik]))
+        for iz in range(self.nzI):
+            field_RZ[ix,iz] = np.real(np.sum(self.xyz2RZ[ix,:,iz]*field_kint[ix,:,iz]))
             
     return field_RZ
 
@@ -392,12 +395,24 @@ class PoloidalProjection:
     else:
         plt.show()
 
-  def movie(self, fieldName, timeFrames, moviePrefix='', colorMap =None, inset=True,
+  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap =None, inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
-          pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False):
-      # Create a temporary folder to store the movie frames
-      movDirTmp = 'movie_frames_tmp'
+          pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False, timeFrame=[],
+          rmFrames=False):
+    
+      # Naming
+      movieName = fieldName+'_RZ'
+      if fluctuation: movieName = 'd' + movieName
+      if colorScale == 'log': movieName = 'log'+movieName
+      movieName = moviePrefix + movieName
+      movieName+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
+      movieName+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
+      
+      # Create a temporary folder to store the movie frames (random name)
+      movDirTmp = movieName+'_frames_tmp_%6d'%np.random.randint(10000)
       os.makedirs(movDirTmp, exist_ok=True)   
+      
+      timeFrames = timeFrame if not timeFrames else timeFrames
 
       if fluctuation:
         with TimeSerie(simulation=self.sim, name=fieldName, time_frames=timeFrames, load=True) \
@@ -412,8 +427,8 @@ class PoloidalProjection:
       frameFileList = []
       total_frames = len(timeFrames)
       for i, tf in enumerate(timeFrames, 1):  # Start the index at 1  
-          frameFileName = f'movie_frames_tmp/frame_{tf}.png'
-          frameFileList.append(f'movie_frames_tmp/frame_{tf}.png')
+          frameFileName = f'{movDirTmp}/frame_{tf}.png'
+          frameFileList.append(f'{movDirTmp}/frame_{tf}.png')
 
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
                           colorMap = colorMap, inset=inset,
@@ -429,16 +444,8 @@ class PoloidalProjection:
 
       sys.stdout.write("\n")
 
-      # Naming
-      movieName = fieldName+'_RZ'
-      if fluctuation: movieName = 'd' + movieName
-      if colorScale == 'log': movieName = 'log'+movieName
-      movieName = moviePrefix + movieName
-      movieName+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''
-      movieName+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
-
       # Compiling the movie images
-      fig_tools.compile_movie(frameFileList, movieName, rmFrames=True,
+      fig_tools.compile_movie(frameFileList, movieName, rmFrames=rmFrames,
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
       
   def reset_inset(self):
@@ -449,53 +456,53 @@ class Inset:
   Class to add an inset to a plot.
   """
   def __init__(self, zoom=1.5, 
-               zoom_loc='lower left', 
-               inset_rel_pos=(0.35,0.35), 
+               zoomLoc='lower left', 
+               insetRelPos=(0.35,0.35), 
                vmin=0, vmax=1,
                width="10%", 
                height="100%", 
                loc='lower left', 
-               borderpad=0,
+               borderPad=0,
                xlim=(1.07, 1.16),
                ylim=(0.04, 0.24),
                nbinsx=7, nbinsy=2,
                format="{x:.2f}",
                shading='auto',
-               anchor_colorbar = (1.05, 0., 1, 1),
-               markloc = [1, 4]):
+               anchorColorbar = (1.05, 0., 1, 1),
+               markLoc = [1, 4]):
     self.zoom = zoom
-    self.zoom_loc = zoom_loc
-    self.lower_corner_rel_pos = inset_rel_pos
+    self.zoomLoc = zoomLoc
+    self.lowerCornerRelPos = insetRelPos
     self.vmin = vmin
     self.vmax = vmax
     self.width = width
     self.height = height
     self.loc = loc
-    self.borderpad = borderpad
+    self.borderPad = borderPad
     self.xlim = xlim
     self.ylim = ylim
     self.nbinsx = nbinsx
     self.nbinsy = nbinsy
     self.format = format
     self.shading = shading
-    self.anchor_colorbar = anchor_colorbar
-    self.markloc = markloc
+    self.anchorColorbar = anchorColorbar
+    self.markLoc = markLoc
       
-  def add_inset(self, fig, ax, R, Z, field_RZ, colorMap, colorScale, 
+  def add_inset(self, fig, ax, R, Z, fieldRZ, colorMap, colorScale, 
                 minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):
     # sub region of the original image
-    axins = zoomed_inset_axes(ax, self.zoom, loc=self.zoom_loc, 
-                              bbox_to_anchor=self.lower_corner_rel_pos,bbox_transform=ax.transAxes)
-    img_in = axins.pcolormesh(R, Z, field_RZ,
+    axins = zoomed_inset_axes(ax, self.zoom, loc=self.zoomLoc, 
+                              bbox_to_anchor=self.lowerCornerRelPos,bbox_transform=ax.transAxes)
+    img_in = axins.pcolormesh(R, Z, fieldRZ,
                               cmap=colorMap, shading=shading,vmin=minSOL,vmax=maxSOL)
       
     cax = inset_axes(axins,
                     width=self.width,
                     height=self.height,
                     loc=self.loc,
-                    bbox_to_anchor=self.anchor_colorbar,
+                    bbox_to_anchor=self.anchorColorbar,
                     bbox_transform=axins.transAxes,
-                    borderpad=self.borderpad)
+                    borderpad=self.borderPad)
     fig.colorbar(img_in,cax=cax)
     axins.set_xlim(self.xlim)
     axins.set_ylim(self.ylim)
@@ -523,4 +530,4 @@ class Inset:
     
     # draw a bbox of the region of the inset axes in the parent axes and
     # connecting lines between the bbox and the inset axes area
-    mark_inset(ax, axins, loc1=self.markloc[0], loc2=self.markloc[1], fc="none", ec="0.5")
+    mark_inset(ax, axins, loc1=self.markLoc[0], loc2=self.markLoc[1], fc="none", ec="0.5")

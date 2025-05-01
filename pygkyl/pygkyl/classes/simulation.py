@@ -80,6 +80,7 @@ class Simulation:
             prefix=fileprefix, wkdir=wkdir, species=species
         )
         self.set_num_param()  # Automatically set numerical parameters based on data
+        self.available_frames = self.data_param.get_available_frames(self) # Get available frames for the simulation
 
     def set_num_param(self):
         """
@@ -136,7 +137,7 @@ class Simulation:
         return self.get_c_s()/self.species['ion'].omega_c
     
     def get_filename(self,fieldname,tf):
-        dataname = self.data_param.data_file_dict[fieldname+'file']
+        dataname = self.data_param.file_info_dict[fieldname+'file']
         return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)
     
     def get_GBloss_t(self, spec, twindow, ix=0, losstype='particle', integrate = False):

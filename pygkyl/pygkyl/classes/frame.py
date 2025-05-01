@@ -94,7 +94,7 @@ class Frame:
         self.composition = self.simulation.normalization.dict[self.name + 'compo']
         self.receipe = self.simulation.normalization.dict[self.name + 'receipe']
         for subname in self.composition:
-            subdataname = self.simulation.data_param.data_file_dict[subname + 'file']
+            subdataname = self.simulation.data_param.file_info_dict[subname + 'file']
             self.datanames.append(subdataname)
             if subname in ['b_x', 'b_y', 'b_z', 'Jacobian', 'Bmag', 
                            'g_xx', 'g_xy', 'g_xz', 'g_yy', 'g_yz', 'g_zz',
@@ -103,8 +103,8 @@ class Frame:
             else:
                 name_tf = '%s_%d' % (subdataname, self.tf)
             self.filenames.append("%s-%s.gkyl" % (self.simulation.data_param.fileprefix, name_tf))
-            self.comp.append(self.simulation.data_param.data_file_dict[subname + 'comp'])
-            self.gnames = copy.deepcopy(self.simulation.data_param.data_file_dict[subname + 'gnames'])
+            self.comp.append(self.simulation.data_param.file_info_dict[subname + 'comp'])
+            self.gnames = copy.deepcopy(self.simulation.data_param.file_info_dict[subname + 'gnames'])
         self.gsymbols = [self.simulation.normalization.dict[key + 'symbol'] for key in self.gnames]
         self.gunits = [self.simulation.normalization.dict[key + 'units'] for key in self.gnames]
         self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']

@@ -67,7 +67,7 @@ def get_TCV_PT_sim_config(simdir, fileprefix, x_LCFS, x_out):
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     inset = Inset() # all default but the lower corner position
-    inset.lower_corner_rel_pos = [0.3,0.32]
+    inset.lowerCornerRelPos = [0.3,0.32]
     simulation.polprojInset = inset
 
     return simulation
@@ -117,7 +117,7 @@ def get_TCV_NT_sim_config(simdir,fileprefix, x_LCFS, x_out):
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
     inset = Inset() # all default but the lower corner position
-    inset.lower_corner_rel_pos = [0.35,0.3]
+    inset.lowerCornerRelPos = [0.35,0.3]
     simulation.inset = inset
 
     return simulation

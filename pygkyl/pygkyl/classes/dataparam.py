@@ -2,6 +2,7 @@ import copy
 import numpy as np
 import os
 from ..tools import pgkyl_interface as pgkyl_
+from ..utils import file_utils as file_utils
 
 class DataParam:
     """
@@ -39,13 +40,11 @@ class DataParam:
         self.datadir = g0simdir + simdir + simname +'/' + wkdir
         self.prefix = prefix # prefix for the data files
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
-        self.data_file_dict = {}
         self.species = species
-        self.data_file_dict = {}
+        self.file_info_dict = {}
         self.set_data_file_dict()
-        self.all_field_list = []
         self.default_mom_type = None
-        self.dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
+        self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
         
     def set_data_file_dict(self):
         '''
@@ -59,25 +58,25 @@ class DataParam:
         - BiMaxwellian (bool): Flag indicating if BiMaxwellian moments are used.
         - species (dict): Dictionary of species information.
         '''
-        data_file_dict = {}
+        file_dict = {}
         gnames   = ['x','y','z','vpar','mu']
 
         # add equilibrium info
         # Magnetic field amplitude
-        data_file_dict['Bmag'+'file']   = 'bmag'
-        data_file_dict['Bmag'+'comp']   = 0
-        data_file_dict['Bmag'+'gnames'] = gnames[0:3]
+        file_dict['Bmag'+'file']   = 'bmag'
+        file_dict['Bmag'+'comp']   = 0
+        file_dict['Bmag'+'gnames'] = gnames[0:3]
 
         # normalized b field
         for i_ in range(3):
-            data_file_dict['b_'+gnames[i_]+'file']   = 'b_i'
-            data_file_dict['b_'+gnames[i_]+'comp']   = i_
-            data_file_dict['b_'+gnames[i_]+'gnames'] = gnames[0:3]
+            file_dict['b_'+gnames[i_]+'file']   = 'b_i'
+            file_dict['b_'+gnames[i_]+'comp']   = i_
+            file_dict['b_'+gnames[i_]+'gnames'] = gnames[0:3]
 
         # Jacobian
-        data_file_dict['Jacobian'+'file']   = 'jacobgeo'
-        data_file_dict['Jacobian'+'comp']   = 0
-        data_file_dict['Jacobian'+'gnames'] = gnames[0:3]
+        file_dict['Jacobian'+'file']   = 'jacobgeo'
+        file_dict['Jacobian'+'comp']   = 0
+        file_dict['Jacobian'+'gnames'] = gnames[0:3]
 
         # metric coefficients
         counter_ = 0
@@ -86,19 +85,19 @@ class DataParam:
             for j_ in range(i_,3):
                 jname = gnames[j_]
                 gijname = 'g_'+iname+jname
-                data_file_dict[gijname+'file']   = 'g_ij'
-                data_file_dict[gijname+'comp']   = counter_
-                data_file_dict[gijname+'gnames'] = gnames[0:3]
+                file_dict[gijname+'file']   = 'g_ij'
+                file_dict[gijname+'comp']   = counter_
+                file_dict[gijname+'gnames'] = gnames[0:3]
                 gijname = 'g'+iname+jname
-                data_file_dict[gijname+'file']   = 'gij'
-                data_file_dict[gijname+'comp']   = counter_
-                data_file_dict[gijname+'gnames'] = gnames[0:3]
+                file_dict[gijname+'file']   = 'gij'
+                file_dict[gijname+'comp']   = counter_
+                file_dict[gijname+'gnames'] = gnames[0:3]
                 counter_ += 1
 
         # add electrostatic field info
-        data_file_dict['phi'+'file'] = 'field'
-        data_file_dict['phi'+'comp'] = 0
-        data_file_dict['phi'+'gnames'] = gnames[0:3]
+        file_dict['phi'+'file'] = 'field'
+        file_dict['phi'+'comp'] = 0
+        file_dict['phi'+'gnames'] = gnames[0:3]
         
         for spec in self.species.values():
             s_        = spec.name
@@ -110,27 +109,6 @@ class DataParam:
                 comps  = []
                 spec = s_ + '_source' if add_source else s_
                 
-                # Find a file type where we can find the moment data.
-                mtype = -1
-                for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
-                    file_name = f"-{s_}_{moment_type}_0.gkyl"
-                    file_name = self.fileprefix + file_name
-                    if os.path.exists(file_name):
-                        mtype = moment_type
-                        self.default_mom_type = mtype
-                        break
-                if mtype == -1:
-                    print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
-                    continue
-                # add default moments interface        
-                keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
-                if self.default_mom_type == 'M0':
-                    comps  += [0,0,0,0,0,0]
-                    prefix += [spec+'_M0',spec+'_M1',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
-                else:
-                    comps  += [0,1,2,3,0,0]
-                    prefix += 6*[spec+'_'+mtype]
-
                 # Add Maxwellian moments
                 keys   += ['MM_n','MM_upar','MM_T']
                 comps  += [0,1,2]
@@ -151,20 +129,60 @@ class DataParam:
                 comps  += [0,0,0,0,0,0,0]
                 prefix += [spec+'_M0',spec+'_M1',spec+'_M2',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
                 
+                # add default moments interface        
+                # Find a file type where we can find the moment data.
+                mtype = -1
+                for moment_type in ['BiMaxwellianMoments', 'M0']:
+                    file_name = f"-{s_}_{moment_type}_0.gkyl"
+                    file_name = self.fileprefix + file_name
+                    if os.path.exists(file_name):
+                        mtype = moment_type
+                        self.default_mom_type = mtype
+                        break
+                if mtype == -1:
+                    print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
+                    continue
+                keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
+                if self.default_mom_type == 'M0':
+                    comps  += [0,0,0,0,0,0]
+                    prefix += [spec+'_M0',spec+'_M1',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
+                elif self.default_mom_type == 'BiMaxwellianMoments':
+                    comps  += [0,1,2,3,0,0]
+                    prefix += 6*[spec+'_'+mtype]
+
                 # add distribution functions
                 keys   += ['f']
                 comps  += [0]
                 prefix += [spec]
-                  
-                # add to the data_file_dict
+                
                 for i in range(len(keys)):
                     k = 'src_'+keys[i]+shortname if add_source else keys[i]+shortname
-                    data_file_dict[k+'file'] = prefix[i]
-                    data_file_dict[k+'comp'] = comps[i]
-                    data_file_dict[k+'gnames'] = gnames[0:3]
+                    file_dict[k+'file'] = prefix[i]
+                    file_dict[k+'comp'] = comps[i]
+                    file_dict[k+'gnames'] = gnames[0:3]
+                    
+        # Store a list of all the different file names we may look for.
+        file_dict['names'] = []
+        for key in file_dict.keys():
+            if 'file' in key:
+                file_dict['names'].append(file_dict[key])
+        # Remove duplicates from the file list
+        file_dict['names'] = list(set(file_dict['names']))
         
-        self.data_file_dict = data_file_dict
+        self.file_info_dict = file_dict
         
+    @staticmethod
+    def get_available_frames(simulation):
+        """
+        This function builds a list of all available frames per key in the file_info_dict.
+        """
+        available_frames = {}
+        file_dict = simulation.data_param.file_info_dict
+        filelist = file_dict['names']
+        for file in filelist:
+            available_frames[file] = file_utils.find_available_frames(simulation, file)
+        return available_frames
+            
     @staticmethod
     def get_default_units_dict(species):
         """
