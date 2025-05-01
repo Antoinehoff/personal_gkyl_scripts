@@ -184,7 +184,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
                 plot_data = frame.values
             del serie
         
-        if ((cmap0 == 'bwr' or (simulation.data_param.dict[field+'colormap']=='bwr') \
+        if ((cmap0 == 'bwr' or (simulation.data_param.field_info_dict[field+'colormap']=='bwr') \
             or fluctuation) and not fourier_y) :
             cmap = 'bwr'
             vmax = np.max(np.abs(plot_data)) 
