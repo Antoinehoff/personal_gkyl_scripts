@@ -181,33 +181,38 @@ class GeomParam:
         return self.R_LCFSmid - self.x_LCFS + xIn
 
     ## Geometric relations for Miller geometry
-    def R_f(self, r, theta):
-        return self.R_axis + r*np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
-    def Z_f(self, r, theta):
-        return self.kappa*r*np.sin(theta)
+    def R_rt(self, r, theta):
+        return self.R_axis \
+            - self.a_shift * r**2/(2.0*self.R_axis) \
+            + r*np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
+            
+    def Z_rt(self, r, theta):
+        return self.Z_axis + self.kappa*r*np.sin(theta)
 
     #.Analytic derivatives.
-    def R_f_r(self, r,theta): 
-        return np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
-    def R_f_theta(self, r,theta): 
+    def dRdr(self, r, theta): 
+        return -self.a_shift*r/self.R_axis + np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
+    
+    def dRdt(self, r,theta): 
         return -r*(np.arcsin(self.delta)*np.cos(theta)+1.)*np.sin(np.arcsin(self.delta)*np.sin(theta)+theta)
-    def Z_f_r(self, r,theta):
+    
+    def dZdr(self, r,theta):
         return self.kappa*np.sin(theta)
-    def Z_f_theta(self, r,theta):
+    
+    def dZdt(self, r,theta):
         return self.kappa*r*np.cos(theta)
     
-    def Jr_f(self, r, theta):
-        return self.R_f(r,theta)*\
-            ( self.R_f_r(r,theta)*self.Z_f_theta(r,theta)-self.Z_f_r(r,theta)*self.R_f_theta(r,theta) )
+    def J_rt(self, r, theta):
+        return self.R_rt(r,theta)*(self.dRdr(r,theta)*self.dZdt(r,theta)-self.dZdr(r,theta)*self.dRdt(r,theta))
 
     def integrand(self, t, r):
-        return self.Jr_f(r,t)/np.power(self.R_f(r,t),2)
+        return self.J_rt(r,t)/np.power(self.R_rt(r,t),2)
 
-    def dPsidr_f(self, r, method='trapz32'):
+    def dPsidr(self, r, method='trapz32'):
         integral, _ = mt.integrate(self.integrand, a=0., b=2.*np.pi, args=(r), method=method)
         return self.B0*self.R_axis/(2.*np.pi*self.qprofile(r))*integral
 
-    def alpha_f(self, r, theta, phi, method='trapz32'):
+    def alpha(self, r, theta, phi, method='trapz32'):
         t = theta
         while (t < -np.pi):
             t = t+2.*np.pi
@@ -219,9 +224,9 @@ class GeomParam:
         else:
             intV, _ = mt.integrate(self.integrand, t, 0., args=(r), method=method)
             integral   = -intV
-        return phi - self.B0*self.R_axis*integral/self.dPsidr_f(r)
+        return phi - self.B0*self.R_axis*integral/self.dPsidr(r)
         
-    def alpha0_f(self, r, theta, method='trapz32'):
+    def alpha0(self, r, theta, method='trapz32'):
         '''Compute alpha(r, theta, phi=0) without the dPsidr division.'''
         t = theta
         while (t < -np.pi):
