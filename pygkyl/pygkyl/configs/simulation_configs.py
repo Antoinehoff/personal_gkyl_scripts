@@ -94,9 +94,9 @@ def get_TCV_NT_sim_config(simdir,fileprefix, x_LCFS, x_out):
         R_axis      = R_axis,         # Magnetic axis major radius
         Z_axis      = 0.1414361745,         # Magnetic axis height
         R_LCFSmid   = 1.0870056099999,   # Major radius of LCFS at the midplane
-        a_shift     = 1.0,                 # Parameter in Shafranov shift
+        a_shift     = 0.5,                 # Parameter in Shafranov shift
         kappa       = 1.4,                 # Elongation factor
-        delta       =-0.39,                 # Triangularity factor
+        delta       =-0.38,                 # Triangularity factor
         qprofile    = qprofile_NT,                 # Safety factor
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
         x_out       = x_out                  # SOL domain width
