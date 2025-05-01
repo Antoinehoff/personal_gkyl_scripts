@@ -47,7 +47,7 @@ class PoloidalProjection:
     self.zExt = True
     self.TSBC = True
     
-  def setup(self, simulation, fieldName='phi', timeFrame=0, nzInterp=16, phiTor=0,
+  def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0,
             intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
 
     # Store simulation and a link to geometry objects
@@ -65,6 +65,11 @@ class PoloidalProjection:
     self.zExt = True if (gridCheck or TSBC) else zExt
     
     # Load a frame to get the grid
+    if len(simulation.available_frames['field']) > 0:
+      fieldName = 'phi'
+    else:
+      fieldName = 'ni'
+      
     field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
     self.gridsN = field_frame.xNodal # nodal grids
     self.ndim = len(self.gridsN) # Dimensionality
@@ -111,8 +116,8 @@ class PoloidalProjection:
 
     #.Calculate R,Z for LCFS plotting
     rLCFS = self.geom.r_x(meshC[0][self.ixLCFS_C])
-    self.Rlcfs = self.geom.R_axis + rLCFS * np.cos(self.zgridI + self.geom.delta * np.sin(self.zgridI))
-    self.Zlcfs = self.geom.Z_axis + self.geom.kappa * rLCFS * np.sin(self.zgridI)
+    self.Rlcfs = self.geom.R_rt(rLCFS,self.zgridI)
+    self.Zlcfs = self.geom.Z_rt(rLCFS,self.zgridI)
         
     self.compute_alpha(phi=0.0, method=intMethod)
     
@@ -123,10 +128,10 @@ class PoloidalProjection:
   def compute_alpha(self, phi=0.0, method='trapz32'):
     #.Compute alpha(r,z,phi=0) which is independent of y.
     self.alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
-    for i in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
-      dPsidr = self.geom.dPsidr_f(self.geom.r_x(self.meshC[0][i]),method=method)
-      for k in range(self.nzI):
-          self.alpha_rz_phi0[i,k]  = self.geom.alpha0_f(self.geom.r_x(self.meshC[0][i]),self.zgridI[k],method=method)/dPsidr
+    for ix in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
+      dPsidr = self.geom.dPsidr(self.geom.r_x(self.meshC[0][ix]),method=method)
+      for iz in range(self.nzI):
+          self.alpha_rz_phi0[ix,iz]  = self.geom.alpha0(self.geom.r_x(self.meshC[0][ix]),self.zgridI[iz],method=method)/dPsidr
 
   def compute_xyz2RZ(self,phiTor=0.0):
     phiTor += np.pi # To match the obmp with varphi=0
@@ -137,7 +142,7 @@ class PoloidalProjection:
     for k in range(self.kyDimsC[1]):
         for iz in range(self.nzI):
             #.Positive ky's.
-            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*(n0*self.alpha_rz_phi0[:,iz] + phiTor))
+            self.xyz2RZ[:,+k,iz]  = np.exp(-1j*k*(n0*self.alpha_rz_phi0[:,iz] + phiTor))
             #.Negative ky's.
             self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
             
@@ -145,8 +150,9 @@ class PoloidalProjection:
     #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
     self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
-    Rint = self.geom.R_axis + self.geom.r_x(xxI) * np.cos(zzI + self.geom.delta * np.sin(zzI))
-    Zint = self.geom.Z_axis + self.geom.kappa * self.geom.r_x(xxI) * np.sin(zzI)
+    rrI = self.geom.r_x(xxI)
+    Rint = self.geom.R_rt(rrI,zzI)
+    Zint = self.geom.Z_rt(rrI,zzI)
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
@@ -409,7 +415,7 @@ class PoloidalProjection:
       movieName+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
       
       # Create a temporary folder to store the movie frames (random name)
-      movDirTmp = movieName+'_frames_tmp_%5d'%np.random.randint(9999)
+      movDirTmp = movieName+'_frames_tmp_%4d'%np.random.randint(9999)
       os.makedirs(movDirTmp, exist_ok=True)   
       
       timeFrames = timeFrame if not timeFrames else timeFrames
