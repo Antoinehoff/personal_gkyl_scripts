@@ -398,7 +398,7 @@ class PoloidalProjection:
   def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap =None, inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
           pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False, timeFrame=[],
-          rmFrames=False):
+          rmFrames=True):
     
       # Naming
       movieName = fieldName+'_RZ'
@@ -409,7 +409,7 @@ class PoloidalProjection:
       movieName+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
       
       # Create a temporary folder to store the movie frames (random name)
-      movDirTmp = movieName+'_frames_tmp_%6d'%np.random.randint(10000)
+      movDirTmp = movieName+'_frames_tmp_%5d'%np.random.randint(9999)
       os.makedirs(movDirTmp, exist_ok=True)   
       
       timeFrames = timeFrame if not timeFrames else timeFrames
