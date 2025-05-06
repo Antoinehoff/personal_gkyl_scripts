@@ -91,8 +91,76 @@ def create_uniform_array(a, N):
     b = np.linspace(a[0], a[-1], N)
     return b
 
-def closest_index(array,value):
-    return np.abs(array - value).argmin()
+def zkxky_to_xy_const_z(array, iz):
+    # Get shape of the phi array
+    Nz, Nkx, Nky, = array.shape
+    if iz < 0: #outboard midplane for negative iz
+        iz = Nz // 2  # Using the middle value for z
+
+    array = array[iz,:,:]
+    array = kx_to_x(array,Nkx,-2)
+    array = ky_to_y(array,Nky-1,-1)
+    array = np.transpose(array)
+    array = np.flip(np.fft.fftshift(array))
+    return array.T
+    
+def closest_index(array, v):
+    # Compute absolute differences between each element of the array and v
+    absolute_diff = np.abs(array - v)
+    
+    # Find the index of the minimum difference
+    closest_index = np.argmin(absolute_diff)
+    closest_index = max(closest_index,1)
+    return closest_index
+
+def is_convertible_to_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
+def numpy_array_to_list(d):
+    """
+    Recursively convert NumPy arrays to lists within a dictionary.
+    """
+    for key, value in d.items():
+        if isinstance(value, np.ndarray):
+            d[key] = value.tolist()
+        elif isinstance(value, dict):
+            d[key] = numpy_array_to_list(value)
+    return d
+
+def kx_to_x(var_kx, nx0, axis=-3):
+    """ Perform inverse FFT on kx spectral direction of variable
+
+    Note: The fft and ifft in python and GENE/IDL have the factor 1/N switched!
+    :param var_kx: Variable in kx space
+    :param nx0: Number of kx grid points
+    :param axis: Which axis of var_kx is the x direction, by default the third last one
+    :returns: variable in real x space
+    """
+    var_x = np.fft.ifft(nx0*var_kx, axis=axis)
+    var_x = np.real_if_close(var_x, tol=1e5)
+    return var_x
+
+
+def ky_to_y(var_ky, nky0, axis=-2):
+    """ Perform inverse FFT on ky spectral direction of variable
+
+    The GENE data only include the non-negative ky components, so we need to use the real
+    valued FFT routines
+    Note: The fft and ifft in python and GENE/IDL have the factor 1/N switched!
+    :param var_ky: Variable in kx space
+    :param nky0: Number of ky grid points
+    :param axis: Which axis of var_kx is the x direction, by default the third last one
+    :returns: variable in real y space
+    """
+    # The GENE data only include the non-negative ky components, so we need to use the real
+    # valued FFT routines
+    var_y = np.fft.irfft(2*nky0*var_ky, n=2*nky0, axis=axis)
+    var_y = np.real_if_close(var_y, tol=1e5)
+    return var_y
 
 def interp2D(x,y,fxy,r,t, method='cubic'):
     return sp_interp((x.flatten(),y.flatten()), fxy.flatten(), (r,t), method=method)
