@@ -680,7 +680,7 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
 #----- Retrocompatibility
 plot_1D_time_avg = plot_1D
 
-def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32,
+def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32,
                              colorMap = 'inferno', colorScale = 'lin', doInset=True, 
                              xlim=[], ylim=[],clim=[], logScaleFloor=1e-3):
     '''
@@ -706,6 +706,27 @@ def plot_poloidal_projection(simulation, fieldName='phi', timeFrame=0, outFilena
     polproj.plot(fieldName=fieldName, timeFrame=timeFrame, colorScale=colorScale,
                  outFilename=outFilename, colorMap=colorMap, doInset=doInset, 
                  xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor)
+
+def flux_surface_proj(simulation, rovera, fieldName, timeFrame, Nint=128, overSampFact=1,
+                      cmap = '', outFilename='', figout=[], xlim=[], ylim=[], clim=[]):
+    
+    frame = simulation.get_frame(fieldName, timeFrame)
+    field_interp, phi_fs, theta_fs = frame.get_flux_surface_projection(rovera=rovera, Nint=Nint, overSampFact=overSampFact)
+    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
+    cmap = cmap if cmap else simulation.data_param.field_info_dict[fieldName+'colormap']
+    if cmap == 'bwr':
+        vmax = np.max(np.abs(field_interp))
+        clim = [-vmax, vmax]
+        if np.min(field_interp) > 0:
+            clim = []
+            cmap = 'inferno'
+    pcm = ax.pcolormesh(phi_fs/np.pi, theta_fs/np.pi, field_interp, shading='auto', cmap=cmap)
+    cbar = plt.colorbar(pcm, ax=ax)
+    clabel = lbl = fig_tools.label(frame.vsymbol,frame.vunits)
+
+    fig_tools.finalize_plot(ax, fig, pcm=pcm, xlabel=r'$\varphi/\pi$', ylabel=r'$\theta/\pi$', title=frame.timetitle,
+                            figout=figout, xlim=xlim, ylim=ylim, clim=clim, clabel=clabel, cbar=cbar)
+
     
 def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
                     figout=[],xlim=[],ylim=[]):

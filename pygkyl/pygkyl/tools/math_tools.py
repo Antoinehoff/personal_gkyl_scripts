@@ -17,6 +17,8 @@ Functions:
 
 import numpy as np
 import scipy.integrate as scpy_int
+from scipy.interpolate import griddata as sp_interp
+from scipy.ndimage import uniform_filter
 
 def func_time_ave(listIn):
     arrayOut = np.array(listIn)
@@ -64,9 +66,13 @@ def integrate(function, a, b, args,  method='trapz', Np=16):
 def custom_meshgrid(x,y,z=0):
     # custom meshgrid function to have natural orientation (x,y,z)
     if np.isscalar(z):
+        if len(x.shape) > 1 and len(y.shape) > 1:
+            return [x,y]
         Y,X = np.meshgrid(y,x)
         return [X,Y]
     else:
+        if len(x.shape) > 1 and len(y.shape) > 1 and len(z.shape) > 1:
+            return [x,y,z]
         Y,X,Z = np.meshgrid(y,x,z)
         return [X,Y,Z]
     
@@ -87,3 +93,24 @@ def create_uniform_array(a, N):
 
 def closest_index(array,value):
     return np.abs(array - value).argmin()
+
+def interp2D(x,y,fxy,r,t, method='cubic'):
+    return sp_interp((x.flatten(),y.flatten()), fxy.flatten(), (r,t), method=method)
+
+def smooth2D(array, kernel_size=3):
+    """
+    Smooth a 2D array using a simple moving average filter.
+
+    Parameters:
+    array (ndarray): Input 2D array to be smoothed.
+    kernel_size (int): Size of the smoothing kernel (must be odd).
+
+    Returns:
+    smoothed_array (ndarray): Smoothed 2D array.
+    """
+
+    if kernel_size % 2 == 0:
+        raise ValueError("Kernel size must be odd.")
+    
+    smoothed_array = uniform_filter(array, size=kernel_size, mode='reflect')
+    return smoothed_array

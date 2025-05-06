@@ -140,6 +140,12 @@ class Simulation:
         dataname = self.data_param.file_info_dict[fieldname+'file']
         return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)
     
+    def get_frame(self, fieldName, timeFrame, load=True):
+        """
+        Get the frame for a given field and time frame.
+        """
+        return Frame(self, fieldName, timeFrame, load=load)
+    
     def get_GBloss_t(self, spec, twindow, ix=0, losstype='particle', integrate = False):
         """
         Compute the grad-B (GB) particle loss over time for a given species.

@@ -78,6 +78,7 @@ class GeomParam:
         elif qprofile == 'default':
             self.qprofile = self.qprofile_default
         self.q0 = self.qprofile(self.r0)
+        self.Cy = self.r0/self.q0
 
     def load_metric(self,fileprefix):
         #-- load B (bmag)
@@ -97,6 +98,7 @@ class GeomParam:
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
         self.Lx    = self.x[-1]-self.x[0]
         self.Ly    = self.y[-1]-self.y[0]
+        self.n0    = 2.*np.pi*self.r0/self.q0/self.Ly
         self.Lz    = self.z[-1]-self.z[0]
         #self.toroidal_mn =  2.*np.pi*self.R_LCFSmid/self.q0/self.Ly
         #-- compute associated derivatives
@@ -226,7 +228,7 @@ class GeomParam:
             integral   = -intV
         return phi - self.B0*self.R_axis*integral/self.dPsidr(r)
         
-    def alpha0(self, r, theta, method='trapz32'):
+    def alpha0(self, r, theta, phi, method='trapz32'):
         '''Compute alpha(r, theta, phi=0) without the dPsidr division.'''
         t = theta
         while (t < -np.pi):
@@ -239,7 +241,7 @@ class GeomParam:
         else:
             intV, _ = mt.integrate(self.integrand, t, 0., args=(r), method=method)
             integral   = -intV
-        return - self.B0*self.R_axis*integral
+        return phi - self.B0*self.R_axis*integral
     
     def get_conf_grid(self):
         return [self.x, self.y, self.z]
@@ -252,7 +254,7 @@ class GeomParam:
         return self.a_mid/self.R_axis
     
     def qprofile_x(self,x):
-        return self.qprofile(self.R_x(x))
+        return self.qprofile(self.r_x(x))
 
     def info(self):
         print(f"R_axis: {self.R_axis}")

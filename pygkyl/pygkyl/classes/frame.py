@@ -59,7 +59,8 @@ class Frame:
         self.dims = None
         self.ndims = None
         self.cells = None
-        self.grids = None
+        self.grids = None # physical grids (get normalized)
+        self.cgrids = None # computational grids
         self.values = None
         self.Jacobian = simulation.geom_param.Jacobian
         self.vol_int = None
@@ -72,8 +73,10 @@ class Frame:
         self.new_gsymbols = []
         self.new_gunits = []
         self.new_dims = []
+        self.mgrids = []
         self.sliceddim = []
         self.slicecoords = {}
+        self.sliceindex = {}
         self.slicetitle = ''
         self.timetitle = ''
         self.fulltitle = ''
@@ -157,6 +160,14 @@ class Frame:
             self.Gdata.append(Gdata)
             if Gdata.ctx['time']:
                 self.time = Gdata.ctx['time']
+                
+        #.Centered mesh creation
+        gridsN = self.xNodal # nodal grids
+        mesh = []
+        for i in range(3):
+            nNodes  = len(gridsN[i])
+            mesh.append(np.multiply(0.5,gridsN[i][0:nNodes-1]+gridsN[i][1:nNodes]))
+        self.cgrids = [mesh[0], mesh[1], mesh[2]]
         self.grids = [g for g in pgkyl_.get_grid(Gdata) if len(g) > 2]
         self.cells = Gdata.ctx['cells']
         self.ndims = len(self.cells)
@@ -235,6 +246,7 @@ class Frame:
 
         ic = direction_map[direction]
 
+        cut_index = -1
         if cut in ['avg', 'int']:
             cut_coord = direction + '-' + cut
             grid = self.simulation.geom_param.grids[ic][:]
@@ -263,6 +275,7 @@ class Frame:
 
         self.sliceddim.append(ic)
         self.slicecoords[direction] = cut_coord
+        self.sliceindex[direction] = cut_index
         self.refresh_title()
 
     def slice(self, axs, ccoord):
@@ -272,15 +285,92 @@ class Frame:
         2. ccoord: list of coordinates to slice at (e.g., [x, y, z])
         """
         ccoord = [ccoord] if not isinstance(ccoord, list) else ccoord
-        ax_to_cut = 'xyz'
-        if axs == 'scalar':
-            ax_to_cut = 'xyz'
+        
+        if axs in ['fluxsurf','phitheta', 'fs']:
+            self.flux_surface_projection(xcut=ccoord[0])
         else:
-            for i_ in range(len(axs)): ax_to_cut = ax_to_cut.replace(axs[i_], '')
-        for i_ in range(len(ax_to_cut)):
-            self.select_slice(direction=ax_to_cut[i_], cut=ccoord[i_])
+            ax_to_cut = 'xyz'
+            if axs == 'scalar':
+                ax_to_cut = 'xyz'
+            else:
+                for i_ in range(len(axs)): ax_to_cut = ax_to_cut.replace(axs[i_], '')
+            for i_ in range(len(ax_to_cut)):
+                self.select_slice(direction=ax_to_cut[i_], cut=ccoord[i_])
         self.refresh(values=False)
+        
+    def get_flux_surface_projection(self, rovera, Nint = -1, overSampFact=1):
+        rx = self.simulation.geom_param.r_x(self.cgrids[0])
+        rcut = rovera * self.simulation.geom_param.a_mid
+        ix0 = np.argmin(np.abs(rx - rcut))
+        x = self.cgrids[0]
+        y = self.cgrids[1]
+        z = self.cgrids[2]
+        x0 = x[ix0]
+        B0 = self.simulation.geom_param.B0
+        Cy = self.simulation.geom_param.Cy
+        qx = self.simulation.geom_param.qprofile_x
+        Ly0 = y[-1] - y[0]
+        Ntor0 = 2*np.pi * Cy / Ly0
+        Ntor = int(np.round(Ntor0))
+        Ly = 2*np.pi * Cy / Ntor
+        y = y * (Ly / (y[-1] - y[0]))
+        q0 = qx(x0)
 
+        #.Define the interpolated grid (we need to have the same number of points in y and z)
+        field = np.squeeze(self.values[ix0, :, :])
+        if Nint == -1:
+            Nint = np.max([len(y), len(z)])
+        y_int = np.linspace(y[0], y[-1], Nint)
+        z_int = np.linspace(-np.pi, np.pi, Nint)
+
+        field_inty = np.zeros((Nint, len(z)))
+        field_int = np.zeros((Nint, Nint))
+        for i in range(len(z)):
+            field_inty[:,i] = np.interp(y_int, y, field[:, i])
+        for i in range(Nint):
+            field_int[i,:] = np.interp(z_int, z, field_inty[i, :])
+
+        y_mg, z_mg = np.meshgrid(y_int, z_int, indexing='ij')
+
+        theta_mg = z_mg
+        phi_mg = q0 * theta_mg - (y_mg - y_int[0])/Cy
+            
+        Lphi = np.abs(phi_mg[-1,0] - phi_mg[0,0])
+        Ltheta = Lphi/q0
+
+        # # # # get number of wrappings
+        npol = int(np.ceil(2 * np.pi /Lphi))+1
+        ntor = int(np.ceil(Lphi /Ltheta))+1
+        phi_rep = np.zeros((ntor*npol*len(y_int), len(z_int)))
+        theta_rep = np.zeros((ntor*npol*len(y_int), len(z_int)))
+        field_rep = np.zeros((ntor*npol*len(y_int), len(z_int)))
+
+        shift = np.zeros((ntor,npol))
+        for m in range(ntor):
+            for n in range(npol):
+                shift[m,n] = -n*Lphi + m * 2*np.pi - (ntor-1)*np.pi
+            
+        shift = shift.flatten()
+
+        for k in range(npol*ntor):
+            i0 = k*len(y_int)
+            i1 = (k+1)*len(y_int)
+            phi_rep[i0:i1,:] = phi_mg - shift[k]
+            theta_rep[i0:i1,:] = theta_mg
+            field_rep[i0:i1,:] = field_int[:,:]
+
+        # # define a new cartesian grid on phi and theta
+        Nint_cart = overSampFact*Nint
+        phi_fs = np.linspace(0, 2*np.pi, Nint_cart)
+        theta_fs = np.linspace(-np.pi, np.pi, Nint_cart)
+        phi_fs, theta_fs = np.meshgrid(phi_fs, theta_fs, indexing='ij')
+        field_interp = mt.interp2D(phi_rep, theta_rep, field_rep, phi_fs, theta_fs, method='cubic')
+        
+        # smooth the field
+        field_interp = mt.smooth2D(field_interp)
+        
+        return field_interp, phi_fs, theta_fs
+        
     def compute_volume_integral(self, jacob_squared=False, average=False):
         """
         Compute the volume integral of the data.

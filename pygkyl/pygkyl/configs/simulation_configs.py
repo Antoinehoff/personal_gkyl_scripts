@@ -1,6 +1,6 @@
 import numpy as np
 from ..classes import Simulation, Species, Source
-from ..classes.poloidalprojection import Inset
+from ..classes.projections import Inset
 
 def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True, add_source=True):
     if configName == 'TCV_PT':
