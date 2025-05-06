@@ -1,12 +1,17 @@
 import numpy as np
 from ..classes import Simulation, Species, Source
 from ..classes.poloidalprojection import Inset
+from ..tools.gyacomo_interface import GyacomoInterface
 
 def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True, add_source=True):
     if configName == 'TCV_PT':
         sim = get_TCV_PT_sim_config(simDir, filePrefix, x_LCFS, x_out)
     elif configName == 'TCV_NT':
         sim = get_TCV_NT_sim_config(simDir, filePrefix, x_LCFS, x_out)
+    elif configName == 'gyacomo':
+        sim = get_gyacomo_sim_config(simDir, filePrefix)
+        load_metric = False
+        add_source = False
     else:
         display_available_configs()
         raise ValueError(f"Configuration {configName} is not supported.")
@@ -147,4 +152,55 @@ def add_source_baseline(simulation):
                     temp_src_profile_elc=custom_temp_src_profile_elc,
                     temp_src_profile_ion=custom_temp_src_profile_ion)
     simulation.add_source('Core src',OMPsource)
+    return simulation
+
+
+
+def get_gyacomo_sim_config(simdir,fileprefix):
+    '''
+    This function returns a simulation object for analyzing a Gyacomo simulation.
+    '''
+    R_axis = 1.0
+    simulation = Simulation(dimensionality='3x2v')
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile_NT(r):
+        return 1.0
+
+    simulation.set_geom_param(
+        B_axis      = 1.0,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,         # Magnetic axis major radius
+        Z_axis      = 1.0,         # Magnetic axis height
+        R_LCFSmid   = 1.0,   # Major radius of LCFS at the midplane
+        a_shift     = 1.0,                 # Parameter in Shafranov shift
+        kappa       = 1.0,                 # Elongation factor
+        delta       = 0.0,                 # Triangularity factor
+        qprofile    = qprofile_NT,                 # Safety factor
+        x_LCFS      = 0.0,                 # position of the LCFS (= core domain width)
+        x_out       = 0.0                  # SOL domain width
+    )
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+    
+    simulation.gyac = GyacomoInterface(simdir+fileprefix)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    inset = Inset() # all default but the lower corner position
+    inset.lowerCornerRelPos = [0.35,0.3]
+    simulation.inset = inset
+    simulation.code = 'gyacomo'
+
     return simulation

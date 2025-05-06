@@ -4,6 +4,7 @@ from ..tools import math_tools as mt
 import copy
 from ..tools import pgkyl_interface as pgkyl_
 from ..tools import DG_tools
+from ..tools import gyacomo_interface
 
 def getgrid_index(s):
     return (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm')) - 1
@@ -77,6 +78,8 @@ class Frame:
         self.slicetitle = ''
         self.timetitle = ''
         self.fulltitle = ''
+        
+        self.load = self.load_gyac if simulation.data_param.filetype == 'gyacomo' else self.load_gkyl
 
         if load:
             self.load(polyorder=polyorder, polytype=polytype, normalize=normalize, fourier_y=fourier_y)
@@ -143,7 +146,7 @@ class Frame:
                     
         return projection.squeeze()
     
-    def load(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
+    def load_gkyl(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
         """
         Load the data from the file and interpolate it.
         """
@@ -165,6 +168,9 @@ class Frame:
         self.refresh()
         if normalize: self.normalize()
         if fourier_y: self.fourier_y()
+
+    def load_gyac(self):
+        pass
 
     def refresh(self, values=True):
         """

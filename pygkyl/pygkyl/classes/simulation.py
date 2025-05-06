@@ -37,7 +37,7 @@ class Simulation:
     - plot_all_sources: Plots the profiles of all sources in the sources dictionary.
     - source_info: Combines get_source_particle, get_source_power, and plot_sources to provide comprehensive source information.
     """
-    def __init__(self,dimensionality='3x2v',porder=1,ptype='ser'):
+    def __init__(self,dimensionality='3x2v',porder=1,ptype='ser',code='gkeyll'):
         self.dimensionality = dimensionality # Dimensionality of the simulation (e.g., 3x2v, 2x2v)
         self.phys_param = PhysParam()  # Physical parameters (eps0, eV, mp, me)
         self.num_param  = None  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
@@ -51,6 +51,7 @@ class Simulation:
         self.polyOrder = porder
         self.basisType = ptype
         self.polprojInset = None # Custom poloidal projection inset.
+        self.code = code # Code used for the simulation (e.g., gkeyll or gyacomo)
 
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """
@@ -71,7 +72,7 @@ class Simulation:
         )
 
     def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",
-                       wkdir = "", species = {}):
+                       wkdir = "", species = {}, set_num_param=True, get_available_frames=True):
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
@@ -79,8 +80,10 @@ class Simulation:
             expdatadir=expdatadir, g0simdir=g0simdir, simname=simname, simdir=simdir, 
             prefix=fileprefix, wkdir=wkdir, species=species
         )
-        self.set_num_param()  # Automatically set numerical parameters based on data
-        self.available_frames = self.data_param.get_available_frames(self) # Get available frames for the simulation
+        if set_num_param:
+            self.set_num_param()  # Automatically set numerical parameters based on data
+        if get_available_frames:
+            self.available_frames = self.data_param.get_available_frames(self) # Get available frames for the simulation
 
     def set_num_param(self):
         """
