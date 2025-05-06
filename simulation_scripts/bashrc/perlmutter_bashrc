@@ -26,18 +26,34 @@ alias bashrc_check='cat ~/.bashrc'
 alias bashrc_refresh='. ~/.bashrc'
 alias bashrc_edit='vi ~/.bashrc'
 alias replace_filename_pattern='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/replace_filename_pattern.sh'
+
+# Gkeyll specific commands
 alias pgkyl_env_setup='source ~/py_venv/pgkyl/bin/activate'
 alias gkyl_module='module load PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12'
 alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_total_runtime.sh'
 alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_available_frames.sh'
 alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'
-alias gkyl_salloc_one_gpu='salloc --account m2116 --nodes 1 --gpus 4 --tasks-per-node=4 --time=01:00:00 --constraint gpu --qos interactive'
+alias gkyl_salloc_one_gpu='salloc --account m2116 --nodes 1 --gpus 4 --tasks-per-node=4 --time=04:00:00 --constraint gpu --qos interactive'
 alias gkyl_new_sim='sh ~/personal_gkyl_scripts/simulation_scripts/new_sim/perlmutter_new_sim.sh'
 alias gkyl_setup_gpu='gkyl_module; export MPICH_GPU_SUPPORT_ENABLED=0; export DVS_MAXNODES=32_; export MPICH_MPIIO_DVS_MAXNODES=32;'
 alias ll='ls -l'
 alias gkyl_submit='sh ~/personal_gkyl_scripts/simulation_scripts/submit/perlmutter_submit.sh'
 alias gkyl_get_makefile='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_get_makefile.sh'
 
+gkyl_run_gpu() {
+    # Check if the number of arguments is less than 1 or if -h or --help is provided
+    if [[ $# -lt 1 || "$1" == "-h" || "$1" == "--help" ]]; then
+        echo "Usage: gkyl_run_gpus <ngpu> [additional options]"
+        echo "Run the g0 program with the specified number of GPUs."
+        echo "Example: gkyl_run_gpus 4 --option1 value1 --option2 value2"
+        return 1
+    fi
+    local ngpu=$1
+    shift  # Shift the arguments to remove the first one (ngpu)
+    srun -n "$ngpu" -u ./g0 -g -M -e "$ngpu" "$@"
+}
+
+# Gyacomo specific commands
 alias gyac_continue='sh ~/gyacomo/scripts/shell_scripts/continue.sh'
 alias gyac_new_prob='sh ~/gyacomo/new_prob.sh'
 gkyl_setup_gpu
