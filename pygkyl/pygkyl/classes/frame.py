@@ -82,7 +82,7 @@ class Frame:
         self.timetitle = ''
         self.fulltitle = ''
         
-        self.load = self.load_gyac if simulation.data_param.filetype == 'gyacomo' else self.load_gkyl
+        self.load = self.load_gyac if simulation.code == 'gyacomo' else self.load_gkyl
 
         if load:
             self.load(polyorder=polyorder, polytype=polytype, normalize=normalize, fourier_y=fourier_y)
