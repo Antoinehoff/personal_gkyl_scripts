@@ -4,11 +4,13 @@ from ..classes.projections import Inset
 from ..tools.gyacomo_interface import GyacomoInterface
 
 def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True, add_source=True):
-    if configName == 'TCV_PT':
-        sim = get_TCV_PT_sim_config(simDir, filePrefix, x_LCFS, x_out)
-    elif configName == 'TCV_NT':
-        sim = get_TCV_NT_sim_config(simDir, filePrefix, x_LCFS, x_out)
-    elif configName == 'gyacomo':
+    if configName in ['TCV_PT', 'tcv_pt']:
+        sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+    elif configName in ['TCV_NT', 'tcv_nt']:
+        sim = get_tcv_nt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+    elif configName in ['D3D_NT', 'd3d_nt']:
+        sim = get_d3d_nt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+    elif configName in ['gyacomo', 'GYACOMO', 'Gyacomo']:
         sim = get_gyacomo_sim_config(simDir, filePrefix)
         load_metric = False
         add_source = False
@@ -27,7 +29,7 @@ def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, l
 def display_available_configs():
     print("Available configurations: TCV_PT, TCV_NT")
 
-def get_TCV_PT_sim_config(simdir, fileprefix, x_LCFS, x_out):
+def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS, x_out):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
@@ -77,7 +79,7 @@ def get_TCV_PT_sim_config(simdir, fileprefix, x_LCFS, x_out):
 
     return simulation
 
-def get_TCV_NT_sim_config(simdir,fileprefix, x_LCFS, x_out):
+def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
@@ -127,6 +129,56 @@ def get_TCV_NT_sim_config(simdir,fileprefix, x_LCFS, x_out):
 
     return simulation
 
+def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
+    '''
+    This function returns a simulation object for a TCV NT clopen 3x2v simulation.
+    '''
+    R_axis = 1.7074685
+    simulation = Simulation(dimensionality='3x2v')
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(r):
+        R = r + R_axis
+        a = [49.46395467479657, -260.79513158768754, 458.42618139184754, -267.63441353752336]
+        return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
+
+    simulation.set_geom_param(
+        B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,        # Magnetic axis major radius
+        Z_axis      = -0.0014645315,         # Magnetic axis height
+        R_LCFSmid   = 2.17,   # Major radius of LCFS at the midplane
+        a_shift     = 1.0,                 # Parameter in Shafranov shift
+        kappa       = 1.35,                 # Elongation factor
+        delta       = -0.4,                 # Triangularity factor
+        qprofile    = qprofile,                 # Safety factor
+        x_LCFS      = 0.10,                 # position of the LCFS (= core domain width)
+        x_out       = 0.05                  # SOL domain width
+    )
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=300*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=300*simulation.phys_param.eV, 
+                n0=2.0e19))
+
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    #inset = Inset() # all default but the lower corner position
+    #inset.lowerCornerRelPos = [0.4,0.3]
+    #simulation.inset = inset
+
+    return simulation
+
 def add_source_baseline(simulation):
     n_srcOMP=2.4e23
     x_srcOMP=0.0
@@ -153,8 +205,6 @@ def add_source_baseline(simulation):
                     temp_src_profile_ion=custom_temp_src_profile_ion)
     simulation.add_source('Core src',OMPsource)
     return simulation
-
-
 
 def get_gyacomo_sim_config(simdir,fileprefix):
     '''
