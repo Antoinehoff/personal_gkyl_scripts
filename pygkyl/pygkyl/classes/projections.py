@@ -89,12 +89,12 @@ class PoloidalProjection:
     #.Radial index of the last closed flux surface on the centered mesh
     self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
     
-    # We need to rescale the y length to fill the integer toroidal mode number
     self.LyC = self.meshC[1][-1] - self.meshC[1][0] # length in the y direction
-    Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC
-    Ntor = int(np.round(Ntor0))
-    self.LyC = 2*np.pi * (self.geom.r0 / self.geom.q0) / Ntor
-    self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
+    # Do we need to rescale the y length to fill the integer toroidal mode number ? not sure...
+    # Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC
+    # Ntor = int(np.round(Ntor0))
+    # self.LyC = 2*np.pi * (self.geom.r0 / self.geom.q0) / Ntor
+    # self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
 
     #.Should we shift the z grid?
     self.meshC[2] = self.meshC[2] #- self.meshC[2][0] # shift the z grid to start at 0
