@@ -91,10 +91,10 @@ class PoloidalProjection:
     
     self.LyC = self.meshC[1][-1] - self.meshC[1][0] # length in the y direction
     # Do we need to rescale the y length to fill the integer toroidal mode number ? not sure...
-    # Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC
-    # Ntor = int(np.round(Ntor0))
-    # self.LyC = 2*np.pi * (self.geom.r0 / self.geom.q0) / Ntor
-    # self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
+    Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC
+    Ntor = int(np.round(Ntor0))
+    self.LyC = 2*np.pi * (self.geom.r0 / self.geom.q0) / Ntor
+    self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
 
     #.Should we shift the z grid?
     self.meshC[2] = self.meshC[2] #- self.meshC[2][0] # shift the z grid to start at 0
@@ -227,10 +227,10 @@ class PoloidalProjection:
       for ik in range(self.kyDimsC[1]):
         f_lo = field_ky[:self.ixLCFS_C,ik,lo]
         f_up = field_ky[:self.ixLCFS_C,ik,up]
-        # ts_lu = np.exp(+1j*ik*bcPhaseShift)
-        # ts_ul = np.exp(-1j*ik*bcPhaseShift)
-        ts_lu = np.exp(-1j*n0*self.alpha_rz_phi0[:self.ixLCFS_C,up])
-        ts_ul = np.exp(-1j*n0*self.alpha_rz_phi0[:self.ixLCFS_C,lo])
+        ts_lu = np.exp(-1j*ik*bcPhaseShift)
+        ts_ul = np.exp(+1j*ik*bcPhaseShift)
+        # ts_lu = np.exp(-1j*n0*self.alpha_rz_phi0[:self.ixLCFS_C,up])
+        # ts_ul = np.exp(-1j*n0*self.alpha_rz_phi0[:self.ixLCFS_C,lo])
         field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
         field_kex[:self.ixLCFS_C,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
         # field_kex[:self.ixLCFS_C,ik,lo]  = ts_lu * f_up
