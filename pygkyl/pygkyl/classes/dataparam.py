@@ -791,12 +791,14 @@ class DataParam:
         # add default colormap for each fields
         positive_fields = ['Bmag','pow_src'] # spec. indep
         
-        spec_dep_fields = ['M0','M2','M2par','M2perp', 'M3par','M3perp',
+        spec_dep_fields = ['M0','M2','M2par','M2perp',
                            'n','T','Tpar','Tperp','p',
                            'BM_n','BM_Tpar','BM_Tperp',
-                           'src_M0','src_M2','src_M2par','src_M2perp', 'src_M3par','src_M3perp',
+                           'MM_n','MM_T', 'HM_n','HM_H',
+                           'src_M0','src_M2','src_M2par','src_M2perp',
                            'src_n','src_T','src_Tpar','src_Tperp','src_p',
                            'src_BM_n','src_BM_Tpar','src_BM_Tperp',
+                            'src_MM_n','src_MM_T','src_HM_n','src_HM_H',
                            'f','src_f']
         for sdepfield in spec_dep_fields:
             for spec in species.values():
