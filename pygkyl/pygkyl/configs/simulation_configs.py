@@ -246,8 +246,9 @@ def get_gyacomo_sim_config(simdir,fileprefix):
                 q=-simulation.phys_param.eV, # Electron charge [C]
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
-    
+
     simulation.gyac = GyacomoInterface(simdir+fileprefix)
+    simulation.data_param = simulation.gyac.adapt_data_param()
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     inset = Inset() # all default but the lower corner position
