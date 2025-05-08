@@ -173,9 +173,11 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    #inset = Inset() # all default but the lower corner position
-    #inset.lowerCornerRelPos = [0.4,0.3]
-    #simulation.inset = inset
+    inset = Inset() # all default but the lower corner position
+    inset.lowerCornerRelPos = [0.4,0.3]
+    inset.xlim = [2.12,2.25]
+    inset.ylim = [-0.15,0.15]
+    simulation.inset = inset
 
     return simulation
 
