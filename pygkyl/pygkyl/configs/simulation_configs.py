@@ -141,9 +141,10 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
         mp = 1.673e-27,         # Proton mass [kg]
         me = 9.109e-31,         # Electron mass [kg]
     )
+
     def qprofile(r):
         R = r + R_axis
-        a = [49.46395467479657, -260.79513158768754, 458.42618139184754, -267.63441353752336]
+        a = [154.51071835546747,  -921.8584472748003, 1842.1077075366113, -1231.619813170522]
         return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
 
     simulation.set_geom_param(
