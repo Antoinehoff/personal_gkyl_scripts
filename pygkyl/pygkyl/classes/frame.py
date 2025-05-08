@@ -180,14 +180,25 @@ class Frame:
         if normalize: self.normalize()
         if fourier_y: self.fourier_y()
 
-    def load_gyac(self):
-        pass
+    def load_gyac(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
+        grids, tf, values = self.simulation.gyac.load_data(self.name, self.tf, xyz= not fourier_y)
+        self.time = tf
+        self.values = values
+        self.grids = grids
+        _, _, _, symbols = self.simulation.gyac.field_map[self.name]
+        self.gsymbols = symbols[3]
+        self.vsymbol = symbols[-1]
+        self.gunits = ['', '', '']
+        self.Jacobian = np.ones_like(self.values)
 
     def refresh(self, values=True):
         """
         Refresh the grids and values.
         """
-        self.new_cells = pgkyl_.get_cells(self.Gdata[0])
+        if self.simulation.code == 'gyacomo':
+            self.new_cells = [len(grid) for grid in self.grids]
+        else:
+            self.new_cells = pgkyl_.get_cells(self.Gdata[0])
         self.new_grids = []
         self.new_gnames = []
         self.new_gsymbols = []

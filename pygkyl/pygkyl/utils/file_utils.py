@@ -26,21 +26,24 @@ def find_prefix(pattern, path):
 
 
 def find_available_frames(simulation,dataname='field'):
-    # Regular expression pattern to match files with the format "*dataname_X.gkyl"
-    pattern = re.compile(r"%s_([0-9]+)\.gkyl$"%dataname)
-    folder_path = simulation.data_param.datadir
-    # List to store the frame numbers
-    frames = []
-    if len(os.listdir(folder_path)) == 0:
-        print("No file found in %s"%folder_path)
-    # Iterate over all files in the specified folder
-    for filename in os.listdir(folder_path):
-        # Use regular expression to find matching filenames
-        match = pattern.search(filename)
-        if match:
-            # Extract the frame number and add it to the list
-            frame_number = int(match.group(1))
-            frames.append(frame_number)
+    if simulation.code != 'gyacomo':
+        # Regular expression pattern to match files with the format "*dataname_X.gkyl"
+        pattern = re.compile(r"%s_([0-9]+)\.gkyl$"%dataname)
+        folder_path = simulation.data_param.datadir
+        # List to store the frame numbers
+        frames = []
+        if len(os.listdir(folder_path)) == 0:
+            print("No file found in %s"%folder_path)
+        # Iterate over all files in the specified folder
+        for filename in os.listdir(folder_path):
+            # Use regular expression to find matching filenames
+            match = pattern.search(filename)
+            if match:
+                # Extract the frame number and add it to the list
+                frame_number = int(match.group(1))
+                frames.append(frame_number)
+    else :
+        frames = simulation.gyac.get_available_frames(dataname)
 
     # Sort the frame numbers for easier interpretation
     frames = list(set(frames))
