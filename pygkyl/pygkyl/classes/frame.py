@@ -186,7 +186,7 @@ class Frame:
         self.values = values
         self.grids = grids
         _, _, _, symbols = self.simulation.gyac.field_map[self.name]
-        self.gsymbols = symbols[3]
+        self.gsymbols = symbols[:-1]
         self.vsymbol = symbols[-1]
         self.gunits = ['', '', '']
         self.Jacobian = np.ones_like(self.values)
