@@ -80,11 +80,11 @@ class GyacomoInterface:
     def get_available_frames(self, fieldname):
         _, _, dimensionality, _ = self.field_map[fieldname]
         if dimensionality == '0D':
-            return self.time0D
+            return range(len(self.time0D))
         elif dimensionality == '3D':
-            return self.time3D
+            return range(len(self.time3D))
         elif dimensionality == '5D':
-            return self.time5D
+            return range(len(self.time5D))
         else:
             raise ValueError(f"Unknown dimensionality: {dimensionality}")
 
