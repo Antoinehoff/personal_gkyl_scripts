@@ -176,11 +176,12 @@ class GeomParam:
         return (((x-xMin) % (xMax-xMin)) + (xMax-xMin)) % (xMax-xMin) + xMin
 
     #.Minor radius as a function of x:
-    def r_x(self,xIn):
-        return self.Rmid_min - self.R_axis + xIn
+    def r_x(self,x):
+        return self.a_mid + x - self.x_LCFS
+
     #.Major radius as a function of x:
-    def R_x(self,xIn):
-        return self.R_LCFSmid - self.x_LCFS + xIn
+    def R_x(self,x):
+        return self.R_LCFSmid - self.x_LCFS + x
 
     ## Geometric relations for Miller geometry
     def R_rt(self, r, theta):
