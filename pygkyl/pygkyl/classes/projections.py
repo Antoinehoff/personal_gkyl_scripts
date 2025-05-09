@@ -250,7 +250,9 @@ class PoloidalProjection:
     
     if self.TSBC:
       #.Apply twist-shift BCs in the closed-flux region.
-      xGridCore = self.meshC[0][:self.ixLCFS_C] # x grid on in the core region
+      if self.ixLCFS_C is None: icore_end = self.dimsC[0]
+      else: icore_end = self.ixLCFS_C
+      xGridCore = self.meshC[0][:icore_end] # x grid on in the core region
       torModNum = 2.*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
       bcPhaseShift = 2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
       n0 = 2*np.pi * self.geom.Cy/ self.LyC
@@ -258,14 +260,14 @@ class PoloidalProjection:
       field_kex[:,:,1:-1] = field_ky
       lo, up = 0, -1
       for ik in range(self.kyDimsC[1]):
-        f_lo = field_ky[:self.ixLCFS_C,ik,lo]
-        f_up = field_ky[:self.ixLCFS_C,ik,up]
+        f_lo = field_ky[:icore_end,ik,lo]
+        f_up = field_ky[:icore_end,ik,up]
         ts_lu = np.exp(-1j*ik*bcPhaseShift)
         ts_ul = np.exp(+1j*ik*bcPhaseShift)
-        field_kex[:self.ixLCFS_C,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
-        field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
-        field_kex[self.ixLCFS_C:,ik,lo]  = field_ky[self.ixLCFS_C:,ik,lo]
-        field_kex[self.ixLCFS_C:,ik,up]  = field_ky[self.ixLCFS_C:,ik,up]
+        field_kex[:icore_end,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
+        field_kex[:icore_end,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
+        field_kex[icore_end:,ik,lo]  = field_ky[icore_end:,ik,lo]
+        field_kex[icore_end:,ik,up]  = field_ky[icore_end:,ik,up]
     else:
       field_kex = field_ky
   
@@ -361,8 +363,8 @@ class PoloidalProjection:
       colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
 
     field_RZ = self.project_field(toproject, frame_info)
-    
-    vlims = [np.min(field_RZ[self.ix0:self.ix1,:]), np.max(field_RZ[self.ix0:self.ix1,:])]
+
+    vlims = [np.min(field_RZ), np.max(field_RZ)]
     if self.ixLCFS_C is not None:
       vlims_SOL = [np.min(field_RZ[self.ixLCFS_C:,:]), np.max(field_RZ[self.ixLCFS_C:,:])]
     else:
