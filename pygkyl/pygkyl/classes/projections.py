@@ -47,7 +47,7 @@ class PoloidalProjection:
     self.zExt = True
     self.TSBC = True
     
-  def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0, r0=-1, r1=-1,
+  def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
             intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
 
     # Store simulation and a link to geometry objects
@@ -55,8 +55,7 @@ class PoloidalProjection:
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
     self.figSize = figSize
-    self.r0 = r0
-    self.r1 = r1
+
     if self.sim.polprojInset is not None:
       self.inset = self.sim.polprojInset
     else:
@@ -85,9 +84,6 @@ class PoloidalProjection:
     self.dimsC = [np.size(meshC[i]) for i in range(self.ndim)]
     self.meshC = meshC
     del meshC
-
-    #.Radial index of the last closed flux surface on the centered mesh
-    self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
     
     self.LyC = self.meshC[1][-1] - self.meshC[1][0] # length in the y direction
     # Do we need to rescale the y length to fill the integer toroidal mode number ? not sure...
@@ -119,12 +115,55 @@ class PoloidalProjection:
       
     #.Interpolate onto a finer mesh along z.
     self.zgridI = np.linspace(self.zGridEx[0],self.zGridEx[-1],self.nzI)
+    
+    if Rlim or rholim:
+      #.Select the radial region of interest
+      Rx = self.geom.R_x(self.meshC[0])
+      dR = Rx[1] - Rx[0]
+      rhox = self.geom.r_x(self.meshC[0])/self.geom.a_mid
+      drho = rhox[1] - rhox[0]
+      if Rlim:
+        if not isinstance(Rlim, list): Rlim = [Rlim - dR/2, Rlim + dR/2]
+        Rlim = [max(R, Rx[ 0]) for R in Rlim]
+        Rlim = [min(R, Rx[-1]) for R in Rlim]
+        self.ix0 = np.argmin(np.abs(Rx - Rlim[0]))
+        self.ix1 = np.argmin(np.abs(Rx - Rlim[1]))
+      elif rholim:
+        if not isinstance(rholim, list): rholim = [rholim - drho/2, rholim + drho/2]
+        rholim = [max(rho, rhox[ 0]) for rho in rholim]
+        rholim = [min(rho, rhox[-1]) for rho in rholim]
+        self.ix0 = np.argmin(np.abs(rhox - rholim[0]))
+        self.ix1 = np.argmin(np.abs(rhox - rholim[1]))
 
+      if self.ix1 - self.ix0 < 2:
+        if self.ix0 == 0:
+          self.ix1 = self.ix0 + 2
+        if self.ix1 == len(self.meshC[0])-1:
+          self.ix0 = self.ix1 - 2
+        else:
+          self.ix1 = self.ix0 + 2
+
+      self.meshC[0] = self.meshC[0][self.ix0:self.ix1]
+            
+      self.dimsC[0] = len(self.meshC[0])
+      kyDimC = list(self.kyDimsC)
+      kyDimC[0] = len(self.meshC[0])
+      self.kyDimsC = tuple(kyDimC)
+    else:
+      self.ix0 = 0
+      self.ix1 = self.dimsC[0]
+              
+    #.Radial index of the last closed flux surface on the centered mesh
+    if self.geom.x_LCFS > self.meshC[0][0] and self.geom.x_LCFS <= self.meshC[0][-1]:
+      self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
+    else:
+      self.ixLCFS_C = None
+      
     #.Calculate R,Z for LCFS plotting
-    rLCFS = self.geom.r_x(self.meshC[0][self.ixLCFS_C])
+    rLCFS = self.geom.r_x(self.geom.x_LCFS)
     self.Rlcfs = self.geom.R_rt(rLCFS,self.zgridI)
     self.Zlcfs = self.geom.Z_rt(rLCFS,self.zgridI)
-        
+    
     self.compute_alpha(phi=self.phiTor, method=intMethod)
     
     self.compute_xyz2RZ(phiTor=self.phiTor)
@@ -190,13 +229,6 @@ class PoloidalProjection:
         for iy in range(len(self.meshC[1])):
           for iz in range(len(self.meshC[2])):
             field[ix, iy, iz] = np.exp(-0.5 * ((yGrid[iy] - mu) / sigma) ** 2)
-      # or trace lines at the boundaries
-      # field[0, :, :] = 1.0
-      # field[-1, :, :] = 1.0
-      # field[:, 0, :] = 1.0
-      # field[:, -1, :] = 1.0
-      # field[:, :, 0] = 1.0
-      # field[:, :, -1] = 1.0
       
     if self.zExt and not self.TSBC:
       proj_zExt_lo = np.zeros((self.dimsC[0],self.dimsC[1]), dtype=np.double)
@@ -206,7 +238,7 @@ class PoloidalProjection:
       proj_zExt_up = frame.eval_DG_proj(grid = [self.meshC[0], self.meshC[1], np.pi])
           
       field_ex = np.zeros(self.dimsC + np.array([0,0,2]))
-      field_ex[:,:,1:-1] = field
+      field_ex[:,:,1:-1] = field[self.ix0:self.ix1,:,:]
       field_ex[:,:,0] = proj_zExt_lo
       field_ex[:,:, -1] = proj_zExt_up
       field = field_ex
@@ -214,6 +246,7 @@ class PoloidalProjection:
     #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
     #.codes (e.g. GENE, see Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
+    field_ky = field_ky[self.ix0:self.ix1,:,:] # select the radial region of interest
     
     if self.TSBC:
       #.Apply twist-shift BCs in the closed-flux region.
@@ -229,12 +262,8 @@ class PoloidalProjection:
         f_up = field_ky[:self.ixLCFS_C,ik,up]
         ts_lu = np.exp(-1j*ik*bcPhaseShift)
         ts_ul = np.exp(+1j*ik*bcPhaseShift)
-        # ts_lu = np.exp(-1j*n0*self.alpha_rz_phi0[:self.ixLCFS_C,up])
-        # ts_ul = np.exp(-1j*n0*self.alpha_rz_phi0[:self.ixLCFS_C,lo])
-        field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
         field_kex[:self.ixLCFS_C,ik,up]  = 0.5*(f_up + ts_ul * f_lo)
-        # field_kex[:self.ixLCFS_C,ik,lo]  = ts_lu * f_up
-        # field_kex[:self.ixLCFS_C,ik,up]  = ts_ul * f_lo
+        field_kex[:self.ixLCFS_C,ik,lo]  = 0.5*(f_lo + ts_lu * f_up)
         field_kex[self.ixLCFS_C:,ik,lo]  = field_ky[self.ixLCFS_C:,ik,lo]
         field_kex[self.ixLCFS_C:,ik,up]  = field_ky[self.ixLCFS_C:,ik,up]
     else:
@@ -333,8 +362,11 @@ class PoloidalProjection:
 
     field_RZ = self.project_field(toproject, frame_info)
     
-    vlims = [np.min(field_RZ), np.max(field_RZ)]
-    vlims_SOL = [np.min(field_RZ[self.ixLCFS_C:,:]), np.max(field_RZ[self.ixLCFS_C:,:])]
+    vlims = [np.min(field_RZ[self.ix0:self.ix1,:]), np.max(field_RZ[self.ix0:self.ix1,:])]
+    if self.ixLCFS_C is not None:
+      vlims_SOL = [np.min(field_RZ[self.ixLCFS_C:,:]), np.max(field_RZ[self.ixLCFS_C:,:])]
+    else:
+      vlims_SOL = vlims
     
     lcfColor = 'white' # default color for LCFS
     if colorMap == 'inferno': 
@@ -471,19 +503,19 @@ class PoloidalProjection:
       fig_tools.compile_movie(frameFileList, movieName, rmFrames=rmFrames,
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
       
-  def plot_full_torus(self, fieldName, timeFrame, outFilename='', colorMap = '', rovera=0.9, overSampFact=2, Nint=128,
+  def plot_full_torus(self, fieldName, timeFrame, outFilename='', colorMap = '', rho=0.9, overSampFact=2, Nint=128,
                       fluctuation='', xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', elev=15, azim=-60):
     frame = self.sim.get_frame(fieldName, timeFrame)
 
-    field_pt, phi_fs, theta_fs = frame.get_flux_surface_projection(rovera, Nint, overSampFact)
+    field_pt, phi_fs, theta_fs = frame.get_flux_surface_projection(rho, Nint, overSampFact)
     field_RZ, R_mg, Z_mg = self.get_projection(fieldName, timeFrame)
 
-    rcut = rovera * self.geom.a_mid
+    rcut = rho * self.geom.a_mid
 
     # 2D grid for torus parameterization
     n = len(phi_fs)
     theta = np.linspace(-np.pi, np.pi, n)  # poloidal angle
-    phi = np.linspace(0, 2*np.pi/2, n)    # toroidal angle
+    phi = np.linspace(0, 2*np.pi, n)    # toroidal angle
     theta_mg, phi_mg = np.meshgrid(theta, phi)
 
     # Parametric equations for torus
@@ -497,16 +529,27 @@ class PoloidalProjection:
     Ypol = np.zeros_like(Xpol)
     Zpol = Z_mg
 
-    FRZ_normalized = (field_RZ - field_pt.min()) / (field_pt.max() - field_pt.min())
-    Fpt_normalized = (field_pt - field_pt.min()) / (field_pt.max() - field_pt.min())
+    if clim:
+      fldMin = clim[0]
+      fldMax = clim[1]
+    else:
+      fldMin = np.min(field_pt)
+      fldMax = np.max(field_pt)
+    
+    FRZ_normalized = (field_RZ - fldMin) / (fldMax - fldMin)
+    Fpt_normalized = (field_pt - fldMin) / (fldMax - fldMin)
       
     # Plot
     fig = plt.figure(figsize=(10, 5), layout='constrained')
     # fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
     ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(Xpol, Ypol, Zpol, facecolors=plt.cm.inferno(FRZ_normalized), rstride=1, cstride=1,
+    surf = ax.plot_surface(Xpol, Ypol, Zpol, 
+                           facecolors=plt.cm.inferno(FRZ_normalized), 
+                           rstride=1, cstride=1,
                           linewidth=0, antialiased=False, shade=False)
-    surf = ax.plot_surface(Xtor, Ytor, Ztor, facecolors=plt.cm.inferno(Fpt_normalized), rstride=1, cstride=1,
+    surf = ax.plot_surface(Xtor, Ytor, Ztor, 
+                           facecolors=plt.cm.inferno(Fpt_normalized), 
+                           rstride=1, cstride=1,
                           linewidth=0, antialiased=False, shade=False)
 
     ax.view_init(elev=elev, azim=azim)
@@ -606,3 +649,115 @@ class Inset:
     # draw a bbox of the region of the inset axes in the parent axes and
     # connecting lines between the bbox and the inset axes area
     mark_inset(ax, axins, loc1=self.markLoc[0], loc2=self.markLoc[1], fc="none", ec="0.5")
+
+
+class FluxSurfProjection:
+  def __init__(self):
+    self.polprojs = []
+    
+  def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=[], rho=0.9, Nphi = 16,
+            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
+    
+    self.phiTor = phiTor if phiTor else np.linspace(0, np.pi, Nphi)
+    self.rho = rho
+    self.polproj = PoloidalProjection()
+    self.polproj.setup(simulation, timeFrame=timeFrame, nzInterp=nzInterp, phiTor=self.phiTor[0], 
+                       intMethod=intMethod, figSize=figSize, zExt=zExt, gridCheck=gridCheck, TSBC=TSBC)
+    
+    self.Nr   = self.polproj.dimsC[0]
+    self.Nth  = self.polproj.nzI
+    self.Nphi = Nphi
+    self.dims = [self.Nr, self.Nth, self.Nphi]
+    self.theta = np.linspace(-np.pi,np.pi,self.Nth)
+    self.phi_mg, self.theta_mg = np.meshgrid(self.phiTor,self.theta,indexing='ij')
+    
+    self.rcut = rho * self.polproj.geom.a_mid
+    
+    # Parametric equations for torus
+    self.Rtor = self.polproj.geom.R_rt(self.rcut,self.theta_mg)
+    self.Xtor = self.Rtor * np.cos(self.phi_mg)
+    self.Ytor = self.Rtor * np.sin(self.phi_mg)
+    self.Ztor = simulation.geom_param.Z_rt(self.rcut,self.theta_mg)
+
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
+           xlim=[], ylim=[], clim=[], climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
+           shading='auto', elev=15, azim=-60):
+
+    if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
+    if isinstance(timeFrame, list):
+      avg_window = timeFrame
+      timeFrame = timeFrame[-1]
+    else:
+      avg_window = [timeFrame]
+    
+    with Frame(self.polproj.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+      time = field_frame.time
+      vsymbol = field_frame.vsymbol
+      vunits = field_frame.vunits
+      toproject = field_frame.values
+      frame_info = Frame(self.polproj.sim, name=fieldName, tf=timeFrame, load=False)
+
+    if len(fluctuation) > 0:
+      if favg is not None:
+        toproject -= favg
+      else:
+        serie = TimeSerie(simulation=self.polproj.sim, name=fieldName, time_frames=avg_window, load=True)
+        if 'tavg' in fluctuation:
+          average = serie.get_time_average()
+          vsymbol = r'$\delta_t$'+vsymbol
+        elif 'yavg' in fluctuation:
+          average = serie.get_y_average()
+          vsymbol = r'$\delta_y$'+vsymbol
+        toproject -= average
+        if 'relative' in fluctuation:
+          toproject = 100.0 * toproject / average
+          vunits = r'\%'
+      colorMap = colorMap if colorMap else 'bwr'
+    else:
+      colorMap = colorMap if colorMap else self.polproj.sim.fields_info[fieldName+'colormap']
+
+    field_RZPhi = np.zeros(self.dims)
+    for i in range(self.Nphi):
+      self.polproj.set_toroidal_rotation(phiTor=self.phiTor[i])
+      field_RZPhi[:,:,i] = self.polproj.project_field(toproject, frame_info)
+      
+      
+    field_pt = field_RZPhi[0,:,:].T
+    field_pt = math_tools.smooth2D(field_pt)
+    
+    if clim:
+      fldMin = clim[0]
+      fldMax = clim[1]
+    else:
+      fldMin = np.min(field_pt)
+      fldMax = np.max(field_pt)
+    
+    # FRZ_normalized = (field_RZ - fldMin) / (fldMax - fldMin)
+    Fpt_normalized = (field_pt - fldMin) / (fldMax - fldMin)
+      
+    # Plot
+    fig = plt.figure(figsize=(10, 5), layout='constrained')
+    # fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
+    ax = fig.add_subplot(111, projection='3d')
+    # surf = ax.plot_surface(Xpol, Ypol, Zpol, 
+    #                        facecolors=plt.cm.inferno(FRZ_normalized), 
+    #                        rstride=1, cstride=1,
+    #                       linewidth=0, antialiased=False, shade=False)
+    surf = ax.plot_surface(self.Xtor, self.Ytor, self.Ztor, 
+                           facecolors=plt.cm.inferno(Fpt_normalized), 
+                           rstride=1, cstride=1, edgecolor = None,
+                          linewidth=0, antialiased=False, shade=False)
+    
+    ax.view_init(elev=elev, azim=azim)
+    # Improve visual
+    ax.set_box_aspect([2,1,0.6])
+    ax.axis('off')
+    ax.set_xlim([-1.0, 1.0])
+    ax.set_ylim([ 0.0, 1.0])
+    ax.set_zlim([-0.3, 0.3])
+    
+    fig.canvas.draw()
+    fig.set_layout_engine("none")
+    ax.set_position([-0.75, -0.75, 2.5, 2.5])
+    ax.set_facecolor("none")
+    plt.show()    
