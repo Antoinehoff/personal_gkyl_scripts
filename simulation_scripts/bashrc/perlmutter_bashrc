@@ -50,7 +50,7 @@ gkyl_run_gpu() {
     fi
     local ngpu=$1
     shift  # Shift the arguments to remove the first one (ngpu)
-    srun -n "$ngpu" -u ./g0 -g -M -e "$ngpu" "$@"
+    srun -n "$ngpu" -u ./g0 -g -M -e "$ngpu" "$@" | tee gkyl_run_gpu.log
 }
 
 # Gyacomo specific commands
