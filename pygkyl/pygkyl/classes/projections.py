@@ -164,19 +164,19 @@ class PoloidalProjection:
     self.Rlcfs = self.geom.R_rt(rLCFS,self.zgridI)
     self.Zlcfs = self.geom.Z_rt(rLCFS,self.zgridI)
     
-    self.compute_alpha(phi=self.phiTor, method=intMethod)
+    self.compute_alpha(method=intMethod)
     
     self.compute_xyz2RZ(phiTor=self.phiTor)
 
     self.compute_nodal_coordinates()
     
-  def compute_alpha(self, phi=0.0, method='trapz32'):
+  def compute_alpha(self, method='trapz32'):
     #.Compute alpha(r,z,phi=0) which is independent of y.
     self.alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
     for ix in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
       dPsidr = self.geom.dPsidr(self.geom.r_x(self.meshC[0][ix]),method=method)
       for iz in range(self.nzI):
-          self.alpha_rz_phi0[ix,iz]  = self.geom.alpha0(self.geom.r_x(self.meshC[0][ix]),self.zgridI[iz], phi, method=method)/dPsidr
+          self.alpha_rz_phi0[ix,iz]  = self.geom.alpha0(self.geom.r_x(self.meshC[0][ix]),self.zgridI[iz], 0.0, method=method)/dPsidr
 
   def compute_xyz2RZ(self,phiTor=0.0):
     phiTor += np.pi # To match the obmp with varphi=0
@@ -212,10 +212,15 @@ class PoloidalProjection:
         self.ZIntN[i,self.dimsI[1]] = Zint[i,-1]+0.5*(Zint[i,-1]-Zint[i,-2])
         self.ZIntN[self.dimsI[0],:] = self.ZIntN[-2,:]
         
-  def set_toroidal_rotation(self, phiTor=0.0):
+  def toroidal_rotate(self, phiTor=0.0):
     self.phiTor = phiTor
-    self.compute_xyz2RZ(phiTor=self.phiTor)
-    self.compute_nodal_coordinates()
+    # shift the phase with phiTor
+    for k in range(self.kyDimsC[1]):
+      for iz in range(self.nzI):
+          self.xyz2RZ[:,+k,iz] *= np.exp(1j*k* phiTor)
+          self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
+    # self.compute_xyz2RZ(phiTor=self.phiTor)
+    # self.compute_nodal_coordinates()
     
   def project_field(self, field, frame):
     
@@ -509,7 +514,7 @@ class PoloidalProjection:
                       fluctuation='', xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', elev=15, azim=-60):
     frame = self.sim.get_frame(fieldName, timeFrame)
 
-    field_pt, phi_fs, theta_fs = frame.get_flux_surface_projection(rho, Nint, overSampFact)
+    field_pt, phi_fs, theta_fs = frame.get_flux_surface_projection(rho, Nint, overSampFact, phi=[0, np.pi])
     field_RZ, R_mg, Z_mg = self.get_projection(fieldName, timeFrame)
 
     rcut = rho * self.geom.a_mid

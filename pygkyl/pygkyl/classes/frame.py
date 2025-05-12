@@ -315,15 +315,15 @@ class Frame:
                 self.select_slice(direction=ax_to_cut[i_], cut=ccoord[i_])
         self.refresh(values=False)
         
-    def get_flux_surface_projection(self, rovera, Nint = -1, overSampFact=1):
+    def get_flux_surface_projection(self, rho, Nint = -1, overSampFact=1,smooth=True, phi = [0,2*np.pi]):
         rx = self.simulation.geom_param.r_x(self.cgrids[0])
-        rcut = rovera * self.simulation.geom_param.a_mid
+        rcut = rho * self.simulation.geom_param.a_mid
         ix0 = np.argmin(np.abs(rx - rcut))
+        r0 = self.simulation.geom_param.r_x(self.cgrids[0][ix0])
         x = self.cgrids[0]
         y = self.cgrids[1]
         z = self.cgrids[2]
         x0 = x[ix0]
-        B0 = self.simulation.geom_param.B0
         Cy = self.simulation.geom_param.Cy
         qx = self.simulation.geom_param.qprofile_x
         Ly0 = y[-1] - y[0]
@@ -350,7 +350,12 @@ class Frame:
         y_mg, z_mg = np.meshgrid(y_int, z_int, indexing='ij')
 
         theta_mg = z_mg
-        phi_mg = q0 * theta_mg - (y_mg - y_int[0])/Cy
+        phi_mg = -y_mg/Cy + q0 * theta_mg
+        # phi_mg = np.zeros_like(theta_mg)
+        # for j in range(len(z_int)):
+        #     alpha = self.simulation.geom_param.alpha(r0, theta_mg[0,j], 0)
+        #     for i in range(len(y_int)):
+        #         phi_mg[i,j] = - y_mg[i,j]/Cy - self.simulation.geom_param.alpha(r0, alpha, 0)
             
         Lphi = np.abs(phi_mg[-1,0] - phi_mg[0,0])
         Ltheta = Lphi/q0
@@ -381,10 +386,10 @@ class Frame:
         phi_fs = np.linspace(0, 2*np.pi, Nint_cart)
         theta_fs = np.linspace(-np.pi, np.pi, Nint_cart)
         phi_fs, theta_fs = np.meshgrid(phi_fs, theta_fs, indexing='ij')
-        field_interp = mt.interp2D(phi_rep, theta_rep, field_rep, phi_fs, theta_fs, method='cubic')
+        field_interp = mt.interp2D(phi_rep, theta_rep, field_rep, phi_fs, theta_fs, method='cubic')#, periodicity=[True, True])
         
         # smooth the field
-        field_interp = mt.smooth2D(field_interp)
+        if smooth: field_interp = mt.smooth2D(field_interp)
         
         return field_interp, phi_fs, theta_fs
         

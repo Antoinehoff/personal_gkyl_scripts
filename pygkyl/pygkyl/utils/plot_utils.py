@@ -707,11 +707,11 @@ def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInt
                  outFilename=outFilename, colorMap=colorMap, doInset=doInset, 
                  xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor)
 
-def flux_surface_proj(simulation, rovera, fieldName, timeFrame, Nint=128, overSampFact=1,
+def flux_surface_proj(simulation, rho, fieldName, timeFrame, Nint=128, overSampFact=1,
                       cmap = '', outFilename='', figout=[], xlim=[], ylim=[], clim=[]):
     
     frame = simulation.get_frame(fieldName, timeFrame)
-    field_interp, phi_fs, theta_fs = frame.get_flux_surface_projection(rovera=rovera, Nint=Nint, overSampFact=overSampFact)
+    field_interp, phi_fs, theta_fs = frame.get_flux_surface_projection(rho=rho, Nint=Nint, overSampFact=overSampFact)
     fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
     cmap = cmap if cmap else simulation.data_param.field_info_dict[fieldName+'colormap']
     if cmap == 'bwr':

@@ -162,7 +162,27 @@ def ky_to_y(var_ky, nky0, axis=-2):
     var_y = np.real_if_close(var_y, tol=1e5)
     return var_y
 
-def interp2D(x,y,fxy,r,t, method='cubic'):
+def interp2D(x,y,fxy,r,t, method='cubic', periodicity=[False, False]):
+    '''
+    Interpolate a 2D function fxy defined on a grid of points (x,y) to new points (r,t).
+    x,y are meshgrids of the same shape as fxy.
+    r,t are not meshgrids.
+    '''
+    if periodicity[0]:
+        # Extend the x array both sides
+        dx = x[1,0]-x[0,0]
+        dy = y[0,1]-y[0,0]
+        x = np.concatenate((x[0:1,:] - dx, x, x[-2:-1,:] + dx),axis=0)
+        y = np.concatenate((y[0:1,:] - dy, y, y[-2:-1,:] + dy),axis=0)
+        fxy = np.concatenate((fxy[-2:-1,:], fxy, fxy[0:1,:]), axis=0)
+    if periodicity[1]:
+        # Extend the y array both sides
+        dx = x[1,0]-x[0,0]
+        dy = y[0,1]-y[0,0]
+        x = np.concatenate((x[:,0:1] - dx, x, x[:,-2:-1] + dx),axis=1)
+        y = np.concatenate((y[:,0:1] - dy, y, y[:,-2:-1] + dy),axis=1)
+        fxy = np.concatenate((fxy[:,-2:-1], fxy, fxy[:,0:1]), axis=1)
+            
     return sp_interp((x.flatten(),y.flatten()), fxy.flatten(), (r,t), method=method)
 
 def smooth2D(array, kernel_size=3):
