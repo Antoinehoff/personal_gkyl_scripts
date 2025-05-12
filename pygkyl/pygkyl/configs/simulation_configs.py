@@ -29,7 +29,7 @@ def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, l
 def display_available_configs():
     print("Available configurations: TCV_PT, TCV_NT")
 
-def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS, x_out):
+def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = 0.04, x_out = 0.08):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
@@ -79,7 +79,7 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS, x_out):
 
     return simulation
 
-def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
+def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = 0.04, x_out = 0.08):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
@@ -129,7 +129,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
 
     return simulation
 
-def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
+def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = 0.10, x_out = 0.05):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
@@ -156,8 +156,8 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS, x_out):
         kappa       = 1.35,                 # Elongation factor
         delta       = -0.4,                 # Triangularity factor
         qprofile    = qprofile,                 # Safety factor
-        x_LCFS      = 0.10,                 # position of the LCFS (= core domain width)
-        x_out       = 0.05                  # SOL domain width
+        x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
+        x_out       = x_out                  # SOL domain width
     )
     # Define the species
     simulation.add_species(Species(name='ion',
