@@ -277,9 +277,9 @@ class GeomParam:
 
     def plot_qprofile(self,x=None):
         import matplotlib.pyplot as plt
-        if x is None: x = np.linspace(self.Rmid_min,self.Rmid_max,100)
-        q = self.qprofile(x)
-        plt.plot(x,q)
+        if x is None: x = self.x
+        q = self.qprofile_x(x)
+        plt.plot(x+self.Rmid_min,q)
         # show domain limits
         plt.axvline(x=self.Rmid_min, color='k', linestyle='--', alpha=0.5)
         plt.axvline(x=self.Rmid_max, color='k', linestyle='--', alpha=0.5)
