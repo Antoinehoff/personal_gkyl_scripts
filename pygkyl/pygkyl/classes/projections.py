@@ -898,6 +898,7 @@ class TorusProjection:
     plotter.view_vector(vector=viewVector)  
     plotter.camera.Zoom(camZoom)
     
+    if fluctuation: fieldName = 'd' + fieldName
     if save_html:
       plotter.export_html(filePrefix+'torproj_'+fieldName+'.html')
     plotter.show(screenshot=filePrefix+'torproj_'+fieldName+'.png', jupyter_backend=jupyter_backend)
@@ -910,9 +911,12 @@ class TorusProjection:
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if clim == []: clim = None
     colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    if fluctuation: 
+      colorMap = 'bwr'
+      outFilename = filePrefix+'torproj_movie_d'+fieldName+'.gif'
+    else: 
+      outFilename = filePrefix+'torproj_movie_'+fieldName+'.gif'
     
-    outFilename = filePrefix+'torproj_movie_'+fieldName+'.gif'
-          
     plotter = pv.Plotter(window_size=imgSize)
     plotter.open_gif(outFilename, fps=fps)
 
