@@ -827,16 +827,49 @@ class TorusProjection:
     return pvmeshes
     
   def draw_vessel(self, plotter, smooth_shading=True, opacity=0.2):
+
+      # Draw the limiter
+      RWidth = np.min(self.polprojs[0].Rlcfs) - np.min(self.polprojs[0].RIntN)
+      R0 = np.min(self.polprojs[0].RIntN) * 0.99
+      R1 = R0 + RWidth
+      ZWidth = 0.015
+      Z0 = self.polprojs[0].geom.Z_axis - 0.5*ZWidth
+      Z1 = Z0 + ZWidth
+      phi = np.linspace(0, 2*np.pi, 100)
+      R, PHI = np.meshgrid([R0, R0, R1, R1, R0], phi, indexing='ij')
+      Z, PHI = np.meshgrid([Z0, Z1, Z1, Z0, Z0], phi, indexing='ij')
+      # R,Z draw the vessel contour at one angle phi, now define the toroidal surface
+      Xtor = R * np.cos(PHI)
+      Ytor = R * np.sin(PHI)
+      Ztor = Z
+      pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
+      plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False, smooth_shading=smooth_shading)
+   
       # # Draw the vessel
+      Rvess = self.sim.geom_param.vesselData['R']
+      Zvess = self.sim.geom_param.vesselData['Z']
+      # we ensure tht the vessel encloses the plasma
+      Rplasma_min = np.min(self.polprojs[0].RIntN)
+      Rplasma_max = np.max(self.polprojs[0].RIntN)
+      Rvessmin = np.min(Rvess)
+      Rvessmax = np.max(Rvess)
+      
+      for i in range(len(Rvess)):
+        if abs(Rvess[i] - Rplasma_min) < 0.05*Rplasma_min:
+          Rvess[i] = min(Rvess[i], Rplasma_min)
+        if abs(Rvess[i] - Rplasma_max) < 0.05*Rplasma_max:
+          Rvess[i] = max(Rvess[i], Rplasma_max)
+      
       phi = self.fsprojs[0].phi_fs + self.pvphishift
-      R, PHI = np.meshgrid(self.sim.geom_param.vesselData['R'], phi, indexing='ij')
-      Z, PHI = np.meshgrid(self.sim.geom_param.vesselData['Z'], phi, indexing='ij')
+      R, PHI = np.meshgrid(Rvess, phi, indexing='ij')
+      Z, PHI = np.meshgrid(Zvess, phi, indexing='ij')
       # R,Z draw the vessel contour at one angle phi, now define the toroidal surface
       Xtor = R * np.cos(PHI)
       Ytor = R * np.sin(PHI)
       Ztor = Z
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
       plotter.add_mesh(pvmesh, color='gray', opacity=opacity, show_scalar_bar=False, smooth_shading=smooth_shading)
+      
       return plotter
     
   def plot(self, fieldName, timeFrame, filePrefix='', colorMap = '', fluctuation='', logScale = False,
@@ -847,6 +880,7 @@ class TorusProjection:
     if isinstance(timeFrame, list): timeFrame = timeFrame[-1]
     if clim == []: clim = None
     colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    if fluctuation: colorMap = 'bwr'
     
     plotter = pv.Plotter(window_size=imgSize)
     
