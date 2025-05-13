@@ -874,7 +874,7 @@ class TorusProjection:
     
   def plot(self, fieldName, timeFrame, filePrefix='', colorMap = '', fluctuation='', logScale = False,
            clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False, jupyter_backend='none',
-           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), save_html=True):
+           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), save_html=False):
 
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if isinstance(timeFrame, list): timeFrame = timeFrame[-1]
@@ -898,9 +898,10 @@ class TorusProjection:
     plotter.view_vector(vector=viewVector)  
     plotter.camera.Zoom(camZoom)
     
-    plotter.show(screenshot=filePrefix+'torproj_'+fieldName+'.png', jupyter_backend=jupyter_backend)
     if save_html:
       plotter.export_html(filePrefix+'torproj_'+fieldName+'.html')
+    else:
+      plotter.show(screenshot=filePrefix+'torproj_'+fieldName+'.png', jupyter_backend=jupyter_backend)
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
            clim=[], logScale=False, colorbar=False, vessel=False, smooth_shading=False, lighting=False,
