@@ -1,6 +1,8 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
+import time
+import pyvista as pv
 
 from scipy.interpolate import pchip_interpolate
 from matplotlib.patches import Rectangle
@@ -118,18 +120,22 @@ class PoloidalProjection:
     
     if Rlim or rholim:
       #.Select the radial region of interest
-      Rx = self.geom.R_x(self.meshC[0])
-      dR = Rx[1] - Rx[0]
-      rhox = self.geom.r_x(self.meshC[0])/self.geom.a_mid
-      drho = rhox[1] - rhox[0]
       if Rlim:
+        Rx = self.geom.R_x(self.meshC[0])
+        dR = Rx[1] - Rx[0]
         if not isinstance(Rlim, list): Rlim = [Rlim - dR/2, Rlim + dR/2]
         Rlim = [max(R, Rx[ 0]) for R in Rlim]
         Rlim = [min(R, Rx[-1]) for R in Rlim]
         self.ix0 = np.argmin(np.abs(Rx - Rlim[0]))
         self.ix1 = np.argmin(np.abs(Rx - Rlim[1]))
       elif rholim:
+        rhox = self.geom.r_x(self.meshC[0])/self.geom.a_mid
+        drho = rhox[1] - rhox[0]
         if not isinstance(rholim, list): rholim = [rholim - drho/2, rholim + drho/2]
+        elif isinstance(rholim[0],int):
+          rholim[0] = rhox[rholim[0]]
+          if len(rholim) > 1:
+            rholim[1] = rhox[rholim[1]]
         rholim = [max(rho, rhox[ 0]) for rho in rholim]
         rholim = [min(rho, rhox[-1]) for rho in rholim]
         self.ix0 = np.argmin(np.abs(rhox - rholim[0]))
@@ -212,17 +218,18 @@ class PoloidalProjection:
         self.ZIntN[i,self.dimsI[1]] = Zint[i,-1]+0.5*(Zint[i,-1]-Zint[i,-2])
         self.ZIntN[self.dimsI[0],:] = self.ZIntN[-2,:]
         
-  def toroidal_rotate(self, phiTor=0.0):
-    self.phiTor = phiTor
-    # shift the phase with phiTor
+  def toroidal_rotate(self, dphi=0.0):
+    '''
+    Rotate by dphi in the toroidal direction.
+    This is done by multiplying the projection by exp(1j*k*dphi) for each k.
+    '''
+    self.phiTor += dphi
     for k in range(self.kyDimsC[1]):
       for iz in range(self.nzI):
-          self.xyz2RZ[:,+k,iz] *= np.exp(1j*k* phiTor)
+          self.xyz2RZ[:,+k,iz] *= np.exp(1j*k* dphi)
           self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
-    # self.compute_xyz2RZ(phiTor=self.phiTor)
-    # self.compute_nodal_coordinates()
     
-  def project_field(self, field, frame):
+  def project_field(self, field, evalDGfunc=None):
     
     if self.gridCheck:
       field = np.zeros(self.dimsC)
@@ -239,8 +246,8 @@ class PoloidalProjection:
       proj_zExt_lo = np.zeros((self.dimsC[0],self.dimsC[1]), dtype=np.double)
       proj_zExt_up = np.zeros((self.dimsC[0],self.dimsC[1]), dtype=np.double)
 
-      proj_zExt_lo = frame.eval_DG_proj(grid = [self.meshC[0], self.meshC[1], -np.pi])
-      proj_zExt_up = frame.eval_DG_proj(grid = [self.meshC[0], self.meshC[1], np.pi])
+      proj_zExt_lo = evalDGfunc(grid = [self.meshC[0], self.meshC[1], -np.pi])
+      proj_zExt_up = evalDGfunc(grid = [self.meshC[0], self.meshC[1], np.pi])
           
       field_ex = np.zeros(self.dimsC + np.array([0,0,2]))
       field_ex[:,:,1:-1] = field[self.ix0:self.ix1,:,:]
@@ -306,8 +313,11 @@ class PoloidalProjection:
   
   def get_projection(self, fieldName, timeFrame):
     field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
-    frame_info = Frame(self.sim, name=fieldName, tf=timeFrame, load=False)
-    field_RZ = self.project_field(field_frame.values, frame_info)
+    if self.zExt and not self.TSBC :
+      evalDGfunc = field_frame.eval_DG_proj
+    else:
+      evalDGfunc = None
+    field_RZ = self.project_field(field_frame.values, evalDGfunc=evalDGfunc)
     return field_RZ, self.RIntN, self.ZIntN
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation='',
@@ -510,72 +520,9 @@ class PoloidalProjection:
       fig_tools.compile_movie(frameFileList, movieName, rmFrames=rmFrames,
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
       
-  def plot_full_torus(self, fieldName, timeFrame, outFilename='', colorMap = '', rho=0.9, overSampFact=2, Nint=128,
-                      fluctuation='', xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', elev=15, azim=-60):
-    frame = self.sim.get_frame(fieldName, timeFrame)
-
-    field_pt, phi_fs, theta_fs = frame.get_flux_surface_projection(rho, Nint, overSampFact, phi=[0, np.pi])
-    field_RZ, R_mg, Z_mg = self.get_projection(fieldName, timeFrame)
-
-    rcut = rho * self.geom.a_mid
-
-    # 2D grid for torus parameterization
-    n = len(phi_fs)
-    theta = np.linspace(-np.pi, np.pi, n)  # poloidal angle
-    phi = np.linspace(0, 2*np.pi, n)    # toroidal angle
-    theta_mg, phi_mg = np.meshgrid(theta, phi)
-
-    # Parametric equations for torus
-    Rtor = self.sim.geom_param.R_rt(rcut,theta_mg)
-    Xtor = Rtor * np.cos(phi_mg)
-    Ytor = Rtor * np.sin(phi_mg)
-    Ztor = self.sim.geom_param.Z_rt(rcut,theta_mg)
-
-    # Parametric equations for the poloidal cross-section
-    Xpol = R_mg
-    Ypol = np.zeros_like(Xpol)
-    Zpol = Z_mg
-
-    if clim:
-      fldMin = clim[0]
-      fldMax = clim[1]
-    else:
-      fldMin = np.min(field_pt)
-      fldMax = np.max(field_pt)
-    
-    FRZ_normalized = (field_RZ - fldMin) / (fldMax - fldMin)
-    Fpt_normalized = (field_pt - fldMin) / (fldMax - fldMin)
-      
-    # Plot
-    fig = plt.figure(figsize=(10, 5), layout='constrained')
-    # fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-    ax = fig.add_subplot(111, projection='3d')
-    surf = ax.plot_surface(Xpol, Ypol, Zpol, 
-                           facecolors=plt.cm.inferno(FRZ_normalized), 
-                           rstride=1, cstride=1,
-                          linewidth=0, antialiased=False, shade=False)
-    surf = ax.plot_surface(Xtor, Ytor, Ztor, 
-                           facecolors=plt.cm.inferno(Fpt_normalized), 
-                           rstride=1, cstride=1,
-                          linewidth=0, antialiased=False, shade=False)
-
-    ax.view_init(elev=elev, azim=azim)
-    # Improve visual
-    ax.set_box_aspect([2,1,0.6])
-    ax.axis('off')
-    ax.set_xlim([-1.0, 1.0])
-    ax.set_ylim([ 0.0, 1.0])
-    ax.set_zlim([-0.3, 0.3])
-    
-    fig.canvas.draw()
-    fig.set_layout_engine("none")
-    ax.set_position([-0.75, -0.75, 2.5, 2.5])
-    ax.set_facecolor("none")
-    plt.show()    
-      
   def reset_inset(self):
     self.inset = Inset()
-      
+          
 class Inset:
   """
   Class to add an inset to a plot.
@@ -660,35 +607,79 @@ class Inset:
 
 class FluxSurfProjection:
   def __init__(self):
-    self.polprojs = []
+    self.sim = None
+    self.smooth = True
+    self.overSampFact = 2
+    self.ix0 = 0
+    self.ix1 = 0
+    self.Nint = 0
+    self.npol = 0
+    self.ntor = 0
+    self.phi_fs = None
+    self.theta_fs = None
+    self.phi_rep = None
+    self.theta_rep = None
+    self.field_rep = None
+    self.y_int = None
+    self.z_int = None
     
-  def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=[], rho=0.9, Nphi = 16,
-            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
+  def setup(self, simulation, timeFrame=0, Nint=64, rho=0.9, phi=[0,2*np.pi], smooth=True):
     
-    self.phiTor = phiTor if phiTor else np.linspace(0, np.pi, Nphi)
-    self.rho = rho
-    self.polproj = PoloidalProjection()
-    self.polproj.setup(simulation, timeFrame=timeFrame, nzInterp=nzInterp, phiTor=self.phiTor[0], 
-                       intMethod=intMethod, figSize=figSize, zExt=zExt, gridCheck=gridCheck, TSBC=TSBC)
+    self.sim = simulation
+    self.smooth = smooth
+    self.phiLim = phi if len(phi) == 2 else [0, 2 * np.pi]
     
-    self.Nr   = self.polproj.dimsC[0]
-    self.Nth  = self.polproj.nzI
-    self.Nphi = Nphi
-    self.dims = [self.Nr, self.Nth, self.Nphi]
-    self.theta = np.linspace(-np.pi,np.pi,self.Nth)
-    self.phi_mg, self.theta_mg = np.meshgrid(self.phiTor,self.theta,indexing='ij')
-    
-    self.rcut = rho * self.polproj.geom.a_mid
-    
-    # Parametric equations for torus
-    self.Rtor = self.polproj.geom.R_rt(self.rcut,self.theta_mg)
-    self.Xtor = self.Rtor * np.cos(self.phi_mg)
-    self.Ytor = self.Rtor * np.sin(self.phi_mg)
-    self.Ztor = simulation.geom_param.Z_rt(self.rcut,self.theta_mg)
+    # Load a frame to get the grid
+    if len(simulation.available_frames['field']) > 0:
+      fieldName = 'phi'
+    else:
+      fieldName = 'ni'
+      
+    frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
 
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
-           xlim=[], ylim=[], clim=[], climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', elev=15, azim=-60):
+     # Compute rcut and find the index
+    rx = self.sim.geom_param.r_x(frame.cgrids[0])
+    rhox = rx / self.sim.geom_param.a_mid
+    if isinstance(rho, int): rho = rhox[rho]
+    rcut = rho * self.sim.geom_param.a_mid
+    self.ix0 = np.argmin(np.abs(rx - rcut))
+    self.r0 = self.sim.geom_param.r_x(frame.cgrids[0][self.ix0])
+    self.rho = rho
+  
+    self.Nint = Nint
+    phi_fs = np.linspace(phi[0], phi[1], self.Nint)
+    theta_fs = np.linspace(-np.pi, np.pi, self.Nint)
+    self.phi_fs, self.theta_fs = np.meshgrid(phi_fs, theta_fs, indexing='ij')
+        
+  def project_field(self, field, Nintz=24):
+    
+    phi = np.linspace(self.phiLim[0], self.phiLim[1], self.Nint)
+    polproj = PoloidalProjection()
+    polproj.setup(self.sim,nzInterp=Nintz, rholim=self.rho)
+
+    field_fs = np.zeros((self.Nint, polproj.nzI))
+    
+    dphi = (self.phiLim[1] - self.phiLim[0]) / self.Nint
+    for i in range(len(phi)):
+      polproj.toroidal_rotate(dphi=dphi)
+      f_RZ = polproj.project_field(field)
+      field_fs[i, :] = f_RZ[0, :]
+      
+    theta = np.linspace(-np.pi, np.pi, polproj.nzI)
+    self.phi_fs, self.theta_fs = np.meshgrid(phi, theta, indexing='ij')
+    
+    if self.smooth:
+      field_fs = math_tools.smooth2D(field_fs)
+    
+    return field_fs
+    
+  def get_projection(self, fieldName, timeFrame):
+    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
+    field_fs = self.project_field(field_frame.values)
+    return field_fs, self.phi_fs, self.theta_fs
+  
+  def plot(self, fieldName, timeFrame, outFilename='', fluctuation='',
+           figout=[], xlim=[], ylim=[], clim=[], colorMap=None):
 
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(timeFrame, list):
@@ -697,74 +688,250 @@ class FluxSurfProjection:
     else:
       avg_window = [timeFrame]
     
-    with Frame(self.polproj.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+    with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
       time = field_frame.time
-      vsymbol = field_frame.vsymbol
+      vsymbol = field_frame.vsymbol 
       vunits = field_frame.vunits
       toproject = field_frame.values
-      frame_info = Frame(self.polproj.sim, name=fieldName, tf=timeFrame, load=False)
+      timetitle = field_frame.timetitle
+      frame_info = Frame(self.sim, name=fieldName, tf=timeFrame, load=False)
 
     if len(fluctuation) > 0:
-      if favg is not None:
-        toproject -= favg
-      else:
-        serie = TimeSerie(simulation=self.polproj.sim, name=fieldName, time_frames=avg_window, load=True)
-        if 'tavg' in fluctuation:
-          average = serie.get_time_average()
-          vsymbol = r'$\delta_t$'+vsymbol
-        elif 'yavg' in fluctuation:
-          average = serie.get_y_average()
-          vsymbol = r'$\delta_y$'+vsymbol
-        toproject -= average
-        if 'relative' in fluctuation:
-          toproject = 100.0 * toproject / average
-          vunits = r'\%'
+      serie = TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True)
+      if 'tavg' in fluctuation:
+        average = serie.get_time_average()
+        vsymbol = r'$\delta_t$'+vsymbol
+      elif 'yavg' in fluctuation:
+        average = serie.get_y_average()
+        vsymbol = r'$\delta_y$'+vsymbol
+      toproject -= average
+      if 'relative' in fluctuation:
+        toproject = 100.0 * toproject / average
+        vunits = r'\%'
       colorMap = colorMap if colorMap else 'bwr'
     else:
-      colorMap = colorMap if colorMap else self.polproj.sim.fields_info[fieldName+'colormap']
+      colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
 
-    field_RZPhi = np.zeros(self.dims)
-    for i in range(self.Nphi):
-      self.polproj.set_toroidal_rotation(phiTor=self.phiTor[i])
-      field_RZPhi[:,:,i] = self.polproj.project_field(toproject, frame_info)
-      
-      
-    field_pt = field_RZPhi[0,:,:].T
-    field_pt = math_tools.smooth2D(field_pt)
+    field_fs = self.project_field(toproject)
     
-    if clim:
-      fldMin = clim[0]
-      fldMax = clim[1]
+    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
+    colorMap = colorMap if colorMap else self.sim.data_param.field_info_dict[fieldName+'colormap']
+    if colorMap == 'bwr':
+        vmax = np.max(np.abs(field_fs))
+        clim = [-vmax, vmax]
+        if np.min(field_fs) > 0:
+            clim = []
+            colorMap = 'inferno'
+    pcm = ax.pcolormesh(self.phi_fs/np.pi, self.theta_fs/np.pi, field_fs, shading='auto')
+    cbar = plt.colorbar(pcm, ax=ax)
+    clabel = fig_tools.label(vsymbol,vunits)
+
+    fig_tools.finalize_plot(ax, fig, pcm=pcm, xlabel=r'$\varphi/\pi$', ylabel=r'$\theta/\pi$', title=timetitle,
+                            figout=figout, xlim=xlim, ylim=ylim, clim=clim, clabel=clabel, cbar=cbar, cmap=colorMap)
+
+class TorusProjection:
+  """
+  Class to combine the poloidal and flux surface projections and plot field on the full torus.
+  """
+  def __init__(self):
+    self.polprojs = []
+    self.fsprojs = []
+    self.pvphishift = np.pi/2 # required to have the right orientation in pyvista
+    
+  def setup(self, simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], ixlim=[0,-1],
+            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
+    self.sim = simulation
+    self.phiLim = phiLim if isinstance(phiLim, list) else [phiLim]
+    self.rhoLim = rhoLim if isinstance(rhoLim, list) else [rhoLim]
+    
+    #. Poloidal projection setup
+    for i in range(len(self.phiLim)):
+      self.polprojs.append(PoloidalProjection())
+      self.polprojs[i].setup(simulation, timeFrame=timeFrame, nzInterp=Nint_polproj, phiTor=phiLim[i], rholim=rhoLim, 
+                             intMethod=intMethod, figSize=figSize, zExt=zExt, gridCheck=gridCheck, TSBC=TSBC)
+    
+    #. Flux surface projection setup
+    for i in range(len(self.rhoLim)):
+      self.fsprojs.append(FluxSurfProjection())
+      self.fsprojs[i].setup(simulation, timeFrame=timeFrame, Nint=Nint_fsproj, rho=self.rhoLim[i], phi=phiLim)
+      
+  def get_data(self, fieldName, timeFrame, fluctuation):
+
+    if isinstance(timeFrame, list):
+      avg_window = timeFrame
+      timeFrame = timeFrame[-1]
     else:
-      fldMin = np.min(field_pt)
-      fldMax = np.max(field_pt)
+      avg_window = [timeFrame]
     
-    # FRZ_normalized = (field_RZ - fldMin) / (fldMax - fldMin)
-    Fpt_normalized = (field_pt - fldMin) / (fldMax - fldMin)
+    with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+      toproject = field_frame.values
+
+    if len(fluctuation) > 0:
+      serie = TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True)
+      if 'tavg' in fluctuation:
+        average = serie.get_time_average()
+      elif 'yavg' in fluctuation:
+        average = serie.get_y_average()
+      toproject -= average
+      if 'relative' in fluctuation:
+        toproject = 100.0 * toproject / average
+
+    field_fs = []
+    field_RZ = []
+    for i in range(len(self.rhoLim)):
+      field_fs.append(self.fsprojs[i].project_field(toproject))
+    
+    for i in range(len(self.phiLim)):
+      field_RZ.append(self.polprojs[i].project_field(toproject))
       
-    # Plot
-    fig = plt.figure(figsize=(10, 5), layout='constrained')
-    # fig.subplots_adjust(left=0, right=1, top=1, bottom=0)
-    ax = fig.add_subplot(111, projection='3d')
-    # surf = ax.plot_surface(Xpol, Ypol, Zpol, 
-    #                        facecolors=plt.cm.inferno(FRZ_normalized), 
-    #                        rstride=1, cstride=1,
-    #                       linewidth=0, antialiased=False, shade=False)
-    surf = ax.plot_surface(self.Xtor, self.Ytor, self.Ztor, 
-                           facecolors=plt.cm.inferno(Fpt_normalized), 
-                           rstride=1, cstride=1, edgecolor = None,
-                          linewidth=0, antialiased=False, shade=False)
+    return field_fs, field_RZ
+  
+  def data_to_pvmesh(self, X, Y, Z, field=None, indexing='ij', fieldName='field'):
+      nx, ny = X.shape
+      points = np.c_[X.ravel(), Y.ravel(), Z.ravel()]
+      pvmesh = pv.StructuredGrid()
+      pvmesh.points = points
+      if indexing == 'ij':
+        pvmesh.dimensions = (ny, nx, 1)
+      else:
+        pvmesh.dimensions = (nx, ny, 1)
+      if field is not None:
+        pvmesh[fieldName] = field.ravel()
+      return pvmesh
     
-    ax.view_init(elev=elev, azim=azim)
-    # Improve visual
-    ax.set_box_aspect([2,1,0.6])
-    ax.axis('off')
-    ax.set_xlim([-1.0, 1.0])
-    ax.set_ylim([ 0.0, 1.0])
-    ax.set_zlim([-0.3, 0.3])
+  def init_pvmeshes(self, fieldName, timeFrame, fluctuation):
     
-    fig.canvas.draw()
-    fig.set_layout_engine("none")
-    ax.set_position([-0.75, -0.75, 2.5, 2.5])
-    ax.set_facecolor("none")
-    plt.show()    
+    field_fs, field_RZ = self.get_data(fieldName, timeFrame, fluctuation)
+    
+    pvmeshes = []
+    phishift = self.pvphishift # required to have the right orientation
+    for i in range(len(field_fs)):
+      rcut = self.fsprojs[i].r0
+      # Parametric equations for torus
+      Rtor = self.sim.geom_param.R_rt(rcut,self.fsprojs[i].theta_fs)
+      Xtor = Rtor * np.cos(self.fsprojs[i].phi_fs + phishift)
+      Ytor = Rtor * np.sin(self.fsprojs[i].phi_fs + phishift)
+      Ztor = self.sim.geom_param.Z_rt(rcut,self.fsprojs[i].theta_fs)
+      
+      pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, field_fs[i], indexing='ij', fieldName=fieldName)
+      pvmeshes.append(pvmesh)
+    
+    for i in range(len(field_RZ)):
+      # Parametric equations for the poloidal cross-section
+      Xpol = np.cos(self.phiLim[i] + phishift) * self.polprojs[i].RIntN
+      Ypol = np.sin(self.phiLim[i] + phishift) * self.polprojs[i].RIntN
+      Zpol = self.polprojs[i].ZIntN
+      
+      pvmesh = self.data_to_pvmesh(Xpol, Ypol, Zpol, field_RZ[i], indexing='ij',  fieldName=fieldName)
+      pvmeshes.append(pvmesh)
+    
+    return pvmeshes
+    
+  def draw_vessel(self, plotter, smooth_shading=True, opacity=0.2):
+      # # Draw the vessel
+      phi = self.fsprojs[0].phi_fs + self.pvphishift
+      R, PHI = np.meshgrid(self.sim.geom_param.vesselData['R'], phi, indexing='ij')
+      Z, PHI = np.meshgrid(self.sim.geom_param.vesselData['Z'], phi, indexing='ij')
+      # R,Z draw the vessel contour at one angle phi, now define the toroidal surface
+      Xtor = R * np.cos(PHI)
+      Ytor = R * np.sin(PHI)
+      Ztor = Z
+      pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
+      plotter.add_mesh(pvmesh, color='gray', opacity=opacity, show_scalar_bar=False, smooth_shading=smooth_shading)
+      return plotter
+    
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='', logScale = False,
+           clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False,
+           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600)):
+
+    if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
+    if isinstance(timeFrame, list): timeFrame = timeFrame[-1]
+    if clim == []: clim = None
+    colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    
+    plotter = pv.Plotter(window_size=imgSize)
+    
+    pvmeshes = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
+    N_plas_mesh = len(pvmeshes)
+    
+    for i in range(N_plas_mesh):
+      plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
+                       opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale,
+                       label=fieldName)
+    
+    if vessel and self.sim.geom_param.vesselData is not None:
+      plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
+      
+    plotter.view_vector(vector=viewVector)  
+    plotter.camera.Zoom(camZoom)
+    
+    if outFilename:
+      plotter.show(screenshot=outFilename)
+    else:
+      plotter.show()
+      
+  def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
+           clim=[], logScale=False, colorbar=False, vessel=False, smooth_shading=False, lighting=False,
+           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), fps=14):
+    if smooth_shading: print('Warning: smooth_shading may create flickering in the movie. Idk why :/')
+ 
+    if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
+    if clim == []: clim = None
+    colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    
+    outFilename = filePrefix+'torproj_movie_'+fieldName+'.gif'
+          
+    plotter = pv.Plotter(window_size=imgSize)
+    plotter.open_gif(outFilename, fps=fps)
+
+    n = 0
+    print_progress(n, len(timeFrames))
+    
+    # Create initial frame
+    timeFrame = timeFrames[0]
+
+    pvmeshes = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
+    N_plas_mesh = len(pvmeshes)
+    
+    for i in range(N_plas_mesh):
+      plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, opacity=1.0,
+                      smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
+    del pvmeshes
+    
+    if vessel and self.sim.geom_param.vesselData is not None:
+      plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
+      
+    plotter.view_vector(vector=viewVector)  
+    plotter.camera.Zoom(camZoom)
+    
+    # plotter.render()
+    plotter.write_frame()
+
+    n += 1
+    print_progress(n, len(timeFrames))
+    
+    for timeFrame in timeFrames[1:]:
+      
+      # Update the meshes with new data
+      field_fs, field_RZ = self.get_data(fieldName, timeFrame, fluctuation)
+      for i in range(len(field_fs)):
+        plotter.meshes[i][fieldName] = field_fs[i].ravel()
+      for i in range(len(field_RZ)):
+        plotter.meshes[i+len(field_fs)][fieldName] = field_RZ[i].ravel()
+
+      # plotter.render()
+      plotter.write_frame()
+      
+      n += 1
+      print_progress(n, len(timeFrames))
+    
+    sys.stdout.write("\n")
+    
+    plotter.close()
+    print(f"Movie saved as {outFilename}")
+    
+    
+def print_progress( n, total_frames):
+  progress = f"Processed frames: {n}/{total_frames}... "
+  sys.stdout.write("\r" + progress)
+  sys.stdout.flush()

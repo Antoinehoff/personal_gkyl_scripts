@@ -11,7 +11,7 @@ Modules:
 """
 
 from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam, GBsource, Source, \
-    TimeSerie, PoloidalProjection, IntegratedMoment, FluxSurfProjection
+    TimeSerie, PoloidalProjection, IntegratedMoment, FluxSurfProjection, TorusProjection
 from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools, DG_tools
 from .utils import file_utils, math_utils, plot_utils
 from .configs import simulation_configs
@@ -41,8 +41,9 @@ __all__ = [
     'simulation_configs',
     'PoloidalProjection',
     'FluxSurfProjection',
+    'TorusProjection',
     'IntegratedMoment',
     'get_gkyl_data',
     'get_gkyl_values',
-    'get_gkyl_grid'
+    'get_gkyl_grid',
 ]

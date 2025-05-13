@@ -2,6 +2,7 @@ import numpy as np
 from ..classes import Simulation, Species, Source
 from ..classes.projections import Inset
 from ..tools.gyacomo_interface import GyacomoInterface
+from .vessel_data import tcv_vessel_data, d3d_vessel_data
 
 def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True, add_source=True):
     if configName in ['TCV_PT', 'tcv_pt']:
@@ -76,6 +77,9 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = 0.04, x_out = 0.08):
     inset = Inset() # all default but the lower corner position
     inset.lowerCornerRelPos = [0.3,0.32]
     simulation.polprojInset = inset
+    
+    # Add vessel data filename
+    simulation.vesselData = tcv_vessel_data
 
     return simulation
 
@@ -126,7 +130,10 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = 0.04, x_out = 0.08):
     inset = Inset() # all default but the lower corner position
     inset.lowerCornerRelPos = [0.35,0.3]
     simulation.inset = inset
-
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData = tcv_vessel_data
+    
     return simulation
 
 def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = 0.10, x_out = 0.05):
@@ -179,6 +186,9 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = 0.10, x_out = 0.05):
     inset.xlim = [2.12,2.25]
     inset.ylim = [-0.15,0.15]
     simulation.inset = inset
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData = d3d_vessel_data
 
     return simulation
 
@@ -256,5 +266,8 @@ def get_gyacomo_sim_config(simdir,fileprefix):
     inset.lowerCornerRelPos = [0.35,0.3]
     simulation.inset = inset
     simulation.code = 'gyacomo'
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData =None
 
     return simulation

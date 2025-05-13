@@ -70,6 +70,9 @@ class GeomParam:
         self.n0         = None # Toroidal mode number
         self.x_in       = x_LCFS
         self.x_out      = x_out
+        self.vessel_height = 1.0 # Vessel height [m]
+        self.vessel_Rmin = 0.6 # Vessel minimum major radius [m]
+        self.vessel_Rmax = 1.2 # Vessel maximum major radius [m]
         self.set_qprofile(qprofile=qprofile)
 
     def set_qprofile(self, qprofile):

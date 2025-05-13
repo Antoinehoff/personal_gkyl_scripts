@@ -288,7 +288,7 @@ def figdatadict_get_data(filename, fieldname):
 
 def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
                   cbar=None, xlabel='',ylabel='',clabel='', title='', pcm = None,
-                  legend=False, figout=[], aspect='', grid=False):
+                  cmap=None, legend=False, figout=[], aspect='', grid=False):
     '''
     Finalize a plot with labels, limits, and other settings.
 
@@ -331,8 +331,8 @@ def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
     if yscale: ax.set_yscale(yscale)
     if xlabel: ax.set_xlabel(xlabel)
     if ylabel: ax.set_ylabel(ylabel)
-    if cbar and clabel:
-        cbar.set_label(clabel)
+    if cbar and clabel: cbar.set_label(clabel)
+    if cmap: pcm.set_cmap(cmap)
     if legend: 
         ncol = len(ax.get_legend_handles_labels()[1])
         k = 1 if ncol <= 4 else 2 if ncol <= 10 else 3
