@@ -900,8 +900,7 @@ class TorusProjection:
     
     if save_html:
       plotter.export_html(filePrefix+'torproj_'+fieldName+'.html')
-    else:
-      plotter.show(screenshot=filePrefix+'torproj_'+fieldName+'.png', jupyter_backend=jupyter_backend)
+    plotter.show(screenshot=filePrefix+'torproj_'+fieldName+'.png', jupyter_backend=jupyter_backend)
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
            clim=[], logScale=False, colorbar=False, vessel=False, smooth_shading=False, lighting=False,
