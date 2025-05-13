@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
-import time
 import pyvista as pv
 
 from scipy.interpolate import pchip_interpolate
@@ -840,8 +839,8 @@ class TorusProjection:
       plotter.add_mesh(pvmesh, color='gray', opacity=opacity, show_scalar_bar=False, smooth_shading=smooth_shading)
       return plotter
     
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='', logScale = False,
-           clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False,
+  def plot(self, fieldName, timeFrame, filePrefix='', colorMap = '', fluctuation='', logScale = False,
+           clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False, jupyter_backend='none',
            vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600)):
 
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
@@ -865,11 +864,9 @@ class TorusProjection:
     plotter.view_vector(vector=viewVector)  
     plotter.camera.Zoom(camZoom)
     
-    if outFilename:
-      plotter.show(screenshot=outFilename)
-    else:
-      plotter.show()
-      
+    outFilename = filePrefix+'torproj_'+fieldName+'.png'
+    plotter.show(screenshot=outFilename, jupyter_backend=jupyter_backend)
+
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
            clim=[], logScale=False, colorbar=False, vessel=False, smooth_shading=False, lighting=False,
            vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), fps=14):
