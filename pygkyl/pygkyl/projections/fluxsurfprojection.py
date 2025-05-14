@@ -17,9 +17,6 @@ class FluxSurfProjection:
     self.ntor = 0
     self.phi_fs = None
     self.theta_fs = None
-    self.phi_rep = None
-    self.theta_rep = None
-    self.field_rep = None
     self.y_int = None
     self.z_int = None
     
