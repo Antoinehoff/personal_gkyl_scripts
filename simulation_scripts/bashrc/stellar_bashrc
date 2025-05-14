@@ -16,16 +16,19 @@ export PATH
 # export SYSTEMD_PAGER=
 
 # User specific aliases and functions
-alias gkyl_module_amd='module load cudatoolkit/12.0 openmpi/cuda-11.1/gcc/4.1.1'
 alias queue_u='squeue -u ah1032'
 alias du='du -h'
 alias ll='ll -h'
 alias quota='quota -s'
+alias grant_access='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/grant_access.sh'
+
 alias pgkyl_env_setup='source ~/py_venv/pgkyl/bin/activate'
-alias go_scratch='cd /scratch/gpfs/ah1032'
 alias bashrc_check='cat ~/.bashrc'
 alias bashrc_edit='vi ~/.bashrc'
 alias bashrc_refresh='source ~/.bashrc'
+alias go_scratch='cd /scratch/gpfs/ah1032'
+
+alias gkyl_module_amd='module load cudatoolkit/12.0 openmpi/cuda-11.1/gcc/4.1.1'
 alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_total_runtime.sh'
 alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_available_frames.sh'
 alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'

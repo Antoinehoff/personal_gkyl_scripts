@@ -26,6 +26,7 @@ alias bashrc_check='cat ~/.bashrc'
 alias bashrc_refresh='. ~/.bashrc'
 alias bashrc_edit='vi ~/.bashrc'
 alias replace_filename_pattern='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/replace_filename_pattern.sh'
+alias grant_access='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/grant_access.sh'
 
 # Gkeyll specific commands
 alias pgkyl_env_setup='source ~/py_venv/pgkyl/bin/activate'
