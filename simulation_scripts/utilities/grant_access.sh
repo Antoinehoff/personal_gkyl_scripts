@@ -14,16 +14,26 @@ fi
 # Assign arguments to variables
 USERNAME_AUTHOR=$1
 USERNAME_RECEIVER=$2
-TARGET_PATH=$3
+TARGET_PATH=$(realpath "$3")  # Normalize the full path
 
-# Split the TARGET_PATH and grant access to each level if author username is in the path
+# Initialize path and split into components
 current_path=""
-for dir in $(echo "$TARGET_PATH" | tr '/' ' '); do
-  current_path="$current_path/$dir"
-  
-  # Check if author username is in the current path
-  if [[ "$current_path" == *$USERNAME_AUTHOR* ]]; then
-    setfacl -m u:"$USERNAME_RECEIVER":rx "$current_path"
-    echo setfacl -m u:"$USERNAME_RECEIVER":rx "$current_path"
+IFS='/' read -ra DIRS <<< "$TARGET_PATH"
+
+for dir in "${DIRS[@]}"; do
+  if [ -n "$dir" ]; then
+    current_path="$current_path/$dir"
+
+    # Check if author username is in the current path
+    if [[ "$current_path" == *"$USERNAME_AUTHOR"* ]]; then
+      normalized_current=$(realpath "$current_path" 2>/dev/null)
+
+      if [[ "$normalized_current" == "$TARGET_PATH" ]]; then
+        setfacl -R -m u:"$USERNAME_RECEIVER":rx "$current_path"
+        echo "setfacl -R -m u:$USERNAME_RECEIVER:rx $current_path"
+      else
+        setfacl -m u:"$USERNAME_RECEIVER":rx "$current_path"
+        echo "setfacl -m u:$USERNAME_RECEIVER:rx $current_path"
+      fi
+    fi
   fi
-done
