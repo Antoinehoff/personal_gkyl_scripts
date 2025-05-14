@@ -287,7 +287,9 @@ class TorusProjection:
       plotter = cam.update_plotter(plotter)
       
       # Write text
-      plotter.add_text(f"{time} ms", position='lower_left', font_size=10, name="time_label")
+      # write time in ms with 2 decimal points
+      txt = f"{time/1000:.3f} ms"
+      plotter.add_text(txt, position='lower_left', font_size=10, name="time_label")
       
       # plotter.render()
       plotter.write_frame()
