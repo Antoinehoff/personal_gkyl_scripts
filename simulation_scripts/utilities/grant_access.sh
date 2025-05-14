@@ -37,3 +37,4 @@ for dir in "${DIRS[@]}"; do
       fi
     fi
   fi
+done
