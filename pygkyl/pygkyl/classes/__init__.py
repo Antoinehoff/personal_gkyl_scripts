@@ -9,7 +9,6 @@ from .gbsource   import GBsource
 from .source     import Source
 from .integrated_moment import IntegratedMoment
 from .timeserie import TimeSerie
-from .projections import PoloidalProjection, FluxSurfProjection, TorusProjection
 __all__ = [
     'Species', 
     'Simulation',
@@ -21,7 +20,4 @@ __all__ = [
     'Source',
     'IntegratedMoment',
     'TimeSerie',
-    'PoloidalProjection',
-    'FluxSurfProjection',
-    'TorusProjection'
     ]

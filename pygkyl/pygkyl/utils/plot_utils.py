@@ -22,7 +22,8 @@ from ..utils import math_utils
 from .. utils import file_utils
 from ..tools import fig_tools
 from ..utils import data_utils
-from ..classes import Frame, IntegratedMoment, PoloidalProjection, TimeSerie
+from ..classes import Frame, IntegratedMoment, TimeSerie
+from ..projections import PoloidalProjection, FluxSurfProjection
 
 # other commonly used libs
 import numpy as np
@@ -683,22 +684,6 @@ plot_1D_time_avg = plot_1D
 def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32,
                              colorMap = 'inferno', colorScale = 'lin', doInset=True, 
                              xlim=[], ylim=[],clim=[], logScaleFloor=1e-3):
-    '''
-    This function plots the poloidal projection of a field.
-
-    Inputs:
-        simulation: Simulation object.
-        fieldName: Name of the field to plot.
-        timeFrames: Time frames to plot.
-        outFilename: Name of the output file.
-        nzInterp: Number of points to interpolate along z.
-        scaleFac: Scale factor for the field.
-        colorMap: Color map to use.
-        doInset: Whether to plot an inset. (not adapted well yet)
-        xlim: x-axis limits.
-        ylim: y-axis limits.
-        clim: Color limits.
-    '''
     polproj = PoloidalProjection()
 
     polproj.setup(simulation, fieldName=fieldName, timeFrame=timeFrame, nzInterp=nzInterp)
@@ -707,25 +692,12 @@ def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInt
                  outFilename=outFilename, colorMap=colorMap, doInset=doInset, 
                  xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor)
 
-def flux_surface_proj(simulation, rho, fieldName, timeFrame, Nint=128, overSampFact=1,
-                      cmap = '', outFilename='', figout=[], xlim=[], ylim=[], clim=[]):
+def flux_surface_proj(simulation, rho, fieldName, timeFrame, Nint=32):
     
-    frame = simulation.get_frame(fieldName, timeFrame)
-    field_interp, phi_fs, theta_fs = frame.get_flux_surface_projection(rho=rho, Nint=Nint, overSampFact=overSampFact)
-    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
-    cmap = cmap if cmap else simulation.data_param.field_info_dict[fieldName+'colormap']
-    if cmap == 'bwr':
-        vmax = np.max(np.abs(field_interp))
-        clim = [-vmax, vmax]
-        if np.min(field_interp) > 0:
-            clim = []
-            cmap = 'inferno'
-    pcm = ax.pcolormesh(phi_fs/np.pi, theta_fs/np.pi, field_interp, shading='auto', cmap=cmap)
-    cbar = plt.colorbar(pcm, ax=ax)
-    clabel = lbl = fig_tools.label(frame.vsymbol,frame.vunits)
-
-    fig_tools.finalize_plot(ax, fig, pcm=pcm, xlabel=r'$\varphi/\pi$', ylabel=r'$\theta/\pi$', title=frame.timetitle,
-                            figout=figout, xlim=xlim, ylim=ylim, clim=clim, clabel=clabel, cbar=cbar)
+    fsproj = FluxSurfProjection()
+    fsproj.setup(simulation, rho=rho, fieldName=fieldName, timeFrame=timeFrame,
+                 Nint=Nint)
+    fsproj.plot(fieldName=fieldName, timeFrame=timeFrame, rho=rho)
 
     
 def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],

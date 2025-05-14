@@ -1,6 +1,6 @@
 import numpy as np
 from ..classes import Simulation, Species, Source
-from ..classes.projections import Inset
+from ..projections.poloidalprojection import Inset
 from ..tools.gyacomo_interface import GyacomoInterface
 from .vessel_data import tcv_vessel_data, d3d_vessel_data
 
