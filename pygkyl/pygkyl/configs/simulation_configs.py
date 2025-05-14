@@ -4,7 +4,7 @@ from ..projections.poloidalprojection import Inset
 from ..tools.gyacomo_interface import GyacomoInterface
 from .vessel_data import tcv_vessel_data, d3d_vessel_data
 
-def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, load_metric=True, add_source=True):
+def import_config(configName, simDir, filePrefix, x_LCFS = None, x_out = None, load_metric=True, add_source=True):
     if configName in ['TCV_PT', 'tcv_pt']:
         sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out)
     elif configName in ['TCV_NT', 'tcv_nt']:
@@ -30,11 +30,13 @@ def import_config(configName, simDir, filePrefix, x_LCFS = 0.04, x_out = 0.08, l
 def display_available_configs():
     print("Available configurations: TCV_PT, TCV_NT")
 
-def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = 0.04, x_out = 0.08):
+def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
     R_axis = 0.8727315068
+    if x_LCFS is None : x_LCFS = 0.04
+    if x_out is None : x_out = 0.08
     simulation = Simulation(dimensionality='3x2v')
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
@@ -83,11 +85,14 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = 0.04, x_out = 0.08):
 
     return simulation
 
-def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = 0.04, x_out = 0.08):
+def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
     R_axis = 0.8867856264
+    if x_LCFS is None : x_LCFS = 0.04
+    if x_out is None : x_out = 0.08
+    
     simulation = Simulation(dimensionality='3x2v')
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
@@ -136,11 +141,14 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = 0.04, x_out = 0.08):
     
     return simulation
 
-def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = 0.10, x_out = 0.05):
+def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
     R_axis = 1.7074685
+    if x_LCFS is None : x_LCFS = 0.10
+    if x_out is None : x_out = 0.05
+    
     simulation = Simulation(dimensionality='3x2v')
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
