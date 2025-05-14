@@ -6,6 +6,8 @@ from ..classes import Frame, TimeSerie
 from .fluxsurfprojection import FluxSurfProjection
 from .poloidalprojection import PoloidalProjection
 
+colors = ['red', 'blue', 'green', 'yellow']
+
 class TorusProjection:
   """
   Class to combine the poloidal and flux surface projections and plot field on the full torus.
@@ -42,6 +44,7 @@ class TorusProjection:
     
     with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
       toproject = field_frame.values
+      time = field_frame.time
 
     if len(fluctuation) > 0:
       serie = TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True)
@@ -61,7 +64,7 @@ class TorusProjection:
     for i in range(len(self.phiLim)):
       field_RZ.append(self.polprojs[i].project_field(toproject))
       
-    return field_fs, field_RZ
+    return field_fs, field_RZ, time
   
   def data_to_pvmesh(self, X, Y, Z, field=None, indexing='ij', fieldName='field'):
       nx, ny = X.shape
@@ -82,7 +85,7 @@ class TorusProjection:
       field_fs = [np.ones_like(fsproj.theta_fs) for fsproj in self.fsprojs]
       field_RZ = [np.ones_like(polproj.RIntN) for polproj in self.polprojs]
     else:
-      field_fs, field_RZ = self.get_data(fieldName, timeFrame, fluctuation)
+      field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
     
     pvmeshes = []
     phishift = self.pvphishift # required to have the right orientation
@@ -185,7 +188,7 @@ class TorusProjection:
     
   def plot(self, fieldName, timeFrame, filePrefix='', colorMap = '', fluctuation='', logScale = False,
            clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False, jupyter_backend='none',
-           viewVector = [1, 1, 0.2], camZoom = 2.0, camera=None,
+           viewVector = [1, 1, 0.2], camZoom = 2.0, cameraSettings=None,
            vesselOpacity=0.2, imgSize=(800, 600), save_html=False):
 
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
@@ -199,11 +202,9 @@ class TorusProjection:
     pvmeshes = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
     N_plas_mesh = len(pvmeshes)
     
-    colors = ['red', 'blue', 'green', 'yellow']
-    
     for i in range(N_plas_mesh):
       if fieldName in ['test']:
-        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
+        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting)
       else:
         plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
                         opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale,
@@ -212,26 +213,26 @@ class TorusProjection:
     if vessel and self.sim.geom_param.vesselData is not None:
       plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
       
-    if camera:
-      cam = Camera(viewVector=viewVector, position=camPosition, camZoom=camZoom)
-      plotter = cam.update_plotter(plotter)
-    else:
-      plotter.view_vector(vector=viewVector)  
-      plotter.camera.Zoom(camZoom)
+    cam = Camera(self.sim.geom_param, cameraSettings)
+    plotter = cam.update_plotter(plotter)
+
     
     if fluctuation: fieldName = 'd' + fieldName
     if save_html:
       plotter.export_html(filePrefix+'torproj_'+fieldName+'.html')
+      print(f"HTML saved as {filePrefix}torproj_{fieldName}.html")
     plotter.show(screenshot=filePrefix+'torproj_'+fieldName+'.png', jupyter_backend=jupyter_backend)
+    print(f"Image saved as {filePrefix}torproj_{fieldName}.png")
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
-           clim=[], logScale=False, colorbar=False, vessel=False, smooth_shading=False, lighting=False,
-           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), fps=14):
+           clim=[], logScale=False, colorbar=False, vessel=True, smooth_shading=False, lighting=False,
+           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), fps=14,
+           cameraPath=None):
     if smooth_shading: print('Warning: smooth_shading may create flickering in the movie. Idk why :/')
  
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if clim == []: clim = None
-    colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    if fieldName != 'test': colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
     if fluctuation: 
       colorMap = 'bwr'
       outFilename = filePrefix+'torproj_movie_d'+fieldName+'.gif'
@@ -251,15 +252,19 @@ class TorusProjection:
     N_plas_mesh = len(pvmeshes)
     
     for i in range(N_plas_mesh):
-      plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, opacity=1.0,
-                      smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
+      if fieldName in ['test']:
+        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting)
+      else:
+        plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, opacity=1.0,
+                        smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
     del pvmeshes
     
     if vessel and self.sim.geom_param.vesselData is not None:
       plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
       
-    plotter.view_vector(vector=viewVector)  
-    plotter.camera.Zoom(camZoom)
+    cam = Camera(stops=cameraPath, geom=self.sim.geom_param, nframes=len(timeFrames))
+    plotter = cam.update_plotter(plotter)
+
     
     # plotter.render()
     plotter.write_frame()
@@ -269,15 +274,26 @@ class TorusProjection:
     
     for timeFrame in timeFrames[1:]:
       
-      # Update the meshes with new data
-      field_fs, field_RZ = self.get_data(fieldName, timeFrame, fluctuation)
-      for i in range(len(field_fs)):
-        plotter.meshes[i][fieldName] = field_fs[i].ravel()
-      for i in range(len(field_RZ)):
-        plotter.meshes[i+len(field_fs)][fieldName] = field_RZ[i].ravel()
+      if fieldName not in ['test']:
+        # Update the meshes with new data
+        field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
+        for i in range(len(field_fs)):
+          plotter.meshes[i][fieldName] = field_fs[i].ravel()
+        for i in range(len(field_RZ)):
+          plotter.meshes[i+len(field_fs)][fieldName] = field_RZ[i].ravel()
 
+      # Update the camera position
+      cam.update_camera(n)
+      plotter = cam.update_plotter(plotter)
+      
+      # Write text
+      plotter.add_text(f"{time} ms", position='lower_left', font_size=10, name="time_label")
+      
       # plotter.render()
       plotter.write_frame()
+      
+      # Remove the text
+      plotter.remove_actor("time_label")  # Clear for next frame
       
       n += 1
       print_progress(n, len(timeFrames))
@@ -295,11 +311,60 @@ def print_progress( n, total_frames):
   
   
 class Camera:
-  def __init__(self, location=None, looking_at=None, view_up=None):
-    self.location = location
-    self.looking_at = looking_at
-    self.view_up = view_up
+  def __init__(self, geom, settings=None, stops=None, nframes=1):
+    
+    if settings is None:
+      settings = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+          'zoom': 1.0
+      }
+      
+    if stops is not None:
+      settings = stops[0]
+      self.Ncp = len(stops)
+      self.nframes = nframes
+      self.checkpoints = [ i*nframes//(self.Ncp-1) for i in range(self.Ncp) ]
+      self.icp = 0
+      self.dpos = []
+      self.dlook = []
+      self.dzoom = []
+      for i in range(self.Ncp-1):
+        Nint = (self.checkpoints[i+1] - self.checkpoints[i])
+        self.dpos.append([0, 0, 0])
+        self.dlook.append([0, 0, 0])
+        for k in range(3):
+          self.dpos[i][k] = (stops[i+1]['position'][k] - stops[i]['position'][k]) / Nint * geom.R_LCFSmid
+          self.dlook[i][k] = (stops[i+1]['looking_at'][k] - stops[i]['looking_at'][k]) / Nint * geom.R_LCFSmid
+        self.dzoom.append((stops[i+1]['zoom'] - stops[i]['zoom']) / Nint)
+        
+      self.update_camera = self.update_moving
+    else:
+      self.update_camera = self.update_static
+      
+    self.position = settings['position']
+    self.looking_at = settings['looking_at']
+    self.view_up = (0,0,1)
+    self.zoom = settings['zoom']
+    # scale the lengths with the major radius
+    self.position = [loc * geom.R_LCFSmid for loc in self.position]
+    self.looking_at = [loc * geom.R_LCFSmid for loc in self.looking_at]
+    
+  def update_static(self, iframe):
+    pass
+
+  def update_moving(self, iframe):
+    # check if we passed a checkpoint
+    if iframe > self.checkpoints[self.icp+1]:
+      self.icp = self.icp + 1
+    
+    # update the camera position
+    for k in range(3):
+      self.position[k] += self.dpos[self.icp][k]
+      self.looking_at[k] += self.dlook[self.icp][k]
+    self.zoom += self.dzoom[self.icp]
 
   def update_plotter(self, plotter):
-    plotter.camera_position = [self.location, self.looking_at, self.view_up]
+    plotter.camera_position = [self.position, self.looking_at, self.view_up]
+    plotter.camera.Zoom(self.zoom)
     return plotter
