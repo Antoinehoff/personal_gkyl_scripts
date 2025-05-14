@@ -7,7 +7,7 @@
 
 # Check if the correct number of arguments is provided
 if [ "$#" -ne 3 ]; then
-  echo "Usage: $0 <username_author> <username_receiver> <path>"
+  echo "Usage: grant_access.sh <username_author> <username_receiver> <path>"
   exit 1
 fi
 
