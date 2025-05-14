@@ -6,12 +6,6 @@ from ..classes import Frame, TimeSerie
 from .fluxsurfprojection import FluxSurfProjection
 from .poloidalprojection import PoloidalProjection
 
-#.Some fontsizes used in plots.
-xyLabelFontSize       = 18
-titleFontSize         = 18
-colorBarLabelFontSize = 18
-tickFontSize          = 17
-
 class TorusProjection:
   """
   Class to combine the poloidal and flux surface projections and plot field on the full torus.

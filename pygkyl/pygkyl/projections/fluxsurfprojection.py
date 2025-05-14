@@ -5,12 +5,6 @@ from ..classes import Frame, TimeSerie
 from ..tools import fig_tools, math_tools
 from .poloidalprojection import PoloidalProjection
 
-#.Some fontsizes used in plots.
-xyLabelFontSize       = 18
-titleFontSize         = 18
-colorBarLabelFontSize = 18
-tickFontSize          = 17
-
 class FluxSurfProjection:
   def __init__(self):
     self.sim = None
