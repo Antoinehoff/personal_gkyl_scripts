@@ -78,17 +78,44 @@ class TorusProjection:
     
   def init_pvmeshes(self, fieldName, timeFrame, fluctuation):
     
-    field_fs, field_RZ = self.get_data(fieldName, timeFrame, fluctuation)
+    if fieldName in ['test']:
+      field_fs = [np.ones_like(fsproj.theta_fs) for fsproj in self.fsprojs]
+      field_RZ = [np.ones_like(polproj.RIntN) for polproj in self.polprojs]
+    else:
+      field_fs, field_RZ = self.get_data(fieldName, timeFrame, fluctuation)
     
     pvmeshes = []
     phishift = self.pvphishift # required to have the right orientation
     for i in range(len(field_fs)):
       rcut = self.fsprojs[i].r0
+      
       # Parametric equations for torus
       Rtor = self.sim.geom_param.R_rt(rcut,self.fsprojs[i].theta_fs)
+      Ztor = self.sim.geom_param.Z_rt(rcut,self.fsprojs[i].theta_fs)
+      
+      # we increase slightly the size of the poloidal cross-section to avoid gaps with flux surface projection
+      factor = 0.01
+      Rmin = np.min(Rtor)
+      Rmax = np.max(Rtor)
+      Delta = factor*Rmin 
+      if self.fsprojs[i].r0 == max([fs.r0 for fs in self.fsprojs]):
+        Delta = -Delta
+      alpha = 1 + 2*Delta / (Rmax - Rmin)
+      shift = (1 - alpha) * Rmin - Delta
+      Rtor = alpha * Rtor + shift
+      
+      Zmin = np.min(Ztor)
+      Zmax = np.max(Ztor)
+      Delta = factor*Zmin
+      if self.fsprojs[i].r0 == min([fs.r0 for fs in self.fsprojs]):
+        Delta = -Delta
+      alpha = 1 + 2*Delta / (Zmax - Zmin)
+      shift = (1 - alpha) * Zmin - Delta
+      Ztor = alpha * Ztor + shift
+      
+      # Cartesian coordinates
       Xtor = Rtor * np.cos(self.fsprojs[i].phi_fs + phishift)
       Ytor = Rtor * np.sin(self.fsprojs[i].phi_fs + phishift)
-      Ztor = self.sim.geom_param.Z_rt(rcut,self.fsprojs[i].theta_fs)
       
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, field_fs[i], indexing='ij', fieldName=fieldName)
       pvmeshes.append(pvmesh)
@@ -123,20 +150,26 @@ class TorusProjection:
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
       plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False, smooth_shading=smooth_shading)
    
-      # # Draw the vessel
+      # Draw the vessel
       Rvess = self.sim.geom_param.vesselData['R']
       Zvess = self.sim.geom_param.vesselData['Z']
-      # we ensure tht the vessel encloses the plasma
-      Rplasma_min = np.min(self.polprojs[0].RIntN)
-      Rplasma_max = np.max(self.polprojs[0].RIntN)
-      Rvessmin = np.min(Rvess)
-      Rvessmax = np.max(Rvess)
-      
-      for i in range(len(Rvess)):
-        if abs(Rvess[i] - Rplasma_min) < 0.05*Rplasma_min:
-          Rvess[i] = min(Rvess[i], Rplasma_min)
-        if abs(Rvess[i] - Rplasma_max) < 0.05*Rplasma_max:
-          Rvess[i] = max(Rvess[i], Rplasma_max)
+
+      # scale slightly the vessel to avoid intersection with the plasma
+      Rplas_min = self.polprojs[0].RIntN.min()
+      Rplas_max = self.polprojs[0].RIntN.max()
+      Rvess_min = Rvess.min()
+      Rvess_max = Rvess.max()
+      vpgap_min = Rvess_min - Rplas_min
+      vpgap_max = Rvess_max - Rplas_max
+      # check if there is clipping
+      if vpgap_min > 0 or vpgap_max < 0:
+        if vpgap_min > -vpgap_max:
+          Delta = vpgap_min * 1.05
+        else:
+          Delta = -vpgap_max * 1.05
+        alpha = 1 + 2*Delta / (Rvess_max - Rvess_min)
+        shift = (1 - alpha) * Rvess_min - Delta
+        Rvess = alpha * Rvess + shift
       
       phi = self.fsprojs[0].phi_fs + self.pvphishift
       R, PHI = np.meshgrid(Rvess, phi, indexing='ij')
@@ -152,12 +185,13 @@ class TorusProjection:
     
   def plot(self, fieldName, timeFrame, filePrefix='', colorMap = '', fluctuation='', logScale = False,
            clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False, jupyter_backend='none',
-           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), save_html=False):
+           viewVector = [1, 1, 0.2], camZoom = 2.0, camera=None,
+           vesselOpacity=0.2, imgSize=(800, 600), save_html=False):
 
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if isinstance(timeFrame, list): timeFrame = timeFrame[-1]
     if clim == []: clim = None
-    colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    if fieldName != 'test': colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
     if fluctuation: colorMap = 'bwr'
     
     plotter = pv.Plotter(window_size=imgSize)
@@ -165,16 +199,25 @@ class TorusProjection:
     pvmeshes = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
     N_plas_mesh = len(pvmeshes)
     
+    colors = ['red', 'blue', 'green', 'yellow']
+    
     for i in range(N_plas_mesh):
-      plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
-                       opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale,
-                       label=fieldName)
+      if fieldName in ['test']:
+        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
+      else:
+        plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
+                        opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale,
+                        label=fieldName)
     
     if vessel and self.sim.geom_param.vesselData is not None:
       plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
       
-    plotter.view_vector(vector=viewVector)  
-    plotter.camera.Zoom(camZoom)
+    if camera:
+      cam = Camera(viewVector=viewVector, position=camPosition, camZoom=camZoom)
+      plotter = cam.update_plotter(plotter)
+    else:
+      plotter.view_vector(vector=viewVector)  
+      plotter.camera.Zoom(camZoom)
     
     if fluctuation: fieldName = 'd' + fieldName
     if save_html:
@@ -249,3 +292,14 @@ def print_progress( n, total_frames):
   progress = f"Processed frames: {n}/{total_frames}... "
   sys.stdout.write("\r" + progress)
   sys.stdout.flush()
+  
+  
+class Camera:
+  def __init__(self, location=None, looking_at=None, view_up=None):
+    self.location = location
+    self.looking_at = looking_at
+    self.view_up = view_up
+
+  def update_plotter(self, plotter):
+    plotter.camera_position = [self.location, self.looking_at, self.view_up]
+    return plotter
