@@ -80,9 +80,22 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
     inset.lowerCornerRelPos = [0.3,0.32]
     simulation.polprojInset = inset
     
+    
     # Add vessel data filename
     simulation.vesselData = tcv_vessel_data
 
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0., 0.8, -0.03),
+            'zoom': 1.0
+    }
+    
     return simulation
 
 def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
@@ -138,6 +151,18 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     
     # Add vessel data filename
     simulation.geom_param.vesselData = tcv_vessel_data
+    
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0., 0.8, -0.03),
+            'zoom': 1.0
+    }
     
     return simulation
 
@@ -197,6 +222,18 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     
     # Add vessel data filename
     simulation.geom_param.vesselData = d3d_vessel_data
+    
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+    'position':(2.3, 2.3, 0.75),
+    'looking_at':(0, 0, 0),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {   
+        'position':(0.83, 0.78, -0.1),
+        'looking_at':(0., 0.74, -0.17),
+        'zoom': 1.0
+    }
 
     return simulation
 
