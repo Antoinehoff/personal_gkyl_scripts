@@ -1,3 +1,6 @@
+
+![screenshot](https://github.com/user-attachments/assets/995a9ad0-c647-4266-af4b-7d54395d4897)
+
 # personal_gkyl_scripts
 
 A collection of personal scripts, tools, and Python modules for working with [Gkeyll](https://gkeyll.readthedocs.io/) plasma simulations. This repository is intended to streamline simulation workflows, automate analysis, and provide custom utilities for Gkeyll users.
