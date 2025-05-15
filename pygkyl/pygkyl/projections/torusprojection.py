@@ -66,7 +66,7 @@ class TorusProjection:
       
     return field_fs, field_RZ, time
   
-  def data_to_pvmesh(self, X, Y, Z, field=None, indexing='ij', fieldName='field'):
+  def data_to_pvmesh(self, X, Y, Z, field=None, indexing='ij', fieldlabel='field'):
       nx, ny = X.shape
       points = np.c_[X.ravel(), Y.ravel(), Z.ravel()]
       pvmesh = pv.StructuredGrid()
@@ -76,7 +76,7 @@ class TorusProjection:
       else:
         pvmesh.dimensions = (nx, ny, 1)
       if field is not None:
-        pvmesh[fieldName] = field.ravel()
+        pvmesh[fieldlabel] = field.ravel()
       return pvmesh
     
   def init_pvmeshes(self, fieldName, timeFrame, fluctuation):
@@ -84,7 +84,15 @@ class TorusProjection:
     if fieldName in ['test']:
       field_fs = [np.ones_like(fsproj.theta_fs) for fsproj in self.fsprojs]
       field_RZ = [np.ones_like(polproj.RIntN) for polproj in self.polprojs]
-      time = 10651 # dummy time for test field (in mus)
+      # Dummy values for test field
+      scale = 0.0
+      for i in range(len(field_fs)):
+        field_fs[i] = field_fs[i] * scale
+        scale = scale + 1.0
+      for i in range(len(field_RZ)):
+        field_RZ[i] = field_RZ[i] * scale
+        scale = scale + 1.0
+      time = 10651 # dummy time for test field (my thesis id in mus)
     else:
       field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
     
@@ -121,7 +129,8 @@ class TorusProjection:
       Xtor = Rtor * np.cos(self.fsprojs[i].phi_fs + phishift)
       Ytor = Rtor * np.sin(self.fsprojs[i].phi_fs + phishift)
       
-      pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, field_fs[i], indexing='ij', fieldName=fieldName)
+      fieldlabel = get_label(fieldName, fluctuation)
+      pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, field_fs[i], indexing='ij', fieldlabel=fieldlabel)
       pvmeshes.append(pvmesh)
     
     for i in range(len(field_RZ)):
@@ -130,7 +139,7 @@ class TorusProjection:
       Ypol = np.sin(self.phiLim[i] + phishift) * self.polprojs[i].RIntN
       Zpol = self.polprojs[i].ZIntN
       
-      pvmesh = self.data_to_pvmesh(Xpol, Ypol, Zpol, field_RZ[i], indexing='ij',  fieldName=fieldName)
+      pvmesh = self.data_to_pvmesh(Xpol, Ypol, Zpol, field_RZ[i], indexing='ij',  fieldlabel=fieldlabel)
       pvmeshes.append(pvmesh)
     
     return pvmeshes, time
@@ -197,6 +206,7 @@ class TorusProjection:
     if clim == []: clim = None
     if fieldName != 'test': colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
     if fluctuation: colorMap = 'bwr'
+    fieldlabel = get_label(fieldName, fluctuation)
     
     plotter = pv.Plotter(window_size=imgSize)
     
@@ -205,11 +215,11 @@ class TorusProjection:
     
     for i in range(N_plas_mesh):
       if fieldName in ['test']:
-        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting)
+        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, smooth_shading=smooth_shading, lighting=lighting,
+                         log_scale=logScale, show_scalar_bar=colorbar, clim=clim)
       else:
-        plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
-                        opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale,
-                        label=fieldName)
+        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
+                        opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
     
     if vessel and self.sim.geom_param.vesselData is not None:
       plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
@@ -218,7 +228,7 @@ class TorusProjection:
     plotter = cam.update_plotter(plotter)
     
     # write time in ms with 2 decimal points
-    txt = f"{time/1000:.3f} ms"
+    txt = f"{self.sim.dischargeID}, {time/1000:.3f} ms"
     plotter.add_text(txt, position='lower_left', font_size=10, name="time_label")
     
     if fluctuation: fieldName = 'd' + fieldName
@@ -242,6 +252,7 @@ class TorusProjection:
       outFilename = filePrefix+'torproj_movie_d'+fieldName+'.gif'
     else: 
       outFilename = filePrefix+'torproj_movie_'+fieldName+'.gif'
+    fieldlabel = get_label(fieldName, fluctuation)
     
     plotter = pv.Plotter(window_size=imgSize)
     plotter.open_gif(outFilename, fps=fps)
@@ -257,9 +268,9 @@ class TorusProjection:
     
     for i in range(N_plas_mesh):
       if fieldName in ['test']:
-        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting)
-      else:
-        plotter.add_mesh(pvmeshes[i], scalars=fieldName, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, opacity=1.0,
+        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting,
+                         log_scale=logScale, show_scalar_bar=colorbar, clim=clim)
+        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, opacity=1.0,
                         smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
     del pvmeshes
     
@@ -281,9 +292,9 @@ class TorusProjection:
         # Update the meshes with new data
         field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
         for i in range(len(field_fs)):
-          plotter.meshes[i][fieldName] = field_fs[i].ravel()
+          plotter.meshes[i][fieldlabel] = field_fs[i].ravel()
         for i in range(len(field_RZ)):
-          plotter.meshes[i+len(field_fs)][fieldName] = field_RZ[i].ravel()
+          plotter.meshes[i+len(field_fs)][fieldlabel] = field_RZ[i].ravel()
       else:
         time = 10651 # dummy time for test field (in mus)
 
@@ -292,7 +303,7 @@ class TorusProjection:
       plotter = cam.update_plotter(plotter)
       
       # write time in ms with 2 decimal points
-      txt = f"{time/1000:.3f} ms"
+      txt = f"{self.sim.dischargeID}, {time/1000:.3f} ms"
       plotter.add_text(txt, position='lower_left', font_size=10, name="time_label")
       
       # plotter.render()
@@ -392,6 +403,8 @@ def get_label(fieldName, fluctuation):
       return 'pi - <pi> [%]'
     elif fieldName == 'pe':
       return 'pe - <pe> [%]'
+    elif fieldName == 'test':
+      return 'test - <test> [%]'
     else:
       print(f"No label implemented for fluct. {fieldName} yet.")
       return fieldName
@@ -410,6 +423,8 @@ def get_label(fieldName, fluctuation):
       return 'pi [Pa]'
     elif fieldName == 'pe':
       return 'pe [Pa]'
+    elif fieldName == 'test':
+      return 'test [a.u.]'
     else:
       print(f"No label implemented for {fieldName} yet.")
       return fieldName
