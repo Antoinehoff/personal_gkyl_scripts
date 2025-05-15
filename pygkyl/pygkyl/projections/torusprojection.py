@@ -84,6 +84,7 @@ class TorusProjection:
     if fieldName in ['test']:
       field_fs = [np.ones_like(fsproj.theta_fs) for fsproj in self.fsprojs]
       field_RZ = [np.ones_like(polproj.RIntN) for polproj in self.polprojs]
+      time = 10651 # dummy time for test field (in mus)
     else:
       field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
     
@@ -132,7 +133,7 @@ class TorusProjection:
       pvmesh = self.data_to_pvmesh(Xpol, Ypol, Zpol, field_RZ[i], indexing='ij',  fieldName=fieldName)
       pvmeshes.append(pvmesh)
     
-    return pvmeshes
+    return pvmeshes, time
     
   def draw_vessel(self, plotter, smooth_shading=True, opacity=0.2):
 
@@ -199,7 +200,7 @@ class TorusProjection:
     
     plotter = pv.Plotter(window_size=imgSize)
     
-    pvmeshes = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
+    pvmeshes, time = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
     N_plas_mesh = len(pvmeshes)
     
     for i in range(N_plas_mesh):
@@ -215,7 +216,10 @@ class TorusProjection:
       
     cam = Camera(self.sim.geom_param, cameraSettings)
     plotter = cam.update_plotter(plotter)
-
+    
+    # write time in ms with 2 decimal points
+    txt = f"{time/1000:.3f} ms"
+    plotter.add_text(txt, position='lower_left', font_size=10, name="time_label")
     
     if fluctuation: fieldName = 'd' + fieldName
     if save_html:
@@ -248,7 +252,7 @@ class TorusProjection:
     # Create initial frame
     timeFrame = timeFrames[0]
 
-    pvmeshes = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
+    pvmeshes, time = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
     N_plas_mesh = len(pvmeshes)
     
     for i in range(N_plas_mesh):
@@ -265,7 +269,6 @@ class TorusProjection:
     cam = Camera(stops=cameraPath, geom=self.sim.geom_param, nframes=len(timeFrames))
     plotter = cam.update_plotter(plotter)
 
-    
     # plotter.render()
     plotter.write_frame()
 
@@ -371,3 +374,42 @@ class Camera:
     plotter.camera_position = [self.position, self.looking_at, self.view_up]
     plotter.camera.Zoom(self.zoom)
     return plotter
+  
+  
+def get_label(fieldName, fluctuation):
+  if 'relative' in fluctuation:
+    if fieldName == 'ni':
+      return 'ni - <ni> [%]'
+    elif fieldName == 'ne':
+      return 'ne - <ne> [%]'
+    elif fieldName == 'Te':
+      return 'Te - <Te> [%]'
+    elif fieldName == 'Ti':
+      return 'Ti - <Ti> [%]'
+    elif fieldName == 'phi':
+      return 'phi - <phi> [%]'
+    elif fieldName == 'pi':
+      return 'pi - <pi> [%]'
+    elif fieldName == 'pe':
+      return 'pe - <pe> [%]'
+    else:
+      print(f"No label implemented for fluct. {fieldName} yet.")
+      return fieldName
+  else:
+    if fieldName == 'ni':
+      return 'ni [m-3]'
+    elif fieldName == 'ne':
+      return 'ne [m-3]'
+    elif fieldName == 'Te':
+      return 'Te [eV]'
+    elif fieldName == 'Ti':
+      return 'Ti [eV]'
+    elif fieldName == 'phi':
+      return 'phi [V]'
+    elif fieldName == 'pi':
+      return 'pi [Pa]'
+    elif fieldName == 'pe':
+      return 'pe [Pa]'
+    else:
+      print(f"No label implemented for {fieldName} yet.")
+      return fieldName
