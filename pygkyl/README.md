@@ -1,70 +1,45 @@
 # PyGkyl
 
-A Python package for handling and analyzing Gkeyll simulation data. This package provides classes and tools for 
-setting up simulations, processing data, and visualizing results.
+`pygkyl` is a Python library for loading, analyzing, and visualizing simulation data from gyrokinetic and fluid plasma simulations, especially those produced by the Gkeyll code. It provides tools for plasma physicists and computational scientists to efficiently process high-dimensional simulation outputs.
 
-## Installation
+## Key Features
+- **Data Loading:** Import simulation data from Gkeyll and related codes, supporting various file formats and directory structures.
+- **Normalization:** Convert simulation units to physical units (e.g., time in microseconds, temperature in eV, pressure in Pascal) using flexible normalization utilities.
+- **Visualization:** Advanced plotting and projection tools, including toroidal projections for tokamak geometry, movie generation, and support for custom camera paths and lighting.
+- **Analysis:** Extract and analyze physical quantities such as density, temperature, pressure, and energy, with support for fluctuations and averaging.
+- **Extensibility:** Modular design allows users to add custom analysis routines and visualizations.
 
-You can install the library using pip:
+## Example Usage
+A typical workflow using `pygkyl`:
 
-```sh
-pip install /path/to/your/personal_gkyl_scripts/pygkyl/
-```
-
-Replace `/path/to/your/personal_gkyl_scripts` with the actual path to your `personal_gkyl_scripts` directory.
-For example, on perlmutter, we can run directly from the Jupyter notebook the following command in a cell
 ```python
-import sys
-!{sys.executable} -m pip install ~/personal_gkyl_scripts/pygkyl
+import pygkyl
+
+# Set up simulation configuration
+simulation = pygkyl.simulation_configs.import_config('tcv_nt', simdir, fileprefix)
+
+# Set normalization for physical units
+simulation.normalization.set('t','mus')
+simulation.normalization.set('temperatures','eV')
+# ...
+
+# Set up toroidal projection and plot
+torproj = pygkyl.TorusProjection()
+torproj.setup(simulation, Nint_polproj=32, Nint_fsproj=24)
+torproj.plot(fieldName='Ti', timeFrame=0)
 ```
-assuming that the personal_gkyl_scripts library is in the home directory.
+
+## Applications
+- Analysis of gyrokinetic and fluid plasma simulations
+- Visualization of 3D toroidal geometries (e.g., tokamaks)
+- Generation of movies and publication-quality figures
 
 ## Requirements
+- Python 3.x
+- numpy, matplotlib, and other scientific Python libraries
 
-- numpy
-- scipy
-- matplotlib
-
-## Usage
-
-Here is an example of how to use the library:
-
-```python
-from pygkyl import Simulation, Species, file_utils
-
-# Use the imported classes and functions
-simulation = Simulation(dimensionality='3x2v')
-# ...rest of your code...
-```
-
-Make sure to replace `some_utility_function` with the actual function you want to use from your `utils` module.
-
-## File Summaries
-
-### /pygkyl/utils/plot_utils.py
-
-This module provides various plotting utilities for visualizing Gkeyll simulation data.
-
-### /pygkyl/classes/simulation.py
-
-Manages the setup, parameters, and data for a plasma simulation.
-
-### /pygkyl/classes/frame.py
-
-Manages the loading, slicing, and normalization of simulation data frames.
-
-### /pygkyl/classes/dataparam.py
-
-Manages the setup and configuration of simulation data directories, file prefixes, and data fields.
-
-### /pygkyl/__init__.py
-
-Initializes the pygkyl package and imports core modules and utilities.
-
-## Author
-
-Your Name - [your.email@example.com](mailto:your.email@example.com)
+## Getting Started
+To install and use `pygkyl`, clone this repository and ensure dependencies are installed. You can also use the `pygkyl/scripts/pygkyl_install.py -p PATH` script to have an automatic installation at `PATH`.
 
 ## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
