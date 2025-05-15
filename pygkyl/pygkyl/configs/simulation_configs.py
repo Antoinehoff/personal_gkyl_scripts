@@ -80,6 +80,8 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
     inset.lowerCornerRelPos = [0.3,0.32]
     simulation.polprojInset = inset
     
+    # Add discharge ID
+    simulation.dischargeinfo = 'TCV #65125'
     
     # Add vessel data filename
     simulation.vesselData = tcv_vessel_data
@@ -148,6 +150,9 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     inset = Inset() # all default but the lower corner position
     inset.lowerCornerRelPos = [0.35,0.3]
     simulation.inset = inset
+    
+    # Add discharge ID
+    simulation.dischargeID = 'TCV #65130'
     
     # Add vessel data filename
     simulation.geom_param.vesselData = tcv_vessel_data
@@ -220,6 +225,9 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     inset.ylim = [-0.15,0.15]
     simulation.inset = inset
     
+    # Add discharge ID
+    simulation.dischargeID = 'DIII-D #171650'
+        
     # Add vessel data filename
     simulation.geom_param.vesselData = d3d_vessel_data
     
