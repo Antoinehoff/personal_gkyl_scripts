@@ -2,6 +2,9 @@
 
 `pygkyl` is a Python library for loading, analyzing, and visualizing simulation data from gyrokinetic and fluid plasma simulations, especially those produced by the Gkeyll code. It provides tools for plasma physicists and computational scientists to efficiently process high-dimensional simulation outputs.
 
+![screenshot](https://github.com/user-attachments/assets/c52f833c-97ce-41d1-9326-7e6be6fda13e)
+
+
 ## Key Features
 - **Data Loading:** Import simulation data from Gkeyll and related codes, supporting various file formats and directory structures.
 - **Normalization:** Convert simulation units to physical units (e.g., time in microseconds, temperature in eV, pressure in Pascal) using flexible normalization utilities.
