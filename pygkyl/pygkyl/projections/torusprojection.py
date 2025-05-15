@@ -281,12 +281,13 @@ class TorusProjection:
           plotter.meshes[i][fieldName] = field_fs[i].ravel()
         for i in range(len(field_RZ)):
           plotter.meshes[i+len(field_fs)][fieldName] = field_RZ[i].ravel()
+      else:
+        time = 10651 # dummy time for test field (in mus)
 
       # Update the camera position
       cam.update_camera(n)
       plotter = cam.update_plotter(plotter)
       
-      # Write text
       # write time in ms with 2 decimal points
       txt = f"{time/1000:.3f} ms"
       plotter.add_text(txt, position='lower_left', font_size=10, name="time_label")
