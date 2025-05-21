@@ -116,9 +116,11 @@ def main():
     camera_path = []
     for camera in args.cameras:
         if camera == 'global':
-            camera_path.append(simulation.geom_param.camera_global)
+          camera_path.append(simulation.geom_param.camera_global)
         elif camera == 'zoom_lower':
-            camera_path.append(simulation.geom_param.camera_zoom_lower)
+          camera_path.append(simulation.geom_param.camera_zoom_lower)
+        elif camera == 'zoom_obmp':
+          camera_path.append(simulation.geom_param.camera_zoom_obmp)
         else:
             print(f"Invalid camera movement option: {camera}. Choose from 'global', 'zoom_lower'.")
             sys.exit(1)
