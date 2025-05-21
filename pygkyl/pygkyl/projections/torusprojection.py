@@ -272,6 +272,9 @@ class TorusProjection:
                          log_scale=logScale, show_scalar_bar=colorbar, clim=clim)
         plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, opacity=1.0,
                         smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
+      else:
+        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
+                        opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
     del pvmeshes
     
     if vessel and self.sim.geom_param.vesselData is not None:
