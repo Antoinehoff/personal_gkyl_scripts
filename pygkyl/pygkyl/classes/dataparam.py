@@ -3,6 +3,7 @@ import numpy as np
 import os
 from ..tools import pgkyl_interface as pgkyl_
 from ..utils import file_utils as file_utils
+import glob
 
 class DataParam:
     """
@@ -133,14 +134,19 @@ class DataParam:
                 # Find a file type where we can find the moment data.
                 mtype = -1
                 for moment_type in ['BiMaxwellianMoments', 'M0']:
-                    file_name = f"-{s_}_{moment_type}_0.gkyl"
-                    file_name = self.fileprefix + file_name
+                    pattern = f"{self.fileprefix}-{s_}_{moment_type}_*.gkyl"
+                    files = glob.glob(pattern)
+                    if files:
+                        file_name = self.simdir + os.path.basename(files[0])
+                    else:
+                        file_name = self.fileprefix + f"-{s_}_{moment_type}_0.gkyl"
                     if os.path.exists(file_name):
                         mtype = moment_type
                         self.default_mom_type = mtype
                         break
                 if mtype == -1:
                     print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
+                    print(f"Check the file name pattern: {self.fileprefix}-{s_}_{moment_type}_*.gkyl")
                     continue
                 keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
                 if self.default_mom_type == 'M0':
