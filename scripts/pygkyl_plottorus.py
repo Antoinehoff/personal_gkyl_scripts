@@ -77,16 +77,20 @@ NOTES:
     parser.add_argument('--clim', type=float, nargs=2, default=[], help='Color limits')
     parser.add_argument('--logScale', action='store_true', help='Use log scale for color bar')
     parser.add_argument('--cameras', type=str, nargs='+', default=['global', 'global', 'zoom_lower', 'zoom_lower'], help='Camera path for movie')
+    parser.add_argument('--deviceconfig', type=str, choices=['tcv_nt','tcv_pt','d3d_nt','d3d_pt'], default='tcv_nt', help='Set the device geometry.')
     return parser.parse_args()
 
 def main():
     args = parse_args()
 
-    home_dir = os.path.expanduser("~")
-    repo_dir = home_dir+'/personal_gkyl_scripts/'
-
+    # Check if there is simulation results in the simdir/fileprefix*
+    result_files = [f for f in os.listdir(args.simdir) if f.startswith(args.fileprefix)]
+    if not result_files:
+        print(f"No simulation results found in {args.simdir} with prefix '{args.fileprefix}'.")
+        sys.exit(1)
+    
     # Setup
-    simulation = pygkyl.simulation_configs.import_config('tcv_nt', args.simdir, args.fileprefix)
+    simulation = pygkyl.simulation_configs.import_config(args.deviceconfig, args.simdir, args.fileprefix)
     simulation.normalization.set('t','mus')
     simulation.normalization.set('x','minor radius')
     simulation.normalization.set('y','Larmor radius')
