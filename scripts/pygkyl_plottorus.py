@@ -22,35 +22,38 @@ the field, fluctuation type, color scale, camera path, and more.
 USAGE EXAMPLES:
 ---------------
 - Plot a snapshot of the fluctuation of Ti at the last frame:
-    python pygkyl_plottorus.py --plottype snapshot --fieldName Ti --frameidx -1 --fluctuation yavg_relative
+    python pygkyl_plottorus.py --plot_type snapshot --field_name Ti --frame_idx -1 --fluctuation yavg_relative
 
 - Plot a movie of Te using a custom camera path:
-    python pygkyl_plottorus.py --plottype movie --fieldName Te --cameras global zoom_lower zoom_lower
+    python pygkyl_plottorus.py --plot_type movie --field_name Te --cameras global zoom_lower zoom_lower
 
 - Change color limits and use log scale:
-    python pygkyl_plottorus.py --clim 0 100 --logScale
+    python pygkyl_plottorus.py --clim 0 100 --log_scale
 
 - Restrict the plotted region:
-    python pygkyl_plottorus.py --rhoLim 0 1 --phiLim 0 3.14
+    python pygkyl_plottorus.py --rho_lim 0 1 --phi_lim 0 3.14
 
 PARAMETERS:
 -----------
---simdir         Path to the simulation directory.
---fileprefix     Prefix for the simulation files.
---plottype       'snapshot' for a single frame, 'movie' for a time sequence.
---rhoLim         Radial limits (e.g., --rhoLim 0 1).
---phiLim         Toroidal angle limits in radians (e.g., --phiLim 0 4.71).
---Nint_polproj   Number of poloidal integration points.
---Nint_fsproj    Number of field-line integration points.
---fieldName      Field to plot (e.g., Ti, Te, phi, etc.).
---fluctuation    Fluctuation type (e.g., yavg_relative).
---frameidx       Frame index for snapshot (negative for last frame).
---movieframeidx  Frame index to start the movie from ('all' or integer index).
---imgSize        Image size in pixels (width height).
---clim           Colorbar limits (min max).
---logScale       Use logarithmic color scale.
---cameras        Camera path for movie (sequence of 'global' or 'zoom_lower').
--h, --help       Show this help message and exit.
+--sim_dir         Path to the simulation directory.
+--file_prefix     Prefix for the simulation files.
+--plot_type       'snapshot' for a single frame, 'movie' for a time sequence.
+--rho_lim         Radial limits (e.g., --rho_lim 0 1).
+--phi_lim         Toroidal angle limits in radians (e.g., --phi_lim 0 4.71).
+--nint_polproj    Number of poloidal integration points.
+--nint_fsproj     Number of field-line integration points.
+--field_name      Field to plot (e.g., Ti, Te, phi, etc.).
+--fluctuation     Fluctuation type (e.g., yavg_relative).
+--frame_idx       Frame index for snapshot (negative for last frame).
+--movie_frame_idx Frame index to start the movie from ('all' or integer index).
+--img_size        Image size in pixels (width height).
+--clim            Colorbar limits (min max).
+--log_scale       Use logarithmic color scale.
+--cameras         Camera path for movie (sequence of 'global' or 'zoom_lower').
+--device_config   Set the device geometry.
+--off_screen      Use off-screen rendering (for non-GUI environments).
+--movie_type      Movie file type (e.g., mp4, gif).
+-h, --help        Show this help message and exit.
 
 NOTES:
 ------
@@ -62,41 +65,42 @@ NOTES:
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
-    parser.add_argument('--simdir', type=str, default='sim_data_dir_example/3x2v_example/gk_tcv_posD_iwl_3x2v_electron_heating/', help='Simulation directory')
-    parser.add_argument('--fileprefix', type=str, default='gk_tcv_posD_iwl_3x2v_D02', help='File prefix')
-    parser.add_argument('--plottype', type=str, choices=['snapshot','movie'], default='snapshot', help='Plot type')
-    parser.add_argument('--rhoLim', type=float, nargs=2, default=[2,-2], help='Radial limits')
-    parser.add_argument('--phiLim', type=float, nargs=2, default=[0, 3*np.pi/2], help='Toroidal angle limits')
-    parser.add_argument('--Nint_polproj', type=int, default=32, help='Number of poloidal integration points')
-    parser.add_argument('--Nint_fsproj', type=int, default=24, help='Number of field-line integration points')
-    parser.add_argument('--fieldName', type=str, default='Ti', help='Field to plot')
+    parser.add_argument('--sim_dir', type=str, default='sim_data_dir_example/3x2v_example/gk_tcv_posD_iwl_3x2v_electron_heating/', help='Simulation directory')
+    parser.add_argument('--file_prefix', type=str, default='gk_tcv_posD_iwl_3x2v_D02', help='File prefix')
+    parser.add_argument('--plot_type', type=str, choices=['snapshot','movie'], default='snapshot', help='Plot type')
+    parser.add_argument('--rho_lim', type=float, nargs=2, default=[2,-2], help='Radial limits')
+    parser.add_argument('--phi_lim', type=float, nargs=2, default=[0, 3*np.pi/2], help='Toroidal angle limits')
+    parser.add_argument('--nint_polproj', type=int, default=32, help='Number of poloidal integration points')
+    parser.add_argument('--nint_fsproj', type=int, default=24, help='Number of field-line integration points')
+    parser.add_argument('--field_name', type=str, default='Ti', help='Field to plot')
     parser.add_argument('--fluctuation', type=str, default='', help='Fluctuation type')
-    parser.add_argument('--frameidx', type=int, default=-1, help='Frame index for snapshot')
-    parser.add_argument('--movieframeidx', type=str, default='all', help='Frame indices for movie ("all" or int)')
-    parser.add_argument('--imgSize', type=int, nargs=2, default=[800,600], help='Image size in pixels')
+    parser.add_argument('--frame_idx', type=int, default=-1, help='Frame index for snapshot')
+    parser.add_argument('--movie_frame_idx', type=str, default='all', help='Frame indices for movie ("all" or int)')
+    parser.add_argument('--img_size', type=int, nargs=2, default=[800,600], help='Image size in pixels')
     parser.add_argument('--clim', type=float, nargs=2, default=[], help='Color limits')
-    parser.add_argument('--logScale', action='store_true', help='Use log scale for color bar')
+    parser.add_argument('--log_scale', action='store_true', help='Use log scale for color bar')
     parser.add_argument('--cameras', type=str, nargs='+', default=['global', 'global', 'zoom_lower', 'zoom_lower'], help='Camera path for movie')
-    parser.add_argument('--deviceconfig', type=str, choices=['tcv_nt','tcv_pt','d3d_nt','d3d_pt'], default='tcv_nt', help='Set the device geometry.')
-    parser.add_argument('--off_screen', type=bool, default=False, help='Use off-screen rendering (for non-GUI environments)')
-    parser.add_argument('--movie_type', type=str, default='mp4', help='Movie file type (e.g., mp4, gif)')
+    parser.add_argument('--device_config', type=str, choices=['tcv_nt','tcv_pt','d3d_nt','d3d_pt','sparc','nstxu'], default='tcv_nt', help='Set the device geometry.')
+    parser.add_argument('--off_screen', type=str, default='False', choices=['True','False'], help='Use off-screen rendering (for non-GUI environments)')
+    parser.add_argument('--movie_type', type=str, default='gif', help='Movie file type (e.g., mp4, gif)')
     return parser.parse_args()
 
 def main():
     args = parse_args()
-
-    # Check if there is simulation results in the simdir/fileprefix*
-    result_files = [f for f in os.listdir(args.simdir) if f.startswith(args.fileprefix)]
+    args.off_screen = args.off_screen in ['True', 'T', '1']
+  
+    # Check if there is simulation results in the sim_dir/file_prefix*
+    result_files = [f for f in os.listdir(args.sim_dir) if f.startswith(args.file_prefix)]
     if not result_files:
-        print(f"No simulation results found in {args.simdir} with prefix '{args.fileprefix}'.")
+        print(f"No simulation results found in {args.sim_dir} with prefix '{args.file_prefix}'.")
         sys.exit(1)
     
-    # Ensure that the simdir is ending with '/'
-    if not args.simdir.endswith('/'):
-        args.simdir += '/'
+    # Ensure that the sim_dir is ending with '/'
+    if not args.sim_dir.endswith('/'):
+        args.sim_dir += '/'
     
     # Setup
-    simulation = pygkyl.simulation_configs.import_config(args.deviceconfig, args.simdir, args.fileprefix)
+    simulation = pygkyl.simulation_configs.import_config(args.device_config, args.sim_dir, args.file_prefix)
     simulation.normalization.set('t','mus')
     simulation.normalization.set('x','minor radius')
     simulation.normalization.set('y','Larmor radius')
@@ -118,34 +122,34 @@ def main():
         else:
             print(f"Invalid camera movement option: {camera}. Choose from 'global', 'zoom_lower'.")
             sys.exit(1)
+            
 
-    
     torproj = pygkyl.TorusProjection()
-    torproj.setup(simulation, Nint_polproj=args.Nint_polproj, Nint_fsproj=args.Nint_fsproj,
-                  phiLim=args.phiLim, rhoLim=args.rhoLim, timeFrame=sim_frames[0])
+    torproj.setup(simulation, Nint_polproj=args.nint_polproj, Nint_fsproj=args.nint_fsproj,
+                  phiLim=args.phi_lim, rhoLim=args.rho_lim, timeFrame=sim_frames[0])
 
-    if args.plottype == 'snapshot':
-        timeFrame = sim_frames[args.frameidx]
-        torproj.plot(fieldName=args.fieldName, timeFrame=timeFrame, fluctuation=args.fluctuation, 
-                     clim=args.clim, logScale=args.logScale, vessel=True, filePrefix=args.fileprefix, 
-                     imgSize=tuple(args.imgSize), jupyter_backend='none', colorbar=True, cameraSettings=camera_path[0],
+    if args.plot_type == 'snapshot':
+        timeFrame = sim_frames[args.frame_idx]
+        torproj.plot(fieldName=args.field_name, timeFrame=timeFrame, fluctuation=args.fluctuation, 
+                     clim=args.clim, logScale=args.log_scale, vessel=True, filePrefix=args.file_prefix, 
+                     imgSize=tuple(args.img_size), jupyter_backend='none', colorbar=True, cameraSettings=camera_path[0],
                      off_screen=args.off_screen)
-    elif args.plottype == 'movie':
-        if args.movieframeidx == 'all':
+    elif args.plot_type == 'movie':
+        if args.movie_frame_idx == 'all':
             timeFrames = sim_frames
         else:
             try:
-                idx = int(args.movieframeidx)
+                idx = int(args.movie_frame_idx)
                 timeFrames = sim_frames[idx:]
             except Exception:
-                print("movieframeidx must be 'all' or an integer index.")
+                print("movie_frame_idx must be 'all' or an integer index.")
                 sys.exit(1)
                 
         print("You will see the generation of the movie in a window. DO NOT MOVE IT OR CLOSE IT.")
 
-        torproj.movie(fieldName=args.fieldName, timeFrames=timeFrames, fluctuation=args.fluctuation, 
-                      filePrefix=args.fileprefix, imgSize=tuple(args.imgSize), colorbar=True,
-                      cameraPath=camera_path, logScale=args.logScale, clim=args.clim,
+        torproj.movie(fieldName=args.field_name, timeFrames=timeFrames, fluctuation=args.fluctuation, 
+                      filePrefix=args.file_prefix, imgSize=tuple(args.img_size), colorbar=True,
+                      cameraPath=camera_path, logScale=args.log_scale, clim=args.clim,
                       off_screen=args.off_screen, movie_type=args.movie_type)
 
 if __name__ == "__main__":

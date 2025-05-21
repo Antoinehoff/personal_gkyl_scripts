@@ -2,7 +2,7 @@ import numpy as np
 from ..classes import Simulation, Species, Source
 from ..projections.poloidalprojection import Inset
 from ..tools.gyacomo_interface import GyacomoInterface
-from .vessel_data import tcv_vessel_data, d3d_vessel_data
+from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
 def import_config(configName, simDir, filePrefix, x_LCFS = None, x_out = None, load_metric=True, add_source=True):
     if configName in ['TCV_PT', 'tcv_pt']:
@@ -11,6 +11,10 @@ def import_config(configName, simDir, filePrefix, x_LCFS = None, x_out = None, l
         sim = get_tcv_nt_sim_config(simDir, filePrefix, x_LCFS, x_out)
     elif configName in ['D3D_NT', 'd3d_nt']:
         sim = get_d3d_nt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+    elif configName in ['SPARC', 'sparc']:
+        sim = get_sparc_sim_config(simDir, filePrefix, x_LCFS, x_out)
+    elif configName in ['NSTXU', 'nstxu']:
+        sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out)
     elif configName in ['gyacomo', 'GYACOMO', 'Gyacomo']:
         sim = get_gyacomo_sim_config(simDir, filePrefix)
         load_metric = False
@@ -244,6 +248,149 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     }
 
     return simulation
+
+
+def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
+    '''
+    This function returns a simulation object for a TCV PT clopen 3x2v simulation.
+    '''
+    R_axis = 1.0
+    if x_LCFS is None : x_LCFS = 0.04
+    if x_out is None : x_out = 0.08
+    simulation = Simulation(dimensionality='3x2v')
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(r):
+        R = r + R_axis
+        a = [154.51071835546747,  -921.8584472748003, 1842.1077075366113, -1231.619813170522]
+        return 2 * (1-r) + 10 * r
+
+    simulation.set_geom_param(
+        B_axis      = 1.0,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,         # Magnetic axis major radius
+        Z_axis      = 0.0,         # Magnetic axis height
+        R_LCFSmid   = 1.4903225806451617,   # Major radius of LCFS at the midplane
+        a_shift     = 0.1,                 # Parameter in Shafranov shift
+        kappa       = 2.5,                 # Elongation factor
+        delta       = 0.4,                 # Triangularity factor
+        qprofile    = qprofile,                 # Safety factor
+        x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
+        x_out       = x_out                 # SOL domain width
+    )
+
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    inset = Inset() # all default but the lower corner position
+    inset.lowerCornerRelPos = [0.3,0.32]
+    simulation.polprojInset = inset
+    
+    # Add discharge ID
+    simulation.dischargeID = 'NSTX-U'
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData = nstxu_vessel_data
+
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 0.75
+    }
+    simulation.geom_param.camera_zoom_lower = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0., 0.8, -0.03),
+            'zoom': 1.0
+    }
+    
+    return simulation
+
+
+def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
+    '''
+    This function returns a simulation object for a TCV PT clopen 3x2v simulation.
+    '''
+    R_axis = 1.8885793871866297
+    if x_LCFS is None : x_LCFS = 0.04
+    if x_out is None : x_out = 0.08
+    simulation = Simulation(dimensionality='3x2v')
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(r):
+        return 3.5
+
+    simulation.set_geom_param(
+        B_axis      = 8.0,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,         # Magnetic axis major radius
+        Z_axis      = -0.004184100418409997,         # Magnetic axis height
+        R_LCFSmid   = 2.4066852367688023*0.99,   # Major radius of LCFS at the midplane
+        a_shift     = 0.1,                 # Parameter in Shafranov shift
+        kappa       = 1.65,                 # Elongation factor
+        delta       = 0.4,                 # Triangularity factor
+        qprofile    = qprofile,                 # Safety factor
+        x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
+        x_out       = x_out                 # SOL domain width
+    )
+
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    inset = Inset() # all default but the lower corner position
+    inset.lowerCornerRelPos = [0.3,0.32]
+    simulation.polprojInset = inset
+    
+    # Add discharge ID
+    simulation.dischargeID = 'SPARC'
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData = sparc_vessel_data
+
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0., 0.8, -0.03),
+            'zoom': 1.0
+    }
+    
+    return simulation
+
 
 def add_source_baseline(simulation):
     n_srcOMP=2.4e23

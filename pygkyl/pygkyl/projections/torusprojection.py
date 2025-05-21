@@ -199,8 +199,7 @@ class TorusProjection:
     
   def plot(self, fieldName, timeFrame, filePrefix='', colorMap = '', fluctuation='', logScale = False,
            clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False, jupyter_backend='none',
-           viewVector = [1, 1, 0.2], camZoom = 2.0, cameraSettings=None,
-           vesselOpacity=0.2, imgSize=(800, 600), save_html=False, off_screen=False):
+           cameraSettings=None, vesselOpacity=0.2, imgSize=(800, 600), save_html=False, off_screen=False):
 
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if isinstance(timeFrame, list): timeFrame = timeFrame[-1]
@@ -208,7 +207,7 @@ class TorusProjection:
     if fieldName != 'test': colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
     if fluctuation: colorMap = 'bwr'
     fieldlabel = get_label(fieldName, fluctuation)
-    
+
     plotter = pv.Plotter(window_size=imgSize, off_screen=off_screen)
     
     pvmeshes, time = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
@@ -241,8 +240,7 @@ class TorusProjection:
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
            clim=[], logScale=False, colorbar=False, vessel=True, smooth_shading=False, lighting=False,
-           vesselOpacity=0.2, viewVector = [1, 1, 0.2], camZoom = 2.0, imgSize=(800, 600), fps=14,
-           cameraPath=None, off_screen=True, movie_type='mp4'):
+           vesselOpacity=0.2, imgSize=(800, 600), fps=14, cameraPath=None, off_screen=True, movie_type='mp4'):
     if smooth_shading: print('Warning: smooth_shading may create flickering in the movie. Idk why :/')
  
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
@@ -261,7 +259,7 @@ class TorusProjection:
       plotter.open_gif(outFilename, fps=fps)
     else:
       outFilename += '.mp4'
-      plotter.open_movie(outFilename, fps=fps)
+      plotter.open_movie(outFilename, framerate=fps)
 
     n = 0
     print_progress(n, len(timeFrames))
