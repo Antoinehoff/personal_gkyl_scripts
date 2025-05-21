@@ -1,5 +1,7 @@
 
 ![screenshot](https://github.com/user-attachments/assets/995a9ad0-c647-4266-af4b-7d54395d4897)
+_Gkeyll TCV turbulence simulation in negative triangularity configuration._
+_(see_ `scripts/pygkyl_plottorus.py -h`_)_
 
 # personal_gkyl_scripts
 
