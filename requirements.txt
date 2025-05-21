@@ -9,3 +9,4 @@ trame
 trame-vtk 
 trame-vuetify 
 imageio
+h5py
