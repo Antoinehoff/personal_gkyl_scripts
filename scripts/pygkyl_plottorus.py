@@ -98,7 +98,7 @@ def main():
     simulation.normalization.set('fluid velocities','thermal velocity')
     simulation.normalization.set('temperatures','eV')
     simulation.normalization.set('pressures','Pa')
-    simulation.normalization.set('energies','MJ')
+    simulation.normalization.set('energies','MJ')    
 
     sim_frames = simulation.available_frames['ion_BiMaxwellianMoments']
     print("%g time frames available (%g to %g)"%(len(sim_frames),sim_frames[0],sim_frames[-1]))
@@ -116,7 +116,7 @@ def main():
     
     torproj = pygkyl.TorusProjection()
     torproj.setup(simulation, Nint_polproj=args.Nint_polproj, Nint_fsproj=args.Nint_fsproj,
-                  phiLim=args.phiLim, rhoLim=args.rhoLim)
+                  phiLim=args.phiLim, rhoLim=args.rhoLim, timeFrame=sim_frames[0])
 
     if args.plottype == 'snapshot':
         timeFrame = sim_frames[args.frameidx]

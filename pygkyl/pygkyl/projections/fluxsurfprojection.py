@@ -25,6 +25,7 @@ class FluxSurfProjection:
     self.sim = simulation
     self.smooth = smooth
     self.phiLim = phi if len(phi) == 2 else [0, 2 * np.pi]
+    self.timeFrame0 = timeFrame
     
     # Load a frame to get the grid
     if len(simulation.available_frames['field']) > 0:
@@ -52,7 +53,7 @@ class FluxSurfProjection:
     
     phi = np.linspace(self.phiLim[0], self.phiLim[1], self.Nint)
     polproj = PoloidalProjection()
-    polproj.setup(self.sim,nzInterp=Nintz, rholim=self.rho)
+    polproj.setup(self.sim,nzInterp=Nintz, rholim=self.rho, timeFrame=self.timeFrame0)
 
     field_fs = np.zeros((self.Nint, polproj.nzI))
     

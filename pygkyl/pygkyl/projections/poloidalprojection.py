@@ -54,6 +54,7 @@ class PoloidalProjection:
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
     self.figSize = figSize
+    self.timeFrame0 = timeFrame
 
     if self.sim.polprojInset is not None:
       self.inset = self.sim.polprojInset

@@ -22,6 +22,7 @@ class TorusProjection:
     self.sim = simulation
     self.phiLim = phiLim if isinstance(phiLim, list) else [phiLim]
     self.rhoLim = rhoLim if isinstance(rhoLim, list) else [rhoLim]
+    self.timeFrame0 = timeFrame
     
     #. Poloidal projection setup
     for i in range(len(self.phiLim)):
