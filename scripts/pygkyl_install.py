@@ -6,7 +6,33 @@ import argparse
 postgkyl_repo = "https://github.com/ammarhakim/postgkyl.git"
 personal_gkyl_scripts_repo = "https://github.com/Antoinehoff/personal_gkyl_scripts.git"
 
-parser = argparse.ArgumentParser(description="Install pygkyl and dependencies.")
+parser = argparse.ArgumentParser(
+    description="""
+Install pygkyl and its dependencies (postgkyl and personal_gkyl_scripts).
+
+This script will:
+  1. Clone or update the postgkyl repository and install it via pip.
+  2. Clone or update the personal_gkyl_scripts repository and install pygkyl from it.
+  3. Remove old build artifacts before installation.
+  4. Test the installation by importing pygkyl.
+
+USAGE EXAMPLES:
+---------------
+- Install everything in your home directory (default):
+    python pygkyl_install.py
+
+- Install in a custom directory:
+    python pygkyl_install.py --path /some/other/path
+
+PARAMETERS:
+-----------
+-p, --path   Base path for repositories (default: ~)
+-h, --help   Show this help message and exit
+
+Logs for pip installations are saved in the respective repository directories.
+""",
+    formatter_class=argparse.RawDescriptionHelpFormatter
+)
 parser.add_argument("-p", "--path", default="~", help="Base path for repositories (default: ~)")
 args = parser.parse_args()
 
