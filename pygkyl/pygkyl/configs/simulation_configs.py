@@ -101,6 +101,11 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
         'looking_at':(0., 0.8, -0.03),
             'zoom': 1.0
     }
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(1.8, 0.75, 0.1),
+        'looking_at':(0.0, 1.0, 0.1),
+            'zoom': 2.5
+    }
     
     return simulation
 
@@ -172,7 +177,11 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         'looking_at':(0., 0.8, -0.03),
             'zoom': 1.0
     }
-    
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(1.8, 0.75, 0.1),
+        'looking_at':(0.0, 1.0, 0.1),
+            'zoom': 2.5
+    }
     return simulation
 
 def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
@@ -230,7 +239,7 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     simulation.inset = inset
     
     # Add discharge ID
-    simulation.dischargeID = 'DIII-D #171650'
+    simulation.dischargeID = 'DIII-D #171646'
         
     # Add vessel data filename
     simulation.geom_param.vesselData = d3d_vessel_data
@@ -245,6 +254,11 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         'position':(0.83, 0.78, -0.1),
         'looking_at':(0., 0.74, -0.17),
         'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0.0, 1.0, -0.03),
+            'zoom': 2.0
     }
 
     return simulation
@@ -317,6 +331,12 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
         'position':(0.75, 0.75, 0.1),
         'looking_at':(0., 0.8, -0.03),
             'zoom': 1.0
+    }
+    
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0.0, 1.0, -0.03),
+            'zoom': 2.0
     }
     
     return simulation
