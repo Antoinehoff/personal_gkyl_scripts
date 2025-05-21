@@ -54,7 +54,7 @@ A collection of personal scripts, tools, and Python modules for working with [Gk
 
 ## Requirements
 
-- Python 3.x
+- Python 3.1x (mostly for postgkyl)
 - numpy, matplotlib, and other scientific Python libraries (see `requirements.txt`)
 
 ## License
