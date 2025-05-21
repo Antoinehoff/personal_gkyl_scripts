@@ -89,6 +89,10 @@ def main():
         print(f"No simulation results found in {args.simdir} with prefix '{args.fileprefix}'.")
         sys.exit(1)
     
+    # Ensure that the simdir is ending with '/'
+    if not args.simdir.endswith('/'):
+        args.simdir += '/'
+    
     # Setup
     simulation = pygkyl.simulation_configs.import_config(args.deviceconfig, args.simdir, args.fileprefix)
     simulation.normalization.set('t','mus')
