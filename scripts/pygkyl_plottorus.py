@@ -78,6 +78,8 @@ NOTES:
     parser.add_argument('--logScale', action='store_true', help='Use log scale for color bar')
     parser.add_argument('--cameras', type=str, nargs='+', default=['global', 'global', 'zoom_lower', 'zoom_lower'], help='Camera path for movie')
     parser.add_argument('--deviceconfig', type=str, choices=['tcv_nt','tcv_pt','d3d_nt','d3d_pt'], default='tcv_nt', help='Set the device geometry.')
+    parser.add_argument('--off_screen', type=bool, default=False, help='Use off-screen rendering (for non-GUI environments)')
+    parser.add_argument('--movie_type', type=str, default='mp4', help='Movie file type (e.g., mp4, gif)')
     return parser.parse_args()
 
 def main():
@@ -124,8 +126,10 @@ def main():
 
     if args.plottype == 'snapshot':
         timeFrame = sim_frames[args.frameidx]
-        torproj.plot(fieldName=args.fieldName, timeFrame=timeFrame, fluctuation=args.fluctuation, clim=args.clim, logScale=args.logScale,
-                 vessel=True, filePrefix=args.fileprefix, imgSize=tuple(args.imgSize), jupyter_backend='none', colorbar=True, cameraSettings=camera_path[0])
+        torproj.plot(fieldName=args.fieldName, timeFrame=timeFrame, fluctuation=args.fluctuation, 
+                     clim=args.clim, logScale=args.logScale, vessel=True, filePrefix=args.fileprefix, 
+                     imgSize=tuple(args.imgSize), jupyter_backend='none', colorbar=True, cameraSettings=camera_path[0],
+                     off_screen=args.off_screen)
     elif args.plottype == 'movie':
         if args.movieframeidx == 'all':
             timeFrames = sim_frames
@@ -139,8 +143,10 @@ def main():
                 
         print("You will see the generation of the movie in a window. DO NOT MOVE IT OR CLOSE IT.")
 
-        torproj.movie(fieldName=args.fieldName, timeFrames=timeFrames, fluctuation=args.fluctuation, filePrefix=args.fileprefix, imgSize=tuple(args.imgSize), colorbar=True,
-                  cameraPath=camera_path, logScale=args.logScale, clim=args.clim)
+        torproj.movie(fieldName=args.fieldName, timeFrames=timeFrames, fluctuation=args.fluctuation, 
+                      filePrefix=args.fileprefix, imgSize=tuple(args.imgSize), colorbar=True,
+                      cameraPath=camera_path, logScale=args.logScale, clim=args.clim,
+                      off_screen=args.off_screen, movie_type=args.movie_type)
 
 if __name__ == "__main__":
     main()
