@@ -1,7 +1,7 @@
 import numpy as np
 from ..classes import Simulation, Species, Source
 from ..projections.poloidalprojection import Inset
-from ..tools.gyacomo_interface import GyacomoInterface
+from ..interfaces.gyacomo_interface import GyacomoInterface
 from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
 def import_config(configName, simDir, filePrefix, x_LCFS = None, x_out = None, load_metric=True, add_source=True):
@@ -106,7 +106,17 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
         'looking_at':(0.0, 1.0, 0.1),
             'zoom': 1.0
     }
-    
+    # Cameras for 2:1 formats
+    simulation.geom_param.camera_global_2by1 = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0.7, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_2by1 = {   
+        'position':(2.0, 0.78, 0.1),
+        'looking_at':(0., 0.795, 0.05),
+        'zoom': 1.0
+    }
     return simulation
 
 def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
@@ -181,6 +191,17 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         'position':(0.5, 1.0, 0.1),
         'looking_at':(0.0, 1.0, 0.1),
             'zoom': 1.0
+    }
+    # Cameras for 2:1 formats
+    simulation.geom_param.camera_global_2by1 = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0.7, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_2by1 = {   
+        'position':(2.0, 0.78, 0.1),
+        'looking_at':(0., 0.795, 0.05),
+        'zoom': 1.0
     }
     return simulation
 
@@ -260,7 +281,17 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         'looking_at':(0.0, 0.98, 0.0),
             'zoom': 1.0
     }
-
+    # Cameras for 2:1 formats
+    simulation.geom_param.camera_global_2by1 = {
+    'position':(2.3, 2.3, 0.75),
+    'looking_at':(0.0, 0.8, 0),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_2by1 = {   
+        'position':(2.0, 0.78, 0.1),
+        'looking_at':(0., 0.74, 0.05),
+        'zoom': 1.0
+    }
     return simulation
 
 
