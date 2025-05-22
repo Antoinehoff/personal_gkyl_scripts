@@ -82,7 +82,12 @@ class Frame:
         self.timetitle = ''
         self.fulltitle = ''
         
-        self.load = self.load_gyac if simulation.code == 'gyacomo' else self.load_gkyl
+        if simulation.code == 'gyacomo':
+            self.load = self.load_gyac
+        elif simulation.code == 'flan':
+            self.load = self.load_flan
+        else: # Gkeyll by default
+            self.load_gkyl
 
         if load:
             self.load(polyorder=polyorder, polytype=polytype, normalize=normalize, fourier_y=fourier_y)
@@ -190,6 +195,9 @@ class Frame:
         self.vsymbol = symbols[-1]
         self.gunits = ['', '', '']
         self.Jacobian = np.ones_like(self.values)
+        
+    def load_flan(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
+        pass
 
     def refresh(self, values=True):
         """
