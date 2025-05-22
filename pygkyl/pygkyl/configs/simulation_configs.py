@@ -256,7 +256,7 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         'zoom': 1.0
     }
     simulation.geom_param.camera_zoom_obmp = {
-        'position':(0.3, 0.9, 0.0),
+        'position':(0.4, 0.9, 0.0),
         'looking_at':(0.0, 0.98, 0.0),
             'zoom': 1.0
     }
