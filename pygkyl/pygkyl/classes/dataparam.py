@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 import os
-from ..tools import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgkyl_
 from ..utils import file_utils as file_utils
 import glob
 

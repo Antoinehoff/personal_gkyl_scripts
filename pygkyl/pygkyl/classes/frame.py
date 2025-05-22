@@ -2,9 +2,8 @@ import postgkyl as pg
 import numpy as np
 from ..tools import math_tools as mt
 import copy
-from ..tools import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgkyl_
 from ..tools import DG_tools
-from ..tools import gyacomo_interface
 
 def getgrid_index(s):
     return (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm')) - 1
@@ -87,7 +86,7 @@ class Frame:
         elif simulation.code == 'flan':
             self.load = self.load_flan
         else: # Gkeyll by default
-            self.load_gkyl
+            self.load = self.load_gkyl
 
         if load:
             self.load(polyorder=polyorder, polytype=polytype, normalize=normalize, fourier_y=fourier_y)

@@ -1,6 +1,6 @@
 import postgkyl as pg
 import numpy as np
-from ..tools import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgkyl_
 from ..tools import math_tools as mt
 import os
 

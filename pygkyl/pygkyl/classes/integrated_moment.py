@@ -1,4 +1,4 @@
-from ..tools import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgkyl_
 import numpy as np
 
 class IntegratedMoment:
