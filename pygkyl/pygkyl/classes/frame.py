@@ -193,7 +193,8 @@ class Frame:
 
     def load_flan(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
         flan = flan_.FlanInterface(self.simulation.flandatapath)
-        self.grids, self.time, self.values = flan.load_data(self.name, self.tf, xyz= not fourier_y)
+        self.time, self.grids, self.Jacobian, self.values = flan.load_data(self.name, self.tf, xyz= not fourier_y)
+        self.cgrids = [g for g in self.grids]
         if normalize: self.normalize(values=False)
         
     def get_cells_flan(self):
@@ -282,7 +283,7 @@ class Frame:
         cut_index = -1
         if cut in ['avg', 'int']:
             cut_coord = direction + '-' + cut
-            grid = self.simulation.geom_param.grids[ic][:]
+            grid = self.cgrids[ic][:]
             self.values = np.trapz(self.values * self.Jacobian, grid, axis=ic)
             self.Jacobian = np.trapz(self.Jacobian, grid, axis=ic)
             if cut == 'avg':

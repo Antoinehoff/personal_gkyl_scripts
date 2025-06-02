@@ -25,10 +25,13 @@ class FlanInterface:
         zc = flan_nc.variables['z'][:].data
         # evaluate grid at nodal points (i.e. add a point at the end of the grid)
         x = np.append(xc, xc[-1] + (xc[-1] - xc[-2]))
-        y = np.append(yc, yc[-1] + (yc[-1] - yc[-2]))
-        z = np.append(zc, zc[-1] + (zc[-1] - zc[-2]))
+        y = yc
+        z = zc
         
         grids = [x.astype(float), y.astype(float), z.astype(float)]
         
-
-        return grids, time, values
+        jacobian = flan_nc['jacobian'][:].data.astype(float)
+        
+        jacobian = 0.5* (jacobian[1:,1:,1:] + jacobian[:-1,:-1,:-1])
+        
+        return time, grids, jacobian, values

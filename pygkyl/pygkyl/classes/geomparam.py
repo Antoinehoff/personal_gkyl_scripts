@@ -96,21 +96,17 @@ class GeomParam:
         self.bmag = self.bmag[:,:,:,0]
         
         #-- load grid
-        # self.grids = [0.5*(g[1:]+g[:-1]) for g in Gdata.get_grid() if len(g) > 1]
         self.grids = [0.5*(g[1:]+g[:-1]) for g in pgkyl_.get_grid(Gdata) if len(g) > 1]
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
         self.Lx    = self.x[-1]-self.x[0]
         self.Ly    = self.y[-1]-self.y[0]
         self.n0    = 2.*np.pi*self.r0/self.q0/self.Ly
         self.Lz    = self.z[-1]-self.z[0]
-        #self.toroidal_mn =  2.*np.pi*self.R_LCFSmid/self.q0/self.Ly
+
         #-- compute associated derivatives
         self.dBdx = mt.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
         self.dBdy = mt.gradient(self.bmag, self.grids[1], axis=1)  # Derivative w.r.t y
         self.dBdz = mt.gradient(self.bmag, self.grids[2], axis=2)  # Derivative w.r.t z
-
-        #-- load g_ij (not useful yet)
-        # fname = simulation.data_param.fileprefix+'-'+'g_ij.gkyl'
 
         #-- Load b_x, b_y, and b_z
         fname = fileprefix+'-'+'b_i.gkyl'
