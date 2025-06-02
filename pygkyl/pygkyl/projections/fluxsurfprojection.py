@@ -33,7 +33,7 @@ class FluxSurfProjection:
     else:
       fieldName = 'ni'
       
-    frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
+    frame = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True)
 
      # Compute rcut and find the index
     rx = self.sim.geom_param.r_x(frame.cgrids[0])
@@ -72,7 +72,7 @@ class FluxSurfProjection:
     return field_fs
     
   def get_projection(self, fieldName, timeFrame):
-    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
+    field_frame = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True)
     field_fs = self.project_field(field_frame.values)
     return field_fs, self.phi_fs, self.theta_fs
   
@@ -86,16 +86,16 @@ class FluxSurfProjection:
     else:
       avg_window = [timeFrame]
     
-    with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+    with Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True) as field_frame:
       time = field_frame.time
       vsymbol = field_frame.vsymbol 
       vunits = field_frame.vunits
       toproject = field_frame.values
       timetitle = field_frame.timetitle
-      frame_info = Frame(self.sim, name=fieldName, tf=timeFrame, load=False)
+      frame_info = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=False)
 
     if len(fluctuation) > 0:
-      serie = TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True)
+      serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
       if 'tavg' in fluctuation:
         average = serie.get_time_average()
         vsymbol = r'$\delta_t$'+vsymbol

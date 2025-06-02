@@ -100,6 +100,11 @@ class DataParam:
         file_dict['phi'+'comp'] = 0
         file_dict['phi'+'gnames'] = gnames[0:3]
         
+        # flan interface
+        file_dict['flan'+'file'] = 'flan'
+        file_dict['flan'+'comp'] = 0
+        file_dict['flan'+'gnames'] = gnames[0:3]   
+             
         for spec in self.species.values():
             s_        = spec.name
             shortname = spec.nshort
@@ -250,7 +255,7 @@ class DataParam:
                 S_ = 'S' if add_source else ''
                 # distribution functions
                 default_qttes.append(['%sf%s'%(src_,s_), r'%s$f_%s$'%(S_,s_), '[f]'])
-                # Moments
+                # Moments (id: src_xs or xs)
                 default_qttes.append(['%sM0%s'%(src_,s_), r'%s$M_{0%s}$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%sM1%s'%(src_,s_), r'%s$M_{1%s}$'%(S_,s_), r'm$^{-2}$/s'])
                 default_qttes.append(['%sM2%s'%(src_,s_), r'%s$M_{2%s}$'%(S_,s_), r'J/kg/m$^{3}$'])
@@ -258,21 +263,21 @@ class DataParam:
                 default_qttes.append(['%sM2perp%s'%(src_,s_), r'%s$M_{2\perp %s}$'%(S_,s_), r'J/kg/m$^{3}$'])
                 default_qttes.append(['%sM3par%s'%(src_,s_), r'%s$M_{3\parallel %s}$'%(S_,s_), r'J/kg/m$^{2}/s$'])
                 default_qttes.append(['%sM3perp%s'%(src_,s_), r'%s$M_{3\perp %s}$'%(S_,s_), r'J/kg/m$^{2}/s$'])
-                # Generic moments
+                # Generic moments (id: src_xs or xs)
                 default_qttes.append(['%sn%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%supar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
                 default_qttes.append(['%sTpar%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
                 default_qttes.append(['%sTperp%s'%(src_,s_), r'%s$T_{\perp %s}$'%(S_,s_), 'J/kg'])
-                # Maxwellian moments
+                # Maxwellian moments (id: src_MM_xs or MM_xs)
                 default_qttes.append(['%sMM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%sMM_upar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
                 default_qttes.append(['%sMM_T%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
-                # BiMaxwellian moments
+                # BiMaxwellian moments (id: src_BM_xs or BM_xs)
                 default_qttes.append(['%sBM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%sBM_upar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
                 default_qttes.append(['%sBM_Tpar%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
                 default_qttes.append(['%sBM_Tperp%s'%(src_,s_), r'%s$T_{\perp %s}$'%(S_,s_), 'J/kg'])
-                # Hamiltonian moments
+                # Hamiltonian moments (id: src_HM_xs or HM_xs)
                 default_qttes.append(['%sHM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])            
                 default_qttes.append(['%sHM_mv%s'%(src_,s_), r'%s$p_%s$'%(S_,s_), r'kg m/s m$^{-3}$'])            
                 default_qttes.append(['%sHM_H%s'%(src_,s_), r'%s$H_%s$'%(S_,s_), r'J m$^{-3}$'])            
@@ -285,7 +290,7 @@ class DataParam:
         for i in range(len(default_qttes)):
             default_qttes[i].append([default_qttes[i][0]])
             default_qttes[i].append(identity)
-
+            
         #-Drift velocities
         #- The following are vector fields quantities that we treat component wise
         directions = ['x','y','z'] #directions array
@@ -778,6 +783,38 @@ class DataParam:
                     k+= 8
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_hflux]) 
+        
+        #--- Flan interface
+        def receipe_flan(gdata_list): return
+        name = 'flan_imp_density'
+        symbol = r'$n_{W}$'
+        units = r'm$^{-3}$'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+        
+        name = 'flan_imp_counts'
+        symbol = r'$N_{W}$'
+        units = r''
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_imp_gyrorad'
+        symbol = r'$\rho_{W}$'
+        units = r'm'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+        
+        
+        dirs = ['x','y','z']
+        Dirs = ['X','Y','Z']
+        for i in range(3):
+            dir = dirs[i]
+            Dir = Dirs[i]
+            name = 'flan_imp_v'+Dir
+            symbol = r'$v_{W,%s}$'%dir
+            units = r'm/s'
+            field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
         #-------------- END of the new diagnostics definitions
         
         ## We format everything so that it fits in one dictionary
@@ -795,7 +832,8 @@ class DataParam:
             default_units_dict[key+'receipe']  = receipe[key]
 
         # add default colormap for each fields
-        positive_fields = ['Bmag','pow_src'] # spec. indep
+        positive_fields = ['Bmag','pow_src',
+                           'flan_imp_density','flan_imp_counts'] # spec. indep
         
         spec_dep_fields = ['M0','M2','M2par','M2perp',
                            'n','T','Tpar','Tperp','p',

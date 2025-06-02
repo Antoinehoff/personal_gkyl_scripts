@@ -3,6 +3,7 @@ import numpy as np
 from ..tools import math_tools as mt
 import copy
 from ..interfaces import pgkyl_interface as pgkyl_
+from ..interfaces import flaninterface as flan_
 from ..tools import DG_tools
 
 def getgrid_index(s):
@@ -33,13 +34,13 @@ class Frame:
     - info: Prints out key information about the frame.
 
     """
-    def __init__(self, simulation, name, tf, load=False, fourier_y=False,
+    def __init__(self, simulation, fieldname, tf, load=False, fourier_y=False,
                  polyorder=1, polytype='ms', normalize=True):
         """
         Initialize a Frame instance with all attributes set to None.
         """
         self.simulation = simulation
-        self.name = name
+        self.name = fieldname
         self.tf = tf
         self.datanames = []
         self.filenames = []
@@ -83,10 +84,13 @@ class Frame:
         
         if simulation.code == 'gyacomo':
             self.load = self.load_gyac
-        elif simulation.code == 'flan':
+            self.get_cells = self.get_cells_gyac
+        elif 'flan' in fieldname:
             self.load = self.load_flan
+            self.get_cells = self.get_cells_flan
         else: # Gkeyll by default
             self.load = self.load_gkyl
+            self.get_cells = self.get_cells_pgkyl
 
         if load:
             self.load(polyorder=polyorder, polytype=polytype, normalize=normalize, fourier_y=fourier_y)
@@ -184,28 +188,33 @@ class Frame:
         if normalize: self.normalize()
         if fourier_y: self.fourier_y()
 
+    def get_cells_pgkyl(self):
+        return pgkyl_.get_cells(self.Gdata[0])
+
+    def load_flan(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
+        flan = flan_.FlanInterface(self.simulation.flandatapath)
+        self.grids, self.time, self.values = flan.load_data(self.name, self.tf, xyz= not fourier_y)
+        if normalize: self.normalize(values=False)
+        
+    def get_cells_flan(self):
+        return [len(grid) for grid in self.grids]
+    
     def load_gyac(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
-        grids, tf, values = self.simulation.gyac.load_data(self.name, self.tf, xyz= not fourier_y)
-        self.time = tf
-        self.values = values
-        self.grids = grids
+        self.grids, self.time, self.values = self.simulation.gyac.load_data(self.name, self.tf, xyz= not fourier_y)
         _, _, _, symbols = self.simulation.gyac.field_map[self.name]
         self.gsymbols = symbols[:-1]
         self.vsymbol = symbols[-1]
         self.gunits = ['', '', '']
         self.Jacobian = np.ones_like(self.values)
         
-    def load_flan(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
-        pass
+    def get_cells_gyac(self):
+        return [len(grid) for grid in self.grids]
 
     def refresh(self, values=True):
         """
         Refresh the grids and values.
         """
-        if self.simulation.code == 'gyacomo':
-            self.new_cells = [len(grid) for grid in self.grids]
-        else:
-            self.new_cells = pgkyl_.get_cells(self.Gdata[0])
+        self.new_cells = self.get_cells()
         self.new_grids = []
         self.new_gnames = []
         self.new_gsymbols = []

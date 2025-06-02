@@ -7,7 +7,7 @@ from ..utils import file_utils
 class TimeSerie:
 
     simulation = None
-    name = None
+    fieldname = None
     time_window = None
     polyorder = None
     polytype = None
@@ -17,11 +17,11 @@ class TimeSerie:
     time = []
     verbose = False
 
-    def __init__(self, simulation, name, time_window = [], time_frames = [], load=False, fourier_y=False,
+    def __init__(self, simulation, fieldname, time_window = [], time_frames = [], load=False, fourier_y=False,
                  polyorder=1, polytype='ms', normalize=True, cut_dir=None, cut_coord=None, verbose = False
                  , frames = None):
         self.simulation = simulation
-        self.name = name
+        self.fieldname = fieldname
         self.time_window = time_window
         self.time_frames = time_frames if isinstance(time_frames, list) else [time_frames]
         self.polyorder = polyorder
@@ -35,7 +35,7 @@ class TimeSerie:
         self.frames = []
         self.time = []
 
-        subname = self.simulation.normalization.dict[name+'compo'][0]
+        subname = self.simulation.normalization.dict[fieldname+'compo'][0]
         self.filename = self.simulation.data_param.file_info_dict[subname + 'file']
         if load: self.load()
         elif frames is not None: self.init_from_frames(frames)
@@ -64,7 +64,7 @@ class TimeSerie:
             time_frames = all_tf
         # get the frames
         for it,tf in enumerate(time_frames):
-            frame = Frame(self.simulation,self.name,tf,load=True, fourier_y=self.fourier_y)
+            frame = Frame(self.simulation,self.fieldname,tf,load=True, fourier_y=self.fourier_y)
             add_frame = False
             if self.time_window:
                 if frame.time >= self.time_window[0] and frame.time <= self.time_window[1]:

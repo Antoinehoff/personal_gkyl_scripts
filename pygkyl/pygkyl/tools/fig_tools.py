@@ -73,6 +73,7 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
     if plot_type == 'pcolormesh':
         x,y = math_tools.custom_meshgrid(x,y)
+        print(f'{x.shape=}, {y.shape=}, {z.shape=}')
         im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)
     elif plot_type == 'contourf':
         x,y = math_tools.custom_meshgrid(x,y)

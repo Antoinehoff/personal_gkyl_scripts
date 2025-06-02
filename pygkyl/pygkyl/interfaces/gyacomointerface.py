@@ -1,6 +1,5 @@
 import h5py
 import numpy as np
-import copy as cp
 from ..tools import math_tools as tools
 from ..classes.dataparam import DataParam
 import os

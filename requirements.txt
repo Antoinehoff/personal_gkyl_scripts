@@ -10,3 +10,4 @@ trame-vtk
 trame-vuetify 
 imageio
 h5py
+netCDF4

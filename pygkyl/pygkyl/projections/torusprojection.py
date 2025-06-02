@@ -43,12 +43,12 @@ class TorusProjection:
     else:
       avg_window = [timeFrame]
     
-    with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+    with Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True) as field_frame:
       toproject = field_frame.values
       time = field_frame.time
 
     if len(fluctuation) > 0:
-      serie = TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True)
+      serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
       if 'tavg' in fluctuation:
         average = serie.get_time_average()
       elif 'yavg' in fluctuation:
@@ -240,7 +240,7 @@ class TorusProjection:
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
            clim=[], logScale=False, colorbar=False, vessel=True, smooth_shading=False, lighting=False,
-           vesselOpacity=0.2, imgSize=(800, 600), fps=14, cameraPath=None, off_screen=True, movie_type='mp4'):
+           vesselOpacity=0.2, imgSize=(800, 600), fps=14, cameraPath=None, off_screen=True, movie_type='gif'):
     if smooth_shading: print('Warning: smooth_shading may create flickering in the movie. Idk why :/')
  
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''

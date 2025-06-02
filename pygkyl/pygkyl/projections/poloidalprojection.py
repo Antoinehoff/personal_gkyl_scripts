@@ -71,7 +71,7 @@ class PoloidalProjection:
     else:
       fieldName = 'ni'
       
-    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
+    field_frame = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True)
     self.gridsN = field_frame.xNodal # nodal grids
     self.ndim = len(self.gridsN) # Dimensionality
 
@@ -310,7 +310,7 @@ class PoloidalProjection:
     return field_RZ
   
   def get_projection(self, fieldName, timeFrame):
-    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
+    field_frame = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True)
     if self.zExt and not self.TSBC :
       evalDGfunc = field_frame.eval_DG_proj
     else:
@@ -349,18 +349,18 @@ class PoloidalProjection:
     else:
       avg_window = [timeFrame]
     
-    with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+    with Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True) as field_frame:
       time = field_frame.time
       vsymbol = field_frame.vsymbol
       vunits = field_frame.vunits
       toproject = field_frame.values
-      frame_info = Frame(self.sim, name=fieldName, tf=timeFrame, load=False)
+      frame_info = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=False)
 
     if len(fluctuation) > 0:
       if favg is not None:
         toproject -= favg
       else:
-        serie = TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True)
+        serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
         if 'tavg' in fluctuation:
           average = serie.get_time_average()
           vsymbol = r'$\delta_t$'+vsymbol
@@ -485,7 +485,7 @@ class PoloidalProjection:
       timeFrames = timeFrame if not timeFrames else timeFrames
 
       if fluctuation:
-        with TimeSerie(simulation=self.sim, name=fieldName, time_frames=timeFrames, load=True) \
+        with TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=timeFrames, load=True) \
           as field_frames:
             favg = field_frames.get_time_average()
       else:

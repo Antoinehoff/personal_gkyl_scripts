@@ -162,7 +162,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             frame = frames_to_plot[kf]
             plot_data = frame.values
         else:
-            serie = TimeSerie(simulation=simulation, name=field, time_frames=time_frame, load=True, fourier_y=fourier_y)
+            serie = TimeSerie(simulation=simulation, fieldname=field, time_frames=time_frame, load=True, fourier_y=fourier_y)
             if len(fluctuation) > 0:
                 if 'tavg' in fluctuation:
                     serie.slice(cut_dir, cut_coord)
@@ -392,7 +392,7 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
             time = []
 
             for frame_idx, tf in enumerate(time_frames, 1):
-                f_ = Frame(simulation=simulation, name=subfield, tf=tf)
+                f_ = Frame(simulation=simulation, fieldname=subfield, tf=tf)
                 f_.load()
 
                 time.append(f_.time)
@@ -710,7 +710,7 @@ def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
             subfields = field  # Field is a combined plot
 
         for subfield in subfields:
-            timeserie = TimeSerie(simulation=simulation,name=subfield,time_frames=time_frames,
+            timeserie = TimeSerie(simulation=simulation,fieldname=subfield,time_frames=time_frames,
                                 cut_dir='scalar',cut_coord=cut_coords,load=True)
             f0 = timeserie.frames[0]
             t,v = timeserie.get_values()

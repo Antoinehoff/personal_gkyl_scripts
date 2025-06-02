@@ -1,7 +1,7 @@
 import numpy as np
 from ..classes import Simulation, Species, Source
 from ..projections.poloidalprojection import Inset
-from ..interfaces.gyacomo_interface import GyacomoInterface
+from ..interfaces.gyacomointerface import GyacomoInterface
 from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
 def import_config(configName, simDir, filePrefix, x_LCFS = None, x_out = None, load_metric=True, add_source=True):
