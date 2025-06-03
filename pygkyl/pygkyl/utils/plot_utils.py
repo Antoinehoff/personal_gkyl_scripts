@@ -64,7 +64,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
         # handle fourier plot
         colorscale = 'linear' if not fourier_y else 'log'
         if space_time:
-            if ((field in ['phi','upare','upari']) or cmap0=='bwr' or fluctuation) and not fourier_y:
+            if ((simulation.data_param.field_info_dict[field+'colormap']=='bwr' or cmap0=='bwr' or fluctuation)
+                and not fourier_y):
                 cmap = 'bwr'
                 vmax = np.max(np.abs(values)) 
                 vmin = -vmax
