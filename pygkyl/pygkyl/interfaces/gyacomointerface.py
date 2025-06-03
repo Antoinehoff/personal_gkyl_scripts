@@ -69,6 +69,9 @@ class GyacomoInterface:
             self.Lz     = self.zgrid[-1]-self.zgrid[0]
             self.xgrid  = np.linspace(-self.Lx/2,self.Lx/2,self.Nx+1)
             self.ygrid  = np.linspace(-self.Ly/2,self.Ly/2,self.Ny+1)
+            
+            # add an additional point to the z grid
+            self.zgrid = np.append(self.zgrid, self.zgrid[-1] + (self.zgrid[-1] - self.zgrid[-2]))
 
     def load_group(self,group):
         data = {}

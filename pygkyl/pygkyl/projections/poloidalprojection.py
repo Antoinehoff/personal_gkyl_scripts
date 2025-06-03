@@ -373,7 +373,7 @@ class PoloidalProjection:
           vunits = r'\%'
       colorMap = colorMap if colorMap else 'bwr'
     else:
-      colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+      colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
 
     field_RZ = self.project_field(toproject, frame_info)
 
@@ -434,20 +434,21 @@ class PoloidalProjection:
                     rotation=270, labelpad=18, fontsize=colorBarLabelFontSize)
     hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
-    #.Plot lcfs
-    ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
+    if self.ixLCFS_C is not None:
+      #.Plot lcfs
+      ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
 
-    #.Plot the limiter
-    xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
-    xCorner = np.min(self.RIntN)
-    yWidth = 0.01
-    yCorner = self.geom.Z_axis - 0.5*yWidth
-    ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
+      #.Plot the limiter
+      xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
+      xCorner = np.min(self.RIntN)
+      yWidth = 0.01
+      yCorner = self.geom.Z_axis - 0.5*yWidth
+      ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
 
-    if inset:
-      self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
-                           colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
-                           LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
+      if inset:
+        self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
+                            colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
+                            LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 

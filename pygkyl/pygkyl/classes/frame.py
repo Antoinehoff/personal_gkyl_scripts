@@ -211,7 +211,6 @@ class Frame:
         self.vunits = self.simulation.normalization.dict[self.name + 'units']
         self.Jacobian = np.ones_like(self.values)
         self.xNodal = self.grids.copy()
-        self.xNodal[-1] = np.concatenate((self.xNodal[-1], np.array([2*np.pi])))
         self.cgrids = self.grids.copy()
         if normalize: self.normalize()
         self.refresh(values=False)
