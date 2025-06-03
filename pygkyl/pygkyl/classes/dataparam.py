@@ -32,7 +32,7 @@ class DataParam:
     - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
-                 prefix='', wkdir='', species = {}):
+                 prefix='', wkdir='', species = {}, checkfiles=True):
         self.expdatadir = expdatadir
         self.g0simdir = g0simdir
         self.simname = simname
@@ -43,11 +43,11 @@ class DataParam:
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
         self.species = species
         self.file_info_dict = {}
-        self.set_data_file_dict()
+        self.set_data_file_dict(checkfiles=checkfiles)
         self.default_mom_type = None
         self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
         
-    def set_data_file_dict(self):
+    def set_data_file_dict(self, checkfiles=True):
         '''
         Sets up the data field dictionary which indicates how each 
         possible scalar field can be found.
@@ -137,22 +137,27 @@ class DataParam:
                 
                 # add default moments interface        
                 # Find a file type where we can find the moment data.
-                mtype = -1
-                for moment_type in ['BiMaxwellianMoments', 'M0']:
-                    pattern = f"{self.fileprefix}-{s_}_{moment_type}_*.gkyl"
-                    files = glob.glob(pattern)
-                    if files:
-                        file_name = self.simdir + os.path.basename(files[0])
-                    else:
-                        file_name = self.fileprefix + f"-{s_}_{moment_type}_0.gkyl"
-                    if os.path.exists(file_name):
-                        mtype = moment_type
-                        self.default_mom_type = mtype
-                        break
-                if mtype == -1:
-                    print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
-                    print(f"Check the file name pattern: {self.fileprefix}-{s_}_{moment_type}_*.gkyl")
-                    continue
+                if checkfiles:
+                    mtype = -1
+                    for moment_type in ['BiMaxwellianMoments', 'M0']:
+                        pattern = f"{self.fileprefix}-{s_}_{moment_type}_*.gkyl"
+                        files = glob.glob(pattern)
+                        if files:
+                            file_name = self.simdir + os.path.basename(files[0])
+                        else:
+                            file_name = self.fileprefix + f"-{s_}_{moment_type}_0.gkyl"
+                        if os.path.exists(file_name):
+                            mtype = moment_type
+                            self.default_mom_type = mtype
+                            break
+                    if mtype == -1:
+                        print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
+                        print(f"Check the file name pattern: {self.fileprefix}-{s_}_{moment_type}_*.gkyl")
+                        continue
+                else:
+                    mtype = 'BiMaxwellianMoments'
+                    self.default_mom_type = mtype
+                    
                 keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
                 if self.default_mom_type == 'M0':
                     comps  += [0,0,0,0,0,0]

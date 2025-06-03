@@ -55,6 +55,7 @@ class Simulation:
         self.flandatapath = flandatapath  # Data from FLAN interface, if applicable
         self.flan = None
         self.flanframes = []
+        self.gyac = None  # Gyacomo interface, if applicable
 
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """

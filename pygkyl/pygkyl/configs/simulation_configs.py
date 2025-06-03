@@ -4,7 +4,7 @@ from ..projections.poloidalprojection import Inset
 from ..interfaces.gyacomointerface import GyacomoInterface
 from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
-def import_config(configName, simDir, filePrefix, x_LCFS = None, x_out = None, load_metric=True, add_source=True):
+def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = None, load_metric=True, add_source=True):
     if configName in ['TCV_PT', 'tcv_pt']:
         sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out)
     elif configName in ['TCV_NT', 'tcv_nt']:
@@ -85,10 +85,10 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
     simulation.polprojInset = inset
     
     # Add discharge ID
-    simulation.dischargeinfo = 'TCV #65125'
+    simulation.dischargeID = 'TCV #65125'
     
     # Add vessel data filename
-    simulation.vesselData = tcv_vessel_data
+    simulation.geom_param.vesselData = tcv_vessel_data
 
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -470,33 +470,37 @@ def add_source_baseline(simulation):
     simulation.add_source('Core src',OMPsource)
     return simulation
 
-def get_gyacomo_sim_config(simdir,fileprefix):
+def get_gyacomo_sim_config(path,fileprefix=''):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
     '''
-    R_axis = 1.0
-    simulation = Simulation(dimensionality='3x2v')
+    R_axis = 1.7074685
+    simulation = Simulation(dimensionality='3x2v', code='gyacomo')
+
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
         eV = 1.602e-19,         # Elementary charge [C]
         mp = 1.673e-27,         # Proton mass [kg]
         me = 9.109e-31,         # Electron mass [kg]
     )
-    def qprofile_NT(r):
-        return 1.0
+    def qprofile(r):
+        R = r + R_axis
+        a = [154.51071835546747,  -921.8584472748003, 1842.1077075366113, -1231.619813170522]
+        return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
 
     simulation.set_geom_param(
-        B_axis      = 1.0,           # Magnetic field at magnetic axis [T]
-        R_axis      = R_axis,         # Magnetic axis major radius
-        Z_axis      = 1.0,         # Magnetic axis height
-        R_LCFSmid   = 1.0,   # Major radius of LCFS at the midplane
-        a_shift     = 1.0,                 # Parameter in Shafranov shift
-        kappa       = 1.0,                 # Elongation factor
+        B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,        # Magnetic axis major radius
+        Z_axis      = -0.0014645315,         # Magnetic axis height
+        R_LCFSmid   = 2.17,   # Major radius of LCFS at the midplane
+        a_shift     = 0.1,                 # Parameter in Shafranov shift
+        kappa       = 1.35,                 # Elongation factor
         delta       = 0.0,                 # Triangularity factor
-        qprofile    = qprofile_NT,                 # Safety factor
-        x_LCFS      = 0.0,                 # position of the LCFS (= core domain width)
+        qprofile    = qprofile,                 # Safety factor
+        x_LCFS      = 0.1,                 # position of the LCFS (= core domain width)
         x_out       = 0.0                  # SOL domain width
     )
+    
     # Define the species
     simulation.add_species(Species(name='ion',
                 m=2.01410177811*simulation.phys_param.mp, # Ion mass
@@ -509,16 +513,48 @@ def get_gyacomo_sim_config(simdir,fileprefix):
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
 
-    simulation.gyac = GyacomoInterface(simdir+fileprefix)
-    simulation.data_param = simulation.gyac.adapt_data_param()
+    simulation.gyac = GyacomoInterface(path,simulation)
+    simulation.available_frames = simulation.gyac.available_frames
+    simulation.data_param = simulation.gyac.adapt_data_param(simulation=simulation)
+    simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.35,0.3]
-    simulation.inset = inset
-    simulation.code = 'gyacomo'
+    inset.lowerCornerRelPos = [0.3,0.32]
+    simulation.polprojInset = inset
+    
+    # Add discharge ID
+    simulation.dischargeID = 'TCV #65125'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData =None
+    simulation.geom_param.vesselData = tcv_vessel_data
+
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0., 0.8, -0.03),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(0.5, 1.0, 0.1),
+        'looking_at':(0.0, 1.0, 0.1),
+            'zoom': 1.0
+    }
+    # Cameras for 2:1 formats
+    simulation.geom_param.camera_global_2by1 = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0.7, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_2by1 = {   
+        'position':(2.0, 0.78, 0.1),
+        'looking_at':(0., 0.795, 0.05),
+        'zoom': 1.0
+    }
 
     return simulation

@@ -105,8 +105,10 @@ class Frame:
         """
         Process the field name and set up the composition and filenames.
         """
-        self.composition = self.simulation.normalization.dict[self.name + 'compo']
-        self.receipe = self.simulation.normalization.dict[self.name + 'receipe']
+        # self.composition = self.simulation.normalization.dict[self.name + 'compo']
+        # self.receipe = self.simulation.normalization.dict[self.name + 'receipe']
+        self.composition = self.simulation.data_param.field_info_dict[self.name + 'compo']
+        self.receipe = self.simulation.data_param.field_info_dict[self.name + 'receipe']
         for subname in self.composition:
             subdataname = self.simulation.data_param.file_info_dict[subname + 'file']
             self.datanames.append(subdataname)
@@ -203,10 +205,16 @@ class Frame:
     def load_gyac(self, polyorder=1, polytype='ms', normalize=True, fourier_y=False):
         self.grids, self.time, self.values = self.simulation.gyac.load_data(self.name, self.tf, xyz= not fourier_y)
         _, _, _, symbols = self.simulation.gyac.field_map[self.name]
-        self.gsymbols = symbols[:-1]
-        self.vsymbol = symbols[-1]
-        self.gunits = ['', '', '']
+        self.gsymbols = [self.simulation.normalization.dict[key + 'symbol'] for key in self.gnames]
+        self.gunits = [self.simulation.normalization.dict[key + 'units'] for key in self.gnames]
+        self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']
+        self.vunits = self.simulation.normalization.dict[self.name + 'units']
         self.Jacobian = np.ones_like(self.values)
+        self.xNodal = self.grids.copy()
+        self.xNodal[-1] = np.concatenate((self.xNodal[-1], np.array([2*np.pi])))
+        self.cgrids = self.grids.copy()
+        if normalize: self.normalize()
+        self.refresh(values=False)
         
     def get_cells_gyac(self):
         return [len(grid) for grid in self.grids]

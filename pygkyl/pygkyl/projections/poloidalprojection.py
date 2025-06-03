@@ -84,7 +84,7 @@ class PoloidalProjection:
     self.dimsC = [np.size(meshC[i]) for i in range(self.ndim)]
     self.meshC = meshC
     del meshC
-    
+        
     self.LyC = self.meshC[1][-1] - self.meshC[1][0] # length in the y direction
     # Do we need to rescale the y length to fill the integer toroidal mode number ? not sure...
     Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC

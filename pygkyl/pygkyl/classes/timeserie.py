@@ -35,7 +35,8 @@ class TimeSerie:
         self.frames = []
         self.time = []
 
-        subname = self.simulation.normalization.dict[fieldname+'compo'][0]
+        # subname = self.simulation.normalization.dict[fieldname+'compo'][0]
+        subname = self.simulation.data_param.field_info_dict[fieldname+'compo'][0]
         self.filename = self.simulation.data_param.file_info_dict[subname + 'file']
         if load: self.load()
         elif frames is not None: self.init_from_frames(frames)
