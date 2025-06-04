@@ -6,20 +6,21 @@ from ..classes.normalization import Normalization
 import os
 
 class GyacomoInterface:
+    # Gyacomo interface for reading data from Gyacomo HDF5 files
+    params = None
+    # Gyacomo normalization parameters
+    l0 = 1.0 # perpendicular length scale
+    R0 = 1.0 # parallel length scale
+    u0 = 1.0 # velocity scale
+    n0 = 1.0 # density scale
+    T0 = 1.0 # temperature scale
+    t0 = 1.0 # time scale
+    V0 = 1.0 # potential scale
     
     def __init__(self,filename,simulation):
         self.filename = filename
         if not os.path.exists(self.filename):
             raise FileNotFoundError(f"File {self.filename} does not exist.")        
-                
-        # Gyacomo scales
-        self.l0 = simulation.get_rho_s()
-        self.R0 = simulation.geom_param.R0
-        self.u0 = simulation.get_c_s()
-        self.n0 = 1/self.l0/self.l0/self.R0
-        self.T0 = simulation.species['elc'].T0
-        self.t0 = self.R0 / self.u0
-        self.V0 = self.T0 / simulation.species['ion'].q
         
         self.field_map = {
             'phi': ('phi', '', '3D', [r'$x/\rho_s$', r'$y/\rho_s$', r'$z/\rho_s$', r'$\phi e / T_e$']),
@@ -42,6 +43,15 @@ class GyacomoInterface:
         
         self.field_map['field'] = self.field_map['phi']
         
+        self.normalization = {}
+        self.l0 = simulation.get_rho_s()
+        self.R0 = simulation.geom_param.R0
+        self.u0 = simulation.get_c_s()
+        self.n0 = 1/self.l0/self.l0/self.R0
+        self.T0 = simulation.species['elc'].T0
+        self.t0 = self.R0 / self.u0
+        self.V0 = self.T0 / simulation.species['ion'].q
+        
         self.load_grids()
         self.load_params()
         self.load_available_frames()
@@ -50,7 +60,6 @@ class GyacomoInterface:
         for key in self.field_map:
             self.available_frames[key] = self.get_available_frames(key)
         
-        self.normalization = {}
 
     def load_grids(self):
         with h5py.File(self.filename, 'r') as file:
@@ -262,9 +271,13 @@ class GyacomoInterface:
             normalization.dict[key+'units'] = ''
             normalization.dict[key+'colormap'] = 'bwr'
 
-        normalization.change('phi', self.V0, 0, r'$\phi$', 'V')      
         normalization.change('t', self.t0/1.0e-6, 0, r'$t$', r'$\mu$s')
         normalization.change('x', 1.0, 0, r'$x$', r'm')
-        normalization.change('y', 1.0, 0, r'$y$', r'm')
+        normalization.change('y', 1.0, 0, r'$y$', r'm')   
+        return normalization
+    
+    def set_mksa_normalization(self, normalization):
+        normalization.change('phi', self.V0, 0, r'$\phi$', 'V')
         
+
         return normalization
