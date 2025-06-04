@@ -76,8 +76,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             vmin = np.power(10,np.log10(vmax)-4) if fourier_y else vmin
             values = np.clip(values, vmin, None) if fourier_y else values 
             # make the plot
-            clim = clim[kf] if clim else None
-            fig = fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
+            clim_ = clim[kf] if clim else None
+            fig = fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim_,
                               xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
                               cmap=cmap, vmin=vmin, vmax=vmax, colorscale=colorscale, plot_type=plot_type)
             figout.append(fig)
