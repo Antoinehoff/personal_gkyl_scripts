@@ -240,7 +240,7 @@ class TorusProjection:
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
            clim=[], logScale=False, colorbar=False, vessel=True, smooth_shading=False, lighting=False,
-           vesselOpacity=0.2, imgSize=(800, 600), fps=14, cameraPath=None, off_screen=True, movie_type='gif'):
+           vesselOpacity=0.2, imgSize=(800, 600), fps=14, cameraPath=[], off_screen=True, movie_type='gif'):
     if smooth_shading: print('Warning: smooth_shading may create flickering in the movie. Idk why :/')
  
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
@@ -307,7 +307,7 @@ class TorusProjection:
 
       # Update the camera position
       cam.update_camera(n)
-      plotter = cam.update_plotter(plotter)
+      plotter = cam.update_plotter(plotter, zoom=False)
       
       # write time in ms with 2 decimal points
       txt = f"{self.sim.dischargeID}, {time/1000:.3f} ms"
@@ -335,37 +335,40 @@ def print_progress( n, total_frames):
   
   
 class Camera:
-  def __init__(self, geom, settings=None, stops=None, nframes=1):
+  
+  def __init__(self, geom, settings=[], stops=[], nframes=1):
+    stops = stops if isinstance(stops, list) else [stops]
     
-    if settings is None:
+    if not settings:
       settings = {
         'position':(2.3, 2.3, 0.75),
         'looking_at':(0, 0, 0),
           'zoom': 1.0
       }
       
-    if stops is not None:
+    self.update_camera = self.update_static  
+       
+    if stops:
       settings = stops[0]
       self.Ncp = len(stops)
-      self.nframes = nframes
-      self.checkpoints = [ i*nframes//(self.Ncp-1) for i in range(self.Ncp) ]
-      self.icp = 0
-      self.dpos = []
-      self.dlook = []
-      self.dzoom = []
-      for i in range(self.Ncp-1):
-        Nint = (self.checkpoints[i+1] - self.checkpoints[i])
-        self.dpos.append([0, 0, 0])
-        self.dlook.append([0, 0, 0])
-        for k in range(3):
-          self.dpos[i][k] = (stops[i+1]['position'][k] - stops[i]['position'][k]) / Nint * geom.R_LCFSmid
-          self.dlook[i][k] = (stops[i+1]['looking_at'][k] - stops[i]['looking_at'][k]) / Nint * geom.R_LCFSmid
-        self.dzoom.append((stops[i+1]['zoom'] - stops[i]['zoom']) / Nint)
-        
-      self.update_camera = self.update_moving
-    else:
-      self.update_camera = self.update_static
+      if self.Ncp > 1:
+        self.update_camera = self.update_moving
+        self.nframes = nframes
+        self.checkpoints = [ i*nframes//(self.Ncp-1) for i in range(self.Ncp) ]
+        self.icp = 0
+        self.dpos = []
+        self.dlook = []
+        self.dzoom = []
+        for i in range(self.Ncp-1):
+          Nint = (self.checkpoints[i+1] - self.checkpoints[i])
+          self.dpos.append([0, 0, 0])
+          self.dlook.append([0, 0, 0])
+          for k in range(3):
+            self.dpos[i][k] = (stops[i+1]['position'][k] - stops[i]['position'][k]) / Nint * geom.R_LCFSmid
+            self.dlook[i][k] = (stops[i+1]['looking_at'][k] - stops[i]['looking_at'][k]) / Nint * geom.R_LCFSmid
+          self.dzoom.append((stops[i+1]['zoom'] - stops[i]['zoom']) / Nint)          
       
+    
     self.position = settings['position']
     self.looking_at = settings['looking_at']
     self.view_up = (0,0,1)
@@ -388,9 +391,9 @@ class Camera:
       self.looking_at[k] += self.dlook[self.icp][k]
     self.zoom += self.dzoom[self.icp]
 
-  def update_plotter(self, plotter):
+  def update_plotter(self, plotter, zoom=True):
     plotter.camera_position = [self.position, self.looking_at, self.view_up]
-    plotter.camera.Zoom(self.zoom)
+    if zoom: plotter.camera.Zoom(self.zoom)
     return plotter
   
   
