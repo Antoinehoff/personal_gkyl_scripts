@@ -167,7 +167,7 @@ class DataParam:
                     prefix += 6*[spec+'_'+mtype]
 
                 # add distribution functions
-                keys   += ['f','src_f']
+                keys   += ['f']
                 comps  += [0]
                 prefix += [spec]
                 
