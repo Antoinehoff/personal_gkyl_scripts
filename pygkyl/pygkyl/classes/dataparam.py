@@ -165,6 +165,9 @@ class DataParam:
                 elif self.default_mom_type == 'BiMaxwellianMoments':
                     comps  += [0,1,2,3,0,0]
                     prefix += 6*[spec+'_'+mtype]
+                elif self.default_mom_type == 'HamiltonianMoments':
+                    comps  += [0,1,2,0,0,0]
+                    prefix += 6*[spec+'_'+mtype]
 
                 # add distribution functions
                 keys   += ['f']
