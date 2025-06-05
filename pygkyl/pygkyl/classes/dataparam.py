@@ -139,7 +139,7 @@ class DataParam:
                 # Find a file type where we can find the moment data.
                 if checkfiles:
                     mtype = -1
-                    for moment_type in ['BiMaxwellianMoments', 'M0']:
+                    for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
                         pattern = f"{self.fileprefix}-{s_}_{moment_type}_*.gkyl"
                         files = glob.glob(pattern)
                         if files:
