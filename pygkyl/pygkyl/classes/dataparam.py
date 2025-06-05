@@ -140,19 +140,19 @@ class DataParam:
                 if checkfiles:
                     mtype = -1
                     for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
-                        pattern = f"{self.fileprefix}-{s_}_{moment_type}_*.gkyl"
+                        pattern = f"{self.fileprefix}-{spec}_{moment_type}_*.gkyl"
                         files = glob.glob(pattern)
                         if files:
                             file_name = self.simdir + os.path.basename(files[0])
                         else:
-                            file_name = self.fileprefix + f"-{s_}_{moment_type}_0.gkyl"
+                            file_name = self.fileprefix + f"-{spec}_{moment_type}_0.gkyl"
                         if os.path.exists(file_name):
                             mtype = moment_type
                             self.default_mom_type = mtype
                             break
                     if mtype == -1:
-                        print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
-                        print(f"Check the file name pattern: {self.fileprefix}-{s_}_{moment_type}_*.gkyl")
+                        print(f"No moments file found for species {spec}. (recall, we do not support Maxwellian moments yet)")
+                        print(f"Check the file name pattern: {self.fileprefix}-{spec}_{moment_type}_*.gkyl")
                         continue
                 else:
                     mtype = 'BiMaxwellianMoments'
