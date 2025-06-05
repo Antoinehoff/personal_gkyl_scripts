@@ -114,25 +114,24 @@ class DataParam:
                 prefix = []
                 comps  = []
                 spec = s_ + '_source' if add_source else s_
-                spfx = 'src_' if add_source else ''
                 
                 # Add Maxwellian moments
-                keys   += [spfx+'MM_n',spfx+'MM_upar',spfx+'MM_T']
+                keys   += ['MM_n','MM_upar','MM_T']
                 comps  += [0,1,2]
                 prefix += 3*[spec+'_MaxwellianMoments']
 
                 # Add biMaxwellian moments
-                keys   += [spfx+'BM_n',spfx+'BM_upar',spfx+'BM_Tpar',spfx+'BM_Tperp']
+                keys   += ['BM_n','BM_upar','BM_Tpar','BM_Tperp']
                 comps  += [0,1,2,3]
                 prefix += 4*[spec+'_BiMaxwellianMoments']
 
                 # add Hamiltonian moments
-                keys   += [spfx+'HM_n',spfx+'HM_mv',spfx+'HM_H']
+                keys   += ['HM_n','HM_mv','HM_H']
                 comps  += [0,1,2]
                 prefix += 3*[spec+'_HamiltonianMoments']
                         
                 # add moments info        
-                keys   += [spfx+'M0',spfx+'M1',spfx+'M2',spfx+'M2par',spfx+'M2perp',spfx+'M3par',spfx+'M3perp']
+                keys   += ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
                 comps  += [0,0,0,0,0,0,0]
                 prefix += [spec+'_M0',spec+'_M1',spec+'_M2',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
                 
@@ -159,7 +158,7 @@ class DataParam:
                     mtype = 'BiMaxwellianMoments'
                     self.default_mom_type = mtype
                     
-                keys  += [spfx+'n',spfx+'upar',spfx+'Tpar',spfx+'Tperp',spfx+'qpar',spfx+'qperp']
+                keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
                 if self.default_mom_type == 'M0':
                     comps  += [0,0,0,0,0,0]
                     prefix += [spec+'_M0',spec+'_M1',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
@@ -168,7 +167,7 @@ class DataParam:
                     prefix += 6*[spec+'_'+mtype]
 
                 # add distribution functions
-                keys   += [spfx+'f']
+                keys   += ['f','src_f']
                 comps  += [0]
                 prefix += [spec]
                 
