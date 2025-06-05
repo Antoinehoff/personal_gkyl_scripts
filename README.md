@@ -1,5 +1,9 @@
 
-![screenshot](https://github.com/user-attachments/assets/995a9ad0-c647-4266-af4b-7d54395d4897)
+
+
+
+https://github.com/user-attachments/assets/2e82e4ee-6cf7-4699-8920-67bafa266ec3
+
 
 _Gkeyll TCV turbulence simulation in negative triangularity configuration._
 
