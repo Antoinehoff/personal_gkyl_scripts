@@ -4,19 +4,20 @@ from ..projections.poloidalprojection import Inset
 from ..interfaces.gyacomointerface import GyacomoInterface
 from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
-def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = None, load_metric=True, add_source=True):
+def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = None, 
+                  load_metric=True, add_source=True, dimensionality='3x2v'):
     if configName in ['TCV_PT', 'tcv_pt']:
-        sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+        sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['TCV_NT', 'tcv_nt']:
-        sim = get_tcv_nt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+        sim = get_tcv_nt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['D3D_NT', 'd3d_nt']:
-        sim = get_d3d_nt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+        sim = get_d3d_nt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['SPARC', 'sparc']:
-        sim = get_sparc_sim_config(simDir, filePrefix, x_LCFS, x_out)
+        sim = get_sparc_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['NSTXU', 'nstxu']:
-        sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out)
+        sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['gyacomo', 'GYACOMO', 'Gyacomo']:
-        sim = get_gyacomo_sim_config(simDir, filePrefix)
+        sim = get_gyacomo_sim_config(simDir)
         load_metric = False
         add_source = False
     else:
@@ -34,14 +35,14 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
 def display_available_configs():
     print("Available configurations: TCV_PT, TCV_NT")
 
-def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
+def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
     R_axis = 0.8727315068
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
-    simulation = Simulation(dimensionality='3x2v')
+    simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
         eV = 1.602e-19,         # Elementary charge [C]
@@ -119,7 +120,7 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
     }
     return simulation
 
-def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
+def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
@@ -127,7 +128,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
     
-    simulation = Simulation(dimensionality='3x2v')
+    simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
         eV = 1.602e-19,         # Elementary charge [C]
@@ -205,7 +206,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     }
     return simulation
 
-def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
+def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
@@ -213,7 +214,7 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     if x_LCFS is None : x_LCFS = 0.10
     if x_out is None : x_out = 0.05
     
-    simulation = Simulation(dimensionality='3x2v')
+    simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
         eV = 1.602e-19,         # Elementary charge [C]
@@ -295,14 +296,14 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     return simulation
 
 
-def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
+def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
     R_axis = 1.0
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
-    simulation = Simulation(dimensionality='3x2v')
+    simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
         eV = 1.602e-19,         # Elementary charge [C]
@@ -373,14 +374,14 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
     return simulation
 
 
-def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None):
+def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
     R_axis = 1.8885793871866297
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
-    simulation = Simulation(dimensionality='3x2v')
+    simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param(
         eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
         eV = 1.602e-19,         # Elementary charge [C]
@@ -470,7 +471,7 @@ def add_source_baseline(simulation):
     simulation.add_source('Core src',OMPsource)
     return simulation
 
-def get_gyacomo_sim_config(path,fileprefix=''):
+def get_gyacomo_sim_config(path):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
     '''
