@@ -152,6 +152,9 @@ class IntegratedMoment:
                 if not pgkyl_.file_exists(f_+'moms.gkyl'):
                     f_ += self.momtype+'Moments.gkyl'
                     if not pgkyl_.file_exists(f_):
+                        # in 2x2v, z is called y for these files
+                        f_ = f_.replace('bflux_z','bflux_y')
+                    if not pgkyl_.file_exists(f_):
                         raise FileNotFoundError(f_ + ' does not exist.')
                 else:
                     f_ += 'moms.gkyl'
