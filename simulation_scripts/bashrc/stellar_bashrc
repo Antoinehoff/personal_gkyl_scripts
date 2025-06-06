@@ -21,6 +21,7 @@ alias du='du -h'
 alias ll='ll -h'
 alias quota='quota -s'
 alias grant_access='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/grant_access.sh'
+alias dus='for dir in */ .*/; do [ "$dir" != "." ] && [ "$dir" != ".." ] && du -sh "$dir" 2>/dev/null; done | sort -h'alias ll='ll -h'
 
 alias pgkyl_env_setup='source ~/py_venv/pgkyl/bin/activate'
 alias bashrc_check='cat ~/.bashrc'

@@ -17,7 +17,7 @@ export PATH
 
 # User specific aliases and functions
 alias du='du -h'
-alias ll='ll -h'
+alias dus='for dir in */ .*/; do [ "$dir" != "." ] && [ "$dir" != ".." ] && du -sh "$dir" 2>/dev/null; done | sort -h'alias ll='ll -h'
 alias quota='quota -s'
 alias queue_u_details='squeue -u ah1032 --format="%.18i %.10P %.30j %.8u %.2t %.10M %.6D %.20R"'
 alias queue_u='squeue -u ah1032 --format="%.9i %.10P %.48j %.2t %.9M %.6D %.16R"'

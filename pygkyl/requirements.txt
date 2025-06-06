@@ -1,0 +1,12 @@
+numpy
+scipy
+matplotlib
+postgkyl
+h5py
+Pillow
+pyvista
+trame 
+trame-vtk 
+trame-vuetify 
+imageio
+netCDF4

@@ -10,13 +10,14 @@ Modules:
 - utils: Includes utility functions for file handling, plotting, and mathematical operations.
 """
 
+from .interfaces import pgkyl_interface
 from .classes import Species, Simulation, NumParam, PhysParam, Frame, GeomParam, GBsource, Source, \
     TimeSerie, IntegratedMoment
 from .projections import PoloidalProjection, FluxSurfProjection, TorusProjection
-from .tools import fig_tools, math_tools, pgkyl_interface, phys_tools, DG_tools
+from .tools import fig_tools, math_tools, phys_tools, DG_tools
 from .utils import file_utils, math_utils, plot_utils
 from .configs import simulation_configs
-from .tools.pgkyl_interface import get_gkyl_data, get_gkyl_values, get_gkyl_grid
+from .interfaces.pgkyl_interface import get_gkyl_data, get_gkyl_values, get_gkyl_grid
 
 __all__ = [
     'Species',

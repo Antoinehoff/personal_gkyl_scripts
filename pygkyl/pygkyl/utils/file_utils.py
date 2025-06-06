@@ -12,6 +12,7 @@ Functions:
 
 import fnmatch
 import os,re,sys
+from ..interfaces.flaninterface import FlanInterface
 
 # function to extract filePrefix from lua file(s)
 def find_prefix(pattern, path):
@@ -26,7 +27,12 @@ def find_prefix(pattern, path):
 
 
 def find_available_frames(simulation,dataname='field'):
-    if simulation.code != 'gyacomo':
+    if simulation.code == 'gyacomo':
+        frames = simulation.gyac.get_available_frames(dataname)
+    elif dataname == 'flan':
+        flan = FlanInterface(simulation.flandatapath)
+        frames = flan.avail_frames
+    else:
         # Regular expression pattern to match files with the format "*dataname_X.gkyl"
         pattern = re.compile(r"%s_([0-9]+)\.gkyl$"%dataname)
         folder_path = simulation.data_param.datadir
@@ -42,9 +48,7 @@ def find_available_frames(simulation,dataname='field'):
                 # Extract the frame number and add it to the list
                 frame_number = int(match.group(1))
                 frames.append(frame_number)
-    else :
-        frames = simulation.gyac.get_available_frames(dataname)
-
+                
     # Sort the frame numbers for easier interpretation
     frames = list(set(frames))
     frames.sort()

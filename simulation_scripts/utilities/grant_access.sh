@@ -4,6 +4,7 @@
 # 1. The username of the author
 # 2. The username of the user to grant access to
 # 3. The path to grant access to
+# Authors: A.C.D. Hoffmann & T.N. Bernard, 2025
 
 # Check if the correct number of arguments is provided
 if [ "$#" -ne 3 ]; then

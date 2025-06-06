@@ -1,8 +1,9 @@
 import copy
 import numpy as np
 import os
-from ..tools import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgkyl_
 from ..utils import file_utils as file_utils
+import glob
 
 class DataParam:
     """
@@ -31,7 +32,7 @@ class DataParam:
     - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
-                 prefix='', wkdir='', species = {}):
+                 prefix='', wkdir='', species = {}, checkfiles=True):
         self.expdatadir = expdatadir
         self.g0simdir = g0simdir
         self.simname = simname
@@ -42,11 +43,11 @@ class DataParam:
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
         self.species = species
         self.file_info_dict = {}
-        self.set_data_file_dict()
+        self.set_data_file_dict(checkfiles=checkfiles)
         self.default_mom_type = None
         self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
         
-    def set_data_file_dict(self):
+    def set_data_file_dict(self, checkfiles=True):
         '''
         Sets up the data field dictionary which indicates how each 
         possible scalar field can be found.
@@ -99,6 +100,11 @@ class DataParam:
         file_dict['phi'+'comp'] = 0
         file_dict['phi'+'gnames'] = gnames[0:3]
         
+        # flan interface
+        file_dict['flan'+'file'] = 'flan'
+        file_dict['flan'+'comp'] = 0
+        file_dict['flan'+'gnames'] = gnames[0:3]   
+             
         for spec in self.species.values():
             s_        = spec.name
             shortname = spec.nshort
@@ -131,23 +137,36 @@ class DataParam:
                 
                 # add default moments interface        
                 # Find a file type where we can find the moment data.
-                mtype = -1
-                for moment_type in ['BiMaxwellianMoments', 'M0']:
-                    file_name = f"-{s_}_{moment_type}_0.gkyl"
-                    file_name = self.fileprefix + file_name
-                    if os.path.exists(file_name):
-                        mtype = moment_type
-                        self.default_mom_type = mtype
-                        break
-                if mtype == -1:
-                    print(f"No moments file found for species {s_}. (recall, we do not support Maxwellian moments yet)")
-                    continue
+                if checkfiles:
+                    mtype = -1
+                    for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
+                        pattern = f"{self.fileprefix}-{spec}_{moment_type}_*.gkyl"
+                        files = glob.glob(pattern)
+                        if files:
+                            file_name = self.simdir + os.path.basename(files[0])
+                        else:
+                            file_name = self.fileprefix + f"-{spec}_{moment_type}_0.gkyl"
+                        if os.path.exists(file_name):
+                            mtype = moment_type
+                            self.default_mom_type = mtype
+                            break
+                    if mtype == -1:
+                        print(f"No moments file found for species {spec}. (recall, we do not support Maxwellian moments yet)")
+                        print(f"Check the file name pattern: {self.fileprefix}-{spec}_{moment_type}_*.gkyl")
+                        continue
+                else:
+                    mtype = 'BiMaxwellianMoments'
+                    self.default_mom_type = mtype
+                    
                 keys  += ['n','upar','Tpar','Tperp','qpar','qperp']
                 if self.default_mom_type == 'M0':
                     comps  += [0,0,0,0,0,0]
                     prefix += [spec+'_M0',spec+'_M1',spec+'_M2par',spec+'_M2perp',spec+'_M3par',spec+'_M3perp']
                 elif self.default_mom_type == 'BiMaxwellianMoments':
                     comps  += [0,1,2,3,0,0]
+                    prefix += 6*[spec+'_'+mtype]
+                elif self.default_mom_type == 'HamiltonianMoments':
+                    comps  += [0,1,2,0,0,0]
                     prefix += 6*[spec+'_'+mtype]
 
                 # add distribution functions
@@ -244,7 +263,7 @@ class DataParam:
                 S_ = 'S' if add_source else ''
                 # distribution functions
                 default_qttes.append(['%sf%s'%(src_,s_), r'%s$f_%s$'%(S_,s_), '[f]'])
-                # Moments
+                # Moments (id: src_xs or xs)
                 default_qttes.append(['%sM0%s'%(src_,s_), r'%s$M_{0%s}$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%sM1%s'%(src_,s_), r'%s$M_{1%s}$'%(S_,s_), r'm$^{-2}$/s'])
                 default_qttes.append(['%sM2%s'%(src_,s_), r'%s$M_{2%s}$'%(S_,s_), r'J/kg/m$^{3}$'])
@@ -252,21 +271,21 @@ class DataParam:
                 default_qttes.append(['%sM2perp%s'%(src_,s_), r'%s$M_{2\perp %s}$'%(S_,s_), r'J/kg/m$^{3}$'])
                 default_qttes.append(['%sM3par%s'%(src_,s_), r'%s$M_{3\parallel %s}$'%(S_,s_), r'J/kg/m$^{2}/s$'])
                 default_qttes.append(['%sM3perp%s'%(src_,s_), r'%s$M_{3\perp %s}$'%(S_,s_), r'J/kg/m$^{2}/s$'])
-                # Generic moments
+                # Generic moments (id: src_xs or xs)
                 default_qttes.append(['%sn%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%supar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
                 default_qttes.append(['%sTpar%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
                 default_qttes.append(['%sTperp%s'%(src_,s_), r'%s$T_{\perp %s}$'%(S_,s_), 'J/kg'])
-                # Maxwellian moments
+                # Maxwellian moments (id: src_MM_xs or MM_xs)
                 default_qttes.append(['%sMM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%sMM_upar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
                 default_qttes.append(['%sMM_T%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
-                # BiMaxwellian moments
+                # BiMaxwellian moments (id: src_BM_xs or BM_xs)
                 default_qttes.append(['%sBM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%sBM_upar%s'%(src_,s_), r'%s$u_{\parallel %s}$'%(S_,s_), 'm/s'])
                 default_qttes.append(['%sBM_Tpar%s'%(src_,s_), r'%s$T_{\parallel %s}$'%(S_,s_), 'J/kg'])
                 default_qttes.append(['%sBM_Tperp%s'%(src_,s_), r'%s$T_{\perp %s}$'%(S_,s_), 'J/kg'])
-                # Hamiltonian moments
+                # Hamiltonian moments (id: src_HM_xs or HM_xs)
                 default_qttes.append(['%sHM_n%s'%(src_,s_), r'%s$n_%s$'%(S_,s_), r'm$^{-3}$'])            
                 default_qttes.append(['%sHM_mv%s'%(src_,s_), r'%s$p_%s$'%(S_,s_), r'kg m/s m$^{-3}$'])            
                 default_qttes.append(['%sHM_H%s'%(src_,s_), r'%s$H_%s$'%(S_,s_), r'J m$^{-3}$'])            
@@ -279,7 +298,7 @@ class DataParam:
         for i in range(len(default_qttes)):
             default_qttes[i].append([default_qttes[i][0]])
             default_qttes[i].append(identity)
-
+            
         #-Drift velocities
         #- The following are vector fields quantities that we treat component wise
         directions = ['x','y','z'] #directions array
@@ -772,6 +791,38 @@ class DataParam:
                     k+= 8
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_hflux]) 
+        
+        #--- Flan interface
+        def receipe_flan(gdata_list): return
+        name = 'flan_imp_density'
+        symbol = r'$n_{W}$'
+        units = r'm$^{-3}$'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+        
+        name = 'flan_imp_counts'
+        symbol = r'$N_{W}$'
+        units = r''
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_imp_gyrorad'
+        symbol = r'$\rho_{W}$'
+        units = r'm'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+        
+        
+        dirs = ['x','y','z']
+        Dirs = ['X','Y','Z']
+        for i in range(3):
+            dir = dirs[i]
+            Dir = Dirs[i]
+            name = 'flan_imp_v'+Dir
+            symbol = r'$v_{W,%s}$'%dir
+            units = r'm/s'
+            field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
         #-------------- END of the new diagnostics definitions
         
         ## We format everything so that it fits in one dictionary
@@ -789,7 +840,8 @@ class DataParam:
             default_units_dict[key+'receipe']  = receipe[key]
 
         # add default colormap for each fields
-        positive_fields = ['Bmag','pow_src'] # spec. indep
+        positive_fields = ['Bmag','pow_src',
+                           'flan_imp_density','flan_imp_counts'] # spec. indep
         
         spec_dep_fields = ['M0','M2','M2par','M2perp',
                            'n','T','Tpar','Tperp','p',

@@ -54,6 +54,7 @@ class PoloidalProjection:
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
     self.figSize = figSize
+    self.timeFrame0 = timeFrame
 
     if self.sim.polprojInset is not None:
       self.inset = self.sim.polprojInset
@@ -70,7 +71,7 @@ class PoloidalProjection:
     else:
       fieldName = 'ni'
       
-    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
+    field_frame = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True)
     self.gridsN = field_frame.xNodal # nodal grids
     self.ndim = len(self.gridsN) # Dimensionality
 
@@ -83,7 +84,7 @@ class PoloidalProjection:
     self.dimsC = [np.size(meshC[i]) for i in range(self.ndim)]
     self.meshC = meshC
     del meshC
-    
+        
     self.LyC = self.meshC[1][-1] - self.meshC[1][0] # length in the y direction
     # Do we need to rescale the y length to fill the integer toroidal mode number ? not sure...
     Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC
@@ -309,7 +310,7 @@ class PoloidalProjection:
     return field_RZ
   
   def get_projection(self, fieldName, timeFrame):
-    field_frame = Frame(self.sim, name=fieldName, tf=timeFrame, load=True)
+    field_frame = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True)
     if self.zExt and not self.TSBC :
       evalDGfunc = field_frame.eval_DG_proj
     else:
@@ -348,18 +349,18 @@ class PoloidalProjection:
     else:
       avg_window = [timeFrame]
     
-    with Frame(self.sim, name=fieldName, tf=timeFrame, load=True) as field_frame:
+    with Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True) as field_frame:
       time = field_frame.time
       vsymbol = field_frame.vsymbol
       vunits = field_frame.vunits
       toproject = field_frame.values
-      frame_info = Frame(self.sim, name=fieldName, tf=timeFrame, load=False)
+      frame_info = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=False)
 
     if len(fluctuation) > 0:
       if favg is not None:
         toproject -= favg
       else:
-        serie = TimeSerie(simulation=self.sim, name=fieldName, time_frames=avg_window, load=True)
+        serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
         if 'tavg' in fluctuation:
           average = serie.get_time_average()
           vsymbol = r'$\delta_t$'+vsymbol
@@ -372,7 +373,7 @@ class PoloidalProjection:
           vunits = r'\%'
       colorMap = colorMap if colorMap else 'bwr'
     else:
-      colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+      colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
 
     field_RZ = self.project_field(toproject, frame_info)
 
@@ -433,20 +434,21 @@ class PoloidalProjection:
                     rotation=270, labelpad=18, fontsize=colorBarLabelFontSize)
     hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
-    #.Plot lcfs
-    ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
+    if self.ixLCFS_C is not None:
+      #.Plot lcfs
+      ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
 
-    #.Plot the limiter
-    xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
-    xCorner = np.min(self.RIntN)
-    yWidth = 0.01
-    yCorner = self.geom.Z_axis - 0.5*yWidth
-    ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
+      #.Plot the limiter
+      xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
+      xCorner = np.min(self.RIntN)
+      yWidth = 0.01
+      yCorner = self.geom.Z_axis - 0.5*yWidth
+      ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
 
-    if inset:
-      self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
-                           colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
-                           LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
+      if inset:
+        self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
+                            colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
+                            LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
@@ -484,7 +486,7 @@ class PoloidalProjection:
       timeFrames = timeFrame if not timeFrames else timeFrames
 
       if fluctuation:
-        with TimeSerie(simulation=self.sim, name=fieldName, time_frames=timeFrames, load=True) \
+        with TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=timeFrames, load=True) \
           as field_frames:
             favg = field_frames.get_time_average()
       else:

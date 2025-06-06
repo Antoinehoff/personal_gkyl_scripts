@@ -64,7 +64,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
         # handle fourier plot
         colorscale = 'linear' if not fourier_y else 'log'
         if space_time:
-            if ((field in ['phi','upare','upari']) or cmap0=='bwr' or fluctuation) and not fourier_y:
+            if ((simulation.data_param.field_info_dict[field+'colormap']=='bwr' or cmap0=='bwr' or fluctuation)
+                and not fourier_y):
                 cmap = 'bwr'
                 vmax = np.max(np.abs(values)) 
                 vmin = -vmax
@@ -75,8 +76,8 @@ def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
             vmin = np.power(10,np.log10(vmax)-4) if fourier_y else vmin
             values = np.clip(values, vmin, None) if fourier_y else values 
             # make the plot
-            clim = clim[kf] if clim else None
-            fig = fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim,
+            clim_ = clim[kf] if clim else None
+            fig = fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim_,
                               xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
                               cmap=cmap, vmin=vmin, vmax=vmax, colorscale=colorscale, plot_type=plot_type)
             figout.append(fig)
@@ -162,7 +163,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             frame = frames_to_plot[kf]
             plot_data = frame.values
         else:
-            serie = TimeSerie(simulation=simulation, name=field, time_frames=time_frame, load=True, fourier_y=fourier_y)
+            serie = TimeSerie(simulation=simulation, fieldname=field, time_frames=time_frame, load=True, fourier_y=fourier_y)
             if len(fluctuation) > 0:
                 if 'tavg' in fluctuation:
                     serie.slice(cut_dir, cut_coord)
@@ -209,6 +210,9 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         elif time_average:
             vsymbol = r'$\langle$'+ vsymbol + r'$\rangle$'
         lbl = fig_tools.label(vsymbol,frame.vunits)
+        
+        xlabel = frame.new_gsymbols[0] + (' (%s)'%frame.new_gunits[0] if frame.new_gunits[0] else '')
+        ylabel = frame.new_gsymbols[1] + (' (%s)'%frame.new_gunits[1] if frame.new_gunits[1] else '')
 
         if "relative" in fluctuation :
             lbl = re.sub(r'\(.*?\)', '', lbl)
@@ -217,7 +221,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         climf = clim[kf] if clim else None
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
                           cmap=cmap, xlim=xlim, ylim=ylim, clim=climf,
-                          xlabel=frame.new_gsymbols[0], ylabel=frame.new_gsymbols[1], 
+                          xlabel=xlabel, ylabel=ylabel, 
                           colorscale=colorscale, clabel=lbl, title=frame.fulltitle, 
                           vmin=vmin, vmax=vmax, plot_type=plot_type)
         kf += 1 # field counter
@@ -392,7 +396,7 @@ def plot_volume_integral_vs_t(simulation, fieldnames, time_frames=[], ddt=False,
             time = []
 
             for frame_idx, tf in enumerate(time_frames, 1):
-                f_ = Frame(simulation=simulation, name=subfield, tf=tf)
+                f_ = Frame(simulation=simulation, fieldname=subfield, tf=tf)
                 f_.load()
 
                 time.append(f_.time)
@@ -710,7 +714,7 @@ def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
             subfields = field  # Field is a combined plot
 
         for subfield in subfields:
-            timeserie = TimeSerie(simulation=simulation,name=subfield,time_frames=time_frames,
+            timeserie = TimeSerie(simulation=simulation,fieldname=subfield,time_frames=time_frames,
                                 cut_dir='scalar',cut_coord=cut_coords,load=True)
             f0 = timeserie.frames[0]
             t,v = timeserie.get_values()

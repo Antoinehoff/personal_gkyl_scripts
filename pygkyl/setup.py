@@ -2,12 +2,20 @@ from setuptools import setup, find_packages
 
 setup(
     name='pygkyl',
-    version='0.1.0',
+    version='0.2.0',
     packages=find_packages(),
     install_requires=[
         'numpy',
         'scipy',
         'matplotlib',
+        'h5py',
+        'netCDF4',
+        'pyvista',
+        'trame',
+        'trame-vtk',
+        'trame-vuetify',
+        'imageio',
+        'Pillow'
     ],
     author='Antoine C.D. Hoffmann',
     author_email='ahoffman@pppl.gov',

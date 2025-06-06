@@ -1,6 +1,6 @@
 import postgkyl as pg
 import numpy as np
-from ..tools import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgkyl_
 from ..tools import math_tools as mt
 import os
 
@@ -41,15 +41,14 @@ class GeomParam:
         self.kappa      = kappa
         self.delta      = delta
         self.x_LCFS     = x_LCFS
+        self.x_out      = x_out
+        self.x_in       = x_LCFS
         self.R_LCFSmid  = R_LCFSmid
-        self.Rmid_min   = R_LCFSmid-x_LCFS # Minimum midplane major radius of simulation box [m].
-        self.Rmid_max   = R_LCFSmid+x_out  # Maximum midplane major radius of simulation box [m].
-        self.R0         = 0.5*(self.Rmid_min+self.Rmid_max)  # Major radius of the simulation box [m].
-        self.r0         = self.R0-R_axis          # Minor radius of the simulation box [m].
-        self.B0         = B_axis*(R_axis/self.R0) # Magnetic field magnitude in the simulation box [T].
         self.geom_type  = geom_type
-        self.a_mid      = \
-            R_axis/a_shift - np.sqrt(R_axis*(R_axis - 2*a_shift*R_LCFSmid + 2*a_shift*R_axis))/a_shift
+        self.qprofile   = qprofile
+        
+        self.update_geom_params()
+
         self.g_ij       = None
         self.gij        = None
         self.bmag       = None
@@ -68,17 +67,26 @@ class GeomParam:
         self.z          = None # z-grid
         self.Lz         = None # z box size
         self.n0         = None # Toroidal mode number
-        self.x_in       = x_LCFS
-        self.x_out      = x_out
         self.vessel_height = 1.0 # Vessel height [m]
         self.vessel_Rmin = 0.6 # Vessel minimum major radius [m]
         self.vessel_Rmax = 1.2 # Vessel maximum major radius [m]
-        self.set_qprofile(qprofile=qprofile)
+        
+    def update_geom_params(self):
+        self.Rmid_min   = self.R_LCFSmid - self.x_in # Minimum midplane major radius of simulation box [m].
+        self.Rmid_max   = self.R_LCFSmid + self.x_out  # Maximum midplane major radius of simulation box [m].
+        self.R0         = 0.5*(self.Rmid_min + self.Rmid_max)  # Major radius of the simulation box [m].
+        self.r0         = self.R0 - self.R_axis          # Minor radius of the simulation box [m].
+        self.B0         = self.B_axis * (self.R_axis/self.R0) # Magnetic field magnitude in the simulation box [T].
+        if self.a_shift > 0.0:
+            self.a_mid      = self.R_axis/self.a_shift - \
+                np.sqrt(self.R_axis*(self.R_axis - 2*self.a_shift*self.R_LCFSmid + 2*self.a_shift*self.R_axis))\
+                    /self.a_shift
+        else:
+            self.a_mid      = self.R_LCFSmid - self.R_axis
 
-    def set_qprofile(self, qprofile):
-        if callable(qprofile):
-            self.qprofile = qprofile
-        elif qprofile == 'default':
+        if callable(self.qprofile):
+            self.qprofile = self.qprofile
+        elif self.qprofile == 'default':
             self.qprofile = self.qprofile_default
         self.q0 = self.qprofile(self.r0)
         self.Cy = self.r0/self.q0
@@ -96,21 +104,17 @@ class GeomParam:
         self.bmag = self.bmag[:,:,:,0]
         
         #-- load grid
-        # self.grids = [0.5*(g[1:]+g[:-1]) for g in Gdata.get_grid() if len(g) > 1]
         self.grids = [0.5*(g[1:]+g[:-1]) for g in pgkyl_.get_grid(Gdata) if len(g) > 1]
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
         self.Lx    = self.x[-1]-self.x[0]
         self.Ly    = self.y[-1]-self.y[0]
         self.n0    = 2.*np.pi*self.r0/self.q0/self.Ly
         self.Lz    = self.z[-1]-self.z[0]
-        #self.toroidal_mn =  2.*np.pi*self.R_LCFSmid/self.q0/self.Ly
+
         #-- compute associated derivatives
         self.dBdx = mt.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
         self.dBdy = mt.gradient(self.bmag, self.grids[1], axis=1)  # Derivative w.r.t y
         self.dBdz = mt.gradient(self.bmag, self.grids[2], axis=2)  # Derivative w.r.t z
-
-        #-- load g_ij (not useful yet)
-        # fname = simulation.data_param.fileprefix+'-'+'g_ij.gkyl'
 
         #-- Load b_x, b_y, and b_z
         fname = fileprefix+'-'+'b_i.gkyl'
@@ -180,7 +184,7 @@ class GeomParam:
 
     #.Minor radius as a function of x:
     def r_x(self,x):
-        return self.a_mid + x - self.x_LCFS
+        return self.a_mid - self.x_LCFS + x
 
     #.Major radius as a function of x:
     def R_x(self,x):
