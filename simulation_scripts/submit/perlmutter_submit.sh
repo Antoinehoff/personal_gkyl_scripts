@@ -14,7 +14,7 @@ EMAIL="ahoffman@pppl.gov"
 #.Module to load.
 MODULES="PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12"
 #.Set the account.
-ACCOUNT="m2116"
+ACCOUNT="m4564"
 #.Default value to check a possible restart.
 LAST_FRAME=-1 
 #.Get the job name from the directory name
@@ -31,9 +31,10 @@ show_help() {
     echo "  -r frame    Restart from frame (default: $LAST_FRAME)"
     echo "  -d job_id   Job ID to create a dependency (default: none)"
     echo "  -h          Display this help and exit"
+    echo "  -a ACCOUNT  Account to use (default: $ACCOUNT)"
 }
-# check the following options : -q -n -t -h -N -r -d
-while getopts ":q:n:t:r:N:d:h" opt; do
+# check the following options : -q -n -t -h -N -r -d -a
+while getopts ":q:n:t:r:N:d:a:h" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG
@@ -57,6 +58,9 @@ while getopts ":q:n:t:r:N:d:h" opt; do
             ;;
         d )
             DEPENDENCY_JOB_ID=$OPTARG
+            ;;
+        a )
+            ACCOUNT=$OPTARG
             ;;
         h )
             show_help
