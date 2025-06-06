@@ -177,10 +177,10 @@ class Frame:
         #.Centered mesh creation
         gridsN = self.xNodal # nodal grids
         mesh = []
-        for i in range(3):
+        for i in range(self.simulation.DG_basis.dimensionality):
             nNodes  = len(gridsN[i])
             mesh.append(np.multiply(0.5,gridsN[i][0:nNodes-1]+gridsN[i][1:nNodes]))
-        self.cgrids = [mesh[0], mesh[1], mesh[2]]
+        self.cgrids = [m for m in mesh]
         self.grids = [g for g in pgkyl_.get_grid(Gdata) if len(g) > 2]
         self.cells = Gdata.ctx['cells']
         self.ndims = len(self.cells)
