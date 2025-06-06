@@ -34,7 +34,7 @@ alias gkyl_module='module load PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich
 alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_total_runtime.sh'
 alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_available_frames.sh'
 alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'
-alias gkyl_salloc_one_gpu='salloc --account m2116 --nodes 1 --gpus 4 --tasks-per-node=4 --time=04:00:00 --constraint gpu --qos interactive'
+alias gkyl_salloc='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_salloc_perlmutter.sh'
 alias gkyl_new_sim='sh ~/personal_gkyl_scripts/simulation_scripts/new_sim/perlmutter_new_sim.sh'
 alias gkyl_setup_gpu='gkyl_module; export MPICH_GPU_SUPPORT_ENABLED=0; export DVS_MAXNODES=32_; export MPICH_MPIIO_DVS_MAXNODES=32;'
 alias ll='ls -l'
