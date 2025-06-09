@@ -371,6 +371,28 @@ class DataParam:
             def receipe_Ttots(gdata_list):
                 return (pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0
             default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
+            
+            #normalized radial density gradient
+            name       = 'gradlogn%s'%(s_)
+            symbol     = r'$-\nabla \ln n_{%s}$'%(s_)
+            units      = '1/m'
+            field2load = ['n%s'%(s_)]
+            def receipe_ntots(gdata_list):
+                dens = pgkyl_.get_values(gdata_list[0])
+                grids = gdata_list[0].get_grid()
+                return -np.gradient(np.log(dens), grids[0][:-1], axis=0)
+            default_qttes.append([name,symbol,units,field2load,receipe_ntots])
+
+            #normalized radial temperature gradient
+            name       = 'gradlogT%s'%(s_)
+            symbol     = r'-\nabla \ln T_{%s}$'%(s_)
+            units      = '1/m'
+            field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
+            def receipe_Ttots(gdata_list):
+                logT = np.log((pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0)
+                grids = gdata_list[0].get_grid()
+                return -np.gradient(logT, grids[0][:-1], axis=0)
+            default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
 
             #Kinetic energy density speciewise: Wkins = int dv3 1/2 ms vpar^2 + mus B
             name       = 'Wkin%s'%(s_)

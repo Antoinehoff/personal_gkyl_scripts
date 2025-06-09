@@ -74,6 +74,7 @@ class Normalization:
             - 'fluid velocities': Normalizes both parallel electron and ion velocities
             - 'pressures': Normalizes all pressure components
             - 'energies': Normalizes all energy components
+            - 'gradients': Normalizes gradients of specified quantities
 
         This method updates the normalization dictionary and log with the new normalization settings.
         """
@@ -97,6 +98,15 @@ class Normalization:
             scale  = self.simulation.geom_param.a_mid
             shift  = (self.simulation.geom_param.x_LCFS - self.simulation.geom_param.a_mid) / scale
             symbol = r'$r/a$'
+            units  = ''
+        elif norm in ['major radius']:
+            scale  = self.simulation.geom_param.R_axis
+            shift  = 0
+            for spec in self.simulation.species.values():
+                if key == 'gradlogn%s'%spec.nshort:
+                    symbol = r'$R/L_{n%s}$'%spec.nshort
+                elif key == 'gradlogT%s'%spec.nshort:
+                    symbol = r'$R/L_{T%s}$'%spec.nshort
             units  = ''
         elif norm in ['x/rho', 'rho_L', 'Larmor radius']:
             scale  = ion.rho
@@ -248,6 +258,9 @@ class Normalization:
                 self.set('Wtot%s'%spec.nshort,norm)
         elif key.lower() == 'current':
             self.set('jpar',norm)
+        elif key.lower() == 'gradients':
+            self.set('gradlogn%s'%spec.nshort, norm)
+            self.set('gradlogT%s'%spec.nshort, norm)
         else:
             #-- Apply normalization or handle unknown norm
             if scale != 0:
