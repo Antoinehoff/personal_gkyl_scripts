@@ -259,8 +259,9 @@ class Normalization:
         elif key.lower() == 'current':
             self.set('jpar',norm)
         elif key.lower() == 'gradients':
-            self.set('gradlogn%s'%spec.nshort, norm)
-            self.set('gradlogT%s'%spec.nshort, norm)
+            for spec in self.simulation.species.values():
+                self.set('gradlogn%s'%spec.nshort, norm)
+                self.set('gradlogT%s'%spec.nshort, norm)
         else:
             #-- Apply normalization or handle unknown norm
             if scale != 0:
