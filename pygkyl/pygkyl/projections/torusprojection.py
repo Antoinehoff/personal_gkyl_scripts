@@ -239,7 +239,7 @@ class TorusProjection:
     print(f"Image saved as {filePrefix}torproj_{fieldName}.png")
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
-           clim=[], logScale=False, colorbar=False, vessel=True, smooth_shading=False, lighting=False,
+           clim=[], logScale=False, colorbar=True, vessel=True, smooth_shading=False, lighting=False,
            vesselOpacity=0.2, imgSize=(800, 600), fps=14, cameraPath=[], off_screen=True, movie_type='gif'):
     if smooth_shading: print('Warning: smooth_shading may create flickering in the movie. Idk why :/')
  
