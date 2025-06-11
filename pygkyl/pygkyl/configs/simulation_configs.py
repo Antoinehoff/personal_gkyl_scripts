@@ -10,6 +10,8 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
         sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['TCV_NT', 'tcv_nt']:
         sim = get_tcv_nt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+    elif configName in ['D3D_PT', 'd3d_pt']:
+        sim = get_d3d_pt_sim_config(simDir, filePrefix, x_LCFS, x_out)
     elif configName in ['D3D_NT', 'd3d_nt']:
         sim = get_d3d_nt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['SPARC', 'sparc']:
@@ -204,6 +206,80 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         'looking_at':(0., 0.795, 0.05),
         'zoom': 1.0
     }
+    return simulation
+
+def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
+    '''
+    This function returns a simulation object for a TCV NT clopen 3x2v simulation.
+    '''
+    R_axis = 1.6486461
+    if x_LCFS is None : x_LCFS = 0.10
+    if x_out is None : x_out = 0.05
+    
+    simulation = Simulation(dimensionality='3x2v')
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+
+    def qprofile(r):
+        R = r + R_axis
+        a = [407.582626469394, -2468.613680167604, 4992.660489790657, -3369.710290916853]
+        return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
+
+    simulation.set_geom_param(
+        B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,        # Magnetic axis major radius
+        Z_axis      = 0.013055028,         # Magnetic axis height
+        R_LCFSmid   = 2.17,   # Major radius of LCFS at the midplane
+        a_shift     = 0.5,                 # Parameter in Shafranov shift
+        kappa       = 1.35,                 # Elongation factor
+        delta       = 0.4,                 # Triangularity factor
+        qprofile    = qprofile,                 # Safety factor
+        x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
+        x_out       = x_out                  # SOL domain width
+    )
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=300*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=300*simulation.phys_param.eV, 
+                n0=2.0e19))
+
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    inset = Inset() # all default but the lower corner position
+    inset.lowerCornerRelPos = [0.4,0.3]
+    inset.xlim = [2.12,2.25]
+    inset.ylim = [-0.15,0.15]
+    simulation.inset = inset
+    
+    # Add discharge ID
+    simulation.dischargeID = 'DIII-D #171650'
+        
+    # Add vessel data filename
+    simulation.geom_param.vesselData = d3d_vessel_data
+    
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+    'position':(2.3, 2.3, 0.75),
+    'looking_at':(0, 0, 0),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {   
+        'position':(0.83, 0.78, -0.1),
+        'looking_at':(0., 0.74, -0.17),
+        'zoom': 1.0
+    }
+
     return simulation
 
 def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
