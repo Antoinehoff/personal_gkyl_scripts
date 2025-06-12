@@ -80,6 +80,7 @@ class Simulation:
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
+        if simdir[-1] != '/': simdir += '/'
         self.data_param = DataParam(
             expdatadir=expdatadir, g0simdir=g0simdir, simname=simname, simdir=simdir, 
             prefix=fileprefix, wkdir=wkdir, species=species
