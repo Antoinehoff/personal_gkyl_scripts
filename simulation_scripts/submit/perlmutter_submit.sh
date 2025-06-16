@@ -80,49 +80,59 @@ NTASKS_PER_NODE=$GPU_PER_NODE
 #.Calculate total number of GPUs (nodes * GPUs per node)
 TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
 
-#.------- RESTART
-if (( LAST_FRAME < 0 )); then
-    #.Find the most recent frame for restart
-    # Loop through all files ending with .gkyl in the current directory
-    for file in wk/*-ion_[0-9]*.gkyl; do
-        # Check if the file exists to avoid errors when no .gkyl files are present
-        if [[ -e "$file" ]]; then
-            # Extract the numeric part before .gkyl (assuming it's the last part of the filename)
-            num=$(basename "$file" .gkyl)   # Remove the .gkyl extension
-            num=${num##*_}                  # Extract the part after the last underscore
-            # Check if the extracted part is a number and compare it
-            if [[ $num =~ ^[0-9]+$ ]]; then
-                if (( num > LAST_FRAME )); then
-                    LAST_FRAME=$num
-                fi
-            fi
-        fi
-    done
-fi
-
-#.If a frame has been found, set a restart
-if (( LAST_FRAME > 0 )); then
-    if compgen -G "wk/*_$LAST_FRAME.gkyl" > /dev/null; then
-        echo "Restart from frame $LAST_FRAME"
-        RESTART_OPT="-r $LAST_FRAME"
+#.------- DETECT 2D vs 3D RUN
+# Check input.c file for cdim value to determine run type
+if [[ -f "input.c" ]]; then
+    # Extract cdim value from input.c
+    CDIM=$(grep -E 'int\s+cdim\s*=\s*[0-9]+' input.c | sed -E 's/.*int\s+cdim\s*=\s*([0-9]+).*/\1/' | head -1)
+    
+    if [[ -z "$CDIM" ]]; then
+        # Try alternative patterns for cdim declaration
+        CDIM=$(grep -E '\.cdim\s*=\s*[0-9]+' input.c | sed -E 's/.*\.cdim\s*=\s*([0-9]+).*/\1/' | head -1)
+    fi
+    
+    if [[ "$CDIM" == "2" ]]; then
+        echo "Detected 2D run (cdim = 2)"
+        RUN_TYPE="2D"
+        GPU_OPTS="-c 1 -d $TOTAL_GPUS"
+    elif [[ "$CDIM" == "3" ]]; then
+        echo "Detected 3D run (cdim = 3)"
+        RUN_TYPE="3D"
+        GPU_OPTS="-c 1 -d 1 -e $TOTAL_GPUS"
     else
-        echo "Frame $LAST_FRAME not found"
-        exit 1
+        echo "Warning: Could not determine cdim from input.c, defaulting to 3D"
+        RUN_TYPE="3D"
+        GPU_OPTS="-c 1 -d 1 -e $TOTAL_GPUS"
     fi
 else
-    echo "Start simulation from 0"
-    LAST_FRAME=0
-    RESTART_OPT=
+    echo "Warning: input.c not found, defaulting to 3D"
+    RUN_TYPE="3D"
+    GPU_OPTS="-c 1 -d 1 -e $TOTAL_GPUS"
+fi
+
+#.------- RESTART PREPARATION
+# Only use LAST_FRAME if explicitly set via -r option
+if (( LAST_FRAME >= 0 )); then
+    echo "Using specified restart frame: $LAST_FRAME"
+    RESTART_OPT="-r $LAST_FRAME"
+    FRAME_SUFFIX="_$LAST_FRAME"
+else
+    echo "Will auto-detect last frame at runtime"
+    RESTART_OPT=""
+    # Use timestamp for unique naming to avoid overwrites
+    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+    FRAME_SUFFIX="_$TIMESTAMP"
+    LAST_FRAME="detect"
 fi
 
 #.Name format of output and error files.
-OUTPUT="../history/output_sf_$LAST_FRAME.out"
-ERROR="../history/error_sf_$LAST_FRAME.out"
+OUTPUT="../history/output_sf$FRAME_SUFFIX.out"
+ERROR="../history/error_sf$FRAME_SUFFIX.out"
 
-#.Run command
-RUNCMD="srun -u -n $TOTAL_GPUS ./g0 -g -M -c 1 -d 1 -e $TOTAL_GPUS $RESTART_OPT"
-SCRIPTNAME="slurm_script_sf_$LAST_FRAME.sh"
-# Generate the SLURM scripta
+#.Run command - will be modified at runtime if auto-detecting
+RUNCMD="srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS $RESTART_OPT"
+SCRIPTNAME="slurm_script_sf$FRAME_SUFFIX.sh"
+# Generate the SLURM script
 cat <<EOT > $SCRIPTNAME
 #!/bin/bash -l
 #SBATCH --job-name $JOB_NAME
@@ -143,14 +153,54 @@ if [ -n "$DEPENDENCY_JOB_ID" ]; then
     echo "#SBATCH --dependency=afterany:$DEPENDENCY_JOB_ID" >> $SCRIPTNAME
 fi
 
+# Add module load and environment setup
 cat <<EOT >> $SCRIPTNAME
+# Load necessary modules
 module load $MODULES
 export MPICH_GPU_SUPPORT_ENABLED=0
 export DVS_MAXNODES=32_
 export MPICH_MPIIO_DVS_MAXNODES=32
+
+# Run type: $RUN_TYPE
+EOT
+
+# Add runtime frame detection logic if needed
+if [[ "$LAST_FRAME" == "detect" ]]; then
+cat <<EOT >> $SCRIPTNAME
+# Auto-detect last frame at runtime using utility script
+SCRIPT_DIR=\$(dirname "\$0")
+UTIL_SCRIPT="\$HOME/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_find_last_frame.sh"
+
+if [[ ! -f "\$UTIL_SCRIPT" ]]; then
+    echo "Error: gkyl_find_last_frame.sh utility script not found at \$UTIL_SCRIPT"
+    exit 1
+fi
+
+LAST_FRAME=\$(sh \$UTIL_SCRIPT .)
+
+# Set restart options based on detected frame
+if (( LAST_FRAME > 0 )); then
+    if compgen -G "*_\$LAST_FRAME.gkyl" > /dev/null; then
+        echo "Runtime: Restart from frame \$LAST_FRAME"
+        RESTART_OPT="-r \$LAST_FRAME"
+    else
+        echo "Runtime: Frame \$LAST_FRAME not found"
+        exit 1
+    fi
+else
+    echo "Runtime: Start simulation from 0"
+    RESTART_OPT=""
+fi
+
+srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS \$RESTART_OPT
+exit 0
+EOT
+else
+cat <<EOT >> $SCRIPTNAME
 $RUNCMD
 exit 0
 EOT
+fi
 
 echo "---------------------------------"
 echo "The script generated is"
@@ -168,12 +218,13 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
         make
     fi
     mkdir -p history
-    cp input.c history/input_sf_$LAST_FRAME.c
+    cp input.c history/input_sf$FRAME_SUFFIX.c
     cp $SCRIPTNAME wk/.
     mv $SCRIPTNAME history/.
     touch history/$OUTPUT
     cd wk
     sbatch $SCRIPTNAME
+    echo "Output and error files will be in $OUTPUT and $ERROR"
 else
     echo "Operation canceled."
 fi

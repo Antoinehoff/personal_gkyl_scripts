@@ -6,10 +6,26 @@
 # Check if a folder was provided as an argument, otherwise use the current directory
 folder=${1:-"."}
 
-# list all files having '-ion_' followed by a number 
-ls ${folder}/wk/*-ion_[0-9]*.gkyl > ls.tmp
+# Use a more robust method similar to gkyl_find_last_frame.sh
+frames=()
 
-# Extract all numbers just before .gkyl
-grep '\.gkyl$' "ls.tmp" | sed -n 's/.*_\([0-9]\+\)\.gkyl$/\1/p' | sort -n | paste -sd ' ' -
+# Loop through all files matching the pattern
+for file in "${folder}"/wk/*-ion_[0-9]*.gkyl; do
+    # Check if the file exists
+    if [[ -e "$file" ]]; then
+        # Extract the numeric part before .gkyl
+        num=$(basename "$file" .gkyl)
+        num=${num##*_}
+        # Check if the extracted part is a number
+        if [[ $num =~ ^[0-9]+$ ]]; then
+            frames+=($num)
+        fi
+    fi
+done
 
-rm ls.tmp
+# Sort and display the frames
+if [ ${#frames[@]} -gt 0 ]; then
+    printf '%s\n' "${frames[@]}" | sort -n | paste -sd ' ' -
+else
+    echo "No frames found"
+fi

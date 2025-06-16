@@ -69,22 +69,29 @@ while getopts ":q:n:t:r:N:h" opt; do
 done
 
 if (( LAST_FRAME < 0 )); then
-    #.Find the most recent frame for restart
-    # Loop through all files ending with .gkyl in the current directory
-    for file in wk/*.gkyl; do
-        # Check if the file exists to avoid errors when no .gkyl files are present
-        if [[ -e "$file" ]]; then
-            # Extract the numeric part before .gkyl (assuming it's the last part of the filename)
-            num=$(basename "$file" .gkyl)   # Remove the .gkyl extension
-            num=${num##*_}                  # Extract the part after the last underscore
-            # Check if the extracted part is a number and compare it
-            if [[ $num =~ ^[0-9]+$ ]]; then
-                if (( num > LAST_FRAME )); then
-                    LAST_FRAME=$num
+    #.Find the most recent frame for restart using utility script
+    UTIL_SCRIPT="$HOME/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_find_last_frame.sh"
+    
+    if [[ -f "$UTIL_SCRIPT" ]]; then
+        LAST_FRAME=$($UTIL_SCRIPT wk)
+    else
+        echo "Warning: gkyl_find_last_frame.sh utility script not found, using fallback method"
+        # Fallback to original method
+        for file in wk/*.gkyl; do
+            # Check if the file exists to avoid errors when no .gkyl files are present
+            if [[ -e "$file" ]]; then
+                # Extract the numeric part before .gkyl (assuming it's the last part of the filename)
+                num=$(basename "$file" .gkyl)   # Remove the .gkyl extension
+                num=${num##*_}                  # Extract the part after the last underscore
+                # Check if the extracted part is a number and compare it
+                if [[ $num =~ ^[0-9]+$ ]]; then
+                    if (( num > LAST_FRAME )); then
+                        LAST_FRAME=$num
+                    fi
                 fi
             fi
-        fi
-    done
+        done
+    fi
 fi
 
 #.If a frame has been found, set a restart
