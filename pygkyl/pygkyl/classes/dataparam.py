@@ -131,8 +131,8 @@ class DataParam:
                 prefix += 3*[spec+'_HamiltonianMoments']
                 
                 # add three moments
-                keys   += ['M0','M1','M2']
-                comps  += [0,0,0]
+                keys   += ['3M_M0','3M_M1','3M_M2']
+                comps  += [0,1,2]
                 prefix += 3*[spec+'_M0M1M2']
                         
                 # add moments info        
