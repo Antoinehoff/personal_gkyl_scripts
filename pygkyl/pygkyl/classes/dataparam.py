@@ -129,6 +129,11 @@ class DataParam:
                 keys   += ['HM_n','HM_mv','HM_H']
                 comps  += [0,1,2]
                 prefix += 3*[spec+'_HamiltonianMoments']
+                
+                # add three moments
+                keys   += ['M0','M1','M2']
+                comps  += [0,0,0]
+                prefix += 3*[spec+'_M0M1M2']
                         
                 # add moments info        
                 keys   += ['M0','M1','M2','M2par','M2perp','M3par','M3perp']
@@ -139,7 +144,7 @@ class DataParam:
                 # Find a file type where we can find the moment data.
                 if checkfiles:
                     mtype = -1
-                    for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0']:
+                    for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0', 'M0M1M2']:
                         pattern = f"{self.fileprefix}-{spec}_{moment_type}_*.gkyl"
                         files = glob.glob(pattern)
                         if files:
