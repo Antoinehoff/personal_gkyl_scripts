@@ -526,7 +526,7 @@ class DataParam:
                     kgrid   = grids[k][:-1]
                     dBdj  = np.gradient(Bmag, jgrid, axis=j)
                     dBdk  = np.gradient(Bmag, kgrid, axis=k)
-                    return Tperp*(b_j*dBdk - b_k*dBdj)/Jacob/Bmag/q
+                    return Tperp/q * (b_j*dBdk - b_k*dBdj)/(Jacob * Bmag**2)
                 default_qttes.append([name,symbol,units,field2load,receipe_vgB])
 
                 # ExB particle flux
