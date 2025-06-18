@@ -105,9 +105,11 @@ class Frame:
         """
         Process the field name and set up the composition and filenames.
         """
-        # self.composition = self.simulation.normalization.dict[self.name + 'compo']
-        # self.receipe = self.simulation.normalization.dict[self.name + 'receipe']
-        self.composition = self.simulation.data_param.field_info_dict[self.name + 'compo']
+        try:
+            self.composition = self.simulation.data_param.field_info_dict[self.name + 'compo']
+        except KeyError as e:
+            raise KeyError(f"Cannot find receipe for '{self.name}'. "
+                           f"You can check available field names with simulation.data_param.info()")
         self.receipe = self.simulation.data_param.field_info_dict[self.name + 'receipe']
         for subname in self.composition:
             subdataname = self.simulation.data_param.file_info_dict[subname + 'file']

@@ -316,7 +316,7 @@ class DataParam:
             ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
 
             # ExB velocity
-            name       = 'vExB_%s'%(ci_)
+            name       = 'ExB_v_%s'%(ci_)
             symbol     = r'$u_{E,%s}$'%(ci_)
             units      = r'm/s'
             field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','phi']
@@ -340,7 +340,7 @@ class DataParam:
             for j_ in range(len(directions)):
                 cj_ = directions[j_] # direction of the flux component
                 # ExB shearing rate
-                name       = 'sExB%s_%s'%(ci_,cj_)
+                name       = 'ExB_s_%s_%s'%(ci_,cj_)
                 symbol     = r'$\partial_%s v_{E,%s}$'%(cj_,ci_)
                 units      = r'1/s'
                 field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','phi']
@@ -508,8 +508,8 @@ class DataParam:
                 cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
                 ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
 
-                # gradBxB velocity
-                name       = 'gradBxB_%s%s'%(ci_,s_)
+                # gradB drift velocity \mathbf{v}{\nabla B} = \frac{m v\perp^2}{2 q B^2} \, \mathbf{b} \times \nabla B
+                name       = 'gradB_v_%s%s'%(ci_,s_)
                 symbol     = r'$u_{\nabla B,%s %s}$'%(ci_,s_)
                 units      = r'm/s'
                 field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','Tperp%s'%s_]
