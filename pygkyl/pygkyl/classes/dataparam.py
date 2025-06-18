@@ -565,7 +565,7 @@ class DataParam:
                 symbol     = r'$\Gamma_{\nabla B%s,%s}$'%(ci_,s_)
                 units      = r's$^{-1}$m$^{-2}$'
                 field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','Tperp%s'%s_,
-                              ,'n%s'%s_]
+                              'n%s'%s_]
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_gradB_pflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
