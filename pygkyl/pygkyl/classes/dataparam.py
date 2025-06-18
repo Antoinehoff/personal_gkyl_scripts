@@ -564,8 +564,8 @@ class DataParam:
                 name       = 'gradB_pflux_%s%s'%(ci_,s_)
                 symbol     = r'$\Gamma_{\nabla B%s,%s}$'%(ci_,s_)
                 units      = r's$^{-1}$m$^{-2}$'
-                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian',
-                              'phi','n%s'%s_,]
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','Tperp%s'%s_,
+                              ,'n%s'%s_]
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_gradB_pflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
@@ -578,8 +578,8 @@ class DataParam:
                 name       = 'gradB_hflux_%s%s'%(ci_,s_)
                 symbol     = r'$Q_{\nabla B%s,%s}$'%(ci_,s_)
                 units      = r'J s$^{-1}$m$^{-2}$'
-                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian',
-                              'phi','n%s'%s_,'Tpar%s'%s_,'Tperp%s'%s_,]
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian','Tperp%s'%s_,
+                              'n%s'%s_,'Tpar%s'%s_,'Tperp%s'%s_,]
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_gradB_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
@@ -813,7 +813,7 @@ class DataParam:
                 field2load.append('n%s'%s_)
                 field2load.append('Tpar%s'%s_)
                 field2load.append('Tperp%s'%s_)
-            def receipe_hflux(gdata_list,i=i_,species=species):
+            def receipe_ExB_hflux(gdata_list,i=i_,species=species):
                 fout = 0.0
                 # add species dependent energies
                 k = 0
@@ -822,7 +822,7 @@ class DataParam:
                     fout += receipe_ExB_hflux_s(gdata_list[0+k:8+k], i=i, m=spec.m)
                     k+= 8
                 return fout
-            default_qttes.append([name,symbol,units,field2load,receipe_hflux]) 
+            default_qttes.append([name,symbol,units,field2load,receipe_ExB_hflux]) 
         
         #--- Flan interface
         def receipe_flan(gdata_list): return
