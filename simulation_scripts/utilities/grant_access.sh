@@ -17,6 +17,12 @@ USERNAME_AUTHOR=$1
 USERNAME_RECEIVER=$2
 TARGET_PATH=$(realpath "$3")  # Normalize the full path
 
+# Validate that the receiver username exists
+if ! id "$USERNAME_RECEIVER" &>/dev/null; then
+  echo "Error: User '$USERNAME_RECEIVER' does not exist on this system"
+  exit 1
+fi
+
 # Initialize path and split into components
 current_path=""
 IFS='/' read -ra DIRS <<< "$TARGET_PATH"
@@ -30,11 +36,19 @@ for dir in "${DIRS[@]}"; do
       normalized_current=$(realpath "$current_path" 2>/dev/null)
 
       if [[ "$normalized_current" == "$TARGET_PATH" ]]; then
-        setfacl -R -m u:"$USERNAME_RECEIVER":rx "$current_path"
         echo "setfacl -R -m u:$USERNAME_RECEIVER:rx $current_path"
+        if setfacl -R -m u:"$USERNAME_RECEIVER":rx "$current_path" 2>/dev/null; then
+          echo "Success: Recursive permissions granted on $current_path"
+        else
+          echo "Error: Failed to set recursive permissions on $current_path"
+        fi
       else
-        setfacl -m u:"$USERNAME_RECEIVER":rx "$current_path"
         echo "setfacl -m u:$USERNAME_RECEIVER:rx $current_path"
+        if setfacl -m u:"$USERNAME_RECEIVER":rx "$current_path" 2>/dev/null; then
+          echo "Success: Permissions granted on $current_path"
+        else
+          echo "Error: Failed to set permissions on $current_path"
+        fi
       fi
     fi
   fi
