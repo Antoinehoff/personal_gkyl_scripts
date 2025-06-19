@@ -346,3 +346,25 @@ def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
     if grid: ax.grid(True)
     fig.tight_layout()
     figout.append(fig)
+
+def optimize_str_format(value):
+    """
+    Optimize the string format of a value for better readability.
+    
+    Parameters:
+    value : float
+        The value to format.
+    
+    Returns:
+    str
+        The formatted string.
+    """
+    if isinstance(value, float):
+        if value == 0:
+            return '0.0'
+        elif abs(value) < 1e-3 or abs(value) > 1e3:
+            return f'{value:.2e}'
+        else:
+            return f'{value:.2f}'
+    else:
+        return str(value)

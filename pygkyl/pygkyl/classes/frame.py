@@ -4,7 +4,7 @@ from ..tools import math_tools as mt
 import copy
 from ..interfaces import pgkyl_interface as pgkyl_
 from ..interfaces import flaninterface as flan_
-from ..tools import DG_tools
+from ..tools import DG_tools, fig_tools
 
 def getgrid_index(s):
     return (1*(s == 'x') + 2*(s == 'y') + 3*(s == 'z') + 4*(s == 'v') + 5*(s == 'm')) - 1
@@ -270,7 +270,8 @@ class Frame:
         norm = self.simulation.normalization.dict
         for k_, c_ in self.slicecoords.items():
             if isinstance(c_, float):
-                slicetitle += norm[k_ + 'symbol'] + '=%3.3f' % c_ + norm[k_ + 'units'] + ', '
+                fmt = fig_tools.optimize_str_format(c_)
+                slicetitle += norm[k_ + 'symbol'] + '=' + fmt%c_ + norm[k_ + 'units'] + ', '
             else:
                 slicetitle += c_ + ', '
 
