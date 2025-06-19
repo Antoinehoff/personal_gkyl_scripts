@@ -589,6 +589,22 @@ class DataParam:
                     #T is converted to joules by mass
                     return density * m*Ttot * vgB
                 default_qttes.append([name,symbol,units,field2load,receipe_gradB_hflux_s])
+                
+                # speciewise total heat flux
+                name       = 'hflux_%s%s'%(ci_,s_)
+                symbol     = r'$Q_{%s,%s}$'%(ci_,s_)
+                units      = r'J s$^{-1}$m$^{-2}$'
+                field2load = ['b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian',
+                              'phi','n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_)]
+                def receipe_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
+                    vExB = receipe_vExB(gdata_list,i=i)
+                    vgBlist = [gdata_list[0], gdata_list[1], gdata_list[2], gdata_list[3], gdata_list[7]]
+                    vgB   = receipe_vgB(vgBlist,i=i,q=q,m=m)
+                    density = pgkyl_.get_values(gdata_list[5])
+                    Ttot    = receipe_Ttots(gdata_list[6:8])
+                    #T is converted to joules by mass
+                    return density * m*Ttot * (vExB + vgB)
+                default_qttes.append([name,symbol,units,field2load,receipe_hflux_s])
 
         # Species independent quantities
 
@@ -793,12 +809,36 @@ class DataParam:
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_Wtot])
 
-        #total ExB heat flux: Q_ExB = \sum_s Q_ExB_s
         directions = ['x','y','z'] #directions array
         for i_ in range(len(directions)):
             ci_ = directions[i_] # direction of the flux component
             cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
-            ck_ = directions[np.mod(i+2,3)] # direction coord + 2
+            ck_ = directions[np.mod(i+2,3)] # direction coord + 2  
+                      
+            # total ExB particle flux: \Gamma_ExB = \sum_s \Gamma_ExB_s
+            name      = 'ExB_pflux_%s'%(ci_)
+            symbol    = r'$\Gamma_{%s}$'%(ci_)
+            units     = r's$^{-1}$m$^{-2}$'
+            field2load = []
+            for spec in species.values():
+                s_ = spec.nshort
+                field2load.append('b_%s'%cj_)
+                field2load.append('b_%s'%ck_)
+                field2load.append('Bmag')
+                field2load.append('Jacobian')
+                field2load.append('phi')
+                field2load.append('n%s'%s_)
+            def receipe_ExB_pflux(gdata_list,i=i_,species=species):
+                fout = 0.0
+                # add species dependent energies
+                k = 0
+                for spec in species.values():
+                    fout += receipe_ExB_pflux_s(gdata_list[0+k:6+k], i=i, q=spec.q, m=spec.m)
+                    k+= 6
+                return fout
+            default_qttes.append([name,symbol,units,field2load,receipe_ExB_pflux])
+            
+            #total ExB heat flux: Q_ExB = \sum_s Q_ExB_s
             name       = 'ExB_hflux_%s'%(ci_)
             symbol     = r'$Q_{%s}$'%(ci_)
             units      = r'J s$^{-1}$m$^{-2}$'
@@ -823,7 +863,103 @@ class DataParam:
                     k+= 8
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_ExB_hflux]) 
-        
+            
+            #total gradB particle flux: \Gamma_gradB = \sum_s \Gamma_gradB_s
+            name       = 'gradB_pflux_%s'%(ci_)
+            symbol     = r'$\Gamma_{\nabla B%s}$'%(ci_)
+            units      = r's$^{-1}$m$^{-2}$'
+            field2load = []
+            for spec in species.values():
+                s_ = spec.nshort
+                field2load.append('b_%s'%cj_)
+                field2load.append('b_%s'%ck_)
+                field2load.append('Bmag')
+                field2load.append('Jacobian')
+                field2load.append('Tperp%s'%s_)
+                field2load.append('n%s'%s_)
+            def receipe_gradB_pflux(gdata_list,i=i_,species=species):
+                fout = 0.0
+                # add species dependent energies
+                k = 0
+                for spec in species.values():
+                    fout += receipe_gradB_pflux_s(gdata_list[0+k:6+k], i=i, q=spec.q, m=spec.m)
+                    k+= 6
+                return fout
+            default_qttes.append([name,symbol,units,field2load,receipe_gradB_pflux])
+            
+            #total gradB heat flux: Q_gradB = \sum_s Q_gradB_s
+            name       = 'gradB_hflux_%s'%(ci_)
+            symbol     = r'$Q_{\nabla B%s}$'%(ci_)
+            units      = r'J s$^{-1}$m$^{-2}$'
+            field2load = []
+            for spec in species.values():
+                s_ = spec.nshort
+                field2load.append('b_%s'%cj_)
+                field2load.append('b_%s'%ck_)
+                field2load.append('Bmag')
+                field2load.append('Jacobian')
+                field2load.append('Tperp%s'%s_)
+                field2load.append('n%s'%s_)
+                field2load.append('Tpar%s'%s_)
+                field2load.append('Tperp%s'%s_)
+            def receipe_gradB_hflux(gdata_list,i=i_,species=species):
+                fout = 0.0
+                # add species dependent energies
+                k = 0
+                for spec in species.values():
+                    fout += receipe_gradB_hflux_s(gdata_list[0+k:8+k], i=i, q=spec.q, m=spec.m)
+                    k+= 8
+                return fout
+            default_qttes.append([name,symbol,units,field2load,receipe_gradB_hflux])
+            
+            #total particle flux: \Gamma = \sum_s \Gamma_s
+            name       = 'pflux_%s'%(ci_)
+            symbol     = r'$\Gamma_{%s}$'%(ci_)
+            units      = r's$^{-1}$m$^{-2}$'
+            field2load = []
+            for spec in species.values():
+                s_ = spec.nshort
+                field2load.append('b_%s'%cj_)
+                field2load.append('b_%s'%ck_)
+                field2load.append('Bmag')
+                field2load.append('Jacobian')
+                field2load.append('phi')
+                field2load.append('n%s'%s_)
+            def receipe_pflux(gdata_list,i=i_,species=species):
+                fout = 0.0
+                # add species dependent energies
+                k = 0
+                for spec in species.values():
+                    fout += receipe_ExB_pflux_s(gdata_list[0+k:6+k], i=i, q=spec.q, m=spec.m)
+                    k+= 6
+                return fout
+            default_qttes.append([name,symbol,units,field2load,receipe_pflux])
+            
+            #total heat flux: Q = \sum_s Q_s
+            name       = 'hflux_%s'%(ci_)
+            symbol     = r'$Q_{%s}$'%(ci_)
+            units      = r'J s$^{-1}$m$^{-2}$'
+            field2load = []
+            for spec in species.values():
+                s_ = spec.nshort
+                field2load.append('b_%s'%cj_)
+                field2load.append('b_%s'%ck_)
+                field2load.append('Bmag')
+                field2load.append('Jacobian')
+                field2load.append('phi')
+                field2load.append('n%s'%s_)
+                field2load.append('Tpar%s'%(s_))
+                field2load.append('Tperp%s'%(s_))
+            def receipe_hflux(gdata_list,i=i_,species=species):
+                fout = 0.0
+                # add species dependent energies
+                k = 0
+                for spec in species.values():
+                    fout += receipe_hflux_s(gdata_list[0+k:8+k], i=i, q=spec.q, m=spec.m)
+                    k+= 8
+                return fout
+            default_qttes.append([name,symbol,units,field2load,receipe_hflux])
+                    
         #--- Flan interface
         def receipe_flan(gdata_list): return
         name = 'flan_imp_density'

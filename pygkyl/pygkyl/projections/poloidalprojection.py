@@ -320,7 +320,7 @@ class PoloidalProjection:
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto'):
+           shading='auto', average=''):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -356,22 +356,30 @@ class PoloidalProjection:
       toproject = field_frame.values
       frame_info = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=False)
 
-    if len(fluctuation) > 0:
+    if (len(fluctuation) > 0) or (len(average) > 0):
       if favg is not None:
         toproject -= favg
       else:
         serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
-        if 'tavg' in fluctuation:
-          average = serie.get_time_average()
-          vsymbol = r'$\delta_t$'+vsymbol
-        elif 'yavg' in fluctuation:
-          average = serie.get_y_average()
-          vsymbol = r'$\delta_y$'+vsymbol
-        toproject -= average
-        if 'relative' in fluctuation:
-          toproject = 100.0 * toproject / average
-          vunits = r'\%'
-      colorMap = colorMap if colorMap else 'bwr'
+        if fluctuation:
+          if 'tavg' in fluctuation:
+            toproject -= serie.get_time_average()
+            vsymbol = vsymbol - r'$\langle$'+vsymbol+r'$\rangle_t$'
+          elif 'yavg' in fluctuation:
+            toproject -= serie.get_y_average()
+            vsymbol = vsymbol - r'$\langle$'+vsymbol+r'$\rangle_y$'
+          if 'relative' in fluctuation:
+            toproject = 100.0 * toproject / average
+            vunits = r'\%'
+          colorMap = colorMap if colorMap else 'bwr'
+        elif average:
+          if 'tavg' in average:
+            toproject = 0*toproject + serie.get_time_average()
+            vsymbol = r'$\langle$'+vsymbol+r'$\rangle_t$'
+          elif 'yavg' in average:
+            toproject = 0*toproject + serie.get_y_average()
+            vsymbol = r'$\langle$'+vsymbol+r'$\rangle_y$'
+          colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
     else:
       colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
 
