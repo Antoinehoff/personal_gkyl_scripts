@@ -364,10 +364,10 @@ class PoloidalProjection:
         if fluctuation:
           if 'tavg' in fluctuation:
             toproject -= serie.get_time_average()
-            vsymbol = vsymbol - r'$\langle$'+vsymbol+r'$\rangle_t$'
+            vsymbol = vsymbol + r' $-\langle$'+vsymbol+r'$\rangle_t$'
           elif 'yavg' in fluctuation:
             toproject -= serie.get_y_average()
-            vsymbol = vsymbol - r'$\langle$'+vsymbol+r'$\rangle_y$'
+            vsymbol = vsymbol + r' $-\langle$'+vsymbol+r'$\rangle_y$'
           if 'relative' in fluctuation:
             toproject = 100.0 * toproject / average
             vunits = r'\%'
