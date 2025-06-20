@@ -8,7 +8,7 @@ QOS="regular"
 #.Specify GPUs per node (Perlmutter has 4 GPUs per node).
 GPU_PER_NODE=4
 #.Request wall time.
-TIME="24:00:00"  # HH:MM:SS
+TIME="22:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load.

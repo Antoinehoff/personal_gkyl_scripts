@@ -8,7 +8,7 @@ NODES=1
 #.Specify GPUs per node (stellar-amd has 2):
 GPU_PER_NODE=2
 #.Request wall time
-TIME="24:00:00"  # HH:MM:SS
+TIME="22:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load
