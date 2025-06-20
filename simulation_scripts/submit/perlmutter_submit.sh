@@ -126,8 +126,15 @@ else
 fi
 
 #.Name format of output and error files.
-OUTPUT="../history/output_sf$FRAME_SUFFIX.out"
-ERROR="../history/error_sf$FRAME_SUFFIX.out"
+if [[ "$LAST_FRAME" == "detect" ]]; then
+    # Use timestamp initially, will create frame-specific links at runtime
+    OUTPUT="output_$FRAME_SUFFIX.out"
+    ERROR="error_$FRAME_SUFFIX.out"
+else
+    # We can use the specified LAST_FRAME for output names
+    OUTPUT="../history/output_sf$FRAME_SUFFIX.out"
+    ERROR="../history/error_sf$FRAME_SUFFIX.out"
+fi
 
 #.Run command - will be modified at runtime if auto-detecting
 RUNCMD="srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS $RESTART_OPT"
@@ -178,6 +185,19 @@ fi
 
 LAST_FRAME=\$(sh \$UTIL_SCRIPT .)
 
+# Create frame-specific output file links after detecting frame
+if (( LAST_FRAME >= 0 )); then
+    # Create symbolic links with frame-specific names
+    FRAME_OUTPUT="../history/output_sf_\$LAST_FRAME.out"
+    FRAME_ERROR="../history/error_sf_\$LAST_FRAME.out"
+    
+    # Create links to the actual SLURM output files
+    ln -sf "output_sf$FRAME_SUFFIX.out" "\$FRAME_OUTPUT"
+    ln -sf "error_sf$FRAME_SUFFIX.out" "\$FRAME_ERROR"
+    
+    echo "Created output links: \$FRAME_OUTPUT and \$FRAME_ERROR"
+fi
+
 # Set restart options based on detected frame
 if (( LAST_FRAME > 0 )); then
     if compgen -G "*_\$LAST_FRAME.gkyl" > /dev/null; then
@@ -221,10 +241,8 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     cp input.c history/input_sf$FRAME_SUFFIX.c
     cp $SCRIPTNAME wk/.
     mv $SCRIPTNAME history/.
-    touch history/$OUTPUT
     cd wk
     sbatch $SCRIPTNAME
-    echo "Output and error files will be in $OUTPUT and $ERROR"
 else
     echo "Operation canceled."
 fi
