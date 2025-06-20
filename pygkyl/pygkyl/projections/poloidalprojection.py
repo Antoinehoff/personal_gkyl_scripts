@@ -363,13 +363,15 @@ class PoloidalProjection:
         serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
         if fluctuation:
           if 'tavg' in fluctuation:
-            toproject -= serie.get_time_average()
+            favg = serie.get_time_average()
+            toproject -= favg
             vsymbol = vsymbol + r' $-\langle$'+vsymbol+r'$\rangle_t$'
           elif 'yavg' in fluctuation:
-            toproject -= serie.get_y_average()
+            favg = serie.get_y_average()
+            toproject -= favg
             vsymbol = vsymbol + r' $-\langle$'+vsymbol+r'$\rangle_y$'
           if 'relative' in fluctuation:
-            toproject = 100.0 * toproject / average
+            toproject = 100.0 * toproject / favg
             vunits = r'\%'
           colorMap = colorMap if colorMap else 'bwr'
         elif average:
