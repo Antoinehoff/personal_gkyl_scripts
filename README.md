@@ -16,8 +16,9 @@ A collection of personal scripts, tools, and Python modules for working with [Gk
 ## Repository Structure
 
 - `pygkyl/` — Python library for loading, analyzing, and visualizing Gkeyll simulation data.
+- `notebooks/` — Jupyter notebooks for interactive analysis and visualization of Gkeyll outputs.
 - `scripts/` — Standalone scripts for automation, data processing, and visualization.
-- `studies/` — Jupyter notebooks demonstrating analysis and visualization workflows.
+- `simulation_scripts/` — Scripts for running Gkeyll simulations and useful shell scripts and bashrc.
 
 ## Features
 
@@ -53,7 +54,7 @@ A collection of personal scripts, tools, and Python modules for working with [Gk
 ## Usage
 
 - Explore the `pygkyl` library for programmatic analysis and visualization.
-- Refer to `pygkyl/example.ipynb` for examples of `pygkyl` usage.
+- Refer to `pygkyl/notebooks/tutorial.ipynb` for a tutorial of `pygkyl` usage.
 - Use scripts in `simulation_scripts` for batch processing or automation.
 
 ## Requirements
