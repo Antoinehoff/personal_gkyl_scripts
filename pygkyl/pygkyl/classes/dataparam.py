@@ -196,6 +196,9 @@ class DataParam:
         # Remove duplicates from the file list
         file_dict['names'] = list(set(file_dict['names']))
         
+        # Sort the file keys alphabetically
+        file_dict = dict(sorted(file_dict.items()))
+        
         self.file_info_dict = file_dict
         
     @staticmethod
@@ -1039,6 +1042,9 @@ class DataParam:
                 default_units_dict[field+'colormap'] = 'inferno'
             else:
                 default_units_dict[field+'colormap'] = 'bwr'
+                
+        # Sort the dictionary by keys
+        default_units_dict = dict(sorted(default_units_dict.items()))
         
         # Return a copy of the units dictionary
         return copy.copy(default_units_dict)
