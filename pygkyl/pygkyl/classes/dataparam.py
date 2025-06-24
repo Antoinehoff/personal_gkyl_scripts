@@ -340,20 +340,25 @@ class DataParam:
                 dphidk  = np.gradient(phi, kgrid, axis=k)
                 return -(dphidj*b_k - dphidk*b_j)/Jacob/Bmag
             default_qttes.append([name,symbol,units,field2load,receipe_vExB])
+            
+        for i_ in range(len(directions)):
             for j_ in range(len(directions)):
-                cj_ = directions[j_] # direction of the flux component
+                ci_ = directions[i_] # direction of the derivative of vExB
+                cj_ = directions[j_] # direction of vExB
+                cl_ = directions[np.mod(j_+1,3)] # direction coord + 2
+                ck_ = directions[np.mod(j_+2,3)] # direction coord + 2
                 # ExB shearing rate
                 name       = 'ExB_s_%s_%s'%(ci_,cj_)
-                symbol     = r'$\partial_%s v_{E,%s}$'%(cj_,ci_)
+                symbol     = r'$\partial_%s v_{E,%s}$'%(ci_,cj_)
                 units      = r'1/s'
-                field2load = ['phi','b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                field2load = ['phi','b_%s'%cl_,'b_%s'%ck_,'Bmag','Jacobian']
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_sExB(gdata_list,i=i_,j=j_):
-                    vExBi = receipe_vExB(gdata_list,i=i)
+                    vExBj = receipe_vExB(gdata_list,j=j)
                     grids = gdata_list[0].get_grid()
-                    jgrid = grids[j][:-1]
-                    sExB  = np.gradient(vExBi, jgrid, axis=j)
+                    igrid = grids[i][:-1]
+                    sExB  = np.gradient(vExBj, igrid, axis=i)
                     return sExB
                 default_qttes.append([name,symbol,units,field2load,receipe_sExB])
 
