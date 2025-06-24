@@ -464,12 +464,12 @@ class PoloidalProjection:
 
   def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
-          pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False, timeFrame=[],
+          pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation='', timeFrame=[],
           rmFrames=True):
       colorMap = fig_tools.check_colormap(colorMap)    
       # Naming
       movieName = fieldName+'_RZ'
-      if fluctuation: movieName = 'd' + movieName
+      if len(fluctuation)>0: movieName = 'd' + movieName
       if colorScale == 'log': movieName = 'log'+movieName
       movieName = moviePrefix + movieName
       movieName+='_xlim_%2.2d_%2.2d'%(xlim[0],xlim[1]) if xlim else ''

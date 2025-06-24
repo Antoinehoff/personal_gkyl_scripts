@@ -40,59 +40,67 @@ plt.rcParams.update({'font.size': 14})
 
 import os, re
     
-def plot_1D_time_evolution(simulation,cdirection,ccoords,fieldnames='',
-                           twindow=[],space_time=False, cmap='inferno',
-                           fluctuation=False, plot_type='pcolormesh',
-                           xlim=[], ylim=[], clim=[], figout=[]):
-    if not isinstance(twindow,list): twindow = [twindow]
+def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
+                           twindow=[], space_time=False, cmap='inferno',
+                           fluctuation='', plot_type='pcolormesh',
+                           xlim=[], ylim=[], clim=[], figout=[], colorscale='linear'):
+    if not isinstance(twindow, list): twindow = [twindow]
     if clim: clim = [clim] if not isinstance(clim[0], list) else clim
     cmap0 = cmap
-    fields,fig,axs = fig_tools.setup_figure(fieldnames)
-    kf = 0 # field counter
-    for ax,field in zip(axs,fields):
-        x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourier_y =\
-              data_utils.get_1xt_diagram(simulation,field,cdirection,ccoords,tfs=twindow)
-        if fluctuation:
-            average_data = np.mean(values, axis=1)
-            vlabel = r'$\delta$' + vlabel
-            for it in range(len(t)) :
-                values[:,it] = (values[:,it] - average_data[:])
-            if fluctuation == "relative":
-                values = 100.0*values/average_data
-                vlabel = re.sub(r'\(.*?\)', '', vlabel)
-                vlabel = vlabel + ' (\%)'
+    fields, fig, axs = fig_tools.setup_figure(fieldnames)
+    kf = 0  # field counter
+    for ax, field in zip(axs, fields):
+        x, t, values, xlabel, tlabel, vlabel, vunits, slicetitle, fourier_y = \
+            data_utils.get_1xt_diagram(simulation, field, cdirection, ccoords, tfs=twindow)
+        if len(fluctuation) > 0:
+            if 'tavg' in fluctuation:
+                average_data = np.mean(values, axis=1)
+                vlabel = r'$\delta$' + vlabel
+                for it in range(len(t)) :
+                    values[:,it] = (values[:,it] - average_data[:])
+                if 'relative' in fluctuation:
+                    values = 100.0*values/average_data
+                    vlabel = re.sub(r'\(.*?\)', '', vlabel)
+                    vlabel = vlabel + ' (\%)'
+            else:
+                raise ValueError("Fluctuation type '%s' not recognized. Use 'tavg' or 'tavg_relative'." % fluctuation)
         # handle fourier plot
-        colorscale = 'linear' if not fourier_y else 'log'
+        # Use the colorscale argument, override to 'log' if fourier_y
+        cs = 'log' if fourier_y else colorscale
         if space_time:
-            if ((simulation.data_param.field_info_dict[field+'colormap']=='bwr' or cmap0=='bwr' or fluctuation)
+            if ((simulation.data_param.field_info_dict[field + 'colormap'] == 'bwr' or cmap0 == 'bwr' or len(fluctuation) > 0)
                 and not fourier_y):
                 cmap = 'bwr'
-                vmax = np.max(np.abs(values)) 
+                vmax = np.max(np.abs(values))
                 vmin = -vmax
             else:
                 cmap = cmap0
-                vmax = np.max(np.abs(values)) 
+                vmax = np.max(np.abs(values))
                 vmin = 0.0
-            vmin = np.power(10,np.log10(vmax)-4) if fourier_y else vmin
-            values = np.clip(values, vmin, None) if fourier_y else values 
-            # make the plot
+            if cs == 'log' or fourier_y:
+                # For log scale, clip values and set vmin > 0
+                vmin = np.power(10, np.log10(vmax) - 4) if vmax > 0 else 1e-10
+                values = np.clip(values, vmin, None)
             clim_ = clim[kf] if clim else None
-            fig = fig_tools.plot_2D(fig,ax,x=x,y=t,z=values, xlim=xlim, ylim=ylim, clim=clim_,
-                              xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
-                              cmap=cmap, vmin=vmin, vmax=vmax, colorscale=colorscale, plot_type=plot_type)
+            fig = fig_tools.plot_2D(
+                fig, ax, x=x, y=t, z=values, xlim=xlim, ylim=ylim, clim=clim_,
+                xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
+                cmap=cmap, vmin=vmin, vmax=vmax, colorscale=cs, plot_type=plot_type
+            )
             figout.append(fig)
         else:
             norm = plt.Normalize(min(t), max(t))
             colormap = cm.viridis  # You can choose any colormap
             for it in range(len(t)):
-                ax.plot(x,values[:,it],label=r'$t=%2.2e$ (ms)'%(t[it]),
+                ax.plot(x, values[:, it], label=r'$t=%2.2e$ (ms)' % (t[it]),
                         color=colormap(norm(t[it])))
             # Add a colorbar to the figure
-            sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm);sm.set_array([])
+            sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm)
+            sm.set_array([])
             cbar = fig.colorbar(sm, ax=ax)
             fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2], xlim=xlim, ylim=ylim, figout=figout,
                                     xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar)
-        kf += 1 # field counter
+        kf += 1  # field counter
         
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             time_frames=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
