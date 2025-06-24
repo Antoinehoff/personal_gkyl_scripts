@@ -77,6 +77,11 @@ class TimeSerie:
                     frame.slice(self.cut_dir, self.cut_coord)
                 self.frames.append(frame)
                 self.time.append(frame.time)
+        if len(self.frames) > 0:
+            self.vsymbol = self.frames[0].vsymbol
+            self.vunits = self.frames[0].vunits
+            self.gsymbols = self.frames[0].gsymbols
+            self.gunits = self.frames[0].gunits
                 
     def init_from_frames(self, frames):
         '''
@@ -95,19 +100,13 @@ class TimeSerie:
         return copy.deepcopy(self.time), copy.deepcopy(values)
     
     def get_time_average(self):
-        '''
-        Get the time average of the time serie
-        '''
         v_tavg = self.frames[0].values
-        # time = self.frames[0].time
-        # for frame in self.frames[1:]:
-        #     dt = frame.time - time
-        #     v_tavg += frame.values * dt
-        #     time = frame.time
-        # v_tavg /= time - self.frames[0].time
+        time = self.frames[0].time
         for frame in self.frames[1:]:
-            v_tavg += frame.values
-        v_tavg /= len(self.frames)    
+            dt = frame.time - time
+            v_tavg += frame.values * dt
+            time = frame.time
+        v_tavg /= time - self.frames[0].time  
         return v_tavg
     
     def get_y_average(self, output_plane='xz', cut_coord=0):
@@ -133,7 +132,56 @@ class TimeSerie:
         for frame in self.frames:
             frame.slice(cut_dir, cut_coord)
             
+    def average(self, averageType='tavg'):
+        '''
+        Update the time serie with the average
+        averageType can be 'tavg' or 'yavg'.
+        '''
+        # Get the average
+        if 'tavg' in averageType:
+            favg = self.get_time_average()
+            self.vsymbol = r'\langle' + self.vsymbol + r'\rangle_t'
+        elif 'yavg' in averageType:
+            favg = self.get_y_average()
+            self.vsymbol = r'\langle' + self.vsymbol + r'\rangle_y'
+        else:
+            raise ValueError("averageType must contain 'tavg' or 'yavg'")
+        
+        # Update the values of the frames
+        for i in range(len(self.frames)):
+            self.frames[i].values = favg
 
+    def fluctuations(self,fluctuationType='',favg=None):
+        '''
+        Update the time serie with the fluctuations
+        fluctuationType can be 'tavg', 'yavg' + 'relative' (optional).
+        '''
+        # Get the average
+        if favg is None:
+            if 'tavg' in fluctuationType:
+                favg = self.get_time_average()
+            elif 'yavg' in fluctuationType:
+                favg = self.get_y_average()
+            else:
+                raise ValueError("fluctuationType must contain 'tavg' or 'yavg'")
+            
+        # Compute the fluctuations
+        for i in range(len(self.frames)):
+            self.frames[i].values = self.frames[i].values - favg
+            if 'relative' in fluctuationType:
+                self.frames[i].values = 100.0 * self.frames[i].values / favg
+                # Avoid division by zero
+                self.frames[i].values[np.where(favg == 0.0)] = 0.0
+                
+        if 'tavg' in fluctuationType:
+            self.vsymbol = self.vsymbol + r' $-\langle$'+self.vsymbol+r'$\rangle_t$'
+        elif 'yavg' in fluctuationType:
+            self.vsymbol = self.vsymbol + r' $-\langle$'+self.vsymbol+r'$\rangle_y$'
+            
+        if 'relative' in fluctuationType:
+            self.vsymbol = r'(' + self.vsymbol + r') $/\langle$'+self.frames[0].vsymbol+r'$\rangle_y$'
+            self.vunits = r'\%'
+          
     def free_values(self):
         '''
         Free the values of the time serie

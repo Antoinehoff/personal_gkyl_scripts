@@ -368,3 +368,18 @@ def optimize_str_format(value):
             return f'{value:.2f}'
     else:
         return str(value)
+    
+def check_colormap(colormap):
+    """
+    Check if the provided colormap is valid.
+    Returns the colormap if valid, otherwise returns False.
+    """
+    if isinstance(colormap, str):
+        try:
+            return cm.get_cmap(colormap)
+        except ValueError:
+            return False
+    elif isinstance(colormap, mcolors.Colormap):
+        return colormap
+    else:
+        return False

@@ -342,13 +342,14 @@ class PoloidalProjection:
         climInset: Color limits for the inset. (optional)
         colorScale: Color scale. (default: 'linear')
     '''
+    colorMap = fig_tools.check_colormap(colorMap)
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(timeFrame, list):
-      avg_window = timeFrame
+      avg_window = timeFrame.copy()
       timeFrame = timeFrame[-1]
     else:
       avg_window = [timeFrame]
-    
+
     with Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True) as field_frame:
       time = field_frame.time
       vsymbol = field_frame.vsymbol
@@ -357,31 +358,16 @@ class PoloidalProjection:
       frame_info = Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=False)
 
     if (len(fluctuation) > 0) or (len(average) > 0):
-      if favg is not None:
-        toproject -= favg
-      else:
-        serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
-        if fluctuation:
-          if 'tavg' in fluctuation:
-            favg = serie.get_time_average()
-            toproject -= favg
-            vsymbol = vsymbol + r' $-\langle$'+vsymbol+r'$\rangle_t$'
-          elif 'yavg' in fluctuation:
-            favg = serie.get_y_average()
-            toproject -= favg
-            vsymbol = vsymbol + r' $-\langle$'+vsymbol+r'$\rangle_y$'
-          if 'relative' in fluctuation:
-            toproject = 100.0 * toproject / favg
-            vunits = r'\%'
-          colorMap = colorMap if colorMap else 'bwr'
-        elif average:
-          if 'tavg' in average:
-            toproject = 0*toproject + serie.get_time_average()
-            vsymbol = r'$\langle$'+vsymbol+r'$\rangle_t$'
-          elif 'yavg' in average:
-            toproject = 0*toproject + serie.get_y_average()
-            vsymbol = r'$\langle$'+vsymbol+r'$\rangle_y$'
-          colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
+      serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
+      if fluctuation:
+        serie.fluctuations(fluctuationType=fluctuation,favg=favg)
+        colorMap = colorMap if colorMap else 'bwr'
+      elif average:
+        serie.average(averageType=average)
+        colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
+      toproject = serie.frames[-1].values
+      vsymbol = serie.vsymbol
+      vunits = serie.vunits
     else:
       colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
 
@@ -476,11 +462,11 @@ class PoloidalProjection:
     else:
         plt.show()
 
-  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap =None, inset=True,
+  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
           pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation=False, timeFrame=[],
           rmFrames=True):
-    
+      colorMap = fig_tools.check_colormap(colorMap)    
       # Naming
       movieName = fieldName+'_RZ'
       if fluctuation: movieName = 'd' + movieName
@@ -495,7 +481,7 @@ class PoloidalProjection:
       
       timeFrames = timeFrame if not timeFrames else timeFrames
 
-      if fluctuation:
+      if 'tavg' in fluctuation:
         with TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=timeFrames, load=True) \
           as field_frames:
             favg = field_frames.get_time_average()
