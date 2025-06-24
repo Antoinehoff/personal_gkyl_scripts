@@ -355,7 +355,7 @@ class DataParam:
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_sExB(gdata_list,i=i_,j=j_):
-                    vExBj = receipe_vExB(gdata_list,j=j)
+                    vExBj = receipe_vExB(gdata_list,i=j)
                     grids = gdata_list[0].get_grid()
                     igrid = grids[i][:-1]
                     sExB  = np.gradient(vExBj, igrid, axis=i)
