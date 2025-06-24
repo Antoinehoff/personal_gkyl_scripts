@@ -73,7 +73,6 @@ while getopts ":q:n:t:r:N:d:a:h" opt; do
     esac
 done
 
-
 #.AUXILIARY SLURM VARIABLES
 #.Total number of cores/tasks/MPI processes.
 NTASKS_PER_NODE=$GPU_PER_NODE
@@ -115,30 +114,31 @@ fi
 if (( LAST_FRAME >= 0 )); then
     echo "Using specified restart frame: $LAST_FRAME"
     RESTART_OPT="-r $LAST_FRAME"
-    FRAME_SUFFIX="_$LAST_FRAME"
 else
     echo "Will auto-detect last frame at runtime"
     RESTART_OPT=""
-    # Use timestamp for unique naming to avoid overwrites
-    TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-    FRAME_SUFFIX="_$TIMESTAMP"
     LAST_FRAME="detect"
 fi
 
-#.Name format of output and error files.
-if [[ "$LAST_FRAME" == "detect" ]]; then
-    # Use timestamp initially, will create frame-specific links at runtime
-    OUTPUT="output_$FRAME_SUFFIX.out"
-    ERROR="error_$FRAME_SUFFIX.out"
-else
-    # We can use the specified LAST_FRAME for output names
-    OUTPUT="../history/output_sf$FRAME_SUFFIX.out"
-    ERROR="../history/error_sf$FRAME_SUFFIX.out"
-fi
+# Use timestamp for unique naming to avoid overwrites
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+FRAME_SUFFIX="$TIMESTAMP"
+
+# Use timestamp initially, will create frame-specific links at runtime
+INPUT="input_$FRAME_SUFFIX.c"
+SLURM_INPUT="slurm_script_$FRAME_SUFFIX.sh"
+OUTPUT="output_$FRAME_SUFFIX.out"
+ERROR="error_$FRAME_SUFFIX.out"
+
+#.Run time option.
+# get time in seconds
+IFS=':' read -r h m s <<< "$TIME"
+seconds=$((10#$h * 3600 + 10#$m * 60 + 10#$s))
+RUNTIME_OPT="-o max_run_time=$seconds"
 
 #.Run command - will be modified at runtime if auto-detecting
 RUNCMD="srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS $RESTART_OPT"
-SCRIPTNAME="slurm_script_sf$FRAME_SUFFIX.sh"
+SCRIPTNAME="slurm_script_$FRAME_SUFFIX.sh"
 # Generate the SLURM script
 cat <<EOT > $SCRIPTNAME
 #!/bin/bash -l
@@ -185,18 +185,10 @@ fi
 
 LAST_FRAME=\$(sh \$UTIL_SCRIPT .)
 
-# Create frame-specific output file links after detecting frame
-if (( LAST_FRAME >= 0 )); then
-    # Create symbolic links with frame-specific names
-    FRAME_OUTPUT="../history/output_sf_\$LAST_FRAME.out"
-    FRAME_ERROR="../history/error_sf_\$LAST_FRAME.out"
-    
-    # Create links to the actual SLURM output files
-    ln -sf "output_sf$FRAME_SUFFIX.out" "\$FRAME_OUTPUT"
-    ln -sf "error_sf$FRAME_SUFFIX.out" "\$FRAME_ERROR"
-    
-    echo "Created output links: \$FRAME_OUTPUT and \$FRAME_ERROR"
-fi
+# Create links to the actual SLURM output files
+ln -sf "../wk/output_$FRAME_SUFFIX.out" "../history/output_sf_\$LAST_FRAME.out"
+ln -sf "../wk/error_$FRAME_SUFFIX.out" "../history/error_sf_\$LAST_FRAME.out"
+ln -sf "../wk/input_$FRAME_SUFFIX.c" "../history/input_sf_\$LAST_FRAME.c"
 
 # Set restart options based on detected frame
 if (( LAST_FRAME > 0 )); then
@@ -212,7 +204,7 @@ else
     RESTART_OPT=""
 fi
 
-srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS \$RESTART_OPT
+srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS \$RESTART_OPT $RUNTIME_OPT
 exit 0
 EOT
 else
@@ -238,9 +230,8 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
         make
     fi
     mkdir -p history
-    cp input.c history/input_sf$FRAME_SUFFIX.c
-    cp $SCRIPTNAME wk/.
-    mv $SCRIPTNAME history/.
+    cp input.c wk/input_$FRAME_SUFFIX.c
+    mv $SCRIPTNAME wk/.
     cd wk
     sbatch $SCRIPTNAME
 else
