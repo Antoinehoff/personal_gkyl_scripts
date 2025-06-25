@@ -42,7 +42,7 @@ import os, re
     
 def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
                            twindow=[], space_time=False, cmap='inferno',
-                           fluctuation='', plot_type='pcolormesh',
+                           fluctuation='', plot_type='pcolormesh', yscale='linear',
                            xlim=[], ylim=[], clim=[], figout=[], colorscale='linear'):
     if not isinstance(twindow, list): twindow = [twindow]
     if clim: clim = [clim] if not isinstance(clim[0], list) else clim
@@ -99,7 +99,7 @@ def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
             sm.set_array([])
             cbar = fig.colorbar(sm, ax=ax)
             fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2], xlim=xlim, ylim=ylim, figout=figout,
-                                    xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar)
+                                    xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar, yscale=yscale)
         kf += 1  # field counter
         
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
