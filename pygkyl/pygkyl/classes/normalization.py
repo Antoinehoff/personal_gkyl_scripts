@@ -302,8 +302,8 @@ class Normalization:
         - 'temperatures': Normalizes all temperature components (Tpare, Tperpe, Tpari, Tperpi)
         - 'fluid velocities': Normalizes both parallel electron and ion velocities (upare, upari)
 
-        Note: you can setup a custom normalization using the set_normalization routine, e.g.
-                simulation.set_normalization(
+        Note: you can setup a custom normalization using the normalization.change routine, e.g.
+                simulation.normalization.change(
                     key='ni', scale=ion.n0, shift=0, symbol=r'$n_i/n_0$', units=''
                     )
               sets a normalization of the ion density to n0
