@@ -94,12 +94,12 @@ class Normalization:
             units  = ''
 
         #-- Length scale
-        elif norm in ['rho', 'minor radius']:
+        elif norm in ['rho', 'minor radius','x/rho']:
             scale  = self.simulation.geom_param.a_mid
             shift  = (self.simulation.geom_param.x_LCFS - self.simulation.geom_param.a_mid) / scale
             symbol = r'$r/a$'
             units  = ''
-        elif norm in ['major radius']:
+        elif norm in ['major radius','x/R']:
             scale  = self.simulation.geom_param.R_axis
             shift  = 0
             for spec in self.simulation.species.values():
@@ -108,7 +108,7 @@ class Normalization:
                 elif key == 'gradlogT%s'%spec.nshort:
                     symbol = r'$R/L_{T%s}$'%spec.nshort
             units  = ''
-        elif norm in ['x/rho', 'rho_L', 'Larmor radius']:
+        elif norm in ['x/rho_i', 'rho_L', 'Larmor radius', 'y/rho_i']:
             scale  = ion.rho
             shift  = 0
             symbol = r'$%s/\rho_{0i}$' % key
@@ -125,12 +125,12 @@ class Normalization:
             units  = ''
             
         #-- Wavenumber normalization
-        elif norm in ['rho_i']:
+        elif norm in ['ky*rho_i']:
             scale  = 1.0/self.simulation.species['ion'].rho
             shift  = 0
             symbol = r'$%s_{%s} \rho_{0i}$' %(key[0],key[-1])
             units  = ''
-        elif norm in ['rho_e']:
+        elif norm in ['ky*rho_e']:
             scale  = 1.0/self.simulation.species['elc'].rho
             shift  = 0
             symbol = r'$%s \rho_{0e}$' % key

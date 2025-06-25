@@ -421,13 +421,21 @@ class Frame:
         Ny = self.values.shape[1]
         y = self.grids[1]
         dy = (y[1] - y[0]) * self.simulation.normalization.dict['yscale']
-        ky = np.fft.rfftfreq(Ny, d=dy)
-        Nky = len(ky)
+        Ly = (y[-1] - y[0]) * self.simulation.normalization.dict['yscale']
+        Nky = Ny // 2 + 1
+        kymin = 2 * np.pi / Ly
+        kymax = Nky * 2 * np.pi / Ly
+        ky =  np.linspace(kymin, kymax, Nky)
         ky = mt.create_uniform_array(ky, Nky + 1)
         ky = ky[1:]
-        fft_ky = fft_ky[:, 1:, :]
+        fft_ky = fft_ky[:, 1:, :] # remove the zero frequency component
 
         self.values = np.abs(fft_ky)
+        # normalize the values
+        self.values /= np.max(self.values[:])
+        # update the field labels
+        self.vunits = 'a.u.'
+        
         gname = 'ky'
         self.grids[1] = ky/self.simulation.normalization.dict[gname + 'scale']
         self.gnames[1] = gname
