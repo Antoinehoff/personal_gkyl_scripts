@@ -38,12 +38,12 @@ class TimeSerie:
         # subname = self.simulation.normalization.dict[fieldname+'compo'][0]
         subname = self.simulation.data_param.field_info_dict[fieldname+'compo'][0]
         self.filename = self.simulation.data_param.file_info_dict[subname + 'file']
-        if load: self.load()
+        if load: 
+            self.load()
+            if fourier_y:
+                for frame in self.frames:
+                    frame.fourier_y()
         elif frames is not None: self.init_from_frames(frames)
-        
-        if fourier_y:
-            for frame in self.frames:
-                frame.fourier_y()
         
     def __enter__(self):
         return self
