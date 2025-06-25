@@ -57,9 +57,6 @@ struct gk_app_ctx {
 static double r_x(double x, double a_mid, double x_inner);
 static double qprofile(double r, double R_axis);
 static void zero_func(double t, const double *xn, double *fout, void *ctx);
-static void density_init(double t, const double *xn, double *fout, void *ctx);
-static void temp_elc(double t, const double *xn, double *fout, void *ctx);
-static void temp_ion(double t, const double *xn, double *fout, void *ctx);
 static void nuElc(double t, const double *xn, double *fout, void *ctx);
 static void nuIon(double t, const double *xn, double *fout, void *ctx);
 static void mapc2p(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx);
@@ -897,47 +894,6 @@ double gradr(double r, double theta, void *ctx)
 void zero_func(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
 {
   fout[0] = 0.0;
-}
-
-// Density initial condition (like TCV exp profile)
-void density_init(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-  struct gk_app_ctx *app = ctx;
-  double n0 = 5e19;
-  double x0 = -0.03;
-  double c1 = 0.5;
-  double c2 = 8.0;
-  double c3 = 0.005;
-  fout[0] = n0*(c1*(1.+tanh(c2*(-10*(x+x0))))+c3);
-}
-
-// Electron temperature initial conditions
-void temp_elc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-  struct gk_app_ctx *app = ctx;
-  double T0 = 200 * GKYL_ELEMENTARY_CHARGE;
-  double x0 = -0.03; // position of the transition region
-  double c0 = 1.3; // multiplicative factor
-  double c1 = 0.5; // control the temperature at the _core
-  double c2 = 8.0; // control the width of the transition region
-  double c3 = 0.1; // control the temperature at the SOL
-  fout[0] = c0*T0*(c1*(1.+tanh(c2*(-10*(x+x0))))+c3);
-}
-
-// Ion temperature initial conditions
-void temp_ion(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  double x = xn[0], z = xn[2];
-  struct gk_app_ctx *app = ctx;
-  double T0 = 200 * GKYL_ELEMENTARY_CHARGE;
-  double x0 = -0.04; // position of the transition region
-  double c0 = 1.0; // multiplicative factor
-  double c1 = 0.5; // control the temperature at the _core
-  double c2 = 3.0; // control the width of the transition region
-  double c3 = 0.2; // control the temperature at the SOL
-  fout[0] = c0*T0*(c1*(1.+tanh(c2*(-10*(x+x0))))+c3);
 }
 
 // Collision frequencies.
