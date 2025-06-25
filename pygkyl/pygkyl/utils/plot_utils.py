@@ -241,10 +241,8 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
     val_out.append(np.squeeze(plot_data))
 
 def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], fieldnames=['phi'],
-                  cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = False,
-                  movieprefix='', plot_type='pcolormesh', 
-                  colorScale='lin', scaleFac=1.0, logScaleFloor=1e-3,
-                  polProj=None):
+                  cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = '',
+                  movieprefix='', plot_type='pcolormesh', fourier_y=False,colorScale='lin'):
     # Create a temporary folder to store the movie frames
     movDirTmp = 'movie_frames_tmp'
     os.makedirs(movDirTmp, exist_ok=True)
@@ -254,29 +252,10 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
     else:
         dataname = ''
         for f_ in fieldnames:
-            dataname += 'd'+f_+'_' if fluctuation else f_+'_'
-    if 'RZ' in cut_dir:
-        vlims, vlims_SOL = data_utils.get_minmax_values(simulation, fieldnames, time_frames)
-        if cmap == 'inferno': 
-            vlims[0] = np.max([0,vlims[0]])
-            vlims_SOL[0] = np.max([0,vlims_SOL[0]])
-        elif cmap == 'bwr':
-            vmax = np.max(np.abs(vlims))
-            vlims = [-vmax, vmax]
-            vmax_SOL = np.max(np.abs(vlims_SOL))
-            vlims_SOL = [-vmax_SOL, vmax_SOL]
+            dataname += 'd'+f_+'_' if len(fluctuation)>0 else f_+'_'
 
-        # Harvest a possible number with the cut_dir
-        nzInterp = cut_dir.replace('RZ','')
-        nzInterp = int(nzInterp) if nzInterp else 32
-        # Setup poloidal projection plot
-        if not polProj:
-            polProj = PoloidalProjection()
-            polProj.setup(simulation, fieldName=fieldnames, timeFrame=time_frames, nzInterp=nzInterp)
-
-    else:
-        movie_frames, vlims = data_utils.get_2D_movie_data(simulation, cut_dir, cut_coord, 
-                                                            time_frames, fieldnames, fluctuation) 
+    movie_frames, vlims = data_utils.get_2D_movie_time_serie(
+        simulation, cut_dir, cut_coord, time_frames, fieldnames, fluctuation,fourier_y) 
     
     total_frames = len(time_frames)
     frameFileList = []
@@ -292,30 +271,23 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
         else:
             clim = clim if clim else vlims
 
-        if 'RZ' in cut_dir:
-            polProj.plot(fieldName=fieldnames, timeFrame=tf, outFilename=frameFileName,
-                         colorMap = cmap, doInset=True, scaleFac=scaleFac,
-                         colorScale=colorScale, logScaleFloor=logScaleFloor,
-                         xlim=xlim, ylim=ylim, clim=clim, climInset=vlims_SOL)
-            cutname = ['RZ'+str(nzInterp)]
-        else:
-            plot_2D_cut(
-                simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
-                cmap=cmap, plot_type=plot_type,
-                xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
-                cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
-            )
-            fig = figout[0]
-            fig.tight_layout()
-            fig.savefig(frameFileName)
-            plt.close()
-            cutout=cutout[0]
-            cutname = []
-            for key in cutout:
-                if isinstance(cutout[key], float):
-                    cutname.append(key+('=%2.2f'%cutout[key]))
-                elif isinstance(cutout[key], str):
-                    cutname.append(key+cutout[key])
+        plot_2D_cut(
+            simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
+            cmap=cmap, plot_type=plot_type, colorscale=colorScale, fourier_y=fourier_y,
+            xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
+            cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
+        )
+        fig = figout[0]
+        fig.tight_layout()
+        fig.savefig(frameFileName)
+        plt.close()
+        cutout=cutout[0]
+        cutname = []
+        for key in cutout:
+            if isinstance(cutout[key], float):
+                cutname.append(key+('=%2.2f'%cutout[key]))
+            elif isinstance(cutout[key], str):
+                cutname.append(key+cutout[key])
 
         # Update progress
         progress = f"Processing frames: {i}/{total_frames}... "
