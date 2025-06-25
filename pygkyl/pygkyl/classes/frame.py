@@ -433,6 +433,12 @@ class Frame:
         self.gnames[1] = gname
         self.gsymbols[1] = self.simulation.normalization.dict[gname + 'symbol']
         self.gunits[1] = self.simulation.normalization.dict[gname + 'units']
+        
+        # We average the jacobian in the y direction
+        self.Jacobian = np.mean(self.Jacobian, axis=1)
+        # And replicate it to match the new shape of values
+        self.Jacobian = np.repeat(self.Jacobian[:, np.newaxis, :],
+                                  self.values.shape[1], axis=1)
 
         self.refresh(values=False)
         
