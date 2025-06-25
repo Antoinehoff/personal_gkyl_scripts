@@ -431,8 +431,6 @@ class Frame:
         fft_ky = fft_ky[:, 1:, :] # remove the zero frequency component
 
         self.values = np.abs(fft_ky)
-        # normalize the values
-        self.values /= np.max(self.values[:])
         # update the field labels
         self.vunits = 'a.u.'
         
