@@ -273,7 +273,7 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
 
         plot_2D_cut(
             simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,
-            cmap=cmap, plot_type=plot_type, colorscale=colorScale, fourier_y=fourier_y,
+            cmap=cmap, plot_type=plot_type, colorscale=colorScale,
             xlim=xlim, ylim=ylim, clim=clim, fluctuation=fluctuation,
             cutout=cutout, figout=figout, frames_to_plot=movie_frames[i-1]
         )
