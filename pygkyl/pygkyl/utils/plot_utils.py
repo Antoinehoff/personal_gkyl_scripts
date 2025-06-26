@@ -737,22 +737,23 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     fieldname = 'bflux_total_total_ntot' if balancetype == 'particle' else 'bflux_total_total_Htot'
     loss, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
     
+    # Replace J/s to W or particle by 1
+    vunits = vunits.replace('J/s', 'W')
+    vunits = vunits.replace('particles', '1')
+    
     balance = source - loss - intvar
     
     nt = len(time)
     balance_avg = np.mean(balance[-nt//4:])
         
     fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
-    ax.plot(time, balance, label='Balance')
     if showall:
         ax.plot(time, source, label=r'$\Gamma_{\text{src}}$' if balancetype == 'particle' else r'$P_{\text{src}}$')
         ax.plot(time, loss, label=r'$\Gamma_{\text{loss}}$' if balancetype == 'particle' else r'$P_{\text{loss}}$')
         ax.plot(time, intvar, label=r'$\partial H / \partial t$' if balancetype == 'energy' else r'$\partial N / \partial t$')
+    ax.plot(time, balance, 'k', label='Balance')
     # Add horizontal line at average balance value
-    ax.plot([time[-nt//4], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Average: %2.2e %s' % (balance_avg, vunits))
-    
-    # Replace J/s to W
-    vunits = vunits.replace('J/s', 'W')
+    ax.plot([time[-nt//4], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Avg %2.2e %s' % (balance_avg, vunits))
     
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
     ylabel = r'$\Gamma_{\text{src}} - \Gamma_{\text{loss}} - \partial N / \partial t$' if  balancetype == 'particle' else \
