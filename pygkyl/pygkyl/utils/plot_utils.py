@@ -745,7 +745,7 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
     ax.plot(time, balance, label='Balance')
     # Add horizontal line at average balance value
-    ax.plot([time[-nt//4:], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Average: %2.2e %s' % (balance_avg, vunits))
+    ax.plot([time[-nt//4], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Average: %2.2e %s' % (balance_avg, vunits))
     
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
     ylabel = r'$\Gamma_{\text{src}} - \Gamma_{\text{loss}} - \partial N / \partial t$' if  balancetype == 'particle' else \
