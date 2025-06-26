@@ -714,7 +714,7 @@ def plot_nodes(simulation):
     plt.axis('equal')
     plt.show()
 
-def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[]):
+def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False):
     from scipy.ndimage import gaussian_filter1d    
     def get_int_mom_data(simulation, fieldname):
         try:
@@ -744,6 +744,10 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
         
     fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
     ax.plot(time, balance, label='Balance')
+    if showall:
+        ax.plot(time, source, label=r'$\Gamma_{\text{src}}$' if balancetype == 'particle' else r'$P_{\text{src}}$')
+        ax.plot(time, loss, label=r'$\Gamma_{\text{loss}}$' if balancetype == 'particle' else r'$P_{\text{loss}}$')
+        ax.plot(time, intvar, label=r'$\partial H / \partial t$' if balancetype == 'energy' else r'$\partial N / \partial t$')
     # Add horizontal line at average balance value
     ax.plot([time[-nt//4], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Average: %2.2e %s' % (balance_avg, vunits))
     
