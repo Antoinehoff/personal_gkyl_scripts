@@ -725,3 +725,37 @@ def plot_nodes(simulation):
 
     plt.axis('equal')
     plt.show()
+
+def plot_balance(simulation, balancetype='particle', title=True, figout=[]):
+    def get_int_mom_data(simulation, fieldname):
+        try:
+            intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
+        except KeyError:
+            raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
+        return intmom.values, intmom.time
+    
+    fieldname = 'src_ntot' if balancetype == 'particle' else 'src_Htot'
+    source, time = get_int_mom_data(simulation, fieldname)
+    
+    fieldname = 'Wtot' if balancetype == 'energy' else 'ntot'
+    intvar, time = get_int_mom_data(simulation, fieldname)
+    
+    fieldname = 'bflux_total_total_ntot' if balancetype == 'particle' else 'bflux_total_total_Htot'
+    loss, time = get_int_mom_data(simulation, fieldname)
+    
+    balance = source - loss - intvar
+    
+    nt = len(time)
+    balance_avg = np.mean(balance[-nt/4:])
+        
+    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
+    ax.plot(time, balance, label='Balance')
+    # Add horizontal line at average balance value
+    ax.axhline(y=balance_avg, color='gray', linestyle='--', label='Average Balance: {:.2e}'.format(balance_avg))
+    xlabel = r'$t$ [%s]' % intmom.tunits
+    ylabel = r'$\Gamma_{\text{src}} - \Gamma_{\text{loss}} - \partial N / \partial t$' if  balancetype == 'particle' else \
+             r'$P_{\text{src}} - P_{\text{loss}} - \partial H / \partial t$'
+    title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
+        
+    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
+                            title=title_, legend=True)
