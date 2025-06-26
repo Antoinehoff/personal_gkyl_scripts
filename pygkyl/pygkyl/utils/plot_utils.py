@@ -466,7 +466,7 @@ def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False, 
         if not integrate: ylabel = ylabel+'/s'
         fig_tools.finalize_plot(ax, fig, xlabel=r'$t$ ($\mu$s)', ylabel=ylabel, figout=figout, legend=True)
 
-def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_src_input=False,figout=[],twindow=[]):
+def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,figout=[],twindow=[]):
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -483,18 +483,6 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,plot_
                 int_mom.values = int_mom.values[it0:it1]
             # Plot
             ax.plot(int_mom.time,int_mom.values,label=int_mom.symbol)
-        # plot eventually the input power for comparison
-        if subfield in ['Wtot','ntot'] and plot_src_input:
-            src_input = simulation.get_source_power() if subfield == 'Wtot' else simulation.get_source_particle()
-            if subfield == 'Wtot': src_input /= simulation.normalization.dict['Wtotscale']
-            if ddt:
-                ddtWsrc_t = src_input*np.ones_like(int_mom.time)
-                ax.plot(int_mom.time,ddtWsrc_t,'--k',label='Source input')
-            else:
-                # plot the accumulate energy from the source
-                Wsrc_t = int_mom.values[0] + src_input*simulation.normalization.dict['tscale']*int_mom.time
-                ax.plot(int_mom.time,Wsrc_t,'--k',label='Source input')
-            
         # add labels and show legend
         fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, 
                                 xlim=xlim, ylim=ylim, legend=True)
@@ -727,6 +715,7 @@ def plot_nodes(simulation):
     plt.show()
 
 def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[]):
+    from scipy.ndimage import gaussian_filter1d    
     def get_int_mom_data(simulation, fieldname):
         try:
             intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
@@ -739,6 +728,11 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     
     fieldname = 'Wtot' if balancetype == 'energy' else 'ntot'
     intvar, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
+    # smooth the intvar to remove oscillations at restart
+    intvar = gaussian_filter1d(intvar,25)
+    time = gaussian_filter1d(time,25)
+    # scale time to get seconds
+    intvar = np.gradient(intvar, time*simulation.normalization.dict['tscale'])
     
     fieldname = 'bflux_total_total_ntot' if balancetype == 'particle' else 'bflux_total_total_Htot'
     loss, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
@@ -751,7 +745,8 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
     ax.plot(time, balance, label='Balance')
     # Add horizontal line at average balance value
-    ax.axhline(y=balance_avg, color='gray', linestyle='--', label='Average Balance: {:.2e}'.format(balance_avg))
+    ax.plot([time[-nt//4:], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Average: %2.2e %s' % (balance_avg, vunits))
+    
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
     ylabel = r'$\Gamma_{\text{src}} - \Gamma_{\text{loss}} - \partial N / \partial t$' if  balancetype == 'particle' else \
              r'$P_{\text{src}} - P_{\text{loss}} - \partial H / \partial t$'
