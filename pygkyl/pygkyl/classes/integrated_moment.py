@@ -40,6 +40,18 @@ class IntegratedMoment:
     src = ''
 
     def __init__(self, simulation, name, load=True, ddt=False):
+        '''
+        Parameters
+        ----------
+        simulation : Simulation
+            The simulation object from which to load the integrated moment.
+        name : str
+            The name of the integrated moment to load. It can be one of the following:
+        load : bool
+            If True, the integrated moment will be loaded from the simulation. 
+        ddt : bool
+            If True, the integrated moment will be differentiated with respect to time.
+        '''
         
         self.simulation = simulation
 
