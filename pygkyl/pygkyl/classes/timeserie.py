@@ -140,16 +140,16 @@ class TimeSerie:
         # Get the average
         if 'tavg' in averageType:
             favg = self.get_time_average()
-            self.vsymbol = r'\langle' + self.vsymbol + r'\rangle_t'
+            self.vsymbol = r'$\langle$' + self.vsymbol + r'$\rangle_t$'
         elif 'yavg' in averageType:
             favg = self.get_y_average()
-            self.vsymbol = r'\langle' + self.vsymbol + r'\rangle_y'
+            self.vsymbol = r'$\langle$' + self.vsymbol + r'$\rangle_y$'
         else:
             raise ValueError("averageType must contain 'tavg' or 'yavg'")
         
         # Update the values of the frames
         for i in range(len(self.frames)):
-            self.frames[i].values = favg
+            self.frames[i].values = 0*self.frames[i].values + favg
 
     def fluctuations(self,fluctuationType='',favg=None):
         '''
