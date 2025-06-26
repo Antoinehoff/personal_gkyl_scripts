@@ -726,7 +726,7 @@ def plot_nodes(simulation):
     plt.axis('equal')
     plt.show()
 
-def plot_balance(simulation, balancetype='particle', title=True, figout=[]):
+def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[]):
     def get_int_mom_data(simulation, fieldname):
         try:
             intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
@@ -759,4 +759,4 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[]):
     title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
         
     fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
-                            title=title_, legend=True)
+                            title=title_, legend=True, xlim=xlim, ylim=ylim)
