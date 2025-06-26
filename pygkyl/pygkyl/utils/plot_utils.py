@@ -714,7 +714,7 @@ def plot_nodes(simulation):
     plt.axis('equal')
     plt.show()
 
-def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False):
+def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True):
     from scipy.ndimage import gaussian_filter1d    
     def get_int_mom_data(simulation, fieldname):
         try:
@@ -756,10 +756,13 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     ax.plot([time[-nt//4], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Avg %2.2e %s' % (balance_avg, vunits))
     
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
-    ylabel = r'$\Gamma_{\text{src}} - \Gamma_{\text{loss}} - \partial N / \partial t$' if  balancetype == 'particle' else \
-             r'$P_{\text{src}} - P_{\text{loss}} - \partial H / \partial t$'
-    ylabel += ' [%s]' % vunits if vunits else ''
+    if showall:
+        ylabel = vunits
+    else:
+        ylabel = r'$\Gamma_{\text{src}} - \Gamma_{\text{loss}} - \partial N / \partial t$' if  balancetype == 'particle' else \
+                r'$P_{\text{src}} - P_{\text{loss}} - \partial H / \partial t$'
+        ylabel += ' [%s]' % vunits if vunits else ''
     title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
         
     fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
-                            title=title_, legend=True, xlim=xlim, ylim=ylim)
+                            title=title_, legend=True, xlim=xlim, ylim=ylim, legend=legend)
