@@ -751,7 +751,7 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
         ax.plot(time, source, label=r'$\Gamma_{\text{src}}$' if balancetype == 'particle' else r'$P_{\text{src}}$')
         ax.plot(time, loss, label=r'$\Gamma_{\text{loss}}$' if balancetype == 'particle' else r'$P_{\text{loss}}$')
         ax.plot(time, intvar, label=r'$\partial H / \partial t$' if balancetype == 'energy' else r'$\partial N / \partial t$')
-    ax.plot(time, balance, 'k', label='Balance')
+    ax.plot(time, balance, label='Balance')
     # Add horizontal line at average balance value
     ax.plot([time[-nt//4], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Avg %2.2e %s' % (balance_avg, vunits))
     
