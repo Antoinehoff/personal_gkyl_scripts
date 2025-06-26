@@ -765,4 +765,4 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
         
     fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
-                            title=title_, legend=True, xlim=xlim, ylim=ylim, legend=legend)
+                            title=title_, legend=legend, xlim=xlim, ylim=ylim)
