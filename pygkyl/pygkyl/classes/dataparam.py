@@ -765,16 +765,16 @@ class DataParam:
                 return -np.gradient(phi, grid, axis=i)
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
 
-        #source power
-        name       = 'pow_src'
+        #total source power density
+        name       = 'src_pow'
         symbol     = r'$P_{src}$'
         units      = r'W/m$^3$'
         field2load = []
         for spec in species.values():
             s_ = spec.nshort
-            field2load.append('n_src%s'%s_)
-            field2load.append('Tpar_src%s'%(s_))
-            field2load.append('Tperp_src%s'%(s_))
+            field2load.append('src_n%s'%s_)
+            field2load.append('src_Tpar%s'%(s_))
+            field2load.append('src_Tperp%s'%(s_))
         def receipe_src_pow(gdata_list,species=species):
             fout = 0.0
             k    = 0
