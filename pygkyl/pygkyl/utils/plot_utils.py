@@ -714,7 +714,8 @@ def plot_nodes(simulation):
     plt.axis('equal')
     plt.show()
 
-def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True):
+def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,
+                 transit=False):
     from scipy.ndimage import gaussian_filter1d    
     def get_int_mom_data(simulation, fieldname):
         try:
@@ -722,6 +723,9 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
         except KeyError:
             raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
         return intmom.values, intmom.time, intmom.vunits, intmom.tunits
+
+    symbol_src = '\Gamma' if balancetype == 'particle' else 'P'
+    symbol_mom = 'N' if balancetype == 'particle' else 'H'
     
     fieldname = 'src_ntot' if balancetype == 'particle' else 'src_Htot'
     source, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
@@ -733,7 +737,6 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     time = gaussian_filter1d(time,25)
     # scale time to get seconds
     intvar = np.gradient(intvar, time*simulation.normalization.dict['tscale'])
-    
     fieldname = 'bflux_total_total_ntot' if balancetype == 'particle' else 'bflux_total_total_Htot'
     loss, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
     
@@ -744,25 +747,69 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     balance = source - loss - intvar
     
     nt = len(time)
-    balance_avg = np.mean(balance[-nt//4:])
+    balance_avg = np.mean(balance[-nt//3:])
         
     fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
     if showall:
-        ax.plot(time, source, label=r'$\Gamma_{\text{src}}$' if balancetype == 'particle' else r'$P_{\text{src}}$')
-        ax.plot(time, loss, label=r'$\Gamma_{\text{loss}}$' if balancetype == 'particle' else r'$P_{\text{loss}}$')
-        ax.plot(time, intvar, label=r'$\partial H / \partial t$' if balancetype == 'energy' else r'$\partial N / \partial t$')
+        ax.plot(time, source, label=r'$%s_{\text{src}}$'%symbol_src)
+        ax.plot(time, loss, label=r'$%s_{\text{loss}}$'%symbol_src)
+        ax.plot(time, intvar, label=r'$\partial %s / \partial t$'%symbol_mom)
     ax.plot(time, balance, label='Balance')
     # Add horizontal line at average balance value
-    ax.plot([time[-nt//4], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, label='Avg %2.2e %s' % (balance_avg, vunits))
+    ax.plot([time[-nt//3], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, 
+            label='%s %s' % (fig_tools.optimize_str_format(balance_avg), vunits))
     
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
     if showall:
         ylabel = vunits
     else:
-        ylabel = r'$\Gamma_{\text{src}} - \Gamma_{\text{loss}} - \partial N / \partial t$' if  balancetype == 'particle' else \
-                r'$P_{\text{src}} - P_{\text{loss}} - \partial H / \partial t$'
+        ylabel = r'$%s_{\text{src}} - %s_{\text{loss}} - \partial %s / \partial t$'%(symbol_src, symbol_src, symbol_mom)
         ylabel += ' [%s]' % vunits if vunits else ''
     title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
+        
+    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
+                            title=title_, legend=legend, xlim=xlim, ylim=ylim)
+    
+def plot_loss(simulation, losstype='energy', walls =[],
+              title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True):
+    from scipy.ndimage import gaussian_filter1d    
+    def get_int_mom_data(simulation, fieldname):
+        try:
+            intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
+        except KeyError:
+            raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
+        return intmom.values, intmom.time, intmom.vunits, intmom.tunits
+    walls = walls if walls else ['x_u','z_l','z_u']
+    wall_labels = {'x_l': r'\text{x,in}', 'x_u': r'\text{vessel}', 'z_l': r'\text{lim,low}', 'z_u': r'\text{lim,up}'}
+    symbol = '\Gamma' if losstype == 'particle' else 'P'
+    
+    losses = []
+    for wall in walls:
+        fieldname = f'bflux_{wall}' +  ('_ntot' if losstype == 'particle' else '_Htot')
+        loss_, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
+        losses.append(loss_)
+    
+    # Replace J/s to W or particle by 1
+    vunits = vunits.replace('J/s', 'W')
+    vunits = vunits.replace('particles', '1')
+
+    total_loss = np.sum(losses, axis=0)    
+
+    nt = len(time)
+    loss_avg = np.mean(total_loss[-nt//3:])
+        
+    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
+    if showall:
+        for iw,wall in zip(range(len(walls)), walls):
+            ax.plot(time, losses[iw], label=r'$%s_{%s}$'%(symbol,wall_labels[wall]))
+    ax.plot(time, total_loss, label=r'$%s_{walls}$'%symbol)
+    # Add horizontal line at average balance value
+    ax.plot([time[-nt//3], time[-1]], [loss_avg, loss_avg],
+            '--k', alpha=0.5, label='%s %s' % (fig_tools.optimize_str_format(loss_avg), vunits))
+    
+    xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
+    ylabel = vunits
+    title_ = f'%s Loss' % losstype.capitalize() if  title else ''
         
     fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
                             title=title_, legend=legend, xlim=xlim, ylim=ylim)
