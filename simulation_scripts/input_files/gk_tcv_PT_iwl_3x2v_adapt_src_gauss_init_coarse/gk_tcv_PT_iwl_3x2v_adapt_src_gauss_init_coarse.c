@@ -322,8 +322,8 @@ main(int argc, char **argv)
     .adapt_particle = ctx.adapt_particle_srcCORE,
     .adapt_energy = ctx.adapt_energy_srcCORE,
     .num_boundaries = 1,
-    .dir = {0, 0, 2, 2},
-    .edge = {GKYL_LOWER_EDGE, GKYL_UPPER_EDGE, GKYL_LOWER_EDGE, GKYL_UPPER_EDGE},
+    .dir = {0},
+    .edge = {GKYL_LOWER_EDGE},
   };
 
   struct gkyl_gyrokinetic_projection proj_srcRECY_e = {
@@ -448,8 +448,8 @@ main(int argc, char **argv)
     .adapt_particle = ctx.adapt_particle_srcCORE,
     .adapt_energy = ctx.adapt_energy_srcCORE,
     .num_boundaries = 1,
-    .dir = {0, 0, 2, 2},
-    .edge = {GKYL_LOWER_EDGE, GKYL_UPPER_EDGE, GKYL_LOWER_EDGE, GKYL_UPPER_EDGE},
+    .dir = {0},
+    .edge = {GKYL_LOWER_EDGE},
   };
 
   struct gkyl_gyrokinetic_projection proj_srcRECY_i = {
