@@ -67,10 +67,12 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
             xlabel='', ylabel='', clabel='', title='',
             cmap='viridis', colorscale='linear', plot_type='pcolormesh'):
     z = np.squeeze(z)
+    
     if colorscale == 'log':
         norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
     else:
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
+        
     if plot_type == 'pcolormesh':
         x,y = math_tools.custom_meshgrid(x,y)
         im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)

@@ -145,15 +145,31 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
                                 figout=figout, grid=grid, xlim=xlim, ylim=ylim, xscale=xscale, yscale=yscale)
 
 def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
-                fieldnames='', cmap='inferno', time_average=False, fluctuation='', plot_type='pcolormesh',
+                fieldnames='', cmap=None, time_average=False, fluctuation='', plot_type='pcolormesh',
                 xlim=[], ylim=[], clim=[], colorscale = 'linear',
                 figout=[],cutout=[], val_out=[], frames_to_plot = None):
     if isinstance(fluctuation,bool): fluctuation = 'tavg' if fluctuation else ''
-    # Check if we provide multiple time frames (time average or fluctuation plot)
-    if isinstance(time_frame, int):
-        time_frame = [time_frame]
-    if clim:
-        clim = [clim] if not isinstance(clim[0], list) else clim
+    if isinstance(time_frame, int): time_frame = [time_frame]
+    if isinstance(fieldnames, str): fieldnames = [fieldnames]
+        
+    # Handle any empty clim
+    if not clim or (isinstance(clim, list) and (len(clim) == 0 or all(not c for c in clim))):
+        clim = [None] * len(fieldnames)
+    elif isinstance(clim, (int, float)):
+        clim = [[-clim, clim]] * len(fieldnames)
+    elif isinstance(clim, list):
+        # If single value in list: symmetric
+        if len(clim) == 1 and isinstance(clim[0], (int, float)):
+            clim = [[-clim[0], clim[0]]] * len(fieldnames)
+        # If two numbers: repeat for all fields
+        elif len(clim) == 2 and all(isinstance(c, (int, float)) for c in clim):
+            clim = [clim] * len(fieldnames)
+        # If list of two-element lists: use as is, pad if needed
+        elif all(isinstance(c, list) and len(c) == 2 for c in clim):
+            if len(clim) < len(fieldnames):
+                clim = clim + [None] * (len(fieldnames) - len(clim))
+        else:
+            clim = [None] * len(fieldnames)
 
     # Check if we need to fourier transform
     index = cut_dir.find('k')
@@ -162,8 +178,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         cut_dir = cut_dir.replace('k','')
     else:
         fourier_y = False
-
-    cmap0 = cmap    
+    
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     kf = 0 # field counter
     for ax,field in zip(axs,fields):
@@ -172,37 +187,19 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             plot_data = frame.values
         else:
             serie = TimeSerie(simulation=simulation, fieldname=field, time_frames=time_frame, load=True, fourier_y=fourier_y)
-            if len(fluctuation) > 0:
-                if 'tavg' in fluctuation:
-                    serie.slice(cut_dir, cut_coord)
-                    mean_values = serie.get_time_average()
-                elif 'yavg' in fluctuation:
-                    mean_values = serie.get_y_average(cut_dir, cut_coord)
-                    serie.slice(cut_dir, cut_coord)
-                
-                plot_data = serie.frames[-1].values - mean_values
-                if 'relative' in fluctuation:
-                    plot_data = 100.0*plot_data/mean_values
-                frame = serie.frames[-1].copy()
-            elif time_average :
-                serie.slice(cut_dir, cut_coord)
-                plot_data = serie.get_time_average()
-                frame = serie.frames[-1].copy()
-            else:
-                frame = serie.frames[-1].copy()
-                frame.slice(cut_dir, cut_coord)
-                plot_data = frame.values
-            del serie
+            if fluctuation: serie.fluctuations(fluctuationType=fluctuation)  # Apply fluctuations if needed
+            frame = serie.frames[-1].copy()  # Get the last frame
+            frame.slice(cut_dir, cut_coord)
+            plot_data = frame.values
         
-        if ((cmap0 == 'bwr' or (simulation.data_param.field_info_dict[field+'colormap']=='bwr') \
-            or fluctuation) and not fourier_y) :
-            cmap = 'bwr'
-            vmax = np.max(np.abs(plot_data)) 
-            vmin = -vmax
+        if (fluctuation) :
+            cmap = 'bwr' if not cmap else cmap
+            vmax = np.max(np.abs(plot_data)) if not clim[kf] else clim[kf][1]
+            vmin = -vmax if not clim[kf] else clim[kf][0]
         else:
-            cmap = cmap0
-            vmax = np.max(plot_data)
-            vmin = np.min(plot_data)
+            cmap = simulation.data_param.field_info_dict[field+'colormap'] if not cmap else cmap
+            vmax = np.max(plot_data) if not clim[kf] else clim[kf][1]
+            vmin = np.min(plot_data) if not clim[kf] else clim[kf][0]
 
         if fourier_y:
             vmin  = np.power(10,np.log10(vmax)-3)
@@ -226,9 +223,8 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             lbl = re.sub(r'\(.*?\)', '', lbl)
             lbl = lbl + ' (\%)'
 
-        climf = clim[kf] if clim else None
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
-                          cmap=cmap, xlim=xlim, ylim=ylim, clim=climf,
+                          cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
                           xlabel=xlabel, ylabel=ylabel, 
                           colorscale=colorscale, clabel=lbl, title=frame.fulltitle, 
                           vmin=vmin, vmax=vmax, plot_type=plot_type)
@@ -241,7 +237,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
     val_out.append(np.squeeze(plot_data))
 
 def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], fieldnames=['phi'],
-                  cmap='inferno', xlim=[], ylim=[], clim=[], fluctuation = '',
+                  cmap=None, xlim=[], ylim=[], clim=None, fluctuation = '',
                   movieprefix='', plot_type='pcolormesh', fourier_y=False,colorScale='lin'):
     # Create a temporary folder to store the movie frames
     movDirTmp = 'movie_frames_tmp'
@@ -255,10 +251,16 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
             dataname += 'd'+f_+'_' if len(fluctuation)>0 else f_+'_'
 
     movie_frames, vlims = data_utils.get_2D_movie_time_serie(
-        simulation, cut_dir, cut_coord, time_frames, fieldnames, fluctuation,fourier_y) 
+        simulation, cut_dir, cut_coord, time_frames, fieldnames, fluctuation, fourier_y) 
     
+    if clim == 'free':
+        clim = None
+    else:
+        clim = clim if clim else vlims
+        
     total_frames = len(time_frames)
     frameFileList = []
+        
     for i, tf in enumerate(time_frames, 1):  # Start the index at 1  
 
         frameFileName = f'movie_frames_tmp/frame_{tf}.png'
@@ -266,10 +268,6 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
 
         figout = []
         cutout = []
-        if clim == 'free':
-            clim = []
-        else:
-            clim = clim if clim else vlims
 
         plot_2D_cut(
             simulation, cut_dir=cut_dir, cut_coord=cut_coord, time_frame=tf, fieldnames=fieldnames,

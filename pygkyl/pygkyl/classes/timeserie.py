@@ -109,11 +109,11 @@ class TimeSerie:
         v_tavg /= time - self.frames[0].time  
         return v_tavg
     
-    def get_y_average(self, output_plane='xz', cut_coord=0):
+    def get_y_average(self, output_plane='xz', cut_coord=0, fidx=-1):
         '''
         Get the y average of the time serie
         '''
-        avg_frame = self.frames[-1].copy()
+        avg_frame = self.frames[fidx].copy()
         if output_plane == 'xz':
             avg_frame.slice('xz', 'avg')
             mean_values = avg_frame.values
@@ -132,7 +132,7 @@ class TimeSerie:
         for frame in self.frames:
             frame.slice(cut_dir, cut_coord)
             
-    def average(self, averageType='tavg'):
+    def average(self, averageType='tavg', fidx=-1):
         '''
         Update the time serie with the average
         averageType can be 'tavg' or 'yavg'.
@@ -142,7 +142,7 @@ class TimeSerie:
             favg = self.get_time_average()
             self.vsymbol = r'$\langle$' + self.vsymbol + r'$\rangle_t$'
         elif 'yavg' in averageType:
-            favg = self.get_y_average()
+            favg = self.get_y_average(fidx=fidx)
             self.vsymbol = r'$\langle$' + self.vsymbol + r'$\rangle_y$'
         else:
             raise ValueError("averageType must contain 'tavg' or 'yavg'")
@@ -159,19 +159,21 @@ class TimeSerie:
         # Get the average
         if favg is None:
             if 'tavg' in fluctuationType:
-                favg = self.get_time_average()
+                tavg = self.get_time_average()
+                def favg(fidx):
+                    return tavg
             elif 'yavg' in fluctuationType:
-                favg = self.get_y_average()
+                favg = self.get_y_average
             else:
                 raise ValueError("fluctuationType must contain 'tavg' or 'yavg'")
             
         # Compute the fluctuations
         for i in range(len(self.frames)):
-            self.frames[i].values = self.frames[i].values - favg
+            self.frames[i].values = self.frames[i].values - favg(fidx=i)
             if 'relative' in fluctuationType:
-                self.frames[i].values = 100.0 * self.frames[i].values / favg
+                self.frames[i].values = 100.0 * self.frames[i].values / favg(fidx=i)
                 # Avoid division by zero
-                self.frames[i].values[np.where(favg == 0.0)] = 0.0
+                self.frames[i].values[np.where(favg(fidx=i) == 0.0)] = 0.0
                 
         if 'tavg' in fluctuationType:
             self.vsymbol = self.vsymbol + r' $-\langle$'+self.vsymbol+r'$\rangle_t$'
