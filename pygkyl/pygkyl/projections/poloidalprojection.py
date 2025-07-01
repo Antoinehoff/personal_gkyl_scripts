@@ -360,7 +360,7 @@ class PoloidalProjection:
     if (len(fluctuation) > 0) or (len(average) > 0):
       serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
       if fluctuation:
-        serie.fluctuations(fluctuationType=fluctuation,favg=favg)
+        serie.fluctuations(fluctuationType=fluctuation,avg_array=favg)
         colorMap = colorMap if colorMap else 'bwr'
       elif average:
         serie.average(averageType=average)
