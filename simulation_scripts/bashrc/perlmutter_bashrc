@@ -40,6 +40,7 @@ alias gkyl_setup_gpu='gkyl_module; export MPICH_GPU_SUPPORT_ENABLED=0; export DV
 alias ll='ls -l'
 alias gkyl_submit='sh ~/personal_gkyl_scripts/simulation_scripts/submit/perlmutter_submit.sh'
 alias gkyl_get_makefile='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_get_makefile.sh'
+alias gkyl_dt_avg='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_dt_avg.sh'
 
 gkyl_run_gpu() {
     # Check if the number of arguments is less than 1 or if -h or --help is provided
