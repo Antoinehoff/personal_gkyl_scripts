@@ -17,13 +17,13 @@ class TimeSerie:
     time = []
     verbose = False
 
-    def __init__(self, simulation, fieldname, time_window = [], time_frames = [], load=False, fourier_y=False,
+    def __init__(self, simulation, fieldname, time_frames = [], time_window = [], load=False, fourier_y=False,
                  polyorder=1, polytype='ms', normalize=True, cut_dir=None, cut_coord=None, verbose = False
                  , frames = None):
         self.simulation = simulation
         self.fieldname = fieldname
-        self.time_window = time_window
         self.time_frames = time_frames if isinstance(time_frames, list) else [time_frames]
+        self.time_window = time_window if isinstance(time_window, list) else [time_window]
         self.polyorder = polyorder
         self.polytype = polytype
         self.normalize = normalize
@@ -40,9 +40,6 @@ class TimeSerie:
         self.filename = self.simulation.data_param.file_info_dict[subname + 'file']
         if load: 
             self.load()
-            if fourier_y:
-                for frame in self.frames:
-                    frame.fourier_y()
         elif frames is not None: self.init_from_frames(frames)
         
     def __enter__(self):
@@ -82,7 +79,7 @@ class TimeSerie:
             self.vunits = self.frames[0].vunits
             self.gsymbols = self.frames[0].gsymbols
             self.gunits = self.frames[0].gunits
-                
+                  
     def init_from_frames(self, frames):
         '''
         Initialize the time serie from a list of frames

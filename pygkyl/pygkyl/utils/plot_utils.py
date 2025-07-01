@@ -186,10 +186,12 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             frame = frames_to_plot[kf]
             plot_data = frame.values
         else:
-            serie = TimeSerie(simulation=simulation, fieldname=field, time_frames=time_frame, load=True, fourier_y=fourier_y)
+            serie = TimeSerie(simulation=simulation, fieldname=field, 
+                              time_frames=time_frame, load=True, fourier_y=fourier_y,
+                              cut_coord=cut_coord, cut_dir=cut_dir)
             if fluctuation: serie.fluctuations(fluctuationType=fluctuation)  # Apply fluctuations if needed
             frame = serie.frames[-1].copy()  # Get the last frame
-            frame.slice(cut_dir, cut_coord)
+            # frame.slice(cut_dir, cut_coord)
             plot_data = frame.values
         
         if (fluctuation) :
@@ -222,7 +224,6 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         if "relative" in fluctuation :
             lbl = re.sub(r'\(.*?\)', '', lbl)
             lbl = lbl + ' (\%)'
-
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
                           cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
                           xlabel=xlabel, ylabel=ylabel, 
