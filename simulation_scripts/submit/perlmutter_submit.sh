@@ -189,6 +189,7 @@ LAST_FRAME=\$(sh \$UTIL_SCRIPT .)
 ln -sf "../wk/output_$FRAME_SUFFIX.out" "../history/output_sf_\$LAST_FRAME.out"
 ln -sf "../wk/error_$FRAME_SUFFIX.out" "../history/error_sf_\$LAST_FRAME.out"
 ln -sf "../wk/input_$FRAME_SUFFIX.c" "../history/input_sf_\$LAST_FRAME.c"
+ln -sf "../wk/slurm_script_$FRAME_SUFFIX.sh" "../history/slurm_script_sf_\$LAST_FRAME.sh"
 
 # Set restart options based on detected frame
 if (( LAST_FRAME > 0 )); then
