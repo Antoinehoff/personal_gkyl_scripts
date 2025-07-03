@@ -508,6 +508,47 @@ class DataParam:
                 Bmag = pgkyl_.get_values(gdata_list[3])
                 return 100 * dens * m*Ttot* 2*mu0/np.power(Bmag,2)
             default_qttes.append([name,symbol,units,field2load,receipe_betas])
+            
+            #source density
+            name = 'src_n%s'%(s_)
+            symbol = r'$n_{S,%s}$'%(s_)
+            units = r'm$^{-3}/s$'
+            field2load = ['src_n%s'%(s_)]
+            def receipe_src_ns(gdata_list):
+                """
+                Source density: n = n_s
+                """
+                return pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_src_ns])
+            
+            #source power
+            name = 'src_P%s'%(s_)
+            symbol = r'$P_{S,%s}$'%(s_)
+            units = r'W/m$^{3}$'
+            field2load = ['src_HM_H%s'%(s_),'phi','src_n%s'%(s_)]
+            def receipe_src_Ps(gdata_list,q=spec.q):
+                """
+                Source power density: P = d(H - q n phi)/dt
+                """
+                Hdot = pgkyl_.get_values(gdata_list[0])
+                phi = pgkyl_.get_values(gdata_list[1])
+                ndot = pgkyl_.get_values(gdata_list[2])
+                return Hdot - ndot * q * phi
+            default_qttes.append([name,symbol,units,field2load,receipe_src_Ps])
+            
+            #source temperature
+            name = 'src_T%s'%(s_)
+            symbol = r'$T_{S,%s}$'%(s_)
+            units = r'eV'
+            field2load = ['src_HM_H%s'%(s_),'phi','src_n%s'%(s_)]
+            def receipe_src_Ts(gdata_list,q=spec.q):
+                """
+                Source temperature density: T = 2/3 Edot / ndot
+                """
+                Edot = receipe_src_Ps(gdata_list,q=q)
+                ndot = pgkyl_.get_values(gdata_list[2])
+                return 2/3 * Edot / ndot
+            default_qttes.append([name,symbol,units,field2load,receipe_src_Ts])
 
             #- The following are vector fields quantities that we treat component wise
             directions = ['x','y','z'] #directions array
