@@ -110,6 +110,7 @@ def print_piecewise_c_code(qfit_piecewise, Npieces, ctx):
     print(f"// Piecewise linear fit for q-profile ({Npieces} pieces)")
     print(f"// Context: a_shift={ctx.a_shift}, Z_axis={ctx.Z_axis}, R_axis={ctx.R_axis}, B_axis={ctx.B_axis},")
     print(f"//          R_LCFSmid={ctx.R_LCFSmid}, x_inner={ctx.x_inner}, x_outer={ctx.x_outer}, Nx={ctx.Nx}")
+    print(f"//          Npieces={ctx.Npieces}, delta={ctx.delta}")
     print("double qprofile(double R) {")
     for i in range(Npieces):
         x1 = i * (ctx.x_max - ctx.x_min) / Npieces
