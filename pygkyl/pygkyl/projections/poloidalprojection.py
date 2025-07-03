@@ -264,7 +264,7 @@ class PoloidalProjection:
       else: icore_end = self.ixLCFS_C
       xGridCore = self.meshC[0][:icore_end] # x grid on in the core region
       torModNum = 2.*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
-      bcPhaseShift = 2.0*np.pi * torModNum*self.geom.qprofile(self.geom.r_x(xGridCore))
+      bcPhaseShift = 2.0*np.pi * torModNum*self.geom.qprofile_R(self.geom.R_x(xGridCore))
       n0 = 2*np.pi * self.geom.Cy/ self.LyC
       field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
       field_kex[:,:,1:-1] = field_ky
@@ -371,7 +371,7 @@ class PoloidalProjection:
     else:
       colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
 
-    field_RZ = self.project_field(toproject, frame_info)
+    field_RZ = self.project_field(toproject, frame_info.eval_DG_proj)
 
     vlims = [np.min(field_RZ), np.max(field_RZ)]
     if self.ixLCFS_C is not None:

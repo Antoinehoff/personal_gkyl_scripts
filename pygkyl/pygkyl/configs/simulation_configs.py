@@ -51,10 +51,6 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
         mp = 1.673e-27,         # Proton mass [kg]
         me = 9.109e-31,         # Electron mass [kg]
     )
-    def qprofile_PT(r):
-        R = r + R_axis
-        a = [497.3420166252413, -1408.736172826569, 1331.4134861681464, -419.00692601227627]
-        return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
 
     simulation.set_geom_param(
         B_axis      = 1.4,           # Magnetic field at magnetic axis [T]
@@ -64,7 +60,8 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
         a_shift     = 0.25,                 # Parameter in Shafranov shift
         kappa       = 1.45,                 # Elongation factor
         delta       = 0.35,                 # Triangularity factor
-        qprofile    = qprofile_PT,                 # Safety factor
+        qfit        = [497.3420166252413, -1408.736172826569, 
+                       1331.4134861681464, -419.00692601227627],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
         x_out       = x_out                 # SOL domain width
     )
@@ -137,11 +134,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         mp = 1.673e-27,         # Proton mass [kg]
         me = 9.109e-31,         # Electron mass [kg]
     )
-    def qprofile_NT(r):
-        R = r + R_axis
-        a = [484.0615913225881, -1378.25993228584, 1309.3099150729233, -414.13270311478726]
-        return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
-
+    
     simulation.set_geom_param(
         B_axis      = 1.4,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,         # Magnetic axis major radius
@@ -150,7 +143,8 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         a_shift     = 0.5,                 # Parameter in Shafranov shift
         kappa       = 1.4,                 # Elongation factor
         delta       =-0.38,                 # Triangularity factor
-        qprofile    = qprofile_NT,                 # Safety factor
+        qfit        = [484.0615913225881, -1378.25993228584, 
+                       1309.3099150729233, -414.13270311478726],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
         x_out       = x_out                  # SOL domain width
     )
@@ -224,11 +218,6 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         me = 9.109e-31,         # Electron mass [kg]
     )
 
-    def qprofile(r):
-        R = r + R_axis
-        a = [407.582626469394, -2468.613680167604, 4992.660489790657, -3369.710290916853]
-        return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
-
     simulation.set_geom_param(
         B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,        # Magnetic axis major radius
@@ -237,7 +226,8 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         a_shift     = 0.5,                 # Parameter in Shafranov shift
         kappa       = 1.35,                 # Elongation factor
         delta       = 0.4,                 # Triangularity factor
-        qprofile    = qprofile,                 # Safety factor
+        qfit        = [407.582626469394, -2468.613680167604, 
+                       4992.660489790657, -3369.710290916853],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
         x_out       = x_out                  # SOL domain width
     )
@@ -298,11 +288,6 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         me = 9.109e-31,         # Electron mass [kg]
     )
 
-    def qprofile(r):
-        R = r + R_axis
-        a = [154.51071835546747,  -921.8584472748003, 1842.1077075366113, -1231.619813170522]
-        return a[0]*R**3 + a[1]*R**2 + a[2]*R + a[3]
-
     simulation.set_geom_param(
         B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,        # Magnetic axis major radius
@@ -311,7 +296,8 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         a_shift     = 1.0,                 # Parameter in Shafranov shift
         kappa       = 1.35,                 # Elongation factor
         delta       = -0.4,                 # Triangularity factor
-        qprofile    = qprofile,                 # Safety factor
+        qfit        = [154.51071835546747, -921.8584472748003, 
+                       1842.1077075366113, -1231.619813170522],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
         x_out       = x_out                  # SOL domain width
     )
@@ -386,11 +372,7 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
         mp = 1.673e-27,         # Proton mass [kg]
         me = 9.109e-31,         # Electron mass [kg]
     )
-    def qprofile(r):
-        R = r + R_axis
-        a = [154.51071835546747,  -921.8584472748003, 1842.1077075366113, -1231.619813170522]
-        return 2 * (1-r) + 10 * r
-
+    
     simulation.set_geom_param(
         B_axis      = 1.0,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,         # Magnetic axis major radius
@@ -399,7 +381,8 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
         a_shift     = 0.1,                 # Parameter in Shafranov shift
         kappa       = 2.5,                 # Elongation factor
         delta       = 0.4,                 # Triangularity factor
-        qprofile    = qprofile,                 # Safety factor
+        qfit        = [154.51071835546747, -921.8584472748003, 
+                       1842.1077075366113, -1231.619813170522],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
         x_out       = x_out                 # SOL domain width
     )
@@ -464,8 +447,6 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
         mp = 1.673e-27,         # Proton mass [kg]
         me = 9.109e-31,         # Electron mass [kg]
     )
-    def qprofile(r):
-        return 3.5
 
     simulation.set_geom_param(
         B_axis      = 8.0,           # Magnetic field at magnetic axis [T]
@@ -475,7 +456,7 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
         a_shift     = 0.1,                 # Parameter in Shafranov shift
         kappa       = 1.65,                 # Elongation factor
         delta       = 0.4,                 # Triangularity factor
-        qprofile    = qprofile,                 # Safety factor
+        qfit        = [3.5],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
         x_out       = x_out                 # SOL domain width
     )
@@ -564,7 +545,8 @@ def get_gyacomo_sim_config(path):
         mp = 1.673e-27,         # Proton mass [kg]
         me = 9.109e-31,         # Electron mass [kg]
     )
-    def qprofile(r):
+    def qprofile(R):
+        r = R - R_axis
         q0 = 1.4
         s0 = 0.8
         return q0 * (1 + s0 * (r - r0) / r0)
@@ -577,7 +559,7 @@ def get_gyacomo_sim_config(path):
         a_shift     = 0.0,                 # Parameter in Shafranov shift
         kappa       = 1.0,                 # Elongation factor
         delta       = 0.0,                 # Triangularity factor
-        qprofile    = qprofile,                 # Safety factor
+        qprofile_R  = qprofile,                 # Safety factor
         x_LCFS      = Lx,                 # position of the LCFS (= core domain width)
         x_out       = 0.0                  # SOL domain width
     )

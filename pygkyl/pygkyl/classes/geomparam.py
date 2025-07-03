@@ -33,7 +33,8 @@ class GeomParam:
 
     """
     def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B_axis=1.4, x_out = 0.08,
-                 a_shift=0.0, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile='default'):
+                 a_shift=0.0, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile_R='default', 
+                 qfit = []):
         self.B_axis     = B_axis
         self.R_axis     = R_axis
         self.Z_axis     = Z_axis
@@ -45,7 +46,8 @@ class GeomParam:
         self.x_in       = x_LCFS
         self.R_LCFSmid  = R_LCFSmid
         self.geom_type  = geom_type
-        self.qprofile   = qprofile
+        self.qprofile_R = qprofile_R
+        self.qfit       = qfit
         
         self.update_geom_params()
 
@@ -84,11 +86,13 @@ class GeomParam:
         else:
             self.a_mid      = self.R_LCFSmid - self.R_axis
 
-        if callable(self.qprofile):
-            self.qprofile = self.qprofile
-        elif self.qprofile == 'default':
-            self.qprofile = self.qprofile_default
-        self.q0 = self.qprofile(self.r0)
+        if callable(self.qprofile_R):
+            self.qprofile_R = self.qprofile_R
+        else:
+            if self.qfit is None:
+                self.qfit = [497.3420166252413,-1408.736172826569,1331.4134861681464,-419.00692601227627]
+            self.qprofile_R = lambda R: np.polyval(self.qfit, R)
+        self.q0 = self.qprofile_R(self.R0)
         self.Cy = self.r0/self.q0
 
     def load_metric(self,fileprefix):
@@ -173,10 +177,6 @@ class GeomParam:
             a = 0
             # one day... (09/20/2024)
 
-    #.Magnetic safety factor profile.
-    def qprofile_default(self,rIn):
-        qa = [497.3420166252413,-1408.736172826569,1331.4134861681464,-419.00692601227627]
-        return qa[0]*(rIn+self.R_axis)**3 + qa[1]*(rIn+self.R_axis)**2 + qa[2]*(rIn+self.R_axis) + qa[3]
 
     #.Function that wraps x to [xMin,xMax].
     def wrap(x, xMin, xMax):
@@ -186,19 +186,21 @@ class GeomParam:
     def r_x(self,x):
         return self.a_mid - self.x_LCFS + x
 
-    #.Major radius as a function of x:
-    def R_x(self,x):
-        return self.R_LCFSmid - self.x_LCFS + x
-
     ## Geometric relations for Miller geometry
     def R_rt(self, r, theta):
         return self.R_axis \
             - self.a_shift * r**2/(2.0*self.R_axis) \
             + r*np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
             
+    def R_r(self, r):
+        return self.R_rt(r, 0.0)
+    
+    def R_x(self, x):
+        return self.R_rt(self.r_x(x), 0.0)
+
     def Z_rt(self, r, theta):
         return self.Z_axis + self.kappa*r*np.sin(theta)
-
+    
     #.Analytic derivatives.
     def dRdr(self, r, theta): 
         return -self.a_shift*r/self.R_axis + np.cos(theta + np.arcsin(self.delta)*np.sin(theta))
@@ -220,7 +222,8 @@ class GeomParam:
 
     def dPsidr(self, r, method='trapz32'):
         integral, _ = mt.integrate(self.integrand, a=0., b=2.*np.pi, args=(r), method=method)
-        return self.B0*self.R_axis/(2.*np.pi*self.qprofile(r))*integral
+        R = self.R_rt(r, 0.)
+        return self.B0*self.R_axis/(2.*np.pi*self.qprofile_R(R))*integral
 
     def alpha(self, r, theta, phi, method='trapz32'):
         t = theta
@@ -255,14 +258,14 @@ class GeomParam:
         return [self.x, self.y, self.z]
     
     def get_toroidal_mode_number(self):
-        self.n0 = 2.*np.pi*self.r0/self.qprofile(self.r0)/self.Ly # toroidal mode number
+        self.n0 = 2.*np.pi*self.r0/self.qprofile_R(self.R0)/self.Ly # toroidal mode number
         return self.n0
     
     def get_epsilon(self):
         return self.a_mid/self.R_axis
     
     def qprofile_x(self,x):
-        return self.qprofile(self.r_x(x))
+        return self.qprofile_R(self.R_x(x))
 
     def info(self):
         print(f"R_axis: {self.R_axis}")
@@ -286,7 +289,7 @@ class GeomParam:
         import matplotlib.pyplot as plt
         if x is None: x = self.x
         q = self.qprofile_x(x)
-        plt.plot(x+self.Rmid_min,q)
+        plt.plot(self.R_x(x),q)
         # show domain limits
         plt.axvline(x=self.Rmid_min, color='k', linestyle='--', alpha=0.5)
         plt.axvline(x=self.Rmid_max, color='k', linestyle='--', alpha=0.5)
