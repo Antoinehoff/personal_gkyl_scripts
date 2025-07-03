@@ -8,7 +8,7 @@ QOS="regular"
 #.Specify GPUs per node (Perlmutter has 4 GPUs per node).
 GPU_PER_NODE=4
 #.Request wall time.
-TIME="22:00:00"  # HH:MM:SS
+TIME="06:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load.
@@ -22,7 +22,7 @@ JOB_NAME=$(basename $(pwd))
 
 # help function
 show_help() {
-    echo "Usage: $0 [-q QOS] [-n JOB_NAME] [-t TIME] [-h] [-d job_id]"
+    echo "Usage: $0 [-q QOS] [-n JOB_NAME] [-t TIME] [-h] [-d job_id] [-j] [-p]"
     echo "Submit a job to Perlmutter"
     echo "  -q QOS      QOS to use (default: regular)"
     echo "  -n JOB_NAME Name of the job (default: $JOB_NAME)"
@@ -30,11 +30,13 @@ show_help() {
     echo "  -N numnodes Number of nodes required (default: $NODES)"
     echo "  -r frame    Restart from frame (default: $LAST_FRAME)"
     echo "  -d job_id   Job ID to create a dependency (default: none)"
+    echo "  -j          Auto-detect and use most recent job ID for dependency"
+    echo "  -p          Print script and exit (do not submit)"
     echo "  -h          Display this help and exit"
     echo "  -a ACCOUNT  Account to use (default: $ACCOUNT)"
 }
-# check the following options : -q -n -t -h -N -r -d -a
-while getopts ":q:n:t:r:N:d:a:h" opt; do
+# check the following options : -q -n -t -h -N -r -d -a -j -p
+while getopts ":q:n:t:r:N:d:a:jph" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG
@@ -58,6 +60,28 @@ while getopts ":q:n:t:r:N:d:a:h" opt; do
             ;;
         d )
             DEPENDENCY_JOB_ID=$OPTARG
+            ;;
+        j )
+            # Auto-detect job dependency
+            if [ -d "history" ]; then
+                LATEST_JOB_FILE=$(ls -t history/job_id_*.txt 2>/dev/null | head -1)
+                if [ -n "$LATEST_JOB_FILE" ] && [ -f "$LATEST_JOB_FILE" ]; then
+                    AUTO_DEPENDENCY=$(cat "$LATEST_JOB_FILE" 2>/dev/null | grep -o '[0-9]\+' | head -1)
+                    if [ -n "$AUTO_DEPENDENCY" ]; then
+                        DEPENDENCY_JOB_ID="$AUTO_DEPENDENCY"
+                        echo "Auto-detected job dependency: $DEPENDENCY_JOB_ID"
+                    else
+                        echo "Warning: Could not extract job ID from $LATEST_JOB_FILE"
+                    fi
+                else
+                    echo "Warning: No job_id files found in history directory"
+                fi
+            else
+                echo "Warning: history directory not found"
+            fi
+            ;;
+        p )
+            PRINT_ONLY=1
             ;;
         a )
             ACCOUNT=$OPTARG
@@ -91,11 +115,11 @@ if [[ -f "input.c" ]]; then
     fi
     
     if [[ "$CDIM" == "2" ]]; then
-        echo "Detected 2D run (cdim = 2)"
+        # echo "Detected 2D run (cdim = 2)"
         RUN_TYPE="2D"
         GPU_OPTS="-c 1 -d $TOTAL_GPUS"
     elif [[ "$CDIM" == "3" ]]; then
-        echo "Detected 3D run (cdim = 3)"
+        # echo "Detected 3D run (cdim = 3)"
         RUN_TYPE="3D"
         GPU_OPTS="-c 1 -d 1 -e $TOTAL_GPUS"
     else
@@ -215,11 +239,15 @@ exit 0
 EOT
 fi
 
-echo "---------------------------------"
-echo "The script generated is"
-echo "---------------------------------"
-cat $SCRIPTNAME
-echo "---------------------------------"
+# Exit early if print-only mode
+if [ "$PRINT_ONLY" = "1" ]; then
+    echo "---------------------------------"
+    echo "The script generated is"
+    echo "---------------------------------"
+    cat $SCRIPTNAME
+    echo "---------------------------------"
+    exit 0
+fi
 
 # Ask the user if they want to proceed
 read -p "Proceed and submit the job? ((y)/n) " proceed
@@ -234,7 +262,16 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     cp input.c wk/input_$FRAME_SUFFIX.c
     mv $SCRIPTNAME wk/.
     cd wk
-    sbatch $SCRIPTNAME
+    
+    # Submit job and capture the job ID
+    SUBMIT_OUTPUT=$(sbatch $SCRIPTNAME)
+    JOB_ID=$(echo "$SUBMIT_OUTPUT" | grep -o '[0-9]\+')
+    
+    echo "$SUBMIT_OUTPUT"
+    
+    # Save job ID to file for reference
+    echo "$JOB_ID" > "../history/job_id_${JOB_ID}.txt"
+    echo "Job ID saved to: job_id_${JOB_ID}.txt"
 else
     echo "Operation canceled."
 fi
