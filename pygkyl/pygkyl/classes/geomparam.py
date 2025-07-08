@@ -73,6 +73,18 @@ class GeomParam:
         self.vessel_Rmin = 0.6 # Vessel minimum major radius [m]
         self.vessel_Rmax = 1.2 # Vessel maximum major radius [m]
         
+    def change(self,**kwargs):
+        """
+        Change the parameters of the GeomParam object.
+        example:
+        """
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+            else:
+                raise AttributeError(f"GeomParam has no attribute '{key}'")
+        self.update_geom_params()
+        
     def update_geom_params(self):
         self.Rmid_min   = self.R_LCFSmid - self.x_in # Minimum midplane major radius of simulation box [m].
         self.Rmid_max   = self.R_LCFSmid + self.x_out  # Maximum midplane major radius of simulation box [m].
