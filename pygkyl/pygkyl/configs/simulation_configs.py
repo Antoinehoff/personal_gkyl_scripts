@@ -140,7 +140,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         R_axis      = R_axis,         # Magnetic axis major radius
         Z_axis      = 0.1414361745,         # Magnetic axis height
         R_LCFSmid   = 1.0870056099999,   # Major radius of LCFS at the midplane
-        a_shift     = 0.5,                 # Parameter in Shafranov shift
+        a_shift     = 1.0,                 # Parameter in Shafranov shift
         kappa       = 1.4,                 # Elongation factor
         delta       =-0.38,                 # Triangularity factor
         qfit        = [484.0615913225881, -1378.25993228584, 
