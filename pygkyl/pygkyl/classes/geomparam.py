@@ -108,8 +108,6 @@ class GeomParam:
             self.qprofile_R = lambda R: np.polyval(self.qfit, R)
         self.q0 = self.qprofile_R(self.R0)
         self.Cy = self.r0/self.q0
-        self.vol_frac = 1.0/(2.*np.pi*self.r0/self.q0/self.Ly)
-        self.tor_num = 2.*np.pi*self.r0/self.q0/self.Ly
         
     def load_metric(self,fileprefix):
         #-- load B (bmag)
@@ -156,6 +154,10 @@ class GeomParam:
         J_yz          = np.trapz(self.Jacobian,self.x,axis=0)
         J_z           = np.trapz(J_yz,self.y,axis=0)
         self.intJac   = np.trapz(J_z,self.z,axis=0)
+        
+        #-- add a volume fraction and toroidal mode number
+        self.vol_frac = 1.0/(2.*np.pi*self.r0/self.q0/self.Ly)
+        self.tor_num = 2.*np.pi*self.r0/self.q0/self.Ly
 
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field
