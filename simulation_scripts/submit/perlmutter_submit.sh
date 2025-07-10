@@ -229,7 +229,10 @@ else
     RESTART_OPT=""
 fi
 
-srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS \$RESTART_OPT $RUNTIME_OPT
+SRUNCMD="srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS \$RESTART_OPT $RUNTIME_OPT"
+
+echo "Running command: \$SRUNCMD"
+eval \$SRUNCMD
 exit 0
 EOT
 else
