@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gkeyll Parameter Configuration Interface</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Gkeyll Parameter Configuration Interface</h1>
+            <p>Configure parameters for a Gkeyll 3x2v IWL simulation</p>
+        </header>
+
+        <div class="main-content">
+            <div class="parameter-sections">
+                <!-- Q-Profile Configuration -->
+                <div class="parameter-section">
+                    <h2>Q-Profile Configuration</h2>
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <label for="profile_type" data-tooltip="Choose between NT (negative triangularity) or PT (positive triangularity) configurations">Profile Type:</label>
+                            <select id="profile_type">
+                                <option value="NT">NT (Negative Triangularity)</option>
+                                <option value="PT">PT (Positive Triangularity)</option>
+                                <option value="custom">Custom Polynomial</option>
+                            </select>
+                        </div>
+                        <div class="parameter-item">
+                            <label for="Npieces" data-tooltip="Number of piecewise linear segments for q-profile approximation">Npieces:</label>
+                            <input type="number" id="Npieces" value="8" step="1" min="2" max="20">
+                        </div>
+                        <div class="parameter-item" id="custom-coeffs" style="display: none;">
+                            <label for="poly_coeffs" data-tooltip="Polynomial coefficients [a, b, c, d] for q(R) = aR³ + bR² + cR + d">Polynomial Coeffs [a,b,c,d]:</label>
+                            <input type="text" id="poly_coeffs" placeholder="484.06, -1378.26, 1309.31, -414.13">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- TCV Discharge Parameters -->
+                <div class="parameter-section">
+                    <h2>TCV #65130 Discharge Parameters</h2>
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <label for="P_exp" data-tooltip="P_sol measured power in Watts">P_exp (W):</label>
+                            <input type="number" id="P_exp" value="349200" step="1000">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="a_shift" data-tooltip="Parameter in Shafranov shift">a_shift:</label>
+                            <input type="number" id="a_shift" value="1.0" step="0.1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="kappa" data-tooltip="Elongation (=1 for no elongation)">κ (kappa):</label>
+                            <input type="number" id="kappa" value="1.4" step="0.1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="delta" data-tooltip="Triangularity (=0 for no triangularity)">δ (delta):</label>
+                            <input type="number" id="delta" value="-0.38" step="0.01">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="R_axis" data-tooltip="Magnetic axis major radius in meters">R_axis (m):</label>
+                            <input type="number" id="R_axis" value="0.8867856264" step="0.001">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="R_LCFSmid" data-tooltip="Major radius of the LCFS at the outboard midplane in meters">R_LCFSmid (m):</label>
+                            <input type="number" id="R_LCFSmid" value="1.0870056099999" step="0.001">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="Z_axis" data-tooltip="Magnetic axis height in meters">Z_axis (m):</label>
+                            <input type="number" id="Z_axis" value="0.1414361745" step="0.001">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="B_axis" data-tooltip="Magnetic field at the magnetic axis in Tesla">B_axis (T):</label>
+                            <input type="number" id="B_axis" value="1.4" step="0.1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reference Values -->
+                <div class="parameter-section">
+                    <h2>Reference Values</h2>
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <label for="Te0" data-tooltip="Reference electron temperature in eV">Te0 (eV):</label>
+                            <input type="number" id="Te0" value="100" step="10">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="Ti0" data-tooltip="Reference ion temperature in eV">Ti0 (eV):</label>
+                            <input type="number" id="Ti0" value="100" step="10">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="n0" data-tooltip="Reference density in 1/m³">n0 (1/m³):</label>
+                            <input type="text" id="n0" value="2.0e19" placeholder="e.g., 2.0e19">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="Bref" data-tooltip="Reference magnetic field in Tesla">Bref (T):</label>
+                            <input type="number" id="Bref" value="1.129" step="0.001">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Numerical Resolutions -->
+                <div class="parameter-section">
+                    <h2>Numerical Resolutions</h2>
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <label for="num_cell_x" data-tooltip="Number of cells in x direction">num_cell_x:</label>
+                            <input type="number" id="num_cell_x" value="48" step="1" min="1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="num_cell_y" data-tooltip="Number of cells in y direction">num_cell_y:</label>
+                            <input type="number" id="num_cell_y" value="32" step="1" min="1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="num_cell_z" data-tooltip="Number of cells in z direction">num_cell_z:</label>
+                            <input type="number" id="num_cell_z" value="16" step="1" min="1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="num_cell_vpar" data-tooltip="Number of cells in parallel velocity direction">num_cell_vpar:</label>
+                            <input type="number" id="num_cell_vpar" value="12" step="1" min="1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="num_cell_mu" data-tooltip="Number of cells in magnetic moment direction">num_cell_mu:</label>
+                            <input type="number" id="num_cell_mu" value="8" step="1" min="1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="x_inner" data-tooltip="Width of the closed flux surface region in meters">x_inner (m):</label>
+                            <input type="number" id="x_inner" value="0.04" step="0.01">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="x_outer" data-tooltip="Width of the SOL region in meters">x_outer (m):</label>
+                            <input type="number" id="x_outer" value="0.08" step="0.01">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="nrhos_y" data-tooltip="Number of rho_s0 in the y-direction, used to set the domain size along y">nrhos_y:</label>
+                            <input type="number" id="nrhos_y" value="150" step="10">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="nvth_vpar_e" data-tooltip="Sets vpar max e in terms of ref. elc th. vel.">nvth_vpar_e:</label>
+                            <input type="number" id="nvth_vpar_e" value="6.0" step="0.5">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="nvth_vpar_i" data-tooltip="Sets vpar max i in terms of ref. ion th. vel.">nvth_vpar_i:</label>
+                            <input type="number" id="nvth_vpar_i" value="6.0" step="0.5">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="nvth_mu_e" data-tooltip="Sets mu max e in terms of mi*pow(4*vte0,2)/(2*B0)">nvth_mu_e:</label>
+                            <input type="number" id="nvth_mu_e" value="1.5" step="0.1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="nvth_mu_i" data-tooltip="Sets mu max i in terms of mi*pow(4*vti0,2)/(2*B0)">nvth_mu_i:</label>
+                            <input type="number" id="nvth_mu_i" value="1.5" step="0.1">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="nuFrac" data-tooltip="Fraction of the Coulomb collision frequency to use in the simulation">nuFrac:</label>
+                            <input type="number" id="nuFrac" value="1.0" step="0.1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Time Parameters -->
+                <div class="parameter-section">
+                    <h2>Time Parameters</h2>
+                    <div class="parameter-grid">
+                        <div class="parameter-item">
+                            <label for="final_time" data-tooltip="Final simulation time in seconds">final_time (s):</label>
+                            <input type="text" id="final_time" value="2.e-3" placeholder="e.g., 2.e-3">
+                        </div>
+                        <div class="parameter-item">
+                            <label for="num_frames" data-tooltip="Number of output frames">num_frames:</label>
+                            <input type="number" id="num_frames" value="1000" step="100" min="1">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button id="generate-qprofile" class="btn-primary">Generate Q-Profile</button>
+                <button id="generate-file" class="btn-primary">Generate input.c File</button>
+                <button id="download-file" class="btn-secondary">Download File</button>
+                <button id="reset-defaults" class="btn-tertiary">Reset to Defaults</button>
+            </div>
+
+            <div class="output-section">
+                <h3>Generated C Code Preview</h3>
+                <textarea id="code-preview" readonly></textarea>
+            </div>
+        </div>
+    </div>
+
+    <div class="tooltip" id="tooltip"></div>
+    <script src="script.js"></script>
+</body>
+</html>
