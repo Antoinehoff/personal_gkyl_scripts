@@ -199,9 +199,10 @@ class PoloidalProjection:
     #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
     self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
-    rrI = self.geom.r_x(xxI)
-    Rint = self.geom.R_rt(rrI,zzI)
-    Zint = self.geom.Z_rt(rrI,zzI)
+        
+    rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
+    Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+    Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):

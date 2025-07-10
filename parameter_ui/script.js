@@ -197,7 +197,7 @@ function loadTemplateEnding() {
             return response.text();
         })
         .then(text => {
-            const marker = 'END OF THE USER PARAMETERS';
+            const marker = '// END OF THE USER PARAMETERS';
             const startIndex = text.indexOf(marker);
             
             if (startIndex !== -1) {

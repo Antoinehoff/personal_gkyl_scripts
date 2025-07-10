@@ -41,7 +41,7 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
-    R_axis = 0.8727315068
+    R_axis = 0.8727
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
     simulation = Simulation(dimensionality=dimensionality)
@@ -55,11 +55,11 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     simulation.set_geom_param(
         B_axis      = 1.4,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,         # Magnetic axis major radius
-        Z_axis      = 0.1414361745,         # Magnetic axis height
-        R_LCFSmid   = 1.0968432365089495,   # Major radius of LCFS at the midplane
-        a_shift     = 0.25,                 # Parameter in Shafranov shift
-        kappa       = 1.45,                 # Elongation factor
-        delta       = 0.35,                 # Triangularity factor
+        Z_axis      = 0.1414,         # Magnetic axis height
+        R_LCFSmid   = 1.0969,   # Major radius of LCFS at the midplane
+        a_shift     = 0.4080,                 # Parameter in Shafranov shift
+        kappa       = 1.3951,                 # Elongation factor
+        delta       = 0.2826,                 # Triangularity factor
         qfit        = [497.3420166252413, -1408.736172826569, 
                        1331.4134861681464, -419.00692601227627],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
@@ -123,7 +123,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
-    R_axis = 0.8867856264
+    R_axis = 0.8868
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
     
@@ -138,11 +138,11 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_geom_param(
         B_axis      = 1.4,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,         # Magnetic axis major radius
-        Z_axis      = 0.1414361745,         # Magnetic axis height
-        R_LCFSmid   = 1.0870056099999,   # Major radius of LCFS at the midplane
+        Z_axis      = 0.1389,         # Magnetic axis height
+        R_LCFSmid   = 1.0875,   # Major radius of LCFS at the midplane
         a_shift     = 1.0,                 # Parameter in Shafranov shift
-        kappa       = 1.4,                 # Elongation factor
-        delta       =-0.38,                 # Triangularity factor
+        kappa       = 1.3840,                 # Elongation factor
+        delta       =-0.2592,                 # Triangularity factor
         qfit        = [484.0615913225881, -1378.25993228584, 
                        1309.3099150729233, -414.13270311478726],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)

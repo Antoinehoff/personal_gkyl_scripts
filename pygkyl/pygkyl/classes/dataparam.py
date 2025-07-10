@@ -317,6 +317,40 @@ class DataParam:
             ci_ = directions[i_] # direction of the flux component
             cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
             ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
+            
+            # nabla times b
+            name       = 'nabla_x_b_%s'%(ci_)
+            symbol     = r'$(\nabla \times b)_{%s}$'%(ci_)
+            units      = r'1/m'
+            field2load = ['b_%s'%cj_,'b_%s'%ck_,'Jacobian']
+            def receipe_nabla_b(gdata_list,i=i_):
+                j = np.mod(i+1,3)
+                k = np.mod(i+2,3)
+                bj     = pgkyl_.get_values(gdata_list[0])
+                bk     = pgkyl_.get_values(gdata_list[1])
+                Jacob   = pgkyl_.get_values(gdata_list[2])
+                grids   = gdata_list[0].get_grid()
+                jgrid   = grids[j][:-1]
+                kgrid   = grids[k][:-1]
+                dbjdk = np.gradient(bj, kgrid, axis=i)
+                dbkdj = np.gradient(bk, jgrid, axis=i)
+                return (dbjdk - dbkdj)/Jacob
+            default_qttes.append([name,symbol,units,field2load,receipe_nabla_b])
+            
+            # Curvature (- b x ( nabla x b)
+            name       = 'curv_%s'%(ci_)
+            symbol     = r'$\kappa_{%s}$'%(ci_)
+            units      = r'm$^{-2}$'
+            field2load = ['b_%s'%ci_,'b_%s'%cj_,'b_%s'%ck_,'Jacobian']
+            def receipe_curv(gdata_list,i=i_):
+                j = np.mod(i+1,3)
+                k = np.mod(i+2,3)
+                bj     = pgkyl_.get_values(gdata_list[1])
+                bk     = pgkyl_.get_values(gdata_list[2])
+                rotbj = receipe_nabla_b([gdata_list[j],gdata_list[k],gdata_list[-1]],i=j)
+                rotbk = receipe_nabla_b([gdata_list[k],gdata_list[i],gdata_list[-1]],i=k)
+                return -(bj*rotbk - bk*rotbj)
+            
 
             # ExB velocity
             name       = 'ExB_v_%s'%(ci_)

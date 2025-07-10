@@ -10,3 +10,4 @@ trame-vtk
 trame-vuetify 
 imageio
 netCDF4
+freeqdsk
