@@ -48,6 +48,8 @@ class GeomParam:
         self.geom_type  = geom_type
         self.qprofile_R = qprofile_R
         self.qfit       = qfit
+        self.vol_frac   = None # Volume fraction
+        self.tor_num    = None # Toroidal mode number
         
         self.update_geom_params()
 
@@ -106,7 +108,9 @@ class GeomParam:
             self.qprofile_R = lambda R: np.polyval(self.qfit, R)
         self.q0 = self.qprofile_R(self.R0)
         self.Cy = self.r0/self.q0
-
+        self.vol_frac = 1.0/(2.*np.pi*self.r0/self.q0/self.Ly)
+        self.tor_num = 2.*np.pi*self.r0/self.q0/self.Ly
+        
     def load_metric(self,fileprefix):
         #-- load B (bmag)
         fname = fileprefix+'-'+'bmag.gkyl'
