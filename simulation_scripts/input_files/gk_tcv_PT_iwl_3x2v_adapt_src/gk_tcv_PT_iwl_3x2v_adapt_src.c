@@ -71,42 +71,42 @@ static void write_data(struct gkyl_tm_trigger *iot_conf, struct gkyl_tm_trigger 
                        gkyl_gyrokinetic_app *app, double t_curr, bool force_write);
 static void calc_integrated_diagnostics(struct gkyl_tm_trigger *iot, gkyl_gyrokinetic_app *app, double t_curr, bool force_write);
 
-// Piecewise linear fit for q-profile TCV #65125 (PT)
-// Context: a_shift=0.25, Z_axis=0.1414361745, R_axis=0.8727315068, B_axis=1.4,
-//          R_LCFSmid=1.0968432365089495, x_inner=0.04, x_outer=0.08, Nx=48
-//          Npieces=8, delta=0.35
+// Piecewise linear fit for q-profile TCV #65130 (PT)
+// Context: a_shift=0.408, Z_axis=0.1414, R_axis=0.8727, B_axis=1.4,
+//          R_LCFSmid=1.0969, x_inner=0.04, x_outer=0.08, Nx=24
+//          Npieces=8, delta=0.2826
+// Polynomial coefficients: [497.3420166252413, -1408.736172826569, 1331.4134861681464, -419.00692601227627]
 static double qprofile(double R) {
- if (R < 1.0734137947937) return 23.61009042312 * R + -23.247237547632;
- if (R >= 1.0734137947937 && R < 1.0874929440936) return 29.051242615877 * R + -29.087845370909;
- if (R >= 1.0874929440936 && R < 1.1015076405812) return 35.057694869586 * R + -35.619819815852;
- if (R >= 1.1015076405812 && R < 1.1154578842566) return 41.621342226945 * R + -42.849727530065;
- if (R >= 1.1154578842566 && R < 1.1293436751196) return 48.734116919581 * R + -50.783728139906;
- if (R >= 1.1293436751196 && R < 1.1431650131703) return 56.387988367713 * R + -59.427579450032;
- if (R >= 1.1431650131703 && R < 1.1569218984087) return 64.574963180269 * R + -68.786642619452;
- if (R >= 1.1569218984087) return 73.287085155072 * R + -78.865887313709;
+ if (R < 1.085071060056e+0) return 2.789485662007e+1 * R + -2.783888970880e+1;
+ if (R >= 1.085071060056e+0 && R < 1.100071060056e+0) return 3.420140006239e+1 * R + -3.468193748705e+1;
+ if (R >= 1.100071060056e+0 && R < 1.115071060056e+0) return 4.117935522716e+1 * R + -4.235818402218e+1;
+ if (R >= 1.115071060056e+0 && R < 1.130071060056e+0) return 4.882872211433e+1 * R + -5.088777166582e+1;
+ if (R >= 1.130071060056e+0 && R < 1.145071060056e+0) return 5.714950072400e+1 * R + -6.029084276974e+1;
+ if (R >= 1.145071060056e+0 && R < 1.160071060056e+0) return 6.614169105607e+1 * R + -7.058753968551e+1;
+ if (R >= 1.160071060056e+0 && R < 1.175071060056e+0) return 7.580529311059e+1 * R + -8.179800476486e+1;
+ if (R >= 1.175071060056e+0) return 8.614030688756e+1 * R + -9.394238035946e+1;
 }
 
 struct gk_app_ctx create_ctx(void)
 {
-  // TCV #65125 (PT) discharge parameters.
-  double P_exp     = 0.3819e6;           // P_sol measured [W]
-  double a_shift   = 0.25;               // Parameter in Shafranov shift.
-  double kappa     = 1.45;               // Elongation (=1 for no elongation).
-  double delta     = 0.35;               // Triangularity (=0 for no triangularity).
-  double R_axis    = 0.8727315068;       // Magnetic axis major radius [m].
-  double R_LCFSmid = 1.0968432365089495; // Major radius of the LCFS at the outboard midplane [m].
-  double Z_axis    = 0.1414361745;       // Magnetic axis height [m].
-  double B_axis    = 1.4;                // Magnetic field at the magnetic axis [T].
-  // Note: after this line, all the parameters are numerical parameters.
-  //------------------------------------------------------------
+  // TCV #65130 (NT) discharge parameters.
+  double P_exp     = 0.3819e6;        // P_sol measured [W]
+  double a_shift   = 0.4080;             // Parameter in Shafranov shift.
+  double kappa     = 1.3951;             // Elongation (=1 for no elongation).
+  double delta     = 0.2826;           // Triangularity (=0 for no triangularity).
+  double R_axis    = 0.8727;    // Magnetic axis major radius [m].
+  double R_LCFSmid = 1.0969; // Major radius of the LCFS at the outboard midplane [m].
+  double Z_axis    = 0.1414;    // Magnetic axis height [m].
+  double B_axis    = 1.4;             // Magnetic field at the magnetic axis [T].
+  // Note: after this line, all the parameters are simulation design parameters.
 
   // Reference values.
-  double Te0 = 100; // Ref. electron temperature [eV].
-  double Ti0 = 100; // Ref. ion temperature [eV].
-  double n0  = 2.0e19;   // [1/m^3]
-  double Bref = 1.129;   // Reference magnetic field [T].
+  double Te0  = 100; // Ref. electron temperature [eV].
+  double Ti0  = 100; // Ref. ion temperature [eV].
+  double n0   = 2.0e19;   // Ref. density [1/m^3]
+  double Bref = 1.129;   // Ref. magnetic field [T].
 
-  // Numerical design choices.
+  // Numerical resolutions.
   int num_cell_x = 48;
   int num_cell_y = 32;
   int num_cell_z = 16;
@@ -129,8 +129,10 @@ struct gk_app_ctx create_ctx(void)
   double dt_failure_tol = 1.0e-3; // Minimum allowable fraction of initial time-step.
   int num_failures_max = 20; // Maximum allowable number of consecutive small time-steps.
 
-  // END OF THE USER PARAMETERS
+//END OF THE USER PARAMETERS
   //-------------------------------------------------------------
+  // JS_COPY_START
+  // JS script will copy this line to the end of the file.
 
   // Simulation set up
   int cdim = 3, vdim = 2; // Dimensionality.
@@ -291,6 +293,13 @@ main(int argc, char **argv)
 
   struct gk_app_ctx ctx = create_ctx(); // context for init functions
 
+  // Verify that the number of z-plane is divisible by the number of cuts
+  if (ctx.num_cell_z % app_args.cuts[ctx.cdim-1] != 0) {
+      fprintf(stderr, "Error: Number of z-cells (%d) must be divisible by the number of cuts in z (%d)\n",
+              ctx.num_cell_z, app_args.cuts[2]);
+      return -1;
+  }
+
   double max_run_time;
   sscanf(app_args.opt_args, "max_run_time=%lf", &max_run_time);
   int cells_x[ctx.cdim], cells_v[ctx.vdim];
@@ -356,7 +365,7 @@ main(int argc, char **argv)
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
 
-// /*
+/*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
        .file_name = "restart-elc.gkyl"
@@ -481,7 +490,7 @@ main(int argc, char **argv)
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
 
-// /*
+/*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
        .file_name = "restart-ion.gkyl"

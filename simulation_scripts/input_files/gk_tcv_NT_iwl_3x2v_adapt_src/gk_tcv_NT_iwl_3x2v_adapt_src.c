@@ -72,30 +72,31 @@ static void write_data(struct gkyl_tm_trigger *iot_conf, struct gkyl_tm_trigger 
 static void calc_integrated_diagnostics(struct gkyl_tm_trigger *iot, gkyl_gyrokinetic_app *app, double t_curr, bool force_write);
 
 // Piecewise linear fit for q-profile TCV #65130 (NT)
-// Context: a_shift=1.0, Z_axis=0.1414361745, R_axis=0.8867856264, B_axis=1.4,
-//          R_LCFSmid=1.0870056099999, x_inner=0.04, x_outer=0.08, Nx=48
-//          Npieces=8, delta=-0.38
+// Context: a_shift=1, Z_axis=0.1389, R_axis=0.8868, B_axis=1.4,
+//          R_LCFSmid=1.0875, x_inner=0.04, x_outer=0.08, Nx=24
+//          Npieces=8, delta=-0.2592
+// Polynomial coefficients: [484.0615913225881, -1378.25993228584, 1309.3099150729233, -414.13270311478726]
 static double qprofile(double R) {
- if (R < 1.0918488304321) return 27.804896404549 * R + -27.92421756603;
- if (R >= 1.0918488304321 && R < 1.1068488304321) return 34.024085846787 * R + -34.714632284773;
- if (R >= 1.1068488304321 && R < 1.1218488304321) return 40.896758437384 * R + -42.321641903619;
- if (R >= 1.1218488304321 && R < 1.1368488304321) return 48.422914176186 * R + -50.764850916843;
- if (R >= 1.1368488304321 && R < 1.1518488304321) return 56.60255306331 * R + -60.063863819026;
- if (R >= 1.1518488304321 && R < 1.1668488304321) return 65.435675098706 * R + -70.238285104561;
- if (R >= 1.1668488304321 && R < 1.1818488304321) return 74.922280282424 * R + -81.307719267953;
- if (R >= 1.1818488304321) return 85.062368614383 * R + -93.291770803558;
+ if (R < 1.092511042617e+0) return 2.806566994230e+1 * R + -2.820703739865e+1;
+ if (R >= 1.092511042617e+0 && R < 1.107511042617e+0) return 3.431370901810e+1 * R + -3.503308908366e+1;
+ if (R >= 1.107511042617e+0 && R < 1.122511042617e+0) return 4.121523124224e+1 * R + -4.267660115776e+1;
+ if (R >= 1.122511042617e+0 && R < 1.137511042617e+0) return 4.877023661459e+1 * R + -5.115717811526e+1;
+ if (R >= 1.137511042617e+0 && R < 1.152511042617e+0) return 5.697872513530e+1 * R + -6.049442445076e+1;
+ if (R >= 1.152511042617e+0 && R < 1.167511042617e+0) return 6.584069680428e+1 * R + -7.070794465862e+1;
+ if (R >= 1.167511042617e+0 && R < 1.182511042617e+0) return 7.535615162151e+1 * R + -8.181734323325e+1;
+ if (R >= 1.182511042617e+0) return 8.552508958702e+1 * R + -9.384222466916e+1;
 }
 
 struct gk_app_ctx create_ctx(void)
 {
   // TCV #65130 (NT) discharge parameters.
-  double P_exp     = 0.3492e6;        // P_sol measured [W]
-  double a_shift   = 1.0;             // Parameter in Shafranov shift.
-  double kappa     = 1.4;             // Elongation (=1 for no elongation).
-  double delta     = -0.38;           // Triangularity (=0 for no triangularity).
-  double R_axis    = 0.8867856264;    // Magnetic axis major radius [m].
-  double R_LCFSmid = 1.0870056099999; // Major radius of the LCFS at the outboard midplane [m].
-  double Z_axis    = 0.1414361745;    // Magnetic axis height [m].
+  double P_exp     = 349200;        // P_sol measured [W]
+  double a_shift   = 1.0000;             // Parameter in Shafranov shift.
+  double kappa     = 1.3840;             // Elongation (=1 for no elongation).
+  double delta     = -0.2592;           // Triangularity (=0 for no triangularity).
+  double R_axis    = 0.8868;    // Magnetic axis major radius [m].
+  double R_LCFSmid = 1.0875; // Major radius of the LCFS at the outboard midplane [m].
+  double Z_axis    = 0.1389;    // Magnetic axis height [m].
   double B_axis    = 1.4;             // Magnetic field at the magnetic axis [T].
   // Note: after this line, all the parameters are simulation design parameters.
 
@@ -128,8 +129,10 @@ struct gk_app_ctx create_ctx(void)
   double dt_failure_tol = 1.0e-3; // Minimum allowable fraction of initial time-step.
   int num_failures_max = 20; // Maximum allowable number of consecutive small time-steps.
 
-  // END OF THE USER PARAMETERS
+// END OF THE USER PARAMETERS
   //-------------------------------------------------------------
+  // JS_COPY_START
+  // JS script will copy this line to the end of the file.
 
   // Simulation set up
   int cdim = 3, vdim = 2; // Dimensionality.
@@ -290,6 +293,13 @@ main(int argc, char **argv)
 
   struct gk_app_ctx ctx = create_ctx(); // context for init functions
 
+  // Verify that the number of z-plane is divisible by the number of cuts
+  if (ctx.num_cell_z % app_args.cuts[ctx.cdim-1] != 0) {
+      fprintf(stderr, "Error: Number of z-cells (%d) must be divisible by the number of cuts in z (%d)\n",
+              ctx.num_cell_z, app_args.cuts[2]);
+      return -1;
+  }
+
   double max_run_time;
   sscanf(app_args.opt_args, "max_run_time=%lf", &max_run_time);
   int cells_x[ctx.cdim], cells_v[ctx.vdim];
@@ -355,7 +365,7 @@ main(int argc, char **argv)
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
 
-// /*
+/*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
        .file_name = "restart-elc.gkyl"
@@ -480,7 +490,7 @@ main(int argc, char **argv)
     .cells = { cells_v[0], cells_v[1] },
     .polarization_density = ctx.n0,
 
-// /*
+/*
     .init_from_file = {
        .type = GKYL_IC_IMPORT_F,
        .file_name = "restart-ion.gkyl"
