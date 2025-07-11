@@ -779,7 +779,7 @@ def plot_loss(simulation, losstype='energy', walls =[],
             raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
         return intmom.values, intmom.time, intmom.vunits, intmom.tunits
     walls = walls if walls else ['x_u','z_l','z_u']
-    wall_labels = {'x_l': r'\text{x,in}', 'x_u': r'\text{vessel}', 'z_l': r'\text{lim,low}', 'z_u': r'\text{lim,up}'}
+    wall_labels = {'x_l': r'\text{core}', 'x_u': r'\text{wall}', 'z_l': r'\text{lim,low}', 'z_u': r'\text{lim,up}'}
     symbol = '\Gamma' if losstype == 'particle' else 'P'
     
     losses = []
@@ -801,7 +801,7 @@ def plot_loss(simulation, losstype='energy', walls =[],
     if showall:
         for iw,wall in zip(range(len(walls)), walls):
             ax.plot(time, losses[iw], label=r'$%s_{%s}$'%(symbol,wall_labels[wall]))
-    ax.plot(time, total_loss, label=r'$%s_{walls}$'%symbol)
+    ax.plot(time, total_loss, label=r'$%s_{tot}$'%symbol)
     # Add horizontal line at average balance value
     ax.plot([time[-nt//3], time[-1]], [loss_avg, loss_avg],
             '--k', alpha=0.5, label='%s %s' % (fig_tools.optimize_str_format(loss_avg), vunits))
