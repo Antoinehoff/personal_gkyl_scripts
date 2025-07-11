@@ -841,20 +841,21 @@ class DataParam:
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
 
         #total source power density
-        name       = 'src_pow'
+        name       = 'src_P'
         symbol     = r'$P_{src}$'
         units      = r'W/m$^3$'
         field2load = []
         for spec in species.values():
             s_ = spec.nshort
-            field2load.append('src_n%s'%s_)
-            field2load.append('src_Tpar%s'%(s_))
-            field2load.append('src_Tperp%s'%(s_))
+            field2load.append('src_HM_H%s'%(s_))
+            field2load.append('phi')
+            field2load.append('src_n%s'%(s_))
+                            
         def receipe_src_pow(gdata_list,species=species):
             fout = 0.0
             k    = 0
             for spec in species.values():
-                fout += receipe_Wkins(gdata_list[0+k:3+k],m=spec.m)
+                fout += receipe_src_Ps(gdata_list[0+k:3+k],q=spec.q)
                 k += 3
             return fout 
         default_qttes.append([name,symbol,units,field2load,receipe_src_pow])
