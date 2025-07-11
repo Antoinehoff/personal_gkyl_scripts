@@ -714,13 +714,14 @@ def plot_nodes(simulation):
     plt.show()
 
 def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,
-                 transit=False):
+                 volfrac_scaled=True, show_avg=True):
     from scipy.ndimage import gaussian_filter1d    
     def get_int_mom_data(simulation, fieldname):
         try:
             intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
         except KeyError:
             raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
+        if volfrac_scaled: intmom.values = intmom.values / simulation.geom_param.vol_frac
         return intmom.values, intmom.time, intmom.vunits, intmom.tunits
 
     symbol_src = '\Gamma' if balancetype == 'particle' else 'P'
@@ -754,10 +755,11 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
         ax.plot(time, loss, label=r'$%s_{\text{loss}}$'%symbol_src)
         ax.plot(time, intvar, label=r'$\partial %s / \partial t$'%symbol_mom)
     ax.plot(time, balance, label='Balance')
-    # Add horizontal line at average balance value
-    ax.plot([time[-nt//3], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, 
-            label='%s %s' % (fig_tools.optimize_str_format(balance_avg), vunits))
-    
+    if show_avg:
+        # Add horizontal line at average balance value
+        ax.plot([time[-nt//3], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, 
+                label='%s %s' % (fig_tools.optimize_str_format(balance_avg), vunits))
+        
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
     if showall:
         ylabel = vunits
@@ -769,9 +771,8 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
     fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
                             title=title_, legend=legend, xlim=xlim, ylim=ylim)
     
-def plot_loss(simulation, losstype='energy', walls =[],
+def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, show_avg=True,
               title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True):
-    from scipy.ndimage import gaussian_filter1d    
     def get_int_mom_data(simulation, fieldname):
         try:
             intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
@@ -786,6 +787,7 @@ def plot_loss(simulation, losstype='energy', walls =[],
     for wall in walls:
         fieldname = f'bflux_{wall}' +  ('_ntot' if losstype == 'particle' else '_Htot')
         loss_, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
+        if volfrac_scaled: loss_ = loss_ / simulation.geom_param.vol_frac
         losses.append(loss_)
     
     # Replace J/s to W or particle by 1
@@ -802,9 +804,10 @@ def plot_loss(simulation, losstype='energy', walls =[],
         for iw,wall in zip(range(len(walls)), walls):
             ax.plot(time, losses[iw], label=r'$%s_{%s}$'%(symbol,wall_labels[wall]))
     ax.plot(time, total_loss, label=r'$%s_{walls}$'%symbol)
-    # Add horizontal line at average balance value
-    ax.plot([time[-nt//3], time[-1]], [loss_avg, loss_avg],
-            '--k', alpha=0.5, label='%s %s' % (fig_tools.optimize_str_format(loss_avg), vunits))
+    if show_avg:
+        # Add horizontal line at average balance value
+        ax.plot([time[-nt//3], time[-1]], [loss_avg, loss_avg],
+                '--k', alpha=0.5, label='%s %s' % (fig_tools.optimize_str_format(loss_avg), vunits))
     
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
     ylabel = vunits
