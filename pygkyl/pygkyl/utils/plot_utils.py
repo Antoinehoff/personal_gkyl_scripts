@@ -801,7 +801,8 @@ def plot_loss(simulation, losstype='energy', walls =[],
     if showall:
         for iw,wall in zip(range(len(walls)), walls):
             ax.plot(time, losses[iw], label=r'$%s_{%s}$'%(symbol,wall_labels[wall]))
-    ax.plot(time, total_loss, label=r'$%s_{tot}$'%symbol)
+    labeltot = r'$%s_{SOL}$'%symbol if walls == ['x_u','z_l','z_u'] else r'$%s_{tot}$'%symbol
+    ax.plot(time, total_loss, label=labeltot)
     # Add horizontal line at average balance value
     ax.plot([time[-nt//3], time[-1]], [loss_avg, loss_avg],
             '--k', alpha=0.5, label='%s %s' % (fig_tools.optimize_str_format(loss_avg), vunits))
