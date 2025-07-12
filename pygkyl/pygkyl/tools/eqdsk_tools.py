@@ -8,6 +8,7 @@
 #
 # Based on original script by Manaure Francisquez and T. Bernard.
 # Refined with Miller geometry comparison.
+# Refined further with least squares fitting for Miller parameters, A. Hoffmann 2025.
 # -----------------------------------------------------------------------------
 import numpy as np
 import matplotlib.pyplot as plt
@@ -32,15 +33,15 @@ SAVE_PLOTS = True
 OUTPUT_DIR = "./"
 FIGURE_FORMAT = '.png'
 
-plt.rcParams.update({
-    "font.size": 14,
-    "lines.linewidth": 2.5,
-    "image.cmap": 'viridis',
-    "axes.labelsize": 16,
-    "xtick.labelsize": 14,
-    "ytick.labelsize": 14,
-    "legend.fontsize": 14,
-})
+# plt.rcParams.update({
+#     "font.size": 14,
+#     "lines.linewidth": 2.5,
+#     "image.cmap": 'viridis',
+#     "axes.labelsize": 16,
+#     "xtick.labelsize": 14,
+#     "ytick.labelsize": 14,
+#     "legend.fontsize": 14,
+# })
 
 # ========================= HELPER FUNCTIONS ================================
 
@@ -203,7 +204,7 @@ def calculate_miller_parameters(gfile_data, method='manual', input_params=None):
         print("Using manual Miller parameters.")
     return params
 
-def generate_miller_lcfs(miller_params):
+def generate_miller_lcfs(miller_params, r=None):
     """
     Generates R, Z coordinates for a Miller LCFS using the provided formula.
 
@@ -226,7 +227,7 @@ def generate_miller_lcfs(miller_params):
     delta = miller_params['delta']
     
     # We are plotting the LCFS, so the minor radius variable 'r' is 'a'
-    r = amid
+    r = r if r else amid
     
     # Apply the user-provided formulas
     R_miller = R_axis - ashift * r**2 / (2. * R_axis) + r * np.cos(theta + np.arcsin(delta) * np.sin(theta))
@@ -236,7 +237,10 @@ def generate_miller_lcfs(miller_params):
 
 # ========================= CORE ANALYSIS SCRIPT ============================
 
-def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', plot_miller_geom=True, save_plots=True):
+def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', x_surf = [],
+                                   title='', outfilename='',
+                                   plot_miller_geom=True, save_plots=True, 
+                                   show_legend=True, show_colorbar=True):
     """
     Reads a g-file and generates equilibrium and q-profile plots.
     """
@@ -257,17 +261,17 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', plot_mill
 
     # --- 2. Plot the 2D Equilibrium ---
     print("Generating equilibrium plot...")
-    fig1, ax1 = plt.subplots(figsize=(6, 9))
+    fig1, ax1 = plt.subplots(figsize=(3, 5))
     
     levels = np.linspace(psi_RZ.min(), psi_RZ.max(), 30)
     contour = ax1.contourf(RR, ZZ, psi_RZ, levels=levels)
-    fig1.colorbar(contour, ax=ax1, label=r'$\psi$ (Wb/rad)')
+    if show_colorbar: fig1.colorbar(contour, ax=ax1, label=r'$\psi$ (Wb/rad)')
     
-    ax1.plot(gfile_data["rlim"], gfile_data["zlim"], 'k--', linewidth=2.5, label='Limiter')
+    ax1.plot(gfile_data["rlim"], gfile_data["zlim"], 'k-', linewidth=2.5, label='Vessel')
     ax1.plot(gfile_data["rbdry"], gfile_data["zbdry"], 'w-', linewidth=3.0, label='Experimental LCFS')
     ax1.plot(gfile_data["rmagx"], gfile_data["zmagx"], 'wx', markersize=10, mew=2.5, label='Magnetic Axis')
 
-    # --- NEW: Miller Geometry Comparison ---
+    # --- Miller Geometry Comparison ---
     if plot_miller_geom:
         print("\n--- Miller Geometry Analysis ---")
         # Calculate parameters from the experimental LCFS
@@ -290,16 +294,28 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', plot_mill
         
         # Overlay the Miller LCFS on the plot
         ax1.plot(R_miller, Z_miller, 'r--', linewidth=2.5, label='Miller Optim. LCFS' if fit_method=='optimization' else 'Miller Approx. LCFS')
+        
+        if x_surf:
+            for x in x_surf:
+                r = miller_params['amid'] + x
+                R_miller_x, Z_miller_x = generate_miller_lcfs(miller_params, r=r)
+                ax1.plot(R_miller_x, Z_miller_x, 'r:', linewidth=1.5, label=f'Miller Optim. at x={x:.2f} m')
     
-    ax1.set_title(f"Magnetic Equilibrium from {gfile_path.split('/')[-1]}")
+    title = title if title else f"Equilibrium from {gfile_path.split('/')[-1]}"
+    ax1.set_title(title)
     ax1.set_xlabel('R (m)')
     ax1.set_ylabel('Z (m)')
     ax1.set_aspect('equal')
-    ax1.legend()
+    if show_legend: ax1.legend()
     plt.tight_layout()
 
     if save_plots:
         output_filename = f"{OUTPUT_DIR}equilibrium_plot{FIGURE_FORMAT}"
+        if title:
+            title = title.replace(" ", "_").replace("\\#", "")
+            title = title.replace('(', '').replace(')', '')
+            output_filename = f"{OUTPUT_DIR}{title}_equilibrium_plot{FIGURE_FORMAT}"
+        if outfilename: output_filename = outfilename
         plt.savefig(output_filename)
         print(f"\nSaved equilibrium plot to {output_filename}")
     plt.show()
@@ -326,7 +342,7 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', plot_mill
     ax2.set_xlabel('Major Radius R (m)')
     ax2.set_ylabel('Safety Factor q')
     ax2.grid(True, linestyle='--')
-    ax2.legend()
+    if show_legend: ax2.legend()
     plt.tight_layout()
 
     if save_plots:
