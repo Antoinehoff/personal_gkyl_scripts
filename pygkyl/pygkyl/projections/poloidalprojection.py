@@ -459,8 +459,8 @@ class PoloidalProjection:
         pcm1.set_norm(colornorm)
     if clim: pcm1.set_clim(clim)
     
-    plt.show()
     if outFilename: plt.savefig(outFilename)
+    plt.show()
     plt.close(fig1a)
 
   def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
