@@ -45,15 +45,17 @@ class PoloidalProjection:
     self.gridCheck = False
     self.zExt = True
     self.TSBC = True
+    self.dpi = 150
     
   def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
-            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
+            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
     self.figSize = figSize
+    self.dpi = dpi
     self.timeFrame0 = timeFrame
 
     if self.sim.polprojInset is not None:
@@ -321,7 +323,7 @@ class PoloidalProjection:
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average=''):
+           shading='auto', average='', show_title=True):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -409,7 +411,7 @@ class PoloidalProjection:
     #.Create the figure.
     ax1aPos   = [ [0.10, 0.08, 0.76, 0.88] ]
     cax1aPos  = [0.88, 0.08, 0.02, 0.88]
-    fig1a     = plt.figure(figsize=self.figSize)
+    fig1a     = plt.figure(figsize=self.figSize, dpi=150)
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))
@@ -421,7 +423,7 @@ class PoloidalProjection:
     hpl1a.append(pcm1)
 
     #fig1a.suptitle
-    ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
+    if show_title: ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
     ax1a[0].set_xlabel(r'$R$ (m)',fontsize=xyLabelFontSize, labelpad=-2)
     #setTickFontSize(ax1a[0],tickFontSize)
     ax1a[0].set_ylabel(r'$Z$ (m)',fontsize=xyLabelFontSize, labelpad=-10)
@@ -456,12 +458,9 @@ class PoloidalProjection:
             else colors.SymLogNorm(vmax=fldMax, vmin=fldMin, linscale=1.0, linthresh=logScaleFloor*fldMax)
         pcm1.set_norm(colornorm)
     if clim: pcm1.set_clim(clim)
-
-    if outFilename:
-        plt.savefig(outFilename)
-        plt.close()
-    else:
-        plt.show()
+    
+    plt.show()
+    if outFilename: plt.savefig(outFilename)
 
   def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
