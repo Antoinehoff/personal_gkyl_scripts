@@ -402,6 +402,12 @@ class Simulation:
                     Bfield
                 )
                 
+                loglambda_sr = phys_tools.coulomb_logarithm(
+                    species_s.n0, species_s.q, species_s.m, species_s.T0,
+                    species_r.n0, species_r.q, species_r.m, species_r.T0,
+                    Bfield
+                )
+                
                 # Collision time is inverse of frequency
                 tau_sr = 1.0 / nu_sr if nu_sr > 0 else np.inf
                 
@@ -409,6 +415,7 @@ class Simulation:
                 
                 collision_data[pair_name] = {
                     'frequency': nu_sr,
+                    'loglambda': loglambda_sr,
                     'time': tau_sr
                 }
         
@@ -425,7 +432,7 @@ class Simulation:
                 print(f"  {species.name}: n0={species.n0:.2e} m^-3, T0={species.T0/phys_tools.eV:.0f} eV")
             print("-"*80)
             
-            print(f"{'Species Pair':<20} {'Frequency [s^-1]':<15} {'Time [s]':<15} {'tc_s0/R':<15}")
+            print(f"{'Species Pair':<20} {'Frequency [s^-1]':<15} {'Time [s]':<15} {'tc_s0/R':<15} {'log(lambda)':<15}")
             print("-"*80)
             
             # Sort by frequency (highest to lowest)
@@ -436,12 +443,13 @@ class Simulation:
             
             for pair, data in sorted_pairs:
                 freq_str = f"{data['frequency']:.2e}"
+                coulomb_log_str = f"{data['loglambda']:.2f}"
                 time_str = f"{data['time']:.2e}" if data['time'] != np.inf else "∞"
                 
                 tau_norm = data['time'] * c_s0 / R_axis
                 tau_norm_str = f"{tau_norm:.2e}" if tau_norm != np.inf else "∞"
                 
-                print(f"{pair:<20} {freq_str:<15} {time_str:<15} {tau_norm_str:<15}")
+                print(f"{pair:<20} {freq_str:<15} {time_str:<15} {tau_norm_str:<15} {coulomb_log_str:<15}")
             
             print("-"*80)
         
