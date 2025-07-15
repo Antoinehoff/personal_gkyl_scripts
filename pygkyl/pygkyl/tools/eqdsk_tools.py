@@ -98,13 +98,10 @@ def generate_miller_lcfs(miller_params, r=None):
     
     R_axis = miller_params['R_axis']
     Z_axis = miller_params['Z_axis']
-    amid = miller_params['amid']
     ashift = miller_params['ashift']
     kappa = miller_params['kappa']
     delta = miller_params['delta']
-    
-    r = r if r else amid
-    
+        
     R_miller = R_axis - ashift * r**2 / (2. * R_axis) + r * np.cos(theta + np.arcsin(delta) * np.sin(theta))
     Z_miller = Z_axis + kappa * r * np.sin(theta)
     
@@ -116,7 +113,8 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', x_surf=[]
                                    title='', outfilename='',
                                    plot_miller_geom=True, save_plots=True, 
                                    show_legend=True, show_colorbar=True,
-                                   qprofile_fit=[], return_data=[]):
+                                   qprofile_fit=[], return_data=[],
+                                   input_miller_params=None):
     """
     Reads a g-file and generates combined equilibrium and q-profile plots.
     """
@@ -150,8 +148,25 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', x_surf=[]
     # Miller Geometry Analysis
     miller_params = None
     if plot_miller_geom:
+        
         print("--- Miller Geometry fit ---")
-        miller_params = calculate_miller_parameters(gfile_data, method=fit_method)
+        if input_miller_params:
+            miller_params = input_miller_params
+        else:
+            miller_params = calculate_miller_parameters(gfile_data, method=fit_method)
+
+        amid = miller_params['R_axis']/ miller_params['ashift'] - np.sqrt(miller_params['R_axis'] * (miller_params['R_axis'] - 2 * miller_params['ashift'] * miller_params['R_LCFSmid'] + 2 * miller_params['ashift'] * miller_params['R_axis'])) / miller_params['ashift']
+        def Rrt0(r):
+            return miller_params['R_axis'] - miller_params['ashift'] * r**2 / (2. * miller_params['R_axis'])
+        def Rrt(r,theta):
+            return Rrt0(r) + r * np.cos(theta + np.arcsin(miller_params['delta']) * np.sin(theta))
+        def rhoR(R):
+            a =  miller_params['R_LCFSmid'] - miller_params['R_axis']
+            return (R - miller_params['R_axis']) / a
+        def rx(x):
+            return amid + x
+        def Rx(x):
+            return Rrt(rx(x),0.0)
         
         # Print parameters in C-style format
         print(f"\tdouble a_shift = {miller_params['ashift']:.6f}; // Parameter in Shafranov shift.")
@@ -162,13 +177,13 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', x_surf=[]
         print(f"\tdouble Z_axis = {miller_params['Z_axis']:.6f}; // Vertical position of the magnetic axis.")
         
         # Generate and plot Miller LCFS
-        R_miller, Z_miller = generate_miller_lcfs(miller_params)
+        R_miller, Z_miller = generate_miller_lcfs(miller_params, r=amid)
         label = 'Miller Optim. LCFS' if 'optimization' in fit_method else 'Miller Approx. LCFS'
         ax1.plot(R_miller, Z_miller, 'r--', linewidth=1.5, label=label)
         
         # Plot additional surfaces if requested
         for x in x_surf:
-            r = miller_params['amid'] + x
+            r = rx(x)
             R_miller_x, Z_miller_x = generate_miller_lcfs(miller_params, r=r)
             ax1.plot(R_miller_x, Z_miller_x, 'r:', linewidth=1.5, label=f'x={x:.2f} m')
     
@@ -193,21 +208,7 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', x_surf=[]
     
     valid_indices = ~np.isnan(R_for_q_profile)
     
-    if miller_params:
-        amid = miller_params['R_axis']/ miller_params['ashift'] - np.sqrt(miller_params['R_axis'] * (miller_params['R_axis'] - 2 * miller_params['ashift'] * miller_params['R_LCFSmid'] + 2 * miller_params['ashift'] * miller_params['R_axis'])) / miller_params['ashift']
-        def Rrt0(r):
-            return miller_params['R_axis'] - miller_params['ashift'] * r**2 / (2. * miller_params['R_axis'])
-        def Rrt(r,theta):
-            return Rrt0(r) + r * np.cos(theta + np.arcsin(miller_params['delta']) * np.sin(theta))
-        def rhoR(R):
-            a =  miller_params['R_LCFSmid'] - miller_params['R_axis']
-            return (R - miller_params['R_axis']) / a
-        def rx(x):
-            return amid + x
-        def Rx(x):
-            return Rrt(rx(x),0.0)
-            # return Rrt0(amid) + amid + x
-        
+    if miller_params:        
         ax1.plot(Rrt0(amid), gfile_data["zmagx"], 'rx', markersize=4, mew=0.75, label='Magnetic Axis')
        
         # Calculate new cubic fit
@@ -244,7 +245,7 @@ def plot_equilibrium_and_q_profile(gfile_path, fit_method='geometric', x_surf=[]
             # Print input q-profile fit coefficients
             print(f"qprofile_fit = {qprofile_fit}")
             ax2.plot(rho_fit, np.polyval(qprofile_fit, R), 'k--', label='q fit')
-        if 'new_cubic_fit' in locals():
+        elif 'new_cubic_fit' in locals():
             ax2.plot(rho_fit, np.polyval(new_cubic_fit, R), 'g--', label='New cubic fit')
         
         ax2.set_xlabel(r'$\rho$')
