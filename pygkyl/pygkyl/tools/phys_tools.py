@@ -122,8 +122,8 @@ def coulomb_logarithm(n_s, q_s, m_s, T_s, n_r, q_r, m_r, T_r, Bfield=0.0):
     # Quantum distance
     d_quantum = hbar / (2 * np.exp(0.5) * m_sr * u)
     
-    # Maximum distance
-    d_max = max(d_classical, d_quantum)
+    # Maximum distance (for each array element)
+    d_max = np.maximum(d_classical, d_quantum)
     
     # Coulomb logarithm
     argument = 1 + (alpha_sum**(-1)) * (d_max**(-2))

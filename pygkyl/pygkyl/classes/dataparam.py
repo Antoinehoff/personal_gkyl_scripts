@@ -3,6 +3,7 @@ import numpy as np
 import os
 from ..interfaces import pgkyl_interface as pgkyl_
 from ..utils import file_utils as file_utils
+from ..tools import phys_tools
 import glob
 
 class DataParam:
@@ -583,6 +584,36 @@ class DataParam:
                 ndot = pgkyl_.get_values(gdata_list[2])
                 return 2/3 * Edot / ndot
             default_qttes.append([name,symbol,units,field2load,receipe_src_Ts])
+            
+            for rpec in species.values():
+                r_ = rpec.nshort
+                
+                # Collision frequency
+                name = 'nu%s%s'%(s_,r_)
+                symbol = r'$\nu_{%s%s}$'%(s_,r_)
+                units = r'1/s'
+                field2load = ['n%s'%(s_), 'Tpar%s'%(s_), 'Tperp%s'%(s_),
+                              'n%s'%(r_), 'Tpar%s'%(r_), 'Tperp%s'%(r_),
+                              'Bmag']
+                def receipe_nu(gdata_list,qs=spec.q,ms=spec.m,qr=rpec.q,mr=rpec.m):
+                    ns = pgkyl_.get_values(gdata_list[0])
+                    Ts = receipe_Ttots(gdata_list[1:3])*ms
+                    nr = pgkyl_.get_values(gdata_list[3])
+                    Tr = receipe_Ttots(gdata_list[4:6])*mr
+                    Bmag = pgkyl_.get_values(gdata_list[6])
+                    return phys_tools.collision_freq(ns, qs, ms, Ts, nr, qr, mr, Tr, Bmag)
+                default_qttes.append([name,symbol,units,field2load,receipe_nu])
+                
+                # Collision time
+                name = 'tcoll%s%s'%(s_,r_)
+                symbol = r'$\tau^{coll}_{%s%s}$'%(s_,r_)
+                units = r's'
+                field2load = ['n%s'%(s_), 'Tpar%s'%(s_), 'Tperp%s'%(s_),
+                              'n%s'%(r_), 'Tpar%s'%(r_), 'Tperp%s'%(r_),
+                              'Bmag']
+                def receipe_tcoll(gdata_list,qs=spec.q,ms=spec.m,qr=rpec.q,mr=rpec.m):
+                    return 1/receipe_nu(gdata_list,qs=qs,ms=ms,qr=qr,mr=mr)
+                default_qttes.append([name,symbol,units,field2load,receipe_tcoll])
 
             #- The following are vector fields quantities that we treat component wise
             directions = ['x','y','z'] #directions array
@@ -1117,6 +1148,12 @@ class DataParam:
         for sdepfield in spec_dep_fields:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)
+                
+        double_spec_fields = ['nu','tcoll']
+        for sdepfield in double_spec_fields:
+            for spec in species.values():
+                for rpec in species.values():
+                    positive_fields.append(sdepfield+spec.nshort+rpec.nshort)
         
         for field in names:
             if field in positive_fields:

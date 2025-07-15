@@ -228,7 +228,22 @@ class PoloidalProjection:
           self.xyz2RZ[:,+k,iz] *= np.exp(1j*k* dphi)
           self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
     
-  def project_field(self, field, evalDGfunc=None):
+  def project_field(self, field, evalDGfunc=None, handle_bad_data='mask'):
+    """
+    Project field data with handling for NaN and infinite values.
+    
+    Parameters:
+    -----------
+    field : ndarray
+        Field data to project
+    evalDGfunc : function, optional
+        DG evaluation function
+    handle_bad_data : str, optional
+        How to handle NaN/inf values:
+        - 'mask': Replace with NaN for plotting (default)
+        - 'zero': Replace with zeros
+        - 'clip': Clip negative values to small positive number
+    """
     
     if self.gridCheck:
       field = np.zeros(self.dimsC)
@@ -282,31 +297,78 @@ class PoloidalProjection:
     else:
       field_kex = field_ky
   
-    #.Interpolate onto a finer mesh along z.
+    #.Interpolate onto a finer mesh along z with bad data handling
     field_kintPos = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.cdouble)
-    # separate real and imaginary part
     field_kintPos_real = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.double)
     field_kintPos_imag = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=np.double)
-    # interpolate real and imaginary part separately
+    
+    # Track bad data locations for later masking
+    bad_data_mask = np.zeros((self.kyDimsC[0],self.kyDimsC[1],self.nzI), dtype=bool)
+    
+    # interpolate real and imaginary part separately with bad data handling
     for ix in range(self.kyDimsC[0]):
         for ik in range(self.kyDimsC[1]):
-            field_kintPos_real[ix,ik,:] = pchip_interpolate(self.zGridEx, np.real(field_kex[ix,ik,:]), self.zgridI)
-            field_kintPos_imag[ix,ik,:] = pchip_interpolate(self.zGridEx, np.imag(field_kex[ix,ik,:]), self.zgridI)
+            real_part = np.real(field_kex[ix,ik,:])
+            imag_part = np.imag(field_kex[ix,ik,:])
+            
+            # Check for bad data
+            bad_real = ~np.isfinite(real_part)
+            bad_imag = ~np.isfinite(imag_part)
+            
+            # Handle bad data based on user preference
+            if handle_bad_data == 'zero':
+                real_part[bad_real] = 0.0
+                imag_part[bad_imag] = 0.0
+            elif handle_bad_data == 'clip':
+                # Clip negative values to small positive number, set NaN/inf to zero
+                real_part = np.where(np.isfinite(real_part), 
+                                   np.maximum(real_part, 1e-10), 0.0)
+                imag_part = np.where(np.isfinite(imag_part), 
+                                   np.maximum(imag_part, 1e-10), 0.0)
+            else:  # 'mask' - replace with NaN for later masking
+                real_part[bad_real] = 0.0  # Use zero for interpolation
+                imag_part[bad_imag] = 0.0
+            
+            # Perform interpolation with cleaned data
+            try:
+                field_kintPos_real[ix,ik,:] = pchip_interpolate(self.zGridEx, real_part, self.zgridI)
+                field_kintPos_imag[ix,ik,:] = pchip_interpolate(self.zGridEx, imag_part, self.zgridI)
+                
+                # Mark interpolated regions as bad if original data was bad
+                if handle_bad_data == 'mask' and (np.any(bad_real) or np.any(bad_imag)):
+                    bad_data_mask[ix,ik,:] = True
+                    
+            except ValueError as e:
+                # If interpolation still fails, fill with zeros and mark as bad
+                print(f"Warning: Interpolation failed for ix={ix}, ik={ik}: {e}")
+                field_kintPos_real[ix,ik,:] = 0.0
+                field_kintPos_imag[ix,ik,:] = 0.0
+                bad_data_mask[ix,ik,:] = True
+    
     # combine real and imaginary part
     field_kintPos = field_kintPos_real + 1j*field_kintPos_imag
 
     #.Append negative ky values.
     field_kint = np.zeros((self.kyDimsC[0],2*self.kyDimsC[1],self.nzI), dtype=np.cdouble)
+    bad_mask_full = np.zeros((self.kyDimsC[0],2*self.kyDimsC[1],self.nzI), dtype=bool)
+    
     for ix in range(self.kyDimsC[0]):
         for ik in range(self.kyDimsC[1]):
             field_kint[ix,+ik,:] = field_kintPos[ix,ik,:]
             field_kint[ix,-ik,:] = np.conj(field_kintPos[ix,ik,:])
+            bad_mask_full[ix,+ik,:] = bad_data_mask[ix,ik,:]
+            bad_mask_full[ix,-ik,:] = bad_data_mask[ix,ik,:]
 
     #.Convert (x,y,z) data to (R,Z):
     field_RZ = np.zeros([self.dimsC[0],self.nzI])
     for ix in range(self.dimsC[0]):
         for iz in range(self.nzI):
             field_RZ[ix,iz] = np.real(np.sum(self.xyz2RZ[ix,:,iz]*field_kint[ix,:,iz]))
+            
+    # Apply masking for bad data if requested
+    if handle_bad_data == 'mask':
+        bad_final = np.any(bad_mask_full, axis=1)  # Collapse ky dimension
+        field_RZ[bad_final] = np.nan
             
     return field_RZ
   
@@ -321,7 +383,7 @@ class PoloidalProjection:
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average=''):
+           shading='auto', average='', handle_bad_data='clip'):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -372,7 +434,7 @@ class PoloidalProjection:
     else:
       colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
 
-    field_RZ = self.project_field(toproject, frame_info.eval_DG_proj)
+    field_RZ = self.project_field(toproject, frame_info.eval_DG_proj, handle_bad_data=handle_bad_data)
 
     vlims = [np.min(field_RZ), np.max(field_RZ)]
     if self.ixLCFS_C is not None:
