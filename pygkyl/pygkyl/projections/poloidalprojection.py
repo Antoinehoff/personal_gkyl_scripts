@@ -461,6 +461,7 @@ class PoloidalProjection:
     
     plt.show()
     if outFilename: plt.savefig(outFilename)
+    plt.close(fig1a)
 
   def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
