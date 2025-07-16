@@ -163,13 +163,13 @@ struct gk_app_ctx create_ctx(void)
   double rho_s0 = c_s0/omega_ci0;
 
   // Configuration domain parameters 
-  double Lx        = Rmid_max-Rmid_min;   // Domain size along x.
+  double Lx        = Rmid_max-Rmid_min; // Domain size along x.
   double x_min     = 0.;
   double x_max     = Lx;
   double x_LCFS    = R_LCFSmid - Rmid_min; // Radial location of the last closed flux surface.
   double q0        = qprofile(R0);  // Safety factor in the center of domain.
 
-  double Ly        = nrhos_y*rho_s0;           // Domain size along y.
+  double Ly        = nrhos_y*rho_s0; // Domain size along y.
   // Adjust the domain size along y to have integer toroidal mode number.
   // We need: 2*pi*Cy/Ly = integer (Cy = r0/q0)
   Ly = 2.*M_PI*r0/q0/round(2.*M_PI*r0/q0/Ly); 
@@ -178,7 +178,7 @@ struct gk_app_ctx create_ctx(void)
 
   double vol_frac = 1.0/(2.*M_PI*r0/q0/Ly);
 
-  double Lz        = 2.*M_PI-1e-10;       // Domain size along magnetic field.
+  double Lz        = 2.*M_PI-1e-10; // Domain size along magnetic field.
   double z_min     = -Lz/2.;
   double z_max     =  Lz/2.;
 
@@ -190,7 +190,7 @@ struct gk_app_ctx create_ctx(void)
 
   // Source parameters
   double P_inj = P_exp * vol_frac / num_species; // Injection power normalized to the volume fraction and per species [W]
-  double num_sources = 2; // We do not activate the recycling source here.
+  double num_sources = 2; // We have two sources per species: a core and a recycling.
   // Core source parameters
   bool adapt_energy_srcCORE = true;
   bool adapt_particle_srcCORE = true;

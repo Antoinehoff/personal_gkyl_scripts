@@ -190,7 +190,7 @@ struct gk_app_ctx create_ctx(void)
 
   // Source parameters
   double P_inj = P_exp * vol_frac / num_species; // Injection power normalized to the volume fraction and per species [W]
-  double num_sources = 2; // We do not activate the recycling source here.
+  double num_sources = 2; // We have two sources per species: a core and a recycling.
   // Core source parameters
   bool adapt_energy_srcCORE = true;
   bool adapt_particle_srcCORE = true;
