@@ -779,6 +779,10 @@ def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, sho
         except KeyError:
             raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
         return intmom.values, intmom.time, intmom.vunits, intmom.tunits
+    
+    if losstype not in ['particle', 'energy']:
+        raise ValueError("Invalid losstype. Choose 'particle' or 'energy'.")
+    
     walls = walls if walls else ['x_u','z_l','z_u']
     wall_labels = {'x_l': r'\text{core}', 'x_u': r'\text{wall}', 'z_l': r'\text{lim,low}', 'z_u': r'\text{lim,up}'}
     symbol = '\Gamma' if losstype == 'particle' else 'P'
