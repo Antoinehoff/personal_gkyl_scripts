@@ -1088,13 +1088,13 @@ class DataParam:
         #--- Flan interface
         def receipe_flan(gdata_list): return
         name = 'flan_imp_density'
-        symbol = r'$n_{W}$'
+        symbol = r'$n_{Z}$'
         units = r'm$^{-3}$'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
         name = 'flan_imp_counts'
-        symbol = r'$N_{W}$'
+        symbol = r'$N_{Z}$'
         units = r''
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
@@ -1105,17 +1105,73 @@ class DataParam:
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
+        name = 'flan_electron_dens'
+        symbol = r'$n_{e}$'
+        units = r'm$^{-3}$'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_electron_temp'
+        symbol = r'$T_{e}$'
+        units = r'eV'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
+        name = 'flan_ion_temp'
+        symbol = r'$T_{i}$'
+        units = r'eV'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_plasma_pot'
+        symbol = r'$V_{p}$'
+        units = r'V'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_bmag_R'
+        symbol = r'$B_{R}$'
+        units = r'T'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
         dirs = ['x','y','z']
         Dirs = ['X','Y','Z']
         for i in range(3):
             dir = dirs[i]
             Dir = Dirs[i]
-            name = 'flan_imp_v'+Dir
-            symbol = r'$v_{W,%s}$'%dir
-            units = r'm/s'
             field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+
+            # Cartesian velocity components
+            name = 'flan_imp_v'+Dir
+            symbol = r'$v_{Z,%s}$'%dir
+            units = r'm/s'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian electric field components
+            name = 'flan_elec_'+Dir
+            symbol = r'$E_{%s}$'%dir
+            units = r'V/m'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian ion velocity components
+            name = 'flan_ion_flow_'+Dir
+            symbol = r'$u_{%s}$'%dir
+            units = r'm/s'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian magentic field components
+            name = 'flan_bmag_'+Dir
+            symbol = r'$B_{%s}$'%dir
+            units = r'T'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian magentic field components
+            name = 'flan_gradb_'+Dir
+            symbol = r'$\nabla B_{%s}$'%dir
+            units = r'T/m'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
         #-------------- END of the new diagnostics definitions
         
         ## We format everything so that it fits in one dictionary
