@@ -40,9 +40,9 @@ class Simulation:
     def __init__(self,dimensionality='3x2v',porder=1,ptype='ser',code='gkeyll', flandatapath=None):
         self.dimensionality = dimensionality # Dimensionality of the simulation (e.g., 3x2v, 2x2v)
         self.phys_param = PhysParam()  # Physical parameters (eps0, eV, mp, me)
-        self.num_param  = None  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
-        self.data_param = None  # Data parameters (e.g., file paths)
-        self.geom_param = None  # Geometric parameters (e.g., axis positions)
+        self.num_param  = NumParam()  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
+        self.data_param = DataParam()  # Data parameters (e.g., file paths)
+        self.geom_param = GeomParam()  # Geometric parameters (e.g., axis positions)
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
         self.normalization = None # Normalization units for the simulation data
         self.fields_info = {} # Dictionary to store field informations like symbols, units etc.
