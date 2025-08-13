@@ -330,8 +330,8 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
-    'position':(2.3, 2.3, 0.6),
-    'looking_at':(0, 0, -0.1),
+        'position':(2.5, 2.52, 0.6),
+        'looking_at':(0.0, -0.2, -0.2),
         'zoom': 1.0
     }
     simulation.geom_param.camera_zoom_lower = {   
@@ -346,8 +346,8 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     }
     # Cameras for 1:2 formats
     simulation.geom_param.camera_global_1by2 = {
-    'position':(2.3, 2.3, 0.75),
-    'looking_at':(0.0, 0.8, 0),
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0.0, 0.8, 0),
         'zoom': 1.0
     }
     simulation.geom_param.camera_zoom_1by2 = {   
