@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
+import postgkyl as pg
 
 from scipy.interpolate import pchip_interpolate
 from matplotlib.patches import Rectangle
@@ -198,11 +199,19 @@ class PoloidalProjection:
   def compute_nodal_coordinates(self):
     #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
-    self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
+    self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)  
         
     rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
     Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
     Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+    print(np.shape(Rint), np.shape(Zint))
+
+    #simName = self.sim.data_param.fileprefix
+    #data = pg.GData(simName+"-nodes_intZ.gkyl")
+    #alpha_idx = 64
+    #R = nodalVals[:, alpha_idx, :, 0]
+    #Z = nodalVals[:, alpha_idx, :, 1]
+    #Phi = nodalVals[:, alpha_idx, :, 2]
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
