@@ -4,6 +4,7 @@ import os, sys
 import postgkyl as pg
 
 from scipy.interpolate import pchip_interpolate
+from scipy.interpolate import RegularGridInterpolator
 from matplotlib.patches import Rectangle
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
@@ -200,18 +201,30 @@ class PoloidalProjection:
     #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
     self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)  
-        
-    rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
-    Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
-    Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
-    print(np.shape(Rint), np.shape(Zint))
+    #print(np.shape(xxI), np.shape(zzI))  
 
-    #simName = self.sim.data_param.fileprefix
-    #data = pg.GData(simName+"-nodes_intZ.gkyl")
-    #alpha_idx = 64
-    #R = nodalVals[:, alpha_idx, :, 0]
-    #Z = nodalVals[:, alpha_idx, :, 1]
-    #Phi = nodalVals[:, alpha_idx, :, 2]
+    #rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
+    #Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+    #Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+    #print(np.shape(Rint), np.shape(Zint))
+
+    simName = self.sim.data_param.fileprefix
+    nodalData = pg.GData(simName+"-nodes_intZ.gkyl")
+    nodalVals = nodalData.get_values()
+    alpha_idx = 64
+    R = nodalVals[:, alpha_idx, :, 0]
+    Z = nodalVals[:, alpha_idx, :, 1]
+    Phi = nodalVals[:, alpha_idx, :, 2]
+    nodalGridTemp = nodalData.get_grid()   # contains one more element than number of nodes.
+    nodalGrid = []
+    for d in range(0,len(nodalGridTemp)):
+        nodalGrid.append( np.linspace(nodalGridTemp[d][0], nodalGridTemp[d][-1], len(nodalGridTemp[d])-1) )
+
+    RInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), R)
+    ZInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Z)
+
+    Rint = RInterpolator((xxI, zzI))
+    Zint = ZInterpolator((xxI, zzI))
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
@@ -458,8 +471,8 @@ class PoloidalProjection:
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
-    if xlim: ax1a.set_xlim(xlim)
-    if ylim: ax1a.set_ylim(ylim)
+    if xlim: ax1a[0].set_xlim(xlim)
+    if ylim: ax1a[0].set_ylim(ylim)
     if colorScale == 'log':
         colornorm = colors.LogNorm(vmax=fldMax, vmin=logScaleFloor*fldMax) if minSOL > 0 \
             else colors.SymLogNorm(vmax=fldMax, vmin=fldMin, linscale=1.0, linthresh=logScaleFloor*fldMax)
