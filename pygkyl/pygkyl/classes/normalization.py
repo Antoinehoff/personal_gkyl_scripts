@@ -90,7 +90,12 @@ class Normalization:
         elif norm in ['t v_{ti}/R', 't*vti/R', 'vti/R']:
             scale  = self.simulation.geom_param.R_axis / ion.vt
             shift  = 0
-            symbol = r'$t v_{ti}/R$'
+            symbol = r'$t v_{ti0}/R$'
+            units  = ''
+        elif norm in ['t c_{s0}/R', 'tcs/R', 'cs/R', 'R/cs']:
+            scale  = self.simulation.geom_param.R_axis / self.simulation.get_c_s()
+            shift  = 0
+            symbol = r'$t c_{s0}/R$'
             units  = ''
 
         #-- Length scale

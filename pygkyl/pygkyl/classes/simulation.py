@@ -40,9 +40,9 @@ class Simulation:
     def __init__(self,dimensionality='3x2v',porder=1,ptype='ser',code='gkeyll', flandatapath=None):
         self.dimensionality = dimensionality # Dimensionality of the simulation (e.g., 3x2v, 2x2v)
         self.phys_param = PhysParam()  # Physical parameters (eps0, eV, mp, me)
-        self.num_param  = None  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
-        self.data_param = None  # Data parameters (e.g., file paths)
-        self.geom_param = None  # Geometric parameters (e.g., axis positions)
+        self.num_param  = NumParam()  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
+        self.data_param = DataParam()  # Data parameters (e.g., file paths)
+        self.geom_param = GeomParam()  # Geometric parameters (e.g., axis positions)
         self.species    = {}    # Dictionary of species (e.g., ions, electrons)
         self.normalization = None # Normalization units for the simulation data
         self.fields_info = {} # Dictionary to store field informations like symbols, units etc.
@@ -366,3 +366,100 @@ class Simulation:
             print(source.info())
         print("DG_basis:")
         print(self.DG_basis.info())
+        
+    def get_collision_times(self, Bfield=None, print_table=True):
+        """
+        Compute collision times between all species in the simulation.
+        
+        Parameters:
+        -----------
+        Bfield : float, optional
+            Magnetic field strength [T]. If None, uses B_axis from geometry.
+        print_table : bool, optional
+            Whether to print a formatted table of collision times.
+            
+        Returns:
+        --------
+        dict : Dictionary containing collision frequencies and times between all species pairs.
+        """
+        if Bfield is None:
+            if self.geom_param is None or self.geom_param.B0 is None:
+                raise ValueError("No magnetic field provided and no B_axis in geometry parameters.")
+            Bfield = self.geom_param.B0
+        
+        species_list = list(self.species.values())
+        n_species = len(species_list)
+        
+        collision_data = {}
+        
+        # Compute collision frequencies and times for all species pairs (including self-collisions)
+        for i, species_s in enumerate(species_list):
+            for j, species_r in enumerate(species_list):
+                # Compute collision frequency
+                nu_sr = phys_tools.collision_freq(
+                    species_s.n0, species_s.q, species_s.m, species_s.T0,
+                    species_r.n0, species_r.q, species_r.m, species_r.T0,
+                    Bfield
+                )
+                
+                loglambda_sr = phys_tools.coulomb_logarithm(
+                    species_s.n0, species_s.q, species_s.m, species_s.T0,
+                    species_r.n0, species_r.q, species_r.m, species_r.T0,
+                    Bfield
+                )
+                
+                # Compute collision parameter
+                nustar_sr = phys_tools.nustar(
+                    species_s.n0, species_s.q, species_s.m, species_s.T0,
+                    species_r.n0, species_r.q, species_r.m, species_r.T0,
+                    Bfield, self.geom_param.q0, self.geom_param.R0, self.geom_param.r0
+                )
+                
+                # Collision time is inverse of frequency
+                tau_sr = 1.0 / nu_sr if nu_sr > 0 else np.inf
+                
+                pair_name = f"{species_s.name}-{species_r.name}"
+                
+                collision_data[pair_name] = {
+                    'frequency': nu_sr,
+                    'nustar': nustar_sr,
+                    'loglambda': loglambda_sr,
+                    'time': tau_sr
+                }
+        
+        if print_table:
+            print("\n" + "="*80)
+            print("REFERENCE COLLISION TIMES BETWEEN SPECIES")
+            print("="*80)
+            print(f"Magnetic field: {Bfield:.2e} T")
+            print("-"*80)
+            
+            # Print species information
+            print("Species parameters:")
+            for species in species_list:
+                print(f"  {species.name}: n0={species.n0:.2e} m^-3, T0={species.T0/phys_tools.eV:.0f} eV")
+            print("-"*80)
+            
+            print(f"{'Species Pair':<15} {'Frequency [s^-1]':<15} {'Time [s]':<15} {'tc_s0/R':<15} {'nu*':<15}")
+            print("-"*80)
+            
+            # Sort by frequency (highest to lowest)
+            sorted_pairs = sorted(collision_data.items(), key=lambda x: x[1]['frequency'], reverse=True)
+            
+            R_axis = self.geom_param.R_axis if self.geom_param else 1.0
+            c_s0 = self.get_c_s()
+            
+            for pair, data in sorted_pairs:
+                freq_str = f"{data['frequency']:.2e}"
+                nustar_str = f"{data['nustar']:.2e}"
+                coulomb_log_str = f"{data['loglambda']:.2f}"
+                time_str = f"{data['time']:.2e}" if data['time'] != np.inf else "∞"
+                
+                tau_norm = data['time'] * c_s0 / R_axis
+                tau_norm_str = f"{tau_norm:.2e}" if tau_norm != np.inf else "∞"
+                
+                print(f"{pair:<15} {freq_str:<15} {time_str:<15} {tau_norm_str:<15} {nustar_str:<15}")
+            
+            print("-"*80)
+        
+        return collision_data

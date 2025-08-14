@@ -1,6 +1,19 @@
 # Macos bashrc
 
 # Personnal aliases
+gif2mp4() {
+    if [[ $# -lt 1 ]]; then
+        echo "Usage: gif2mp4 <input.gif> [output.mp4]"
+        return 1
+    fi
+    local input="$1"
+    local output="$2"
+    if [[ -z "$output" ]]; then
+        output="${input%.*}.mp4"
+    fi
+    ffmpeg -i "$input" -r 30 -c:v libx264 -crf 18 -pix_fmt yuv420p "$output"
+}
+
 alias pg=pgkyl
 alias setup_pgkyl='conda activate pgkyl'
 alias connect_stellar='ssh ah1032@stellar-amd.princeton.edu'
