@@ -215,6 +215,13 @@ class PoloidalProjection:
     R = nodalVals[:, alpha_idx, :, 0]
     Z = nodalVals[:, alpha_idx, :, 1]
     Phi = nodalVals[:, alpha_idx, :, 2]
+    # The definitions above does not work for TCV and DIII-D simulation that used different definition of mapc2p
+    # This version works:
+    # alpha_idx = 0
+    # X = nodalVals[:, alpha_idx, :, 0]
+    # Y = nodalVals[:, alpha_idx, :, 1]
+    # Z = nodalVals[:, alpha_idx, :, 2] + self.sim.geom_param.Z_axis
+    # R = np.sqrt(X**2 + Y**2)  # R = sqrt(x^2 + y^2)
     nodalGridTemp = nodalData.get_grid()   # contains one more element than number of nodes.
     nodalGrid = []
     for d in range(0,len(nodalGridTemp)):
@@ -542,6 +549,7 @@ class PoloidalProjection:
     self.inset = Inset()
           
 class Inset:
+  
   """
   Class to add an inset to a plot.
   """
