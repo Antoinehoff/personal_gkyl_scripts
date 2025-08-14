@@ -53,6 +53,8 @@ PARAMETERS:
 --device_config   Set the device geometry.
 --off_screen      Use off-screen rendering (for non-GUI environments).
 --movie_type      Movie file type (e.g., mp4, gif).
+--logo_path       Path to the logo image (optional).
+--additional_text Additional text to display on the plot (optional).
 -h, --help        Show this help message and exit.
 
 NOTES:
@@ -83,6 +85,8 @@ NOTES:
     parser.add_argument('--device_config', type=str, choices=['tcv_nt','tcv_pt','d3d_nt','d3d_pt','sparc','nstxu'], default='tcv_nt', help='Set the device geometry.')
     parser.add_argument('--off_screen', type=str, default='False', choices=['True','False'], help='Use off-screen rendering (for non-GUI environments)')
     parser.add_argument('--movie_type', type=str, default='gif', help='Movie file type (e.g., mp4, gif)')
+    parser.add_argument('--logo_path', type=str, default='', help='Path to the logo image (optional)')
+    parser.add_argument('--additional_text', type=str, default=None, help='Aditional text to display')
     return parser.parse_args()
 
 def main():
@@ -125,17 +129,25 @@ def main():
             print(f"Invalid camera movement option: {camera}. Choose from 'global', 'zoom_lower'.")
             sys.exit(1)
             
-
     torproj = pygkyl.TorusProjection()
     torproj.setup(simulation, Nint_polproj=args.nint_polproj, Nint_fsproj=args.nint_fsproj,
-                  phiLim=args.phi_lim, rhoLim=args.rho_lim, timeFrame=sim_frames[0])
+                  phiLim=args.phi_lim, rhoLim=args.rho_lim)
+    if args.additional_text is not None:
+        txt = args.additional_text.encode().decode('unicode_escape')
+        torproj.additional_text = {
+            'text': txt,
+            'position': 'lower_right',
+            'font_size': 12,
+            'name': 'title_text'
+        }
+    torproj.logo_path = args.logo_path
+    torproj.imgSize = tuple(args.img_size)
+    torproj.off_screen = args.off_screen
 
     if args.plot_type == 'snapshot':
         timeFrame = sim_frames[args.frame_idx]
         torproj.plot(fieldName=args.field_name, timeFrame=timeFrame, fluctuation=args.fluctuation, 
-                     clim=args.clim, logScale=args.log_scale, vessel=True, filePrefix=args.file_prefix, 
-                     imgSize=tuple(args.img_size), jupyter_backend='none', colorbar=True, cameraSettings=camera_path[0],
-                     off_screen=args.off_screen)
+                     clim=args.clim, logScale=args.log_scale, filePrefix=args.file_prefix, cameraSettings=camera_path[0])
     elif args.plot_type == 'movie':
         if args.movie_frame_idx == 'all':
             timeFrames = sim_frames
@@ -150,9 +162,8 @@ def main():
         print("You will see the generation of the movie in a window. DO NOT MOVE IT OR CLOSE IT.")
 
         torproj.movie(fieldName=args.field_name, timeFrames=timeFrames, fluctuation=args.fluctuation, 
-                      filePrefix=args.file_prefix, imgSize=tuple(args.img_size), colorbar=True,
-                      cameraPath=camera_path, logScale=args.log_scale, clim=args.clim,
-                      off_screen=args.off_screen, movie_type=args.movie_type)
+                      filePrefix=args.file_prefix, cameraPath=camera_path, logScale=args.log_scale, clim=args.clim,
+                      movie_type=args.movie_type)
 
 if __name__ == "__main__":
     main()
