@@ -3,6 +3,7 @@ import numpy as np
 import os
 from ..interfaces import pgkyl_interface as pgkyl_
 from ..utils import file_utils as file_utils
+from ..tools import phys_tools
 import glob
 
 class DataParam:
@@ -583,6 +584,36 @@ class DataParam:
                 ndot = pgkyl_.get_values(gdata_list[2])
                 return 2/3 * Edot / ndot
             default_qttes.append([name,symbol,units,field2load,receipe_src_Ts])
+            
+            for rpec in species.values():
+                r_ = rpec.nshort
+                
+                # Collision frequency
+                name = 'nu%s%s'%(s_,r_)
+                symbol = r'$\nu_{%s%s}$'%(s_,r_)
+                units = r'1/s'
+                field2load = ['n%s'%(s_), 'Tpar%s'%(s_), 'Tperp%s'%(s_),
+                              'n%s'%(r_), 'Tpar%s'%(r_), 'Tperp%s'%(r_),
+                              'Bmag']
+                def receipe_nu(gdata_list,qs=spec.q,ms=spec.m,qr=rpec.q,mr=rpec.m):
+                    ns = pgkyl_.get_values(gdata_list[0])
+                    Ts = receipe_Ttots(gdata_list[1:3])*ms
+                    nr = pgkyl_.get_values(gdata_list[3])
+                    Tr = receipe_Ttots(gdata_list[4:6])*mr
+                    Bmag = pgkyl_.get_values(gdata_list[6])
+                    return phys_tools.collision_freq(ns, qs, ms, Ts, nr, qr, mr, Tr, Bmag)
+                default_qttes.append([name,symbol,units,field2load,receipe_nu])
+                
+                # Collision time
+                name = 'tcoll%s%s'%(s_,r_)
+                symbol = r'$\tau^{coll}_{%s%s}$'%(s_,r_)
+                units = r's'
+                field2load = ['n%s'%(s_), 'Tpar%s'%(s_), 'Tperp%s'%(s_),
+                              'n%s'%(r_), 'Tpar%s'%(r_), 'Tperp%s'%(r_),
+                              'Bmag']
+                def receipe_tcoll(gdata_list,qs=spec.q,ms=spec.m,qr=rpec.q,mr=rpec.m):
+                    return 1/receipe_nu(gdata_list,qs=qs,ms=ms,qr=qr,mr=mr)
+                default_qttes.append([name,symbol,units,field2load,receipe_tcoll])
 
             #- The following are vector fields quantities that we treat component wise
             directions = ['x','y','z'] #directions array
@@ -841,20 +872,21 @@ class DataParam:
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
 
         #total source power density
-        name       = 'src_pow'
+        name       = 'src_P'
         symbol     = r'$P_{src}$'
         units      = r'W/m$^3$'
         field2load = []
         for spec in species.values():
             s_ = spec.nshort
-            field2load.append('src_n%s'%s_)
-            field2load.append('src_Tpar%s'%(s_))
-            field2load.append('src_Tperp%s'%(s_))
+            field2load.append('src_HM_H%s'%(s_))
+            field2load.append('phi')
+            field2load.append('src_n%s'%(s_))
+                            
         def receipe_src_pow(gdata_list,species=species):
             fout = 0.0
             k    = 0
             for spec in species.values():
-                fout += receipe_Wkins(gdata_list[0+k:3+k],m=spec.m)
+                fout += receipe_src_Ps(gdata_list[0+k:3+k],q=spec.q)
                 k += 3
             return fout 
         default_qttes.append([name,symbol,units,field2load,receipe_src_pow])
@@ -1056,13 +1088,13 @@ class DataParam:
         #--- Flan interface
         def receipe_flan(gdata_list): return
         name = 'flan_imp_density'
-        symbol = r'$n_{W}$'
+        symbol = r'$n_{Z}$'
         units = r'm$^{-3}$'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
         name = 'flan_imp_counts'
-        symbol = r'$N_{W}$'
+        symbol = r'$N_{Z}$'
         units = r''
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
@@ -1073,17 +1105,73 @@ class DataParam:
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
+        name = 'flan_electron_dens'
+        symbol = r'$n_{e}$'
+        units = r'm$^{-3}$'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_electron_temp'
+        symbol = r'$T_{e}$'
+        units = r'eV'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
+        name = 'flan_ion_temp'
+        symbol = r'$T_{i}$'
+        units = r'eV'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_plasma_pot'
+        symbol = r'$V_{p}$'
+        units = r'V'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        name = 'flan_bmag_R'
+        symbol = r'$B_{R}$'
+        units = r'T'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
         dirs = ['x','y','z']
         Dirs = ['X','Y','Z']
         for i in range(3):
             dir = dirs[i]
             Dir = Dirs[i]
-            name = 'flan_imp_v'+Dir
-            symbol = r'$v_{W,%s}$'%dir
-            units = r'm/s'
             field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+
+            # Cartesian velocity components
+            name = 'flan_imp_v'+Dir
+            symbol = r'$v_{Z,%s}$'%dir
+            units = r'm/s'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian electric field components
+            name = 'flan_elec_'+Dir
+            symbol = r'$E_{%s}$'%dir
+            units = r'V/m'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian ion velocity components
+            name = 'flan_ion_flow_'+Dir
+            symbol = r'$u_{%s}$'%dir
+            units = r'm/s'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian magentic field components
+            name = 'flan_bmag_'+Dir
+            symbol = r'$B_{%s}$'%dir
+            units = r'T'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Cartesian magentic field components
+            name = 'flan_gradb_'+Dir
+            symbol = r'$\nabla B_{%s}$'%dir
+            units = r'T/m'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
         #-------------- END of the new diagnostics definitions
         
         ## We format everything so that it fits in one dictionary
@@ -1116,6 +1204,12 @@ class DataParam:
         for sdepfield in spec_dep_fields:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)
+                
+        double_spec_fields = ['nu','tcoll']
+        for sdepfield in double_spec_fields:
+            for spec in species.values():
+                for rpec in species.values():
+                    positive_fields.append(sdepfield+spec.nshort+rpec.nshort)
         
         for field in names:
             if field in positive_fields:

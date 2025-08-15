@@ -29,8 +29,8 @@ struct gk_app_ctx {
     // Plasma parameters
     int num_species;
     double me, qe, mi, qi, n0, Te0, Ti0;
-    // Collision parameters
-    double nuFrac, nuElc, nuIon;
+    // Collision parameter
+    double nuFrac;
     // Source parameters
     double num_sources;
     bool adapt_energy_srcCORE, adapt_particle_srcCORE; 
@@ -59,8 +59,6 @@ static void zero_func(double t, const double *xn, double *fout, void *ctx);
 static void density_init(double t, const double *xn, double *fout, void *ctx);
 static void temp_elc(double t, const double *xn, double *fout, void *ctx);
 static void temp_ion(double t, const double *xn, double *fout, void *ctx);
-static void nuElc(double t, const double *xn, double *fout, void *ctx);
-static void nuIon(double t, const double *xn, double *fout, void *ctx);
 static void mapc2p(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx);
 static void mapc2p_vel_elc(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx);
 static void mapc2p_vel_ion(double t, const double *xc, double* GKYL_RESTRICT xp, void *ctx);
@@ -77,14 +75,14 @@ static void calc_integrated_diagnostics(struct gkyl_tm_trigger *iot, gkyl_gyroki
 //          Npieces=8, delta=-0.2592
 // Polynomial coefficients: [484.0615913225881, -1378.25993228584, 1309.3099150729233, -414.13270311478726]
 static double qprofile(double R) {
- if (R < 1.092511042617e+0) return 2.806566994230e+1 * R + -2.820703739865e+1;
- if (R >= 1.092511042617e+0 && R < 1.107511042617e+0) return 3.431370901810e+1 * R + -3.503308908366e+1;
- if (R >= 1.107511042617e+0 && R < 1.122511042617e+0) return 4.121523124224e+1 * R + -4.267660115776e+1;
- if (R >= 1.122511042617e+0 && R < 1.137511042617e+0) return 4.877023661459e+1 * R + -5.115717811526e+1;
- if (R >= 1.137511042617e+0 && R < 1.152511042617e+0) return 5.697872513530e+1 * R + -6.049442445076e+1;
- if (R >= 1.152511042617e+0 && R < 1.167511042617e+0) return 6.584069680428e+1 * R + -7.070794465862e+1;
- if (R >= 1.167511042617e+0 && R < 1.182511042617e+0) return 7.535615162151e+1 * R + -8.181734323325e+1;
- if (R >= 1.182511042617e+0) return 8.552508958702e+1 * R + -9.384222466916e+1;
+ if (R < 1.0681538458634) return 19.846783787359 * R + -19.384877212447;
+ if (R >= 1.0681538458634 && R < 1.07955839248) return 23.831438547269 * R + -23.641101518683;
+ if (R >= 1.07955839248 && R < 1.0907092178515) return 28.101971432287 * R + -28.251391135066;
+ if (R >= 1.0907092178515 && R < 1.1016063219782) return 32.633450853419 * R + -33.1939175102;
+ if (R >= 1.1016063219782 && R < 1.1122497048599) return 37.401506123237 * R + -38.446437338973;
+ if (R >= 1.1122497048599 && R < 1.1226393664967) return 42.382327456026 * R + -43.986354396327;
+ if (R >= 1.1226393664967 && R < 1.1327753068886) return 47.552665968077 * R + -49.79077994807;
+ if (R >= 1.1327753068886) return 52.889833677052 * R + -55.83659173752;
 }
 
 struct gk_app_ctx create_ctx(void)
@@ -165,13 +163,13 @@ struct gk_app_ctx create_ctx(void)
   double rho_s0 = c_s0/omega_ci0;
 
   // Configuration domain parameters 
-  double Lx        = Rmid_max-Rmid_min;   // Domain size along x.
+  double Lx        = Rmid_max-Rmid_min; // Domain size along x.
   double x_min     = 0.;
   double x_max     = Lx;
   double x_LCFS    = R_LCFSmid - Rmid_min; // Radial location of the last closed flux surface.
   double q0        = qprofile(R0);  // Safety factor in the center of domain.
 
-  double Ly        = nrhos_y*rho_s0;           // Domain size along y.
+  double Ly        = nrhos_y*rho_s0; // Domain size along y.
   // Adjust the domain size along y to have integer toroidal mode number.
   // We need: 2*pi*Cy/Ly = integer (Cy = r0/q0)
   Ly = 2.*M_PI*r0/q0/round(2.*M_PI*r0/q0/Ly); 
@@ -180,7 +178,7 @@ struct gk_app_ctx create_ctx(void)
 
   double vol_frac = 1.0/(2.*M_PI*r0/q0/Ly);
 
-  double Lz        = 2.*M_PI-1e-10;       // Domain size along magnetic field.
+  double Lz        = 2.*M_PI-1e-10; // Domain size along magnetic field.
   double z_min     = -Lz/2.;
   double z_max     =  Lz/2.;
 
@@ -190,18 +188,9 @@ struct gk_app_ctx create_ctx(void)
   double vpar_max_ion = nvth_vpar_i*vti0;
   double mu_max_ion   = nvth_mu_i*mi*pow(4*vti0,2)/(2*B0);
 
-  // Electron-electron collision freq.
-  double logLambdaElc = 6.6 - 0.5 * log(n0/1e20) + 1.5 * log(Ti0/eV);
-  double nuElc = nuFrac * logLambdaElc * pow(eV, 4) * n0 /
-    (6*sqrt(2.) * pow(M_PI,3./2.) * pow(eps0,2) * sqrt(me) * pow(Te0,3./2.));
-  // Ion-ion collision freq.
-  double logLambdaIon = 6.6 - 0.5 * log(n0/1e20) + 1.5 * log(Ti0/eV);
-  double nuIon = nuFrac * logLambdaIon * pow(eV, 4) * n0 /
-    (12 * pow(M_PI,3./2.) * pow(eps0,2) * sqrt(mi) * pow(Ti0,3./2.));
-
   // Source parameters
   double P_inj = P_exp * vol_frac / num_species; // Injection power normalized to the volume fraction and per species [W]
-  double num_sources = 2; // We do not activate the recycling source here.
+  double num_sources = 2; // We have two sources per species: a core and a recycling.
   // Core source parameters
   bool adapt_energy_srcCORE = true;
   bool adapt_particle_srcCORE = true;
@@ -244,7 +233,7 @@ struct gk_app_ctx create_ctx(void)
     .me = me,  .qe = qe,
     .mi = mi,  .qi = qi,
     .n0 = n0,  .Te0 = Te0,  .Ti0 = Ti0,
-    .nuFrac = nuFrac,  .nuElc = nuElc,  .nuIon = nuIon,
+    .nuFrac = nuFrac,
     .num_sources = num_sources,
     .adapt_energy_srcCORE = adapt_energy_srcCORE,
     .adapt_particle_srcCORE = adapt_particle_srcCORE,
@@ -393,7 +382,6 @@ main(int argc, char **argv)
       .n_ref = ctx.n0, // Density used to calculate coulomb logarithm
       .T_ref = ctx.Te0, // Temperature used to calculate coulomb logarithm
       .ctx = &ctx,
-      .self_nu = nuElc,
       .num_cross_collisions = 1,
       .collide_with = { "ion"},
     },
@@ -518,7 +506,6 @@ main(int argc, char **argv)
       .n_ref = ctx.n0, // Density used to calculate coulomb logarithm
       .T_ref = ctx.Ti0, // Temperature used to calculate coulomb logarithm
       .ctx = &ctx,
-      .self_nu = nuIon,
       .num_cross_collisions = 1,
       .collide_with = { "elc"},
     },
@@ -937,18 +924,6 @@ void temp_ion(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT f
   double c2 = 3.0; // control the width of the transition region
   double c3 = 0.2; // control the temperature at the SOL
   fout[0] = c0*T0*(c1*(1.+tanh(c2*(-10*(x+x0))))+c3);
-}
-
-// Collision frequencies.
-void nuElc(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  fout[0] = app->nuElc;
-}
-void nuIon(double t, const double * GKYL_RESTRICT xn, double* GKYL_RESTRICT fout, void *ctx)
-{
-  struct gk_app_ctx *app = ctx;
-  fout[0] = app->nuIon;
 }
 
 // Geometry evaluation functions for the gk app

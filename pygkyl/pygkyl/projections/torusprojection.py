@@ -1,10 +1,12 @@
 import numpy as np
 import sys
 import pyvista as pv
+pv.global_theme.colorbar_orientation = 'vertical'
 
-from ..classes import Frame, TimeSerie
+from ..classes import Frame, TimeSerie, Simulation
 from .fluxsurfprojection import FluxSurfProjection
 from .poloidalprojection import PoloidalProjection
+from PIL import Image
 
 colors = ['red', 'blue', 'green', 'yellow']
 
@@ -12,17 +14,47 @@ class TorusProjection:
   """
   Class to combine the poloidal and flux surface projections and plot field on the full torus.
   """
+  txt_texts = []
+  txt_positions = []
+  txt_sizes = []
+  txt_names = []
+  imgSize = (800, 600)
+  off_screen = False
+  show_colorbar = True
+  colorbar_args = {
+    'title': None,
+    'position_x': 0.025,     # Right side position (0-1)
+    'position_y': 0.25,      # Top position (0-1) 
+    'width': 0.05,
+    'height': 0.5,
+    'title_font_size': 15,
+    'label_font_size': 14,
+    'n_labels': 5,
+    'fmt': '%.1e'           # Scientific notation format
+  }
+  show_vessel = True
+  vessel_opacity = 0.2
+  background_color = 'white'
+  additional_text = None
+  logo_path = None
+  
+  sim = None
+  phiLim = [0, 3*np.pi/4]
+  rhoLim = [4, -2]
+  timeFrame0 = 0
+  
   def __init__(self):
     self.polprojs = []
     self.fsprojs = []
     self.pvphishift = np.pi/2 # required to have the right orientation in pyvista
     
-  def setup(self, simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], ixlim=[0,-1],
+  def setup(self, simulation : Simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], ixlim=[0,-1],
             intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
     self.sim = simulation
     self.phiLim = phiLim if isinstance(phiLim, list) else [phiLim]
     self.rhoLim = rhoLim if isinstance(rhoLim, list) else [rhoLim]
     self.timeFrame0 = timeFrame
+    self.text_color = 'white' if self.background_color == 'black' else 'black'
     
     #. Poloidal projection setup
     for i in range(len(self.phiLim)):
@@ -36,17 +68,14 @@ class TorusProjection:
       self.fsprojs[i].setup(simulation, timeFrame=timeFrame, Nint=Nint_fsproj, rho=self.rhoLim[i], phi=phiLim)
       
   def get_data(self, fieldName, timeFrame, fluctuation):
-
     if isinstance(timeFrame, list):
       avg_window = timeFrame
       timeFrame = timeFrame[-1]
     else:
       avg_window = [timeFrame]
-    
     with Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True) as field_frame:
       toproject = field_frame.values
       time = field_frame.time
-
     if len(fluctuation) > 0:
       serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
       if 'tavg' in fluctuation:
@@ -56,15 +85,12 @@ class TorusProjection:
       toproject -= average
       if 'relative' in fluctuation:
         toproject = 100.0 * toproject / average
-
     field_fs = []
     field_RZ = []
     for i in range(len(self.rhoLim)):
       field_fs.append(self.fsprojs[i].project_field(toproject))
-    
     for i in range(len(self.phiLim)):
       field_RZ.append(self.polprojs[i].project_field(toproject))
-      
     return field_fs, field_RZ, time
   
   def data_to_pvmesh(self, X, Y, Z, field=None, indexing='ij', fieldlabel='field'):
@@ -197,39 +223,59 @@ class TorusProjection:
       
       return plotter
     
-  def plot(self, fieldName, timeFrame, filePrefix='', colorMap = '', fluctuation='', logScale = False,
-           clim=None, colorbar=False, vessel=False, smooth_shading=False, lighting=False, jupyter_backend='none',
-           cameraSettings=None, vesselOpacity=0.2, imgSize=(800, 600), save_html=False, off_screen=False):
+  def setup_frame(self, plotter: pv.Plotter, fieldName, timeFrame, fluctuation, logScale, colorMap, clim):
+    fieldlabel = get_label(fieldName, fluctuation)
+    pvmeshes, time = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
+    N_plas_mesh = len(pvmeshes)
+    self.colorbar_args['title'] = fieldlabel
+    for i in range(N_plas_mesh):
+      if fieldName in ['test']:
+        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, smooth_shading=False, lighting=False, cmap=colorMap,
+                         log_scale=logScale, show_scalar_bar=self.show_colorbar, clim=clim, 
+                         scalar_bar_args=self.colorbar_args)
+      else:
+        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=self.show_colorbar, clim=clim, cmap=colorMap, 
+                        opacity=1.0, smooth_shading=False, lighting=False, log_scale=logScale,
+                         scalar_bar_args=self.colorbar_args)
+    
+    if self.show_vessel and self.sim.geom_param.vesselData is not None:
+      plotter = self.draw_vessel(plotter, smooth_shading=False, opacity=self.vessel_opacity)
+    
+    plotter.set_background(self.background_color)
 
+    # write time and bottom text
+    if self.additional_text:
+      self.add_text(self.additional_text['text'], self.additional_text['position'], 
+                    self.additional_text['font_size'], self.additional_text['name'])
+    else:
+      self.add_text(self.sim.dischargeID, position='upper_left', 
+                    font_size=10, name="dischargeID")
+    self.add_text(f"t={time/1000:5.3f} ms", position='lower_left', 
+                  font_size=10, name="time_label")
+    plotter = self.write_texts(plotter)
+    
+    if self.logo_path:
+      plotter.add_logo_widget(self.logo_path, position=(0.0, 0.01), 
+                              size=(0.2,0.2), opacity=0.6)
+
+    return plotter
+    
+    
+  def plot(self, fieldName, timeFrame, filePrefix='', colorMap = None, fluctuation='', 
+           logScale = False, clim=None, jupyter_backend='none', save_html=False, cameraSettings=None):
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if isinstance(timeFrame, list): timeFrame = timeFrame[-1]
     if clim == []: clim = None
     if fieldName != 'test': colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
+    else: colorMap = ['red', 'blue', 'green', 'yellow']  # for test field, use a list of colors
     if fluctuation: colorMap = 'bwr'
-    fieldlabel = get_label(fieldName, fluctuation)
+    if cameraSettings == None: cameraSettings = self.sim.geom_param.camera_global
 
-    plotter = pv.Plotter(window_size=imgSize, off_screen=off_screen)
+    plotter = pv.Plotter(window_size=self.imgSize, off_screen=self.off_screen)
+    plotter = self.setup_frame(plotter, fieldName, timeFrame, fluctuation, logScale, colorMap, clim)
     
-    pvmeshes, time = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
-    N_plas_mesh = len(pvmeshes)
-    
-    for i in range(N_plas_mesh):
-      if fieldName in ['test']:
-        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, smooth_shading=smooth_shading, lighting=lighting,
-                         log_scale=logScale, show_scalar_bar=colorbar, clim=clim)
-      else:
-        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
-                        opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
-    
-    if vessel and self.sim.geom_param.vesselData is not None:
-      plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
-      
     cam = Camera(self.sim.geom_param, cameraSettings)
     plotter = cam.update_plotter(plotter)
-    
-    # write time in ms with 2 decimal points
-    txt = f"{self.sim.dischargeID}, {time/1000:.3f} ms"
-    plotter.add_text(txt, position='lower_left', font_size=10, name="time_label")
     
     if fluctuation: fieldName = 'd' + fieldName
     if save_html:
@@ -237,12 +283,10 @@ class TorusProjection:
       print(f"HTML saved as {filePrefix}torproj_{fieldName}.html")
     plotter.show(screenshot=filePrefix+'torproj_'+fieldName+'.png', jupyter_backend=jupyter_backend)
     print(f"Image saved as {filePrefix}torproj_{fieldName}.png")
+    self.del_texts()  # Clear texts after plotting
 
-  def movie(self, fieldName, timeFrames, filePrefix='', colorMap = '', fluctuation='',
-           clim=[], logScale=False, colorbar=True, vessel=True, smooth_shading=False, lighting=False,
-           vesselOpacity=0.2, imgSize=(800, 600), fps=14, cameraPath=[], off_screen=True, movie_type='gif'):
-    if smooth_shading: print('Warning: smooth_shading may create flickering in the movie. Idk why :/')
- 
+  def movie(self, fieldName, timeFrames, filePrefix='', colorMap = 'inferno', fluctuation='',
+           clim=[], logScale=False, fps=14, cameraPath=[], movie_type='gif'):
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if clim == []: clim = None
     if fieldName != 'test': colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
@@ -253,7 +297,7 @@ class TorusProjection:
       outFilename = filePrefix+'torproj_movie_'+fieldName
     fieldlabel = get_label(fieldName, fluctuation)
     
-    plotter = pv.Plotter(window_size=imgSize, off_screen=off_screen)
+    plotter = pv.Plotter(window_size=self.imgSize, off_screen=True)
     if movie_type in ['gif','.gif']:
       outFilename += '.gif'
       plotter.open_gif(outFilename, fps=fps)
@@ -261,40 +305,24 @@ class TorusProjection:
       outFilename += '.mp4'
       plotter.open_movie(outFilename, framerate=fps)
 
+    cam = Camera(stops=cameraPath, geom=self.sim.geom_param, nframes=len(timeFrames))
+
     n = 0
     print_progress(n, len(timeFrames))
-    
-    # Create initial frame
     timeFrame = timeFrames[0]
-
-    pvmeshes, time = self.init_pvmeshes(fieldName, timeFrame, fluctuation=fluctuation)
-    N_plas_mesh = len(pvmeshes)
     
-    for i in range(N_plas_mesh):
-      if fieldName in ['test']:
-        plotter.add_mesh(pvmeshes[i], color=colors[i], smooth_shading=smooth_shading, lighting=lighting,
-                         log_scale=logScale, show_scalar_bar=colorbar, clim=clim)
-        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, opacity=1.0,
-                        smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
-      else:
-        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=colorbar, clim=clim, cmap=colorMap, 
-                        opacity=1.0, smooth_shading=smooth_shading, lighting=lighting, log_scale=logScale)
-    del pvmeshes
+    plotter = self.setup_frame(plotter, fieldName, timeFrame, fluctuation, logScale, colorMap, clim)    
     
-    if vessel and self.sim.geom_param.vesselData is not None:
-      plotter = self.draw_vessel(plotter, smooth_shading=smooth_shading, opacity=vesselOpacity)
-      
-    cam = Camera(stops=cameraPath, geom=self.sim.geom_param, nframes=len(timeFrames))
     plotter = cam.update_plotter(plotter)
 
-    # plotter.render()
     plotter.write_frame()
+    
+    self.clear_texts(plotter)  # Clear for next frame
 
     n += 1
     print_progress(n, len(timeFrames))
     
     for timeFrame in timeFrames[1:]:
-      
       if fieldName not in ['test']:
         # Update the meshes with new data
         field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
@@ -303,22 +331,13 @@ class TorusProjection:
         for i in range(len(field_RZ)):
           plotter.meshes[i+len(field_fs)][fieldlabel] = field_RZ[i].ravel()
       else:
-        time = 10651 # dummy time for test field (in mus)
-
-      # Update the camera position
+        time = 10650 + n # dummy time for test field (in mus)
       cam.update_camera(n)
       plotter = cam.update_plotter(plotter, zoom=False)
-      
-      # write time in ms with 2 decimal points
-      txt = f"{self.sim.dischargeID}, {time/1000:.3f} ms"
-      plotter.add_text(txt, position='lower_left', font_size=10, name="time_label")
-      
-      # plotter.render()
+      self.update_text("time_label", f"t={time/1000:5.3f} ms")
+      plotter = self.write_texts(plotter)
       plotter.write_frame()
-      
-      # Remove the text
-      plotter.remove_actor("time_label")  # Clear for next frame
-      
+      self.clear_texts(plotter)
       n += 1
       print_progress(n, len(timeFrames))
     
@@ -326,14 +345,40 @@ class TorusProjection:
     
     plotter.close()
     print(f"Movie saved as {outFilename}")
+    self.del_texts()  # Clear texts after movie creation
     
+  def add_text(self,text, position, font_size, name):
+    self.txt_texts.append(text)
+    self.txt_positions.append(position)
+    self.txt_sizes.append(font_size)
+    self.txt_names.append(name)
+    
+  def update_text(self, name, text):
+    index = self.txt_names.index(name)
+    self.txt_texts[index] = text
+
+  def write_texts(self, plotter):
+    for i in range(len(self.txt_texts)):
+      plotter.add_text(self.txt_texts[i], position=self.txt_positions[i], 
+                       font_size=self.txt_sizes[i], name=self.txt_names[i],
+                       color=self.text_color)
+    return plotter
+    
+  def clear_texts(self, plotter):
+    for name in self.txt_names:
+      plotter.remove_actor(name)
+      
+  def del_texts(self):
+    self.txt_texts = []
+    self.txt_positions = []
+    self.txt_sizes = []
+    self.txt_names = []
     
 def print_progress( n, total_frames):
   progress = f"Processed frames: {n}/{total_frames}... "
   sys.stdout.write("\r" + progress)
   sys.stdout.flush()
-  
-  
+
 class Camera:
   
   def __init__(self, geom, settings=[], stops=[], nframes=1):
@@ -367,7 +412,6 @@ class Camera:
             self.dpos[i][k] = (stops[i+1]['position'][k] - stops[i]['position'][k]) / Nint * geom.R_LCFSmid
             self.dlook[i][k] = (stops[i+1]['looking_at'][k] - stops[i]['looking_at'][k]) / Nint * geom.R_LCFSmid
           self.dzoom.append((stops[i+1]['zoom'] - stops[i]['zoom']) / Nint)          
-      
     
     self.position = settings['position']
     self.looking_at = settings['looking_at']
