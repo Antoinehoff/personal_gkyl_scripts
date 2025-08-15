@@ -201,37 +201,37 @@ class PoloidalProjection:
     #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
     self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)  
-    #print(np.shape(xxI), np.shape(zzI))  
 
-    #rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
-    #Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
-    #Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
-    #print(np.shape(Rint), np.shape(Zint))
+    # Get the (R,Z) grid (Rint,Zint) according to the interpolated z-grid
+    if self.sim.geom_param.geom_type == 'Miller':
+      rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
+      Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+      Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+      del rrI
+    
+    elif self.sim.geom_param.geom_type in ['efit', 'Millernodal']:
+      simName = self.sim.data_param.fileprefix
+      nodalData = pg.GData(simName+"-nodes_intZ.gkyl")
+      nodalVals = nodalData.get_values()
+      alpha_idx = 0
+      if self.sim.geom_param.geom_type == 'efit':
+        R = nodalVals[:, alpha_idx, :, 0]
+        Z = nodalVals[:, alpha_idx, :, 1]
+      elif self.sim.geom_param.geom_type == 'Millernodal':
+        X = nodalVals[:, alpha_idx, :, 0]
+        Y = nodalVals[:, alpha_idx, :, 1]
+        Z = nodalVals[:, alpha_idx, :, 2] + self.sim.geom_param.Z_axis
+        R = np.sqrt(X**2 + Y**2)  # R = sqrt(x^2 + y^2)
+      nodalGridTemp = nodalData.get_grid()   # contains one more element than number of nodes.
+      nodalGrid = []
+      for d in range(0,len(nodalGridTemp)):
+          nodalGrid.append( np.linspace(nodalGridTemp[d][0], nodalGridTemp[d][-1], len(nodalGridTemp[d])-1) )
 
-    simName = self.sim.data_param.fileprefix
-    nodalData = pg.GData(simName+"-nodes_intZ.gkyl")
-    nodalVals = nodalData.get_values()
-    alpha_idx = 64
-    R = nodalVals[:, alpha_idx, :, 0]
-    Z = nodalVals[:, alpha_idx, :, 1]
-    Phi = nodalVals[:, alpha_idx, :, 2]
-    # The definitions above does not work for TCV and DIII-D simulation that used different definition of mapc2p
-    # This version works:
-    # alpha_idx = 0
-    # X = nodalVals[:, alpha_idx, :, 0]
-    # Y = nodalVals[:, alpha_idx, :, 1]
-    # Z = nodalVals[:, alpha_idx, :, 2] + self.sim.geom_param.Z_axis
-    # R = np.sqrt(X**2 + Y**2)  # R = sqrt(x^2 + y^2)
-    nodalGridTemp = nodalData.get_grid()   # contains one more element than number of nodes.
-    nodalGrid = []
-    for d in range(0,len(nodalGridTemp)):
-        nodalGrid.append( np.linspace(nodalGridTemp[d][0], nodalGridTemp[d][-1], len(nodalGridTemp[d])-1) )
+      RInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), R)
+      ZInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Z)
 
-    RInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), R)
-    ZInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Z)
-
-    Rint = RInterpolator((xxI, zzI))
-    Zint = ZInterpolator((xxI, zzI))
+      Rint = RInterpolator((xxI, zzI))
+      Zint = ZInterpolator((xxI, zzI))
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
