@@ -160,10 +160,12 @@ class PoloidalProjection:
       self.ix1 = self.dimsC[0]
               
     #.Radial index of the last closed flux surface on the centered mesh
-    if self.geom.x_LCFS > self.meshC[0][0] and self.geom.x_LCFS <= self.meshC[0][-1]:
-      self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
-    else:
-      self.ixLCFS_C = None
+    self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
+
+    # if self.geom.x_LCFS > self.meshC[0][0] and self.geom.x_LCFS <= self.meshC[0][-1]:
+    #   self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
+    # else:
+    #   self.ixLCFS_C = 0
       
     #.Calculate R,Z for LCFS plotting
     rLCFS = self.geom.r_x(self.geom.x_LCFS)
@@ -365,6 +367,9 @@ class PoloidalProjection:
         climInset: Color limits for the inset. (optional)
         colorScale: Color scale. (default: 'linear')
     '''
+    print('Plotting poloidal projection of '+fieldName+' at t = '+str(timeFrame))
+    # print the value of inset
+    print('Inset:', inset)
     colorMap = fig_tools.check_colormap(colorMap)
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(timeFrame, list):
@@ -580,6 +585,7 @@ class Inset:
       
   def add_inset(self, fig, ax, R, Z, fieldRZ, colorMap, colorScale, 
                 minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):
+    print("Adding inset...")
     # sub region of the original image
     axins = zoomed_inset_axes(ax, self.zoom, loc=self.zoomLoc, 
                               bbox_to_anchor=self.lowerCornerRelPos,bbox_transform=ax.transAxes)
