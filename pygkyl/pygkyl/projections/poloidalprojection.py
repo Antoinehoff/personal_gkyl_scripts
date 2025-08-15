@@ -1,8 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
+import postgkyl as pg
 
 from scipy.interpolate import pchip_interpolate
+from scipy.interpolate import RegularGridInterpolator
 from matplotlib.patches import Rectangle
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
@@ -45,17 +47,15 @@ class PoloidalProjection:
     self.gridCheck = False
     self.zExt = True
     self.TSBC = True
-    self.dpi = 150
     
   def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
-            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150):
+            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
     self.figSize = figSize
-    self.dpi = dpi
     self.timeFrame0 = timeFrame
 
     if self.sim.polprojInset is not None:
@@ -160,10 +160,12 @@ class PoloidalProjection:
       self.ix1 = self.dimsC[0]
               
     #.Radial index of the last closed flux surface on the centered mesh
-    if self.geom.x_LCFS > self.meshC[0][0] and self.geom.x_LCFS <= self.meshC[0][-1]:
-      self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
-    else:
-      self.ixLCFS_C = None
+    self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
+
+    # if self.geom.x_LCFS > self.meshC[0][0] and self.geom.x_LCFS <= self.meshC[0][-1]:
+    #   self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
+    # else:
+    #   self.ixLCFS_C = 0
       
     #.Calculate R,Z for LCFS plotting
     rLCFS = self.geom.r_x(self.geom.x_LCFS)
@@ -200,11 +202,38 @@ class PoloidalProjection:
   def compute_nodal_coordinates(self):
     #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
-    self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
-        
-    rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
-    Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
-    Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+    self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)  
+
+    # Get the (R,Z) grid (Rint,Zint) according to the interpolated z-grid
+    if self.sim.geom_param.geom_type == 'Miller':
+      rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
+      Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+      Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+      del rrI
+    
+    elif self.sim.geom_param.geom_type in ['efit', 'Millernodal']:
+      simName = self.sim.data_param.fileprefix
+      nodalData = pg.GData(simName+"-nodes_intZ.gkyl")
+      nodalVals = nodalData.get_values()
+      alpha_idx = 0
+      if self.sim.geom_param.geom_type == 'efit':
+        R = nodalVals[:, alpha_idx, :, 0]
+        Z = nodalVals[:, alpha_idx, :, 1]
+      elif self.sim.geom_param.geom_type == 'Millernodal':
+        X = nodalVals[:, alpha_idx, :, 0]
+        Y = nodalVals[:, alpha_idx, :, 1]
+        Z = nodalVals[:, alpha_idx, :, 2] + self.sim.geom_param.Z_axis
+        R = np.sqrt(X**2 + Y**2)  # R = sqrt(x^2 + y^2)
+      nodalGridTemp = nodalData.get_grid()   # contains one more element than number of nodes.
+      nodalGrid = []
+      for d in range(0,len(nodalGridTemp)):
+          nodalGrid.append( np.linspace(nodalGridTemp[d][0], nodalGridTemp[d][-1], len(nodalGridTemp[d])-1) )
+
+      RInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), R)
+      ZInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Z)
+
+      Rint = RInterpolator((xxI, zzI))
+      Zint = ZInterpolator((xxI, zzI))
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
@@ -323,7 +352,7 @@ class PoloidalProjection:
 
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average='', show_title=True, show_figure=True):
+           shading='auto', average=''):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -345,6 +374,9 @@ class PoloidalProjection:
         climInset: Color limits for the inset. (optional)
         colorScale: Color scale. (default: 'linear')
     '''
+    print('Plotting poloidal projection of '+fieldName+' at t = '+str(timeFrame))
+    # print the value of inset
+    print('Inset:', inset)
     colorMap = fig_tools.check_colormap(colorMap)
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(timeFrame, list):
@@ -411,7 +443,7 @@ class PoloidalProjection:
     #.Create the figure.
     ax1aPos   = [ [0.10, 0.08, 0.76, 0.88] ]
     cax1aPos  = [0.88, 0.08, 0.02, 0.88]
-    fig1a     = plt.figure(figsize=self.figSize, dpi=150)
+    fig1a     = plt.figure(figsize=self.figSize)
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))
@@ -423,7 +455,7 @@ class PoloidalProjection:
     hpl1a.append(pcm1)
 
     #fig1a.suptitle
-    if show_title: ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
+    ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
     ax1a[0].set_xlabel(r'$R$ (m)',fontsize=xyLabelFontSize, labelpad=-2)
     #setTickFontSize(ax1a[0],tickFontSize)
     ax1a[0].set_ylabel(r'$Z$ (m)',fontsize=xyLabelFontSize, labelpad=-10)
@@ -451,17 +483,19 @@ class PoloidalProjection:
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
-    if xlim: ax1a.set_xlim(xlim)
-    if ylim: ax1a.set_ylim(ylim)
+    if xlim: ax1a[0].set_xlim(xlim)
+    if ylim: ax1a[0].set_ylim(ylim)
     if colorScale == 'log':
         colornorm = colors.LogNorm(vmax=fldMax, vmin=logScaleFloor*fldMax) if minSOL > 0 \
             else colors.SymLogNorm(vmax=fldMax, vmin=fldMin, linscale=1.0, linthresh=logScaleFloor*fldMax)
         pcm1.set_norm(colornorm)
     if clim: pcm1.set_clim(clim)
-    
-    if outFilename: plt.savefig(outFilename)
-    if show_figure: plt.show()
-    plt.close(fig1a)
+
+    if outFilename:
+        plt.savefig(outFilename)
+        plt.close()
+    else:
+        plt.show()
 
   def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
@@ -499,7 +533,7 @@ class PoloidalProjection:
           frameFileList.append(f'{movDirTmp}/frame_{tf}.png')
 
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
-                          colorMap = colorMap, inset=inset, show_figure=False,
+                          colorMap = colorMap, inset=inset,
                           colorScale=colorScale, logScaleFloor=logScaleFloor,
                           xlim=xlim, ylim=ylim, clim=clim, climInset=climInset,
                           fluctuation=fluctuation, favg=favg)
@@ -520,6 +554,7 @@ class PoloidalProjection:
     self.inset = Inset()
           
 class Inset:
+  
   """
   Class to add an inset to a plot.
   """
@@ -558,6 +593,7 @@ class Inset:
       
   def add_inset(self, fig, ax, R, Z, fieldRZ, colorMap, colorScale, 
                 minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):
+    print("Adding inset...")
     # sub region of the original image
     axins = zoomed_inset_axes(ax, self.zoom, loc=self.zoomLoc, 
                               bbox_to_anchor=self.lowerCornerRelPos,bbox_transform=ax.transAxes)
