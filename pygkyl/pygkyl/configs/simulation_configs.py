@@ -18,6 +18,8 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
         sim = get_sparc_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['NSTXU', 'nstxu']:
         sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+    elif configName in ['AUG', 'aug', 'ASDEX', 'asdex']:
+        sim = get_aug_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['gyacomo', 'GYACOMO', 'Gyacomo']:
         sim = get_gyacomo_sim_config(simDir)
         load_metric = False
@@ -470,7 +472,7 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     
     return simulation
 
-def get_asdexu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+def get_aug_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
     '''
     This function returns a simulation object for the ASDEX-U SOL efit geom case. (D. Liu)
     '''
