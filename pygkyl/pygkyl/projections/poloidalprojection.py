@@ -249,7 +249,8 @@ class PoloidalProjection:
   def toroidal_rotate(self, dphi=0.0):
     '''
     Rotate by dphi in the toroidal direction.
-    This is done by multiplying the projection by exp(1j*k*dphi) for each k.
+    This is done by multiplying the projection by exp(1j*k*dphi) for each k,
+    which introduces a phase shift in the Fourier space.
     '''
     self.phiTor += dphi
     for k in range(self.kyDimsC[1]):
