@@ -241,6 +241,14 @@ class Frame:
             self.values = copy.deepcopy(self.receipe(self.Gdata))
             self.values = self.values.reshape(self.new_dims)
             self.values = np.squeeze(self.values)
+            
+        # This a test case where we replace the values by 0 everywhere except at a given index
+        # Useful to test the poloidal and toroidal projections
+        # self.values = np.zeros_like(self.values)
+        # self.values[:,0,:] = 1
+        # self.values[:,-1,:] = 1
+        # self.values[0,:,:] = 1
+        # self.values[-1,:,:] = 1
 
     def normalize(self, values=True, time=True, grid=True):
         """
