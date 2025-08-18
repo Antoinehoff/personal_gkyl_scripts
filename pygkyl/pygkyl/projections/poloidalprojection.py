@@ -383,9 +383,6 @@ class PoloidalProjection:
         climInset: Color limits for the inset. (optional)
         colorScale: Color scale. (default: 'linear')
     '''
-    print('Plotting poloidal projection of '+fieldName+' at t = '+str(timeFrame))
-    # print the value of inset
-    print('Inset:', inset)
     colorMap = fig_tools.check_colormap(colorMap)
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(timeFrame, list):
@@ -602,7 +599,6 @@ class Inset:
       
   def add_inset(self, fig, ax, R, Z, fieldRZ, colorMap, colorScale, 
                 minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):
-    print("Adding inset...")
     # sub region of the original image
     axins = zoomed_inset_axes(ax, self.zoom, loc=self.zoomLoc, 
                               bbox_to_anchor=self.lowerCornerRelPos,bbox_transform=ax.transAxes)
