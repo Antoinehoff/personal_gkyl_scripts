@@ -96,7 +96,10 @@ class PoloidalProjection:
       self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
     else:
       self.LyC = 2.*np.pi*self.geom.r0/self.geom.q0
-
+      
+    # Minimal toroidal mode number (must be used in the toroidal rotation)
+    self.n0 = 2*np.pi * self.geom.Cy/ self.LyC
+    
     #.Precompute grids and arrays needed in transforming/plotting data
     field = np.squeeze(field_frame.values)
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
@@ -179,23 +182,24 @@ class PoloidalProjection:
     self.compute_nodal_coordinates()
     
   def compute_alpha(self, method='trapz32'):
+    phi0 = 0.0
     #.Compute alpha(r,z,phi=0) which is independent of y.
     self.alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
     for ix in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
       dPsidr = self.geom.dPsidr(self.geom.r_x(self.meshC[0][ix]),method=method)
       for iz in range(self.nzI):
-          self.alpha_rz_phi0[ix,iz]  = self.geom.alpha0(self.geom.r_x(self.meshC[0][ix]),self.zgridI[iz], 0.0, method=method)/dPsidr
+          self.alpha_rz_phi0[ix,iz]  = \
+            self.geom.alpha0(self.geom.r_x(self.meshC[0][ix]),self.zgridI[iz], phi0, method=method)\
+              /dPsidr
 
   def compute_xyz2RZ(self,phiTor=0.0):
     phiTor += np.pi # To match the obmp with varphi=0
     # this can be a very big array
     self.xyz2RZ = np.zeros([self.dimsC[0],2*self.kyDimsC[1],self.nzI], dtype=np.cdouble)
-    n0 = 2*np.pi * self.geom.Cy/ self.LyC
     for k in range(self.kyDimsC[1]):
         for iz in range(self.nzI):
-            #.Positive ky's.
-            ### Not sure at all about this phase factor
-            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*(n0*(self.alpha_rz_phi0[:,iz]) + phiTor))
+            shift = self.n0*(self.alpha_rz_phi0[:,iz]) + phiTor
+            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*shift)
             #.Negative ky's.
             self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
             
@@ -254,6 +258,7 @@ class PoloidalProjection:
     This is done by multiplying the projection by exp(1j*k*dphi) for each k,
     which introduces a phase shift in the Fourier space.
     '''
+    dphi *= self.n0 # Take into account the minimal toroidal mode number
     self.phiTor += dphi
     for k in range(self.kyDimsC[1]):
       for iz in range(self.nzI):
@@ -286,10 +291,13 @@ class PoloidalProjection:
       field_ex[:,:, -1] = proj_zExt_up
       field = field_ex
       
+    # select the radial region of interest
+    field = field[self.ix0:self.ix1,:,:]
+      
     #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
     #.codes (e.g. GENE, see Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
-    field_ky = field_ky[self.ix0:self.ix1,:,:] # select the radial region of interest
+    # field_ky = field_ky[self.ix0:self.ix1,:,:] # select the radial region of interest
     
     if self.TSBC:
       #.Apply twist-shift BCs in the closed-flux region.
