@@ -175,8 +175,8 @@ class TorusProjection:
 
       # Draw the limiter
       RWidth = np.min(self.polprojs[0].Rlcfs) - np.min(self.polprojs[0].RIntN)
-      R0 = np.min(self.polprojs[0].RIntN) * 0.99
-      R1 = R0 + RWidth
+      R0 = np.min(self.polprojs[0].RIntN) * 0.95
+      R1 = R0 + RWidth + 0.05 * np.min(self.polprojs[0].RIntN)
       ZWidth = 0.015
       Z0 = self.polprojs[0].geom.Z_axis - 0.5*ZWidth
       Z1 = Z0 + ZWidth
