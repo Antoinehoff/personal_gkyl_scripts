@@ -5,7 +5,7 @@ from ..interfaces.gyacomointerface import GyacomoInterface
 from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
 def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = None, 
-                  load_metric=True, add_source=True, dimensionality='3x2v'):
+                  load_metric=True, add_source=True, dimensionality='3x2v', simidx=0):
     if configName in ['TCV_PT', 'tcv_pt']:
         sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['TCV_NT', 'tcv_nt']:
@@ -19,7 +19,7 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
     elif configName in ['NSTXU', 'nstxu']:
         sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['gyacomo', 'GYACOMO', 'Gyacomo']:
-        sim = get_gyacomo_sim_config(simDir)
+        sim = get_gyacomo_sim_config(simDir,simidx)
         load_metric = False
         add_source = False
     else:
@@ -528,7 +528,7 @@ def add_source_baseline(simulation):
     simulation.add_source('Core src',OMPsource)
     return simulation
 
-def get_gyacomo_sim_config(path):
+def get_gyacomo_sim_config(simdir,simidx):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
     '''
@@ -577,7 +577,7 @@ def get_gyacomo_sim_config(path):
                 T0=1500*simulation.phys_param.eV, 
                 n0=4e19))
 
-    simulation.gyac = GyacomoInterface(path,simulation)
+    simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
     
     # Set up the flux tube size within the cartesian domain.
     Lx = simulation.gyac.params['GRID']['Lx'] * simulation.gyac.l0
