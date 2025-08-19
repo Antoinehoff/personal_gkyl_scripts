@@ -419,7 +419,7 @@ class PoloidalProjection:
     #.Create the figure.
     ax1aPos   = [ [0.10, 0.08, 0.76, 0.88] ]
     cax1aPos  = [0.88, 0.08, 0.02, 0.88]
-    fig1a     = plt.figure(figsize=self.figSize, dpi=150)
+    fig1a     = plt.figure(figsize=self.figSize, dpi=self.dpi)
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))
