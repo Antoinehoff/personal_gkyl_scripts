@@ -575,7 +575,10 @@ class PoloidalProjection:
       
   def reset_insets(self):
     self.insets = self.sim.polprojInsets.copy()
-    
+    if self.sim.polprojInsets is not None:
+      self.insets = self.sim.polprojInsets.copy()
+    else:
+      self.insets = []
   def set_inset(self, index=0, **kwargs):
     self.insets[index] = Inset(**kwargs)
       
