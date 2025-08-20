@@ -70,7 +70,7 @@ NOTES:
     parser.add_argument('--sim_dir', type=str, default='sim_data_dir_example/3x2v_example/gk_tcv_posD_iwl_3x2v_electron_heating/', help='Simulation directory')
     parser.add_argument('--file_prefix', type=str, default='gk_tcv_posD_iwl_3x2v_D02', help='File prefix')
     parser.add_argument('--plot_type', type=str, choices=['snapshot','movie'], default='snapshot', help='Plot type')
-    parser.add_argument('--rho_lim', type=float, nargs=2, default=[2,-2], help='Radial limits')
+    parser.add_argument('--rho_lim', type=int, nargs=2, default=[2,-2], help='Radial limits')
     parser.add_argument('--phi_lim', type=float, nargs=2, default=[0, 3*np.pi/2], help='Toroidal angle limits')
     parser.add_argument('--nint_polproj', type=int, default=32, help='Number of poloidal integration points')
     parser.add_argument('--nint_fsproj', type=int, default=24, help='Number of field-line integration points')

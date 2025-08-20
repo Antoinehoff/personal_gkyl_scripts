@@ -18,6 +18,8 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
         sim = get_sparc_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['NSTXU', 'nstxu']:
         sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+    elif configName in ['AUG', 'aug', 'ASDEX', 'asdex']:
+        sim = get_aug_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['gyacomo', 'GYACOMO', 'Gyacomo']:
         sim = get_gyacomo_sim_config(simDir,simidx)
         load_metric = False
@@ -28,9 +30,6 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
     
     if load_metric:
         sim.geom_param.load_metric(sim.data_param.fileprefix)
-
-    if add_source:
-        sim = add_source_baseline(sim)
 
     return sim
 
@@ -45,12 +44,7 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
     simulation = Simulation(dimensionality=dimensionality)
-    simulation.set_phys_param(
-        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
-        eV = 1.602e-19,         # Elementary charge [C]
-        mp = 1.673e-27,         # Proton mass [kg]
-        me = 9.109e-31,         # Electron mass [kg]
-    )
+    simulation.set_phys_param()
 
     simulation.set_geom_param(
         B_axis      = 1.4,           # Magnetic field at magnetic axis [T]
@@ -80,9 +74,13 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.45,0.25],
+            xlim = [2.10,2.18],
+            ylim = [-0.10,0.10],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'TCV #65125'
@@ -128,12 +126,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     if x_out is None : x_out = 0.08
     
     simulation = Simulation(dimensionality=dimensionality)
-    simulation.set_phys_param(
-        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
-        eV = 1.602e-19,         # Elementary charge [C]
-        mp = 1.673e-27,         # Proton mass [kg]
-        me = 9.109e-31,         # Electron mass [kg]
-    )
+    simulation.set_phys_param()
     
     simulation.set_geom_param(
         B_axis      = 1.4,           # Magnetic field at magnetic axis [T]
@@ -163,9 +156,13 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.35,0.3]
-    simulation.inset = inset
+    simulation.polprojInsets = [
+    Inset(
+        lowerCornerRelPos=[0.45,0.25],
+        xlim = [2.10,2.18],
+        ylim = [-0.10,0.10],
+        markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'TCV #65130'
@@ -211,12 +208,7 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     if x_out is None : x_out = 0.05
     
     simulation = Simulation(dimensionality='3x2v')
-    simulation.set_phys_param(
-        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
-        eV = 1.602e-19,         # Elementary charge [C]
-        mp = 1.673e-27,         # Proton mass [kg]
-        me = 9.109e-31,         # Electron mass [kg]
-    )
+    simulation.set_phys_param()
 
     simulation.set_geom_param(
         B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
@@ -246,11 +238,13 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.4,0.3]
-    inset.xlim = [2.12,2.25]
-    inset.ylim = [-0.15,0.15]
-    simulation.inset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'DIII-D #171650'
@@ -281,12 +275,7 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     if x_out is None : x_out = 0.05
     
     simulation = Simulation(dimensionality=dimensionality)
-    simulation.set_phys_param(
-        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
-        eV = 1.602e-19,         # Elementary charge [C]
-        mp = 1.673e-27,         # Proton mass [kg]
-        me = 9.109e-31,         # Electron mass [kg]
-    )
+    simulation.set_phys_param()
 
     simulation.set_geom_param(
         B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
@@ -316,11 +305,13 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.4,0.3]
-    inset.xlim = [2.12,2.25]
-    inset.ylim = [-0.15,0.15]
-    simulation.inset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'DIII-D #171646'
@@ -366,12 +357,7 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
     simulation = Simulation(dimensionality=dimensionality)
-    simulation.set_phys_param(
-        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
-        eV = 1.602e-19,         # Elementary charge [C]
-        mp = 1.673e-27,         # Proton mass [kg]
-        me = 9.109e-31,         # Electron mass [kg]
-    )
+    simulation.set_phys_param()
     
     simulation.set_geom_param(
         B_axis      = 1.0,           # Magnetic field at magnetic axis [T]
@@ -402,9 +388,13 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'NSTX-U'
@@ -441,12 +431,7 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     if x_LCFS is None : x_LCFS = 0.04
     if x_out is None : x_out = 0.08
     simulation = Simulation(dimensionality=dimensionality)
-    simulation.set_phys_param(
-        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
-        eV = 1.602e-19,         # Elementary charge [C]
-        mp = 1.673e-27,         # Proton mass [kg]
-        me = 9.109e-31,         # Electron mass [kg]
-    )
+    simulation.set_phys_param()
 
     simulation.set_geom_param(
         B_axis      = 8.0,           # Magnetic field at magnetic axis [T]
@@ -476,9 +461,13 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'SPARC'
@@ -500,42 +489,81 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     
     return simulation
 
+def get_aug_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+    '''
+    This function returns a simulation object for the ASDEX-U SOL efit geom case. (D. Liu)
+    '''
+    if x_LCFS is None : x_LCFS = -1.0 # position of the LCFS in term of the simulation domain coordinate.
+    if x_out is None : x_out = 1.0 # SOL width in term of the simulation domain coordinate.
+    simulation = Simulation(dimensionality=dimensionality)
+    simulation.set_phys_param()
 
-def add_source_baseline(simulation):
-    n_srcOMP=2.4e23
-    x_srcOMP=0.0
-    Te_srcOMP=2 * simulation.species['elc'].T0
-    Ti_srcOMP=2 * simulation.species['ion'].T0
-    sigmax_srcOMP=0.03 * simulation.geom_param.Lx
-    floor_src=1e-2
-    def custom_density_src_profile(x,y,z):
-        return n_srcOMP * (np.exp(-((x - x_srcOMP) ** 2) / (2.0 * sigmax_srcOMP ** 2)) + floor_src)
-    def custom_temp_src_profile_elc(x, y = None, z = None):
-        mask = x < (x_srcOMP + 3 * sigmax_srcOMP)
-        fout = np.empty_like(x)
-        fout[mask] = Te_srcOMP; fout[~mask] = Te_srcOMP * 3.0 / 8.0
-        return fout  
-    def custom_temp_src_profile_ion( x, y = None, z = None):
-        mask = x < (x_srcOMP + 3 * sigmax_srcOMP)
-        fout = np.empty_like(x)
-        fout[mask] = Ti_srcOMP; fout[~mask] = Ti_srcOMP * 3.0 / 8.0
-        return fout   
-    OMPsource = Source(n_src=n_srcOMP,x_src=x_srcOMP,Te_src=Te_srcOMP,Ti_src=Ti_srcOMP,
-                    sigma_src=sigmax_srcOMP,floor_src=floor_src,
-                    density_src_profile=custom_density_src_profile,
-                    temp_src_profile_elc=custom_temp_src_profile_elc,
-                    temp_src_profile_ion=custom_temp_src_profile_ion)
-    simulation.add_source('Core src',OMPsource)
+    simulation.set_geom_param(
+        B_axis      = 1.0, # Magnetic field at magnetic axis [T]
+        R_axis      = 1.0, # Magnetic axis major radius
+        Z_axis      = 1.0, # Magnetic axis height
+        R_LCFSmid   = 1.0, # Major radius of LCFS at the midplane
+        a_shift     = 1.0, # Parameter in Shafranov shift
+        kappa       = 1.0, # Elongation factor
+        delta       = 1.0, # Triangularity factor
+        qfit        = [1.0],
+        x_LCFS      = x_LCFS, # position of the LCFS (= core domain width)
+        x_out       = x_out, # SOL domain width
+        geom_type   = 'efit'
+    )
+
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
+    
+    # Add discharge ID
+    simulation.dischargeID = 'ASDEX-U'
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData = sparc_vessel_data # To be replaced with ASDEX-U vessel data when available
+
+    # Add view points for the toroidal projection (to be adjusted)
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0., 0.8, -0.03),
+            'zoom': 1.0
+    }
+    
     return simulation
 
 def get_gyacomo_sim_config(simdir,simidx):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
     '''
-    R_axis = 1.7074685
+    R_axis = 1.7074685 # DIII-D
+    B_axis = 2.5
     amid = 0.64
     R_LCFSmid = R_axis + amid
-    r0 = 0.5*amid
+    r0 = 0.95*amid
     Lx = 0.05
     simulation = Simulation(dimensionality='3x2v', code='gyacomo')
 
@@ -547,18 +575,18 @@ def get_gyacomo_sim_config(simdir,simidx):
     )
     def qprofile(R):
         r = R - R_axis
-        q0 = 1.4
-        s0 = 0.8
+        q0 = simulation.gyac.params['GEOMETRY']['q0']
+        s0 = simulation.gyac.params['GEOMETRY']['shear']
         return q0 * (1 + s0 * (r - r0) / r0)
 
     simulation.set_geom_param(
-        B_axis      = 2.5,           # Magnetic field at magnetic axis [T]
+        B_axis      = B_axis,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,        # Magnetic axis major radius
         Z_axis      = 0.0,         # Magnetic axis height
         R_LCFSmid   = R_LCFSmid,   # Major radius of LCFS at the midplane
         a_shift     = 0.0,                 # Parameter in Shafranov shift
-        kappa       = 1.0,                 # Elongation factor
-        delta       = 0.0,                 # Triangularity factor
+        kappa       = simulation.gyac.params['GEOMETRY']['kappa'],
+        delta       = simulation.gyac.params['GEOMETRY']['delta'],
         qprofile_R  = qprofile,                 # Safety factor
         x_LCFS      = Lx,                 # position of the LCFS (= core domain width)
         x_out       = 0.0                  # SOL domain width
@@ -592,9 +620,13 @@ def get_gyacomo_sim_config(simdir,simidx):
     simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'GYACOMO, Cyclone Base Case'

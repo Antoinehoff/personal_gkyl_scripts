@@ -50,7 +50,7 @@ class Simulation:
         self.DG_basis = DG_tools.DG_basis(porder,ptype,dimensionality)  # DG basis functions for projection
         self.polyOrder = porder
         self.basisType = ptype
-        self.polprojInset = None # Custom poloidal projection inset.
+        self.polprojInsets = None # Custom poloidal projection inset.
         self.code = code # Code used for the simulation (e.g., gkeyll or gyacomo)
         self.flandatapath = flandatapath  # Data from FLAN interface, if applicable
         self.flan = None
