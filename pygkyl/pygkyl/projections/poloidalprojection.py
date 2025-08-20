@@ -217,7 +217,9 @@ class PoloidalProjection:
     
     elif self.sim.geom_param.geom_type in ['efit', 'Millernodal']:
       simName = self.sim.data_param.fileprefix
-      nodalData = pg.GData(simName+"-nodes_intZ.gkyl")
+      nodefile = simName+"-nodes_intZ.gkyl"
+      if not os.path.isfile(nodefile): nodefile =  simName+"-nodes.gkyl"
+      nodalData = pg.GData(nodefile)
       nodalVals = nodalData.get_values()
       alpha_idx = 0
       if self.sim.geom_param.geom_type == 'efit':
@@ -574,13 +576,13 @@ class PoloidalProjection:
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
       
   def reset_insets(self):
-    self.insets = self.sim.polprojInsets.copy()
     if self.sim.polprojInsets is not None:
       self.insets = self.sim.polprojInsets.copy()
     else:
       self.insets = []
+      
   def set_inset(self, index=0, **kwargs):
-    self.insets[index] = Inset(**kwargs)
+    self.insets[index].set(**kwargs)
       
   def add_inset(self, **kwargs):
     self.insets.append(Inset(**kwargs))
@@ -622,6 +624,11 @@ class Inset:
     self.shading = shading
     self.anchorColorbar = anchorColorbar
     self.markLoc = markLoc
+    
+  def set(self, **kwargs):
+    for key, value in kwargs.items():
+      if hasattr(self, key):
+        setattr(self, key, value)
       
   def add_inset(self, fig, ax, R, Z, fieldRZ, colorMap, colorScale, 
                 minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):
