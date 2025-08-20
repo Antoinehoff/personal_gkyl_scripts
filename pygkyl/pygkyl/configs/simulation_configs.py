@@ -31,9 +31,6 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
     if load_metric:
         sim.geom_param.load_metric(sim.data_param.fileprefix)
 
-    if add_source:
-        sim = add_source_baseline(sim)
-
     return sim
 
 def display_available_configs():
@@ -77,9 +74,13 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.45,0.25],
+            xlim = [2.10,2.18],
+            ylim = [-0.10,0.10],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'TCV #65125'
@@ -155,9 +156,13 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.35,0.3]
-    simulation.inset = inset
+    simulation.polprojInsets = [
+    Inset(
+        lowerCornerRelPos=[0.45,0.25],
+        xlim = [2.10,2.18],
+        ylim = [-0.10,0.10],
+        markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'TCV #65130'
@@ -233,11 +238,13 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.4,0.3]
-    inset.xlim = [2.12,2.25]
-    inset.ylim = [-0.15,0.15]
-    simulation.inset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'DIII-D #171650'
@@ -298,11 +305,13 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.4,0.3]
-    inset.xlim = [2.12,2.25]
-    inset.ylim = [-0.15,0.15]
-    simulation.inset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'DIII-D #171646'
@@ -379,9 +388,13 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'NSTX-U'
@@ -448,9 +461,13 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'SPARC'
@@ -510,9 +527,13 @@ def get_aug_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensio
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'ASDEX-U'
@@ -538,10 +559,11 @@ def get_gyacomo_sim_config(simdir,simidx):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
     '''
-    R_axis = 1.7074685
+    R_axis = 1.7074685 # DIII-D
+    B_axis = 2.5
     amid = 0.64
     R_LCFSmid = R_axis + amid
-    r0 = 0.5*amid
+    r0 = 0.95*amid
     Lx = 0.05
     simulation = Simulation(dimensionality='3x2v', code='gyacomo')
 
@@ -553,18 +575,18 @@ def get_gyacomo_sim_config(simdir,simidx):
     )
     def qprofile(R):
         r = R - R_axis
-        q0 = 1.4
-        s0 = 0.8
+        q0 = simulation.gyac.params['GEOMETRY']['q0']
+        s0 = simulation.gyac.params['GEOMETRY']['shear']
         return q0 * (1 + s0 * (r - r0) / r0)
 
     simulation.set_geom_param(
-        B_axis      = 2.5,           # Magnetic field at magnetic axis [T]
+        B_axis      = B_axis,           # Magnetic field at magnetic axis [T]
         R_axis      = R_axis,        # Magnetic axis major radius
         Z_axis      = 0.0,         # Magnetic axis height
         R_LCFSmid   = R_LCFSmid,   # Major radius of LCFS at the midplane
         a_shift     = 0.0,                 # Parameter in Shafranov shift
-        kappa       = 1.0,                 # Elongation factor
-        delta       = 0.0,                 # Triangularity factor
+        kappa       = simulation.gyac.params['GEOMETRY']['kappa'],
+        delta       = simulation.gyac.params['GEOMETRY']['delta'],
         qprofile_R  = qprofile,                 # Safety factor
         x_LCFS      = Lx,                 # position of the LCFS (= core domain width)
         x_out       = 0.0                  # SOL domain width
@@ -598,9 +620,13 @@ def get_gyacomo_sim_config(simdir,simidx):
     simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
-    inset = Inset() # all default but the lower corner position
-    inset.lowerCornerRelPos = [0.3,0.32]
-    simulation.polprojInset = inset
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
     
     # Add discharge ID
     simulation.dischargeID = 'GYACOMO, Cyclone Base Case'

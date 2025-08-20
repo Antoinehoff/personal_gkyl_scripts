@@ -12,7 +12,7 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from matplotlib import ticker
 from matplotlib import colors
 
-from ..classes import Frame, TimeSerie
+from ..classes import Frame, TimeSerie, Simulation
 from ..tools import fig_tools, math_tools
 
 #.Some fontsizes used in plots.
@@ -39,7 +39,7 @@ class PoloidalProjection:
     self.Zlcfs = None
     self.nzInterp = 0
     self.figSize = None
-    self.inset = None
+    self.insets = []
     self.phiTor = 0
     self.alpha_rz_phi0 = None
     self.dimsI = 0
@@ -49,7 +49,7 @@ class PoloidalProjection:
     self.TSBC = True
     self.dpi = 150
     
-  def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
+  def setup(self, simulation: Simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
             intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150):
 
     # Store simulation and a link to geometry objects
@@ -60,10 +60,10 @@ class PoloidalProjection:
     self.dpi = dpi
     self.timeFrame0 = timeFrame
 
-    if self.sim.polprojInset is not None:
-      self.inset = self.sim.polprojInset
+    if self.sim.polprojInsets is not None:
+      self.insets = self.sim.polprojInsets
     else:
-      self.inset = Inset()
+      self.insets = [Inset()]
     self.phiTor = phiTor
     self.gridCheck = gridCheck
     self.TSBC = TSBC
@@ -374,7 +374,7 @@ class PoloidalProjection:
     field_RZ = self.project_field(field_frame.values, evalDGfunc=evalDGfunc)
     return field_RZ, self.RIntN, self.ZIntN
 
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation='',
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', show_inset=True, fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
            shading='auto', average=''):
     '''
@@ -496,11 +496,15 @@ class PoloidalProjection:
       yWidth = 0.01
       yCorner = self.geom.Z_axis - 0.5*yWidth
       ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
+      limiter = [yWidth]
+    else:
+      limiter = []
 
-      if inset:
-        self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
-                            colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
-                            LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
+    if show_inset:
+      for inset in self.insets:
+        inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
+                        colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
+                        LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=limiter)      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
@@ -518,7 +522,7 @@ class PoloidalProjection:
     else:
         plt.show()
 
-  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
+  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', show_inset=True,
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
           pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation='', timeFrame=[],
           rmFrames=True):
@@ -554,7 +558,7 @@ class PoloidalProjection:
           frameFileList.append(f'{movDirTmp}/frame_{tf}.png')
 
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
-                          colorMap = colorMap, inset=inset,
+                          colorMap = colorMap, show_inset=show_inset,
                           colorScale=colorScale, logScaleFloor=logScaleFloor,
                           xlim=xlim, ylim=ylim, clim=clim, climInset=climInset,
                           fluctuation=fluctuation, favg=favg)
@@ -571,8 +575,14 @@ class PoloidalProjection:
       fig_tools.compile_movie(frameFileList, movieName, rmFrames=rmFrames,
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
       
-  def reset_inset(self):
-    self.inset = Inset()
+  def reset_insets(self):
+    self.insets = self.sim.polprojInsets.copy()
+    
+  def set_inset(self, index=0, **kwargs):
+    self.insets[index] = Inset(**kwargs)
+      
+  def add_inset(self, **kwargs):
+    self.insets.append(Inset(**kwargs))
           
 class Inset:
   
@@ -581,7 +591,7 @@ class Inset:
   """
   def __init__(self, zoom=1.5, 
                zoomLoc='lower left', 
-               insetRelPos=(0.35,0.35), 
+               lowerCornerRelPos=(0.35,0.35), 
                vmin=0, vmax=1,
                width="10%", 
                height="100%", 
@@ -596,7 +606,7 @@ class Inset:
                markLoc = [1, 4]):
     self.zoom = zoom
     self.zoomLoc = zoomLoc
-    self.lowerCornerRelPos = insetRelPos
+    self.lowerCornerRelPos = lowerCornerRelPos
     self.vmin = vmin
     self.vmax = vmax
     self.width = width
