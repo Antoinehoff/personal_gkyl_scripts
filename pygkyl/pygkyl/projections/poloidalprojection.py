@@ -185,6 +185,7 @@ class PoloidalProjection:
     phi0 = 0.0
     #.Compute alpha(r,z,phi=0) which is independent of y.
     self.alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
+    print('Shape of alpha:', np.shape(self.alpha_rz_phi0))
     for ix in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
       dPsidr = self.geom.dPsidr(self.geom.r_x(self.meshC[0][ix]),method=method)
       for iz in range(self.nzI):
@@ -223,6 +224,7 @@ class PoloidalProjection:
       if self.sim.geom_param.geom_type == 'efit':
         R = nodalVals[:, alpha_idx, :, 0]
         Z = nodalVals[:, alpha_idx, :, 1]
+        Phi = nodalVals[:, alpha_idx, :, 2] 
       elif self.sim.geom_param.geom_type == 'Millernodal':
         X = nodalVals[:, alpha_idx, :, 0]
         Y = nodalVals[:, alpha_idx, :, 1]
@@ -235,9 +237,21 @@ class PoloidalProjection:
 
       RInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), R)
       ZInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Z)
+      PhiInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Phi)
 
       Rint = RInterpolator((xxI, zzI))
       Zint = ZInterpolator((xxI, zzI))
+      Phiint = PhiInterpolator((xxI, zzI))
+
+      if self.sim.geom_param.geom_type == 'efit':
+        self.alpha_rz_phi0 = -self.gridsN[1][alpha_idx] - Phiint # Overwrite the results of compute_alpha
+        phiTor = np.pi
+        for k in range(self.kyDimsC[1]): # Overwrite the results of compute_xyz2RZ
+          for iz in range(self.nzI):
+            shift = -2*np.pi*self.alpha_rz_phi0[:,iz]/self.LyC + phiTor
+            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*shift)
+            #.Negative ky's.
+            self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
