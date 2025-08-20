@@ -24,16 +24,21 @@ USAGE EXAMPLES:
 - Install in a custom directory:
     python pygkyl_install.py --path /some/other/path
 
+- Skip pulling repositories (useful when you don't want to update remote changes):
+    python pygkyl_install.py --no-pull
+
 PARAMETERS:
 -----------
--p, --path   Base path for repositories (default: ~)
--h, --help   Show this help message and exit
+-p, --path     Base path for repositories (default: ~)
+--no-pull      Skip running 'git pull' for repositories after cloning/updating
+-h, --help     Show this help message and exit
 
 Logs for pip installations are saved in the respective repository directories.
 """,
     formatter_class=argparse.RawDescriptionHelpFormatter
 )
 parser.add_argument("-p", "--path", default="~", help="Base path for repositories (default: ~)")
+parser.add_argument("--no-pull", action="store_true", help="Skip pulling (git pull) repositories after cloning/updating")
 args = parser.parse_args()
 
 base_path = os.path.expanduser(args.path)
@@ -54,7 +59,10 @@ if not os.path.exists(postgkyl_path):
 	subprocess.run(["git", "clone", postgkyl_repo, postgkyl_path], check=True)
 	
 print("1.1 Pull postgkyl repository")
-subprocess.run(["git", "-C", postgkyl_path, "pull"], check=True)
+if not args.no_pull:
+	subprocess.run(["git", "-C", postgkyl_path, "pull"], check=True)
+else:
+	print("Skipping git pull for postgkyl (--no-pull)")
 
 print("1.2 Install postgkyl (required for pygkyl)")
 subprocess.run(["touch", os.path.join(postgkyl_path, "postgkyl_install.log")], check=True)
@@ -67,7 +75,10 @@ if not os.path.exists(personal_gkyl_scripts_path):
 	subprocess.run(["git", "clone", personal_gkyl_scripts_repo, personal_gkyl_scripts_path], check=True)
 
 print("2.2 Pull personal_gkyl_scripts repository")
-subprocess.run(["git", "-C", personal_gkyl_scripts_path, "pull"], check=True)
+if not args.no_pull:
+	subprocess.run(["git", "-C", personal_gkyl_scripts_path, "pull"], check=True)
+else:
+	print("Skipping git pull for personal_gkyl_scripts (--no-pull)")
 
 print("2.3 Remove old pygkyl egg-info and build directories")
 subprocess.run(["rm", "-rf", os.path.join(pygkyl_path, "pygkyl.egg-info")], check=True)
