@@ -2,7 +2,11 @@ import h5py
 import numpy as np
 from ..tools import math_tools as tools
 from ..classes.dataparam import DataParam
+from ..classes.simulation import Simulation
+from ..classes.species import Species
+from ..projections.poloidalprojection import Inset
 from ..classes.normalization import Normalization
+from ..configs.vessel_data import d3d_vessel_data
 import os
 import matplotlib.pyplot as plt
 
@@ -384,3 +388,189 @@ class GyacomoInterface:
 
         
         
+def get_gyacomo_cbc_config(simdir,simidx):
+    '''
+    This function returns a simulation object for analyzing a Gyacomo simulation.
+    '''
+    R_axis = 1.7074685 # DIII-D
+    B_axis = 2.5
+    amid = 0.64
+    R_LCFSmid = R_axis + amid
+    r0 = 0.5*amid
+    Lx = simulation.gyac.params['GRID']['Lx'] * simulation.gyac.l0
+    simulation = Simulation(dimensionality='3x2v', code='gyacomo')
+
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(R):
+        r = R - R_axis
+        q0 = simulation.gyac.params['GEOMETRY']['q0']
+        s0 = simulation.gyac.params['GEOMETRY']['shear']
+        return q0 * (1 + s0 * (r - r0) / r0)
+
+    simulation.set_geom_param(
+        B_axis      = B_axis,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,        # Magnetic axis major radius
+        Z_axis      = 0.0,         # Magnetic axis height
+        R_LCFSmid   = R_LCFSmid,   # Major radius of LCFS at the midplane
+        a_shift     = 0.0,                 # Parameter in Shafranov shift
+        kappa       = simulation.gyac.params['GEOMETRY']['kappa'],
+        delta       = simulation.gyac.params['GEOMETRY']['delta'],
+        qprofile_R  = qprofile,                 # Safety factor
+        x_LCFS      = Lx,                 # position of the LCFS (= core domain width)
+        x_out       = 0.0                  # SOL domain width
+    )
+    
+    # Define the species
+    # Temperature and density are taken from Greenfield et al. 1997, Nucl. Fusion 37 1215
+    simulation.add_species(Species(name='ion',
+                m=simulation.phys_param.mp, # Ion mass (proton), Deutrerium is 2.01410177811
+                q=simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+
+    simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
+    
+    # Set up the flux tube size within the cartesian domain.
+    simulation.geom_param.x_in = (amid - r0 + Lx/2.0)
+    simulation.geom_param.x_LCFS = R_LCFSmid - (R_axis + r0)
+    simulation.geom_param.x_out = -(amid - r0 - Lx/2.0)
+    simulation.geom_param.update_geom_params()
+    
+    
+    simulation.available_frames = simulation.gyac.available_frames
+    simulation.data_param = simulation.gyac.adapt_data_param(simulation=simulation)
+    simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
+    
+    # Add discharge ID
+    simulation.dischargeID = 'GYACOMO, Cyclone Base Case'
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData = d3d_vessel_data
+
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    # Cameras for 1:2 formats
+    simulation.geom_param.camera_zoom_1by2 = {   
+        'position':(1.2, 1.2, 0.6),
+        'looking_at':(0., 0.75, 0.1),
+        'zoom': 1.0
+    }
+
+    return simulation
+
+def get_gyacomo_multiscale_config(simdir,simidx):
+    '''
+    This function returns a simulation object for analyzing a Gyacomo simulation.
+    '''
+    R_axis = 1.7074685 # DIII-D
+    B_axis = 2.5
+    amid = 0.64
+    R_LCFSmid = R_axis + amid
+    r0 = 0.95*amid
+    Lx = 0.05
+    simulation = Simulation(dimensionality='3x2v', code='gyacomo')
+
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(R):
+        r = R - R_axis
+        q0 = simulation.gyac.params['GEOMETRY']['q0']
+        s0 = simulation.gyac.params['GEOMETRY']['shear']
+        return q0 * (1 + s0 * (r - r0) / r0)
+
+    simulation.set_geom_param(
+        B_axis      = B_axis,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,        # Magnetic axis major radius
+        Z_axis      = 0.0,         # Magnetic axis height
+        R_LCFSmid   = R_LCFSmid,   # Major radius of LCFS at the midplane
+        a_shift     = 0.0,                 # Parameter in Shafranov shift
+        kappa       = simulation.gyac.params['GEOMETRY']['kappa'],
+        delta       = simulation.gyac.params['GEOMETRY']['delta'],
+        qprofile_R  = qprofile,                 # Safety factor
+        x_LCFS      = Lx,                 # position of the LCFS (= core domain width)
+        x_out       = 0.0                  # SOL domain width
+    )
+    
+    # Define the species
+    # Temperature and density are taken from Greenfield et al. 1997, Nucl. Fusion 37 1215
+    simulation.add_species(Species(name='ion',
+                m=simulation.phys_param.mp, # Ion mass (proton), Deutrerium is 2.01410177811
+                q=simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+
+    simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
+    
+    # Set up the flux tube size within the cartesian domain.
+    Lx = simulation.gyac.params['GRID']['Lx'] * simulation.gyac.l0
+    simulation.geom_param.x_in = (amid - r0 + Lx/2.0)
+    simulation.geom_param.x_LCFS = R_LCFSmid - (R_axis + r0)
+    simulation.geom_param.x_out = -(amid - r0 - Lx/2.0)
+    simulation.geom_param.update_geom_params()
+    
+    
+    simulation.available_frames = simulation.gyac.available_frames
+    simulation.data_param = simulation.gyac.adapt_data_param(simulation=simulation)
+    simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
+    
+    # Add discharge ID
+    simulation.dischargeID = 'GYACOMO, DIII-D #186473'
+    
+    # Add vessel data filename
+    simulation.geom_param.vesselData = d3d_vessel_data
+
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    # Cameras for 1:2 formats
+    simulation.geom_param.camera_zoom_1by2 = {   
+        'position':(1.2, 1.2, 0.6),
+        'looking_at':(0., 0.75, 0.1),
+        'zoom': 1.0
+    }
+
+    return simulation
