@@ -4,6 +4,7 @@ from ..tools import math_tools as tools
 from ..classes.dataparam import DataParam
 from ..classes.normalization import Normalization
 import os
+import matplotlib.pyplot as plt
 
 class GyacomoInterface:
     # Gyacomo interface for reading data from Gyacomo HDF5 files
@@ -17,10 +18,17 @@ class GyacomoInterface:
     t0 = 1.0 # time scale
     V0 = 1.0 # potential scale
     
-    def __init__(self,filename,simulation):
-        self.filename = filename
-        if not os.path.exists(self.filename):
-            raise FileNotFoundError(f"File {self.filename} does not exist.")        
+    def __init__(self, simulation, simdir, simidx):
+        self.simdir = simdir
+        if isinstance(simidx, int):
+            self.simidx = [simidx]
+        else:
+            self.simidx = simidx
+        
+        self.filename0 = self.simdir + f'/outputs_{self.simidx[0]:02d}.h5'
+        self.file_no_ext = self.filename0[:-5]
+        if not os.path.exists(self.filename0):
+            raise FileNotFoundError(f"File {self.filename0} does not exist.")        
         
         self.field_map = {
             'phi': ('phi', '', '3D', [r'$x/\rho_s$', r'$y/\rho_s$', r'$z/\rho_s$', r'$\phi e / T_e$']),
@@ -59,10 +67,16 @@ class GyacomoInterface:
         self.available_frames = {}
         for key in self.field_map:
             self.available_frames[key] = self.get_available_frames(key)
-        
+            
+    def outfile(self,idx):
+        # remove XX.h5 from filename0
+        file_no_ext = self.filename0[:-5]
+        # add the new index
+        new_filename = file_no_ext + f'{idx:02d}.h5'
+        return new_filename
 
     def load_grids(self):
-        with h5py.File(self.filename, 'r') as file:
+        with h5py.File(self.filename0, 'r') as file:
             # Load the grids
             self.kxgrid = file[f'data/grid/coordkx'][:]
             self.kygrid = file[f'data/grid/coordky'][:]
@@ -84,7 +98,7 @@ class GyacomoInterface:
 
     def load_group(self,group):
         data = {}
-        with h5py.File(self.filename, 'r') as file:
+        with h5py.File(self.filename0, 'r') as file:
             g_  = file[f"data/"+group]
             for key in g_.keys():
                 name='data/'+group+'/'+key
@@ -92,29 +106,57 @@ class GyacomoInterface:
         return data
 
     def load_params(self):
-        jobid = self.filename[-5:-3]
-        with h5py.File(self.filename, 'r') as file:
+        jobid = self.filename0[-5:-3]
+        with h5py.File(self.filename0, 'r') as file:
             nml_str = file[f"files/STDIN."+jobid][0]
             nml_str = nml_str.decode('utf-8')
             self.params = self.read_namelist(nml_str)
 
     def load_available_frames(self):
-        with h5py.File(self.filename, 'r') as file:
-            self.time0D  = file['data/var0d/time']
-            self.time0D  = self.time0D[:]
-            self.time3D  = file['data/var3d/time']
-            self.time3D  = self.time3D[:]
-            self.time5D  = file['data/var5d/time']
-            self.time5D  = self.time5D[:]
+        self.time0D = {'t': [], 'tidx': [], 'sidx': []}
+        self.time3D = {'t': [], 'tidx': [], 'sidx': []}
+        self.time5D = {'t': [], 'tidx': [], 'sidx': []}
+        for sidx in self.simidx:
+            with h5py.File(self.outfile(sidx), 'r') as file:
+                time0D  = file['data/var0d/time']
+                time0D  = time0D[:]
+                time3D  = file['data/var3d/time']
+                time3D  = time3D[:]
+                time5D  = file['data/var5d/time']
+                time5D  = time5D[:]
+                
+            self.time0D['t'].append(time0D)
+            self.time0D['tidx'].append([j+1 for j in range(len(time0D))])
+            self.time0D['sidx'].append([sidx for j in range(len(time0D))])
+            
+            self.time3D['t'].append(time3D)
+            self.time3D['tidx'].append([j+1 for j in range(len(time3D))])
+            self.time3D['sidx'].append([sidx for j in range(len(time3D))])
+            
+            self.time5D['tidx'].append([j+1 for j in range(len(time5D))])
+            self.time5D['t'].append(time5D)
+            self.time5D['sidx'].append([sidx for j in range(len(time5D))])
+            
+        self.time0D['t'] = np.concatenate(self.time0D['t'])
+        self.time0D['tidx'] = np.concatenate(self.time0D['tidx'])
+        self.time0D['sidx'] = np.concatenate(self.time0D['sidx'])
+        
+        self.time3D['t'] = np.concatenate(self.time3D['t'])
+        self.time3D['tidx'] = np.concatenate(self.time3D['tidx'])
+        self.time3D['sidx'] = np.concatenate(self.time3D['sidx'])
+        
+        self.time5D['t'] = np.concatenate(self.time5D['t'])
+        self.time5D['tidx'] = np.concatenate(self.time5D['tidx'])
+        self.time5D['sidx'] = np.concatenate(self.time5D['sidx'])
 
     def get_available_frames(self, fieldname):
         _, _, dimensionality, _ = self.field_map[fieldname]
         if dimensionality == '0D':
-            return [i for i in range(1,len(self.time0D))]
+            return [i for i in range(len(self.time0D['t']))]
         elif dimensionality == '3D':
-            return [i for i in range(1,len(self.time3D))]
+            return [i for i in range(len(self.time3D['t']))]
         elif dimensionality == '5D':
-            return [i for i in range(1,len(self.time5D))]
+            return [i for i in range(len(self.time5D['t']))]
         else:
             raise ValueError(f"Unknown dimensionality: {dimensionality}")
 
@@ -131,26 +173,42 @@ class GyacomoInterface:
             raise ValueError(f"Unknown dimensionality: {dimensionality}")
 
     def load_data_0D(self, dname):
-        with h5py.File(self.filename, 'r') as file:
-            # Load time data
-            time  = file['data/var0d/time']
-            time  = time[:]
-            var0D = file['data/var0d/'+dname]
-            var0D = var0D[:]
-            grids = [time]
-        return grids, var0D
+        spec_idx = 1 if dname[-1] == 'e' else 0
+        dname = dname[:-1]
+        time = []
+        var0D = []
+        for sidx in self.simidx:
+            outfile = self.outfile(sidx)
+            with h5py.File(outfile, 'r') as file:
+                # Load time data
+                t = file['data/var0d/time']
+                time.append(t[:])
+                nt = len(t[:])
+                y = file['data/var0d/'+dname]
+                y = np.reshape(y[:], (nt, 2))
+                var0D.append(y[:,spec_idx])
+        time = np.concatenate(time)
+        var0D = np.concatenate(var0D)
+                
+        return [time], var0D
 
-    def load_data_3D(self, dname, tf, xyz=True, species='ion'):
-        with h5py.File(self.filename, 'r') as file:
+    def load_data_3D(self, dname, tidx, xyz=True, species='ion'):
+        if isinstance(tidx, float):
+            tidx = np.argmin(np.abs(self.time3D['t'] - tidx))
+        time = self.time3D['t'][tidx]
+        fidx = self.time3D['tidx'][tidx]
+        sidx = self.time3D['sidx'][tidx]
+        outfile = self.outfile(sidx)
+        with h5py.File(outfile, 'r') as file:
             # load time
-            time  = file['data/var3d/time']
-            time  = time[:]
+            t  = file['data/var3d/time']
+            t  = t[:]
             # Load data
             try:
-                data = file[f'data/var3d/{dname}/{tf:06d}']
+                data = file[f'data/var3d/{dname}/{fidx:06d}']
             except:
                 g_ = file[f'data/var3d/']
-                print('Dataset: '+f'data/var3d/{dname}/{tf:06d}'+' not found in '+self.filename)
+                print('Dataset: '+f'data/var3d/{dname}/{fidx:06d}'+' not found in '+ outfile)
                 print('Available fields: ')
                 msg = ''
                 for key in g_:
@@ -171,12 +229,10 @@ class GyacomoInterface:
                 data = data_real
                 grids = [self.xgrid, self.ygrid, self.zgrid]
             
-            # exchange first and second dimensions of the data
-            #data = np.transpose(data, (1, 0, 2))
-        return grids, time[tf], data
+        return grids, time, data
 
     def load_data_5D(self,dname,tf):
-        with h5py.File(self.filename, 'r') as file:
+        with h5py.File(self.filename0, 'r') as file:
             # load time
             time  = file['data/var5d/time']
             time  = time[:]
@@ -279,5 +335,52 @@ class GyacomoInterface:
     def set_mksa_normalization(self, normalization):
         normalization.change('phi', self.V0, 0, r'$\phi$', 'V')
         
+    def plot_fluxes(self, dnames):
+        
+        if isinstance(dnames, str):
+            dnames = [[dnames]]
+        elif isinstance(dnames, list) and all(isinstance(d, str) for d in dnames):
+            dnames = [dnames]
+        
+        nsubplots = len(dnames)
+        nrow = nsubplots // 2 + nsubplots % 2
+        ncol = 2 if nsubplots > 1 else 1
+        fig, axs = plt.subplots(nrow, ncol, figsize=(4*ncol, 3*nrow), sharex=True)
+        
+        if isinstance(axs, np.ndarray):
+            axs = axs.flatten()
+        elif nsubplots == 1:
+            axs = [axs]
+        spidx = 0  
+        for spname in dnames:
+            cidx = 0
+            for name in spname:
+                vlabel = self.plot_flux_single(name, axs[spidx])
+                cidx += 1
+            spidx += 1
+            if cidx == 1:
+                axs[0].set_ylabel(vlabel)
+            else:
+                axs[0].legend()
+    
+        xlabel = r'$t c_s/R_0$'
+        axs[-1].set_xlabel(xlabel)
+        
+    def plot_flux_single(self, name, ax):
+            if name not in ['gflux_xi', 'hflux_xi', 'pflux_xi', 'gflux_xe', 'hflux_xe', 'pflux_xe']:
+                raise ValueError(f"Unknown 0D fieldname: {name}, only 'gflux_xs', 'hflux_xs', 'pflux_xs' (s=e,i), are supported.")
+            grids, values = self.load_data_0D(name)
+            time = grids[0]
+            spec = name[-1]
+            if name.startswith('gflux'):
+                vlabel = r'$G_{x,e}$' if spec == 'e' else r'$G_{x,i}$'
+            elif name.startswith('hflux'):
+                vlabel = r'$Q_{x,e}$' if spec == 'e' else r'$Q_{x,i}$'
+            elif name.startswith('pflux'):
+                vlabel = r'$\Gamma_{p,e}$' if spec == 'e' else r'$\Gamma_{p,i}$'
+            ax.plot(time, values, label=vlabel)
+            
+            return vlabel
 
-        return normalization
+        
+        

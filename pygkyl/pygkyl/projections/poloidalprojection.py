@@ -47,15 +47,17 @@ class PoloidalProjection:
     self.gridCheck = False
     self.zExt = True
     self.TSBC = True
+    self.dpi = 150
     
   def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
-            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
+            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
     self.geom = simulation.geom_param
     self.nzInterp = nzInterp
     self.figSize = figSize
+    self.dpi = dpi
     self.timeFrame0 = timeFrame
 
     if self.sim.polprojInset is not None:
@@ -185,7 +187,6 @@ class PoloidalProjection:
     phi0 = 0.0
     #.Compute alpha(r,z,phi=0) which is independent of y.
     self.alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
-    print('Shape of alpha:', np.shape(self.alpha_rz_phi0))
     for ix in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
       dPsidr = self.geom.dPsidr(self.geom.r_x(self.meshC[0][ix]),method=method)
       for iz in range(self.nzI):
@@ -463,7 +464,7 @@ class PoloidalProjection:
     #.Create the figure.
     ax1aPos   = [ [0.10, 0.08, 0.76, 0.88] ]
     cax1aPos  = [0.88, 0.08, 0.02, 0.88]
-    fig1a     = plt.figure(figsize=self.figSize)
+    fig1a     = plt.figure(figsize=self.figSize, dpi=self.dpi)
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))
