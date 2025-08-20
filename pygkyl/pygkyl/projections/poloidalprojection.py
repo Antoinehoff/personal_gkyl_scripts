@@ -25,7 +25,7 @@ class PoloidalProjection:
   def __init__(self):
     self.sim = None
     self.geom = None
-    self.ixLCFS_C = 0
+    self.ixLCFS_C = None
     self.bcPhaseShift = 0
     self.kyDimsC = 0
     self.zGridEx = None
@@ -165,12 +165,10 @@ class PoloidalProjection:
       self.ix1 = self.dimsC[0]
               
     #.Radial index of the last closed flux surface on the centered mesh
-    self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
-
-    # if self.geom.x_LCFS > self.meshC[0][0] and self.geom.x_LCFS <= self.meshC[0][-1]:
-    #   self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
-    # else:
-    #   self.ixLCFS_C = 0
+    if self.geom.x_LCFS > self.meshC[0][0] and self.geom.x_LCFS <= self.meshC[0][-1]:
+      self.ixLCFS_C = np.argmin(np.abs(self.meshC[0] - self.geom.x_LCFS))
+    else:
+      self.ixLCFS_C = None
       
     #.Calculate R,Z for LCFS plotting
     rLCFS = self.geom.r_x(self.geom.x_LCFS)
@@ -316,7 +314,7 @@ class PoloidalProjection:
     
     if self.TSBC:
       #.Apply twist-shift BCs in the closed-flux region.
-      if self.ixLCFS_C is None: icore_end = self.dimsC[0]
+      if self.ixLCFS_C is None: icore_end = self.dimsC[0] # SOL only
       else: icore_end = self.ixLCFS_C
       xGridCore = self.meshC[0][:icore_end] # x grid on in the core region
       torModNum = 2.*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
