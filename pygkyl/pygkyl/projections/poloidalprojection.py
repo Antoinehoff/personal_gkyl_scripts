@@ -487,6 +487,9 @@ class PoloidalProjection:
     #.Plot lcfs
     if show_LCFS:
       ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
+      LCFSinset = [self.Rlcfs,self.Zlcfs,lcfColor]
+    else:
+      LCFSinset = []
       
     #.Plot the limiter
     if show_limiter:
@@ -503,7 +506,7 @@ class PoloidalProjection:
       for inset in self.insets:
         inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
                         colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
-                        LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=limiter)      
+                        LCFS=LCFSinset, limiter=limiter)      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
