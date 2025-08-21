@@ -561,9 +561,9 @@ def get_gyacomo_multiscale_config(simdir,simidx,params):
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
         Inset(
-            lowerCornerRelPos=[0.4,0.3],
-            xlim = [2.2,2.3],
-            ylim = [-0.05,0.05],
+            lowerCornerRelPos=[0.3,0.3],
+            xlim = [2.24,2.38],
+            ylim = [-0.15,0.15],
             zoom = 3.0,
             markLoc=[1,4])
     ]
