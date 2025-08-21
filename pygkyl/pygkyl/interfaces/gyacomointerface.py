@@ -20,7 +20,7 @@ class GyacomoInterface:
     n0 = 1.0 # density scale
     T0 = 1.0 # temperature scale
     t0 = 1.0 # time scale
-    V0 = 1.0 # potential scale
+    phi0 = 1.0 # potential scale
     
     def __init__(self, simulation, simdir, simidx):
         self.simdir = simdir
@@ -52,25 +52,24 @@ class GyacomoInterface:
             'Nipjz': ('Napjz', 'ion', '3D', [r'$p$', r'$j$', r'$z$', r'$N_{i}^{pj}$']),
             'Nepjz': ('Napjz', 'elc', '3D', [r'$p$', r'$j$', r'$z$', r'$N_e^{pj}$']),
         }
-        
         self.field_map['field'] = self.field_map['phi']
         
-        self.normalization = {}
-        self.l0 = simulation.get_rho_s()
-        self.R0 = simulation.geom_param.R0
-        self.u0 = simulation.get_c_s()
-        self.n0 = 1/self.l0/self.l0/self.R0
-        self.T0 = simulation.species['elc'].T0
-        self.t0 = self.R0 / self.u0
-        self.V0 = self.T0 / simulation.species['ion'].q
-        
-        self.load_grids()
         self.load_params()
-        self.load_available_frames()
         
-        self.available_frames = {}
-        for key in self.field_map:
-            self.available_frames[key] = self.get_available_frames(key)
+        self.normalization = {}
+        if simulation is not None:
+            self.l0 = simulation.get_rho_s()
+            self.R0 = simulation.geom_param.R0
+            self.u0 = simulation.get_c_s()
+            self.n0 = 1/self.l0/self.l0/self.R0
+            self.T0 = simulation.species['elc'].T0
+            self.t0 = self.R0 / self.u0
+            self.phi0 = self.T0 / simulation.species['ion'].q
+            self.load_grids()
+            self.load_available_frames()  
+            self.available_frames = {}
+            for key in self.field_map:
+                self.available_frames[key] = self.get_available_frames(key)
             
     def outfile(self,idx):
         # remove XX.h5 from filename0
@@ -337,7 +336,7 @@ class GyacomoInterface:
         return normalization
     
     def set_mksa_normalization(self, normalization):
-        normalization.change('phi', self.V0, 0, r'$\phi$', 'V')
+        normalization.change('phi', self.phi0, 0, r'$\phi$', 'V')
         
     def plot_fluxes(self, dnames):
         
@@ -386,9 +385,19 @@ class GyacomoInterface:
             
             return vlabel
 
+def get_gyacomo_sim_config(configName,simdir,simidx):
+    # Load the parameters of the simulation
+    gyac = GyacomoInterface(None,simdir,simidx)
+    params = gyac.params.copy()
+    if 'multiscale' in configName:
+        return get_gyacomo_multiscale_config(simdir,simidx,params)
+    if 'cbc' in configName:
+        return get_gyacomo_cbc_config(simdir,simidx,params)
+    else:
+        print("Use default Gyacomo CBC configuration.")
+        return get_gyacomo_cbc_config(simdir,simidx,params)
         
-        
-def get_gyacomo_cbc_config(simdir,simidx):
+def get_gyacomo_cbc_config(simdir,simidx,params):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
     '''
@@ -397,7 +406,6 @@ def get_gyacomo_cbc_config(simdir,simidx):
     amid = 0.64
     R_LCFSmid = R_axis + amid
     r0 = 0.5*amid
-    Lx = simulation.gyac.params['GRID']['Lx'] * simulation.gyac.l0
     simulation = Simulation(dimensionality='3x2v', code='gyacomo')
 
     simulation.set_phys_param(
@@ -408,21 +416,21 @@ def get_gyacomo_cbc_config(simdir,simidx):
     )
     def qprofile(R):
         r = R - R_axis
-        q0 = simulation.gyac.params['GEOMETRY']['q0']
-        s0 = simulation.gyac.params['GEOMETRY']['shear']
+        q0 = params['GEOMETRY']['q0']
+        s0 = params['GEOMETRY']['shear']
         return q0 * (1 + s0 * (r - r0) / r0)
 
     simulation.set_geom_param(
-        B_axis      = B_axis,           # Magnetic field at magnetic axis [T]
-        R_axis      = R_axis,        # Magnetic axis major radius
-        Z_axis      = 0.0,         # Magnetic axis height
-        R_LCFSmid   = R_LCFSmid,   # Major radius of LCFS at the midplane
-        a_shift     = 0.0,                 # Parameter in Shafranov shift
-        kappa       = simulation.gyac.params['GEOMETRY']['kappa'],
-        delta       = simulation.gyac.params['GEOMETRY']['delta'],
-        qprofile_R  = qprofile,                 # Safety factor
-        x_LCFS      = Lx,                 # position of the LCFS (= core domain width)
-        x_out       = 0.0                  # SOL domain width
+        B_axis      = B_axis, # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis, # Magnetic axis major radius
+        Z_axis      = 0.0, # Magnetic axis height (assumed zero)
+        R_LCFSmid   = R_LCFSmid, # Major radius of LCFS at the midplane
+        a_shift     = 0.0, # Parameter in Shafranov shift
+        kappa       = params['GEOMETRY']['kappa'],
+        delta       = params['GEOMETRY']['delta'],
+        qprofile_R  = qprofile, # Safety factor
+        x_LCFS      = 1.0, # position of the LCFS (dummy, will be updated later)
+        x_out       = 0.0 # SOL domain width (gyacomo does not simulate SOL)
     )
     
     # Define the species
@@ -437,15 +445,15 @@ def get_gyacomo_cbc_config(simdir,simidx):
                 q=-simulation.phys_param.eV,
                 T0=1500*simulation.phys_param.eV, 
                 n0=4e19))
+    
+    Lx = params['GRID']['Lx'] * simulation.get_rho_s()
+    Rcenter = R_axis + r0
+    x_LCFS = R_LCFSmid - Rcenter
+    x_in = R_LCFSmid - r0 - Lx / 2.0
+    x_out = R_LCFSmid - r0 + Lx / 2.0
+    simulation.geom_param.change(x_LCFS= x_LCFS, x_in=x_in, x_out=x_out)
 
     simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
-    
-    # Set up the flux tube size within the cartesian domain.
-    simulation.geom_param.x_in = (amid - r0 + Lx/2.0)
-    simulation.geom_param.x_LCFS = R_LCFSmid - (R_axis + r0)
-    simulation.geom_param.x_out = -(amid - r0 - Lx/2.0)
-    simulation.geom_param.update_geom_params()
-    
     
     simulation.available_frames = simulation.gyac.available_frames
     simulation.data_param = simulation.gyac.adapt_data_param(simulation=simulation)
@@ -481,7 +489,7 @@ def get_gyacomo_cbc_config(simdir,simidx):
 
     return simulation
 
-def get_gyacomo_multiscale_config(simdir,simidx):
+def get_gyacomo_multiscale_config(simdir,simidx,params):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
     '''
@@ -490,7 +498,6 @@ def get_gyacomo_multiscale_config(simdir,simidx):
     amid = 0.64
     R_LCFSmid = R_axis + amid
     r0 = 0.95*amid
-    Lx = 0.05
     simulation = Simulation(dimensionality='3x2v', code='gyacomo')
 
     simulation.set_phys_param(
@@ -501,21 +508,21 @@ def get_gyacomo_multiscale_config(simdir,simidx):
     )
     def qprofile(R):
         r = R - R_axis
-        q0 = simulation.gyac.params['GEOMETRY']['q0']
-        s0 = simulation.gyac.params['GEOMETRY']['shear']
+        q0 = params['GEOMETRY']['q0']
+        s0 = params['GEOMETRY']['shear']
         return q0 * (1 + s0 * (r - r0) / r0)
 
     simulation.set_geom_param(
-        B_axis      = B_axis,           # Magnetic field at magnetic axis [T]
-        R_axis      = R_axis,        # Magnetic axis major radius
-        Z_axis      = 0.0,         # Magnetic axis height
+        B_axis      = B_axis, # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis, # Magnetic axis major radius
+        Z_axis      = 0.0, # Magnetic axis height (assumed zero)
         R_LCFSmid   = R_LCFSmid,   # Major radius of LCFS at the midplane
-        a_shift     = 0.0,                 # Parameter in Shafranov shift
-        kappa       = simulation.gyac.params['GEOMETRY']['kappa'],
-        delta       = simulation.gyac.params['GEOMETRY']['delta'],
-        qprofile_R  = qprofile,                 # Safety factor
-        x_LCFS      = Lx,                 # position of the LCFS (= core domain width)
-        x_out       = 0.0                  # SOL domain width
+        a_shift     = 0.0, # Parameter in Shafranov shift
+        kappa       = params['GEOMETRY']['kappa'],
+        delta       = params['GEOMETRY']['delta'],
+        qprofile_R  = qprofile, # Safety factor
+        x_LCFS      = 1.0, # position of the LCFS (dummy, will be updated later)
+        x_out       = 0.0 # SOL domain width (gyacomo does not simulate SOL)
     )
     
     # Define the species
@@ -531,10 +538,16 @@ def get_gyacomo_multiscale_config(simdir,simidx):
                 T0=1500*simulation.phys_param.eV, 
                 n0=4e19))
 
+    Lx = params['GRID']['Lx'] * simulation.get_rho_s()
+    Rcenter = R_axis + r0
+    x_LCFS = R_LCFSmid - Rcenter
+    x_in = R_LCFSmid - r0 - Lx / 2.0
+    x_out = R_LCFSmid - r0 + Lx / 2.0
+    simulation.geom_param.change(x_LCFS= x_LCFS, x_in=x_in, x_out=x_out)
+    
     simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
     
     # Set up the flux tube size within the cartesian domain.
-    Lx = simulation.gyac.params['GRID']['Lx'] * simulation.gyac.l0
     simulation.geom_param.x_in = (amid - r0 + Lx/2.0)
     simulation.geom_param.x_LCFS = R_LCFSmid - (R_axis + r0)
     simulation.geom_param.x_out = -(amid - r0 - Lx/2.0)
@@ -549,8 +562,9 @@ def get_gyacomo_multiscale_config(simdir,simidx):
     simulation.polprojInsets = [
         Inset(
             lowerCornerRelPos=[0.4,0.3],
-            xlim = [2.12,2.25],
-            ylim = [-0.15,0.15],
+            xlim = [2.2,2.3],
+            ylim = [-0.05,0.05],
+            zoom = 3.0,
             markLoc=[1,4])
     ]
     
@@ -562,15 +576,19 @@ def get_gyacomo_multiscale_config(simdir,simidx):
 
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
-        'position':(2.3, 2.3, 0.75),
-        'looking_at':(0, 0, 0),
-            'zoom': 1.0
-    }
-    # Cameras for 1:2 formats
-    simulation.geom_param.camera_zoom_1by2 = {   
-        'position':(1.2, 1.2, 0.6),
-        'looking_at':(0., 0.75, 0.1),
+        'position':(2.5, 2.52, 0.6),
+        'looking_at':(0.0, -0.2, -0.2),
         'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {   
+        'position':(0.83, 0.78, -0.1),
+        'looking_at':(0., 0.74, -0.19),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(0.4, 0.9, 0.0),
+        'looking_at':(0.0, 0.98, 0.0),
+            'zoom': 1.0
     }
 
     return simulation

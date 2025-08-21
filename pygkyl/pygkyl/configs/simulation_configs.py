@@ -20,8 +20,8 @@ def import_config(configName, simDir, filePrefix = '', x_LCFS = None, x_out = No
         sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
     elif configName in ['AUG', 'aug', 'ASDEX', 'asdex']:
         sim = get_aug_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
-    elif configName in ['gyacomo', 'GYACOMO', 'Gyacomo']:
-        sim = get_gyacomo_sim_config(simDir,simidx)
+    elif configName[:7] in ['gyacomo', 'GYACOMO', 'Gyacomo']:
+        sim = get_gyacomo_sim_config(configName,simDir,simidx)
         load_metric = False
         add_source = False
     else:
@@ -307,8 +307,8 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
         Inset(
-            lowerCornerRelPos=[0.4,0.3],
-            xlim = [2.12,2.25],
+            lowerCornerRelPos=[0.3,0.3],
+            xlim = [2.24,2.38],
             ylim = [-0.15,0.15],
             markLoc=[1,4])
     ]
