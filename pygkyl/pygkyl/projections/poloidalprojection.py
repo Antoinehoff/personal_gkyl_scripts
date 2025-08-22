@@ -374,9 +374,9 @@ class PoloidalProjection:
     field_RZ = self.project_field(field_frame.values, evalDGfunc=evalDGfunc)
     return field_RZ, self.RIntN, self.ZIntN
 
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', show_inset=True, fluctuation='',
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average=''):
+           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -486,11 +486,15 @@ class PoloidalProjection:
                     rotation=270, labelpad=18, fontsize=colorBarLabelFontSize)
     hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
-    if self.ixLCFS_C is not None:
-      #.Plot lcfs
+    #.Plot lcfs
+    if show_LCFS:
       ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
-
-      #.Plot the limiter
+      LCFSinset = [self.Rlcfs,self.Zlcfs,lcfColor]
+    else:
+      LCFSinset = []
+      
+    #.Plot the limiter
+    if show_limiter:
       xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
       xCorner = np.min(self.RIntN)
       yWidth = 0.01
@@ -504,7 +508,7 @@ class PoloidalProjection:
       for inset in self.insets:
         inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
                         colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
-                        LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=limiter)      
+                        LCFS=LCFSinset, limiter=limiter)      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
@@ -522,10 +526,10 @@ class PoloidalProjection:
     else:
         plt.show()
 
-  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', show_inset=True,
+  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='',
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
           pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation='', timeFrame=[],
-          rmFrames=True):
+          rmFrames=True, show_LCFS=True, show_limiter=True, show_inset=True):
       colorMap = fig_tools.check_colormap(colorMap)    
       # Naming
       movieName = fieldName+'_RZ'
@@ -558,9 +562,9 @@ class PoloidalProjection:
           frameFileList.append(f'{movDirTmp}/frame_{tf}.png')
 
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
-                          colorMap = colorMap, show_inset=show_inset,
-                          colorScale=colorScale, logScaleFloor=logScaleFloor,
+                          colorMap = colorMap, colorScale=colorScale, logScaleFloor=logScaleFloor,
                           xlim=xlim, ylim=ylim, clim=clim, climInset=climInset,
+                          show_LCFS=show_LCFS, show_limiter=show_limiter, show_inset=show_inset,
                           fluctuation=fluctuation, favg=favg)
           cutname = ['RZ'+str(self.nzInterp)]
 
