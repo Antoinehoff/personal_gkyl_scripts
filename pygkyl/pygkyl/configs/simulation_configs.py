@@ -76,12 +76,13 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
         Inset(
-            lowerCornerRelPos=[0.45,0.25],
-            xlim = [2.10,2.18],
-            ylim = [-0.10,0.10],
-            markLoc=[1,4])
+            lowerCornerRelPos=[0.35,0.3],
+            xlim = [1.06,1.14],
+            ylim = [0.05,0.2],
+            markLoc=[1,4],
+            zoom=2.0)
     ]
-    
+
     # Add discharge ID
     simulation.dischargeID = 'TCV #65125'
     
@@ -158,10 +159,11 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
     Inset(
-        lowerCornerRelPos=[0.45,0.25],
-        xlim = [2.10,2.18],
-        ylim = [-0.10,0.10],
-        markLoc=[1,4])
+        lowerCornerRelPos=[0.35,0.3],
+        xlim = [1.06,1.14],
+        ylim = [0.05,0.2],
+        markLoc=[1,4],
+        zoom=2.0)
     ]
     
     # Add discharge ID

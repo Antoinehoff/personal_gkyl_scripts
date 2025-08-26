@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
 import postgkyl as pg
+from copy import deepcopy
 
 from scipy.interpolate import pchip_interpolate
 from scipy.interpolate import RegularGridInterpolator
@@ -50,7 +51,8 @@ class PoloidalProjection:
     self.dpi = 150
     
   def setup(self, simulation: Simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
-            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150):
+            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150,
+            nodefilename = ''):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
@@ -59,9 +61,10 @@ class PoloidalProjection:
     self.figSize = figSize
     self.dpi = dpi
     self.timeFrame0 = timeFrame
+    self.nodefilename = nodefilename
 
     if self.sim.polprojInsets is not None:
-      self.insets = self.sim.polprojInsets
+      self.insets = deepcopy(self.sim.polprojInsets)
     else:
       self.insets = [Inset()]
     self.phiTor = phiTor
@@ -216,8 +219,15 @@ class PoloidalProjection:
       del rrI
     
     elif self.sim.geom_param.geom_type in ['efit', 'Millernodal']:
-      simName = self.sim.data_param.fileprefix
-      nodalData = pg.GData(simName+"-nodes_intZ.gkyl")
+      if len(self.nodefilename) > 0 : 
+        nodefile = self.nodefilename
+        if not os.path.isfile(nodefile): 
+          ValueError("File name for nodes {nodefile} is not found.")
+      else:
+        simName = self.sim.data_param.fileprefix
+        nodefile = simName+"-nodes_intZ.gkyl"
+        if not os.path.isfile(nodefile): nodefile =  simName+"-nodes.gkyl"
+      nodalData = pg.GData(nodefile)
       nodalVals = nodalData.get_values()
       alpha_idx = 0
       if self.sim.geom_param.geom_type == 'efit':
@@ -578,13 +588,13 @@ class PoloidalProjection:
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
       
   def reset_insets(self):
-    self.insets = self.sim.polprojInsets.copy()
     if self.sim.polprojInsets is not None:
-      self.insets = self.sim.polprojInsets.copy()
+      self.insets = deepcopy(self.sim.polprojInsets)
     else:
       self.insets = []
+      
   def set_inset(self, index=0, **kwargs):
-    self.insets[index] = Inset(**kwargs)
+    self.insets[index].set(**kwargs)
       
   def add_inset(self, **kwargs):
     self.insets.append(Inset(**kwargs))
@@ -626,6 +636,11 @@ class Inset:
     self.shading = shading
     self.anchorColorbar = anchorColorbar
     self.markLoc = markLoc
+    
+  def set(self, **kwargs):
+    for key, value in kwargs.items():
+      if hasattr(self, key):
+        setattr(self, key, value)
       
   def add_inset(self, fig, ax, R, Z, fieldRZ, colorMap, colorScale, 
                 minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):
