@@ -529,10 +529,23 @@ def get_aug_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensio
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
         Inset(
-            lowerCornerRelPos=[0.4,0.3],
-            xlim = [2.12,2.25],
-            ylim = [-0.15,0.15],
-            markLoc=[1,4])
+            lowerCornerRelPos=[0.6,0.3],
+            xlim=[2.14,2.18], 
+            ylim=[0.0,0.15],
+            markLoc=[1,4],
+            zoom=3.0), 
+        Inset(
+            lowerCornerRelPos=[0.3,0.2],
+            xlim=[1.05,1.14], 
+            ylim=[-0.30,-0.10],
+            markLoc=[2,3],
+            zoom=3.0),
+        Inset(
+            lowerCornerRelPos=[0.21,0.58],
+            xlim=[1.46,1.68], 
+            ylim=[0.82,0.935],
+            markLoc=[1,2],
+            zoom=3.0)
     ]
     
     # Add discharge ID
