@@ -45,7 +45,8 @@ class TorusProjection:
   phiLim = [0, 3*np.pi/4]
   rhoLim = [4, -2]
   timeFrame0 = 0
-  t0 = 0.0 # time offset in ms (useful for restarted simulations)
+  tref = 1e-3 # reference time in s (default 1 ms)
+  t0 = 0.0 # time offset in units of tref (ms by default)
   
   def __init__(self):
     self.polprojs = []
@@ -53,7 +54,7 @@ class TorusProjection:
     self.pvphishift = np.pi/2 # required to have the right orientation in pyvista
     
   def setup(self, simulation : Simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], t0=0.0,
-            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, imgSize=(800,600)):
+            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, imgSize=(800,600), tref=1e-3):
     self.sim = simulation
     self.phiLim = phiLim if isinstance(phiLim, list) else [phiLim]
     self.rhoLim = rhoLim if isinstance(rhoLim, list) else [rhoLim]
@@ -61,6 +62,7 @@ class TorusProjection:
     self.timeFrame0 = timeFrame
     self.text_color = 'white' if self.background_color == 'black' else 'black'
     self.imgSize = imgSize
+    self.tref = tref
     
     #. Poloidal projection setup
     for i in range(len(self.phiLim)):
@@ -81,7 +83,7 @@ class TorusProjection:
       avg_window = [timeFrame]
     with Frame(self.sim, fieldname=fieldName, tf=timeFrame, load=True) as field_frame:
       toproject = field_frame.values
-      time = field_frame.time
+      time = field_frame.time * self.sim.normalization.dict['tscale'] / self.tref
     if len(fluctuation) > 0:
       serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
       if 'tavg' in fluctuation:
@@ -125,7 +127,7 @@ class TorusProjection:
       for i in range(len(field_RZ)):
         field_RZ[i] = field_RZ[i] * scale
         scale = scale + 1.0
-      time = 10651 # dummy time for test field (my thesis id in mus)
+      time = 10.651 # dummy time for test field
     else:
       field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
     
@@ -256,7 +258,7 @@ class TorusProjection:
     else:
       self.add_text(self.sim.dischargeID, position='upper_left', 
                     font_size=10, name="dischargeID")
-    self.add_text(f"t={(time/1000 + self.t0):5.3f} ms", position='lower_left', 
+    self.add_text(f"t={(time + self.t0):5.3f} ms", position='lower_left', 
                   font_size=10, name="time_label")
     plotter = self.write_texts(plotter)
     
@@ -337,10 +339,10 @@ class TorusProjection:
         for i in range(len(field_RZ)):
           plotter.meshes[i+len(field_fs)][fieldlabel] = field_RZ[i].ravel()
       else:
-        time = 10650 + n # dummy time for test field (in mus)
+        time = 10650 + n + self.t0 # dummy time for test field (in mus)
       cam.update_camera(n)
       plotter = cam.update_plotter(plotter, zoom=False)
-      self.update_text("time_label", f"t={time/1000:5.3f} ms")
+      self.update_text("time_label", f"t={time + self.t0:5.3f} ms")
       plotter = self.write_texts(plotter)
       plotter.write_frame()
       self.clear_texts(plotter)
