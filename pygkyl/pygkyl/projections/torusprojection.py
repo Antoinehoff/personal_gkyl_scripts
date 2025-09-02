@@ -37,6 +37,9 @@ class TorusProjection:
   background_color = 'white'
   additional_text = None
   logo_path = None
+  logo_position = (0.0, 0.01)
+  logo_size = (0.2,0.2)
+  logo_opacity = 0.6
   
   sim = None
   phiLim = [0, 3*np.pi/4]
@@ -255,8 +258,8 @@ class TorusProjection:
     plotter = self.write_texts(plotter)
     
     if self.logo_path:
-      plotter.add_logo_widget(self.logo_path, position=(0.0, 0.01), 
-                              size=(0.2,0.2), opacity=0.6)
+      plotter.add_logo_widget(self.logo_path, position=self.logo_position, 
+                              size=self.logo_size, opacity=self.logo_opacity)
 
     return plotter
     
