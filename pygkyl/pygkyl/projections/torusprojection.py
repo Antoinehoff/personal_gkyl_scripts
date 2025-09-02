@@ -36,6 +36,7 @@ class TorusProjection:
   vessel_opacity = 0.2
   background_color = 'white'
   additional_text = None
+  font_size = 12
   logo_path = None
   logo_position = (0.0, 0.01)
   logo_size = (0.2,0.2)
@@ -54,7 +55,7 @@ class TorusProjection:
     self.pvphishift = np.pi/2 # required to have the right orientation in pyvista
     
   def setup(self, simulation : Simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], t0=0.0,
-            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, imgSize=(800,600), tref=1e-3):
+            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, imgSize=(800,600), tref=1e-3, font_size=12):
     self.sim = simulation
     self.phiLim = phiLim if isinstance(phiLim, list) else [phiLim]
     self.rhoLim = rhoLim if isinstance(rhoLim, list) else [rhoLim]
@@ -63,6 +64,9 @@ class TorusProjection:
     self.text_color = 'white' if self.background_color == 'black' else 'black'
     self.imgSize = imgSize
     self.tref = tref
+    self.font_size = font_size
+    self.colorbar_args['label_font_size'] = font_size
+    self.colorbar_args['title_font_size'] = font_size + 3
     
     #. Poloidal projection setup
     for i in range(len(self.phiLim)):
@@ -257,9 +261,9 @@ class TorusProjection:
                     self.additional_text['font_size'], self.additional_text['name'])
     else:
       self.add_text(self.sim.dischargeID, position='upper_left', 
-                    font_size=10, name="dischargeID")
+                    font_size=self.font_size, name="dischargeID")
     self.add_text(f"t={(time + self.t0):5.3f} ms", position='lower_left', 
-                  font_size=10, name="time_label")
+                  font_size=self.font_size, name="time_label")
     plotter = self.write_texts(plotter)
     
     if self.logo_path:
