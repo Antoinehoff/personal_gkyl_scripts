@@ -52,13 +52,15 @@ class TorusProjection:
     self.fsprojs = []
     self.pvphishift = np.pi/2 # required to have the right orientation in pyvista
     
-  def setup(self, simulation : Simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], ixlim=[0,-1],
-            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True):
+  def setup(self, simulation : Simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], t0=0.0,
+            intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, imgSize=(800,600)):
     self.sim = simulation
     self.phiLim = phiLim if isinstance(phiLim, list) else [phiLim]
     self.rhoLim = rhoLim if isinstance(rhoLim, list) else [rhoLim]
+    self.t0 = t0
     self.timeFrame0 = timeFrame
     self.text_color = 'white' if self.background_color == 'black' else 'black'
+    self.imgSize = imgSize
     
     #. Poloidal projection setup
     for i in range(len(self.phiLim)):
