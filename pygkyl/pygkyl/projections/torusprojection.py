@@ -45,6 +45,7 @@ class TorusProjection:
   phiLim = [0, 3*np.pi/4]
   rhoLim = [4, -2]
   timeFrame0 = 0
+  t0 = 0.0 # time offset in ms (useful for restarted simulations)
   
   def __init__(self):
     self.polprojs = []
@@ -253,7 +254,7 @@ class TorusProjection:
     else:
       self.add_text(self.sim.dischargeID, position='upper_left', 
                     font_size=10, name="dischargeID")
-    self.add_text(f"t={time/1000:5.3f} ms", position='lower_left', 
+    self.add_text(f"t={time+self.t0/1000:5.3f} ms", position='lower_left', 
                   font_size=10, name="time_label")
     plotter = self.write_texts(plotter)
     
