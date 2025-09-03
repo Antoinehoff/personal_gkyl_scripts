@@ -65,8 +65,8 @@ class TorusProjection:
     self.imgSize = imgSize
     self.tref = tref
     self.font_size = font_size
-    self.colorbar_args['label_font_size'] = font_size
-    self.colorbar_args['title_font_size'] = font_size + 3
+    self.colorbar_args['label_font_size'] = round(1.4*font_size)
+    self.colorbar_args['title_font_size'] = round(1.5*font_size)
     
     #. Poloidal projection setup
     for i in range(len(self.phiLim)):
@@ -258,7 +258,7 @@ class TorusProjection:
     # write time and bottom text
     if self.additional_text:
       self.add_text(self.additional_text['text'], self.additional_text['position'], 
-                    self.additional_text['font_size'], self.additional_text['name'])
+                    self.font_size, self.additional_text['name'])
     else:
       self.add_text(self.sim.dischargeID, position='upper_left', 
                     font_size=self.font_size, name="dischargeID")
