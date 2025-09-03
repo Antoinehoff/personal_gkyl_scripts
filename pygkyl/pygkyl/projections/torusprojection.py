@@ -32,12 +32,24 @@ class TorusProjection:
     'n_labels': 5,
     'fmt': '%.1e'           # Scientific notation format
   }
+  
+  # Default vessel rendering parameters
   show_vessel = True
-  vessel_opacity = 0.2
-  vessel_lighting = False
-  vessel_smooth_shading = False
+  vessel_opacity = 1.0
+  vessel_lighting = True
+  vessel_smooth_shading = True
+  vessel_pbr = True
+  vessel_metallic = 0.8
+  vessel_roughness = 0.3
+  vessel_split_sharp_edges = True
+  vessel_ntor = 256
+
+  # Default mesh rendering parameters
   mesh_lighting = False
   mesh_smooth_shading = False
+  mesh_specular = 1.0
+  mesh_specular_power = 128
+  
   background_color = 'white'
   additional_text = None
   font_size = 12
@@ -204,13 +216,12 @@ class TorusProjection:
       Ytor = R * np.sin(PHI)
       Ztor = Z
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
-      plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False, 
-                       smooth_shading=self.vessel_smooth_shading, lighting=self.vessel_lighting)
+      plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False)
    
       # Draw the vessel
       Rvess = self.sim.geom_param.vesselData['R']
       Zvess = self.sim.geom_param.vesselData['Z']
-
+      
       # scale slightly the vessel to avoid intersection with the plasma
       Rplas_min = self.polprojs[0].RIntN.min()
       Rplas_max = self.polprojs[0].RIntN.max()
@@ -229,6 +240,8 @@ class TorusProjection:
         Rvess = alpha * Rvess + shift
       
       phi = self.fsprojs[0].phi_fs + self.pvphishift
+      ## Interpolate the phi values on a larger grid to improve the vessel surface quality
+      phi = np.linspace(phi[0], phi[-1], self.vessel_ntor)
       R, PHI = np.meshgrid(Rvess, phi, indexing='ij')
       Z, PHI = np.meshgrid(Zvess, phi, indexing='ij')
       # R,Z draw the vessel contour at one angle phi, now define the toroidal surface
@@ -236,8 +249,21 @@ class TorusProjection:
       Ytor = R * np.sin(PHI)
       Ztor = Z
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
-      plotter.add_mesh(pvmesh, color='gray', opacity=self.vessel_opacity, show_scalar_bar=False, 
-                       smooth_shading=self.vessel_smooth_shading, lighting=self.vessel_lighting)
+      
+      # Set a lower opacity value for the interior parts of the vessel
+      opacity_values = np.ones_like(Xtor) * self.vessel_opacity
+      min_R = np.min(R)
+      opacity_values[R < 1.01*min_R] = 0.5 # Or whatever lower opacity you want
+      gray_rgb = np.array([128, 128, 128])
+      rgba_colors = np.tile(gray_rgb, (pvmesh.n_points, 1))
+      alpha_channel = (opacity_values.ravel() * 255).astype(np.uint8)
+      rgba_colors = np.c_[rgba_colors, alpha_channel]
+      pvmesh['rgba_colors'] = rgba_colors
+
+      plotter.add_mesh(pvmesh, scalars='rgba_colors', rgba=True,
+                       show_scalar_bar=False, 
+                       lighting=self.vessel_lighting, smooth_shading=self.vessel_smooth_shading, split_sharp_edges=self.vessel_split_sharp_edges, 
+                       pbr=self.vessel_pbr, metallic=self.vessel_metallic, roughness=self.vessel_roughness)
       
       return plotter
     
@@ -251,11 +277,13 @@ class TorusProjection:
         plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, smooth_shading=self.mesh_smooth_shading, 
                          lighting=self.mesh_lighting, cmap=colorMap,
                          log_scale=logScale, show_scalar_bar=self.show_colorbar, clim=clim, 
-                         scalar_bar_args=self.colorbar_args)
+                         scalar_bar_args=self.colorbar_args,
+                         specular=self.mesh_specular, specular_power=self.mesh_specular_power)
       else:
         plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=self.show_colorbar, clim=clim, cmap=colorMap, 
-                        opacity=1.0, smooth_shading=self.mesh_smooth_shading, lighting=self.mesh_lighting, log_scale=logScale,
-                         scalar_bar_args=self.colorbar_args)
+                         smooth_shading=self.mesh_smooth_shading, lighting=self.mesh_lighting, log_scale=logScale,
+                         scalar_bar_args=self.colorbar_args,
+                         specular=self.mesh_specular, specular_power=self.mesh_specular_power)
     
     if self.show_vessel and self.sim.geom_param.vesselData is not None:
       plotter = self.draw_vessel(plotter)
@@ -291,6 +319,7 @@ class TorusProjection:
     if cameraSettings == None: cameraSettings = self.sim.geom_param.camera_global
 
     plotter = pv.Plotter(window_size=self.imgSize, off_screen=self.off_screen)
+    plotter.enable_anti_aliasing()
     plotter = self.setup_frame(plotter, fieldName, timeFrame, fluctuation, logScale, colorMap, clim)
     
     cam = Camera(self.sim.geom_param, cameraSettings)
@@ -317,6 +346,8 @@ class TorusProjection:
     fieldlabel = get_label(fieldName, fluctuation)
     
     plotter = pv.Plotter(window_size=self.imgSize, off_screen=True)
+    plotter.enable_anti_aliasing()
+
     if movie_type in ['gif','.gif']:
       outFilename += '.gif'
       plotter.open_gif(outFilename, fps=fps)
@@ -376,11 +407,11 @@ class TorusProjection:
     index = self.txt_names.index(name)
     self.txt_texts[index] = text
 
-  def write_texts(self, plotter):
+  def write_texts(self, plotter : pv.Plotter):
     for i in range(len(self.txt_texts)):
       plotter.add_text(self.txt_texts[i], position=self.txt_positions[i], 
                        font_size=self.txt_sizes[i], name=self.txt_names[i],
-                       color=self.text_color)
+                       color=self.text_color, shadow=True)
     return plotter
     
   def clear_texts(self, plotter):
