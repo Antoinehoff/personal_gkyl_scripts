@@ -34,6 +34,10 @@ class TorusProjection:
   }
   show_vessel = True
   vessel_opacity = 0.2
+  vessel_lighting = False
+  vessel_smooth_shading = False
+  mesh_lighting = False
+  mesh_smooth_shading = False
   background_color = 'white'
   additional_text = None
   font_size = 12
@@ -183,7 +187,7 @@ class TorusProjection:
     
     return pvmeshes, time
     
-  def draw_vessel(self, plotter, smooth_shading=True, opacity=0.2):
+  def draw_vessel(self, plotter : pv.Plotter):
 
       # Draw the limiter
       RWidth = np.min(self.polprojs[0].Rlcfs) - np.min(self.polprojs[0].RIntN)
@@ -200,7 +204,8 @@ class TorusProjection:
       Ytor = R * np.sin(PHI)
       Ztor = Z
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
-      plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False, smooth_shading=smooth_shading)
+      plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False, 
+                       smooth_shading=self.vessel_smooth_shading, lighting=self.vessel_lighting)
    
       # Draw the vessel
       Rvess = self.sim.geom_param.vesselData['R']
@@ -231,7 +236,8 @@ class TorusProjection:
       Ytor = R * np.sin(PHI)
       Ztor = Z
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
-      plotter.add_mesh(pvmesh, color='gray', opacity=opacity, show_scalar_bar=False, smooth_shading=smooth_shading)
+      plotter.add_mesh(pvmesh, color='gray', opacity=self.vessel_opacity, show_scalar_bar=False, 
+                       smooth_shading=self.vessel_smooth_shading, lighting=self.vessel_lighting)
       
       return plotter
     
@@ -242,16 +248,17 @@ class TorusProjection:
     self.colorbar_args['title'] = fieldlabel
     for i in range(N_plas_mesh):
       if fieldName in ['test']:
-        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, smooth_shading=False, lighting=False, cmap=colorMap,
+        plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, smooth_shading=self.mesh_smooth_shading, 
+                         lighting=self.mesh_lighting, cmap=colorMap,
                          log_scale=logScale, show_scalar_bar=self.show_colorbar, clim=clim, 
                          scalar_bar_args=self.colorbar_args)
       else:
         plotter.add_mesh(pvmeshes[i], scalars=fieldlabel, show_scalar_bar=self.show_colorbar, clim=clim, cmap=colorMap, 
-                        opacity=1.0, smooth_shading=False, lighting=False, log_scale=logScale,
+                        opacity=1.0, smooth_shading=self.mesh_smooth_shading, lighting=self.mesh_lighting, log_scale=logScale,
                          scalar_bar_args=self.colorbar_args)
     
     if self.show_vessel and self.sim.geom_param.vesselData is not None:
-      plotter = self.draw_vessel(plotter, smooth_shading=False, opacity=self.vessel_opacity)
+      plotter = self.draw_vessel(plotter)
     
     plotter.set_background(self.background_color)
 
