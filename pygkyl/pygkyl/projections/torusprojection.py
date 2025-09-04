@@ -36,6 +36,7 @@ class TorusProjection:
   # Default vessel rendering parameters
   show_vessel = True
   vessel_opacity = 1.0
+  vessel_opacity_inner = 0.3
   vessel_lighting = True
   vessel_smooth_shading = True
   vessel_pbr = True
@@ -43,6 +44,7 @@ class TorusProjection:
   vessel_roughness = 0.3
   vessel_split_sharp_edges = True
   vessel_ntor = 256
+  vessel_rgb = [128, 128, 128]
 
   # Default mesh rendering parameters
   mesh_lighting = False
@@ -253,8 +255,8 @@ class TorusProjection:
       # Set a lower opacity value for the interior parts of the vessel
       opacity_values = np.ones_like(Xtor) * self.vessel_opacity
       min_R = np.min(R)
-      opacity_values[R < 1.01*min_R] = 0.5 # Or whatever lower opacity you want
-      gray_rgb = np.array([128, 128, 128])
+      opacity_values[R < 1.05*min_R] = self.vessel_opacity_inner # Or whatever lower opacity you want
+      gray_rgb = np.array(self.vessel_rgb)
       rgba_colors = np.tile(gray_rgb, (pvmesh.n_points, 1))
       alpha_channel = (opacity_values.ravel() * 255).astype(np.uint8)
       rgba_colors = np.c_[rgba_colors, alpha_channel]
