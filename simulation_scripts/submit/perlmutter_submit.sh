@@ -19,6 +19,8 @@ ACCOUNT="m4564"
 LAST_FRAME=-1 
 #.Get the job name from the directory name
 JOB_NAME=$(basename $(pwd))
+#.Executable name
+INPUT_FILE="input.c"
 
 # help function
 show_help() {
@@ -34,9 +36,10 @@ show_help() {
     echo "  -p          Print script and exit (do not submit)"
     echo "  -h          Display this help and exit"
     echo "  -a ACCOUNT  Account to use (default: $ACCOUNT)"
+    echo "  -i INPUTC   C Input file name (default: input.c)"
 }
 # check the following options : -q -n -t -h -N -r -d -a -j -p
-while getopts ":q:n:t:r:N:d:a:jph" opt; do
+while getopts ":q:n:t:r:N:d:a:i:jph" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG
@@ -86,6 +89,9 @@ while getopts ":q:n:t:r:N:d:a:jph" opt; do
         a )
             ACCOUNT=$OPTARG
             ;;
+        i )
+            INPUT_FILE=$OPTARG
+            ;;
         h )
             show_help
             exit 0
@@ -96,6 +102,10 @@ while getopts ":q:n:t:r:N:d:a:jph" opt; do
             ;;
     esac
 done
+
+#.Get the executable name from the input file (strip .c)
+EXEC_NAME=$(basename "$INPUT_FILE" .c)
+GKYLEXE="gkeyll"
 
 #.AUXILIARY SLURM VARIABLES
 #.Total number of cores/tasks/MPI processes.
@@ -161,7 +171,7 @@ seconds=$((10#$h * 3600 + 10#$m * 60 + 10#$s))
 RUNTIME_OPT="-o max_run_time=$seconds"
 
 #.Run command - will be modified at runtime if auto-detecting
-RUNCMD="srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS $RESTART_OPT"
+RUNCMD="srun -u -n $TOTAL_GPUS ./$GKYLEXE -g -M $GPU_OPTS $RESTART_OPT"
 SCRIPTNAME="slurm_script_$FRAME_SUFFIX.sh"
 # Generate the SLURM script
 cat <<EOT > $SCRIPTNAME
@@ -229,7 +239,7 @@ else
     RESTART_OPT=""
 fi
 
-SRUNCMD="srun -u -n $TOTAL_GPUS ./g0 -g -M $GPU_OPTS \$RESTART_OPT $RUNTIME_OPT"
+SRUNCMD="srun -u -n $TOTAL_GPUS ./$GKYLEXE -g -M $GPU_OPTS \$RESTART_OPT $RUNTIME_OPT"
 
 echo "Running command: \$SRUNCMD"
 eval \$SRUNCMD
@@ -262,8 +272,10 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
         make
     fi
     mkdir -p history
-    cp input.c wk/input_$FRAME_SUFFIX.c
+    mkdir -p wk
+    cp $INPUT_FILE wk/input_$FRAME_SUFFIX.c
     mv $SCRIPTNAME wk/.
+    mv $EXEC_NAME wk/$GKYLEXE
     cd wk
     
     # Submit job and capture the job ID
