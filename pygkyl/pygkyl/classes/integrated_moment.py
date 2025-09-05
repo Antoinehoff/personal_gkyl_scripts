@@ -38,6 +38,7 @@ class IntegratedMoment:
     bflux_list = ''
     issource = False
     src = ''
+    fdot = ''
 
     def __init__(self, simulation, name, load=True, ddt=False):
         '''
@@ -60,7 +61,7 @@ class IntegratedMoment:
         self.set_units_and_labels()
 
         if load: self.load()
-        if ddt: self.ddt()
+        if ddt or self.fdot: self.ddt()
 
     def set_units_and_labels(self):
         simulation = self.simulation
@@ -160,16 +161,18 @@ class IntegratedMoment:
         species_list = self.spec_s if isinstance(self.spec_s,list) else [self.spec_s]
         for s_ in species_list:
             for bf_ in self.bflux_list:
-                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+'_integrated_'
+                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+self.fdot+'_integrated_'
                 if not pgkyl_.file_exists(f_+'moms.gkyl'):
                     f_ += self.momtype+'Moments.gkyl'
                     if not pgkyl_.file_exists(f_):
                         # in 2x2v, z is called y for these files
                         f_ = f_.replace('bflux_z','bflux_y')
-                    if not pgkyl_.file_exists(f_):
-                        raise FileNotFoundError(f_ + ' does not exist.')
                 else:
                     f_ += 'moms.gkyl'
+                    
+                if not pgkyl_.file_exists(f_):
+                    raise FileNotFoundError(f_ + ' does not exist.')
+                
                 Gdata = pgkyl_.get_gkyl_data(f_)
                 self.values += pgkyl_.get_values(Gdata) * self.scale[species_list.index(s_)]
 
@@ -186,7 +189,8 @@ class IntegratedMoment:
         """
         Calculate the time derivative of the integrated moment.
         """
-        self.values = np.gradient(self.values, self.time * self.simulation.normalization.dict['tscale'], edge_order=2)
+        if not self.fdot:
+            self.values = np.gradient(self.values, self.time * self.simulation.normalization.dict['tscale'], edge_order=2)
         if 'J' in self.vunits:
             self.vunits = self.vunits.replace('J','W')
         else:
@@ -246,6 +250,11 @@ class IntegratedMoment:
             self.src = '_source'
             self.momname = self.momname.replace('src_','')
             self.issource = True
+            
+        self.isdot = 'dot' in self.momname
+        if self.isdot: 
+            self.momname = self.momname.replace('dot','')
+            self.fdot = '_fdot'
         if name[-1] == 'e': self.spec_s = 'elc'
         elif name[-1] == 'i': self.spec_s = 'ion'
         elif name[-3:] == 'tot': self.spec_s = ['elc','ion']
