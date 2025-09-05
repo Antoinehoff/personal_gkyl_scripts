@@ -12,7 +12,74 @@ colors = ['red', 'blue', 'green', 'yellow']
 
 class TorusProjection:
   """
-  Class to combine the poloidal and flux surface projections and plot field on the full torus.
+  Class to handle torus projections using PyVista for 3D rendering.
+
+  Responsibilities:
+    - Build 3D PyVista structured grids for flux-surface (toroidal) and poloidal cuts.
+    - Fetch, preprocess, and (optionally) fluctuate physical field data.
+    - Render still images or time-dependent movies with camera control.
+    - Overlay vessel geometry, colorbars, text labels, and logos.
+
+  Main Workflow:
+    1. Call setup(...) once to initialize projection helper objects.
+    2. Use plot(...) for a single frame or movie(...) for animations.
+
+  Attributes:
+    polprojs (list[PoloidalProjection]): Poloidal projection helpers (one per phi in phiLim).
+    fsprojs (list[FluxSurfProjection]): Flux-surface projection helpers (one per rho in rhoLim).
+    pvphishift (float): Phase shift for correct orientation in PyVista.
+    text_color (str): Auto-selected contrasting color for text (based on background).
+    txt_texts (list[str]): Text strings queued for rendering.
+    txt_positions (list[str|tuple]): Positions (PyVista keywords or normalized coords).
+    txt_sizes (list[int]): Font sizes for each queued text.
+    txt_names (list[str]): Unique names/keys for the text actors (used for updates/removal).
+    imgSize (tuple[int,int]): Render window size in pixels.
+    off_screen (bool): Enable off-screen rendering (for batch/movie generation).
+    show_colorbar (bool): Toggle scalar bar display.
+    colorbar_args (dict): PyVista scalar bar customization arguments.
+    show_vessel (bool): Toggle vessel geometry rendering.
+    vessel_opacity (float): Base opacity for vessel surfaces.
+    vessel_opacity_inner (float): Reduced opacity for inner vessel regions.
+    vessel_lighting (bool): Enable lighting on vessel mesh.
+    vessel_smooth_shading (bool): Use smooth shading on vessel mesh.
+    vessel_pbr (bool): Enable Physically Based Rendering for vessel.
+    vessel_metallic (float): PBR metallic coefficient.
+    vessel_roughness (float): PBR roughness coefficient.
+    vessel_split_sharp_edges (bool): Split sharp edges to improve shading.
+    vessel_ntor (int): Toroidal resolution for vessel surface construction.
+    vessel_rgb (list[int]): Base RGB color of vessel (0–255 per channel).
+    mesh_lighting (bool): Enable lighting for plasma field meshes.
+    mesh_smooth_shading (bool): Smooth shading for plasma meshes.
+    mesh_specular (float): Specular intensity for plasma meshes.
+    mesh_specular_power (float): Specular exponent for plasma meshes.
+    background_color (str): Scene background color.
+    additional_text (dict|None): Extra text overlay: {'text': str, 'position': str|tuple, 'name': str}.
+    font_size (int): Base font size for text overlays.
+    logo_path (str|None): Path to image used as a logo overlay.
+    logo_position (tuple[float,float]): Normalized (x,y) logo anchor position.
+    logo_size (tuple[float,float]): Normalized (w,h) logo size.
+    logo_opacity (float): Logo transparency (0–1).
+    sim (Simulation|None): Active simulation object (set in setup()).
+    phiLim (list[float]): Toroidal angles (rad) for poloidal sections.
+    rhoLim (list[float]): Radial values for flux-surface extractions.
+    timeFrame0 (int): Initial time frame index stored at setup.
+    tref (float): Reference physical time scale (seconds) for label normalization.
+    t0 (float): Time offset added to displayed time (in units of tref).
+
+  Key Methods:
+    setup(simulation, ...):
+      Initialize projection helper objects and rendering parameters.
+
+    plot(fieldName, timeFrame, ...):
+      Produce a single image (and optional HTML export).
+
+    movie(fieldName, timeFrames, ...):
+      Generate animated GIF or MP4 with optional camera path interpolation.
+
+  Notes:
+    - For fluctuation strings, accepted substrings: 'tavg', 'yavg' + optional 'relative'.
+    - For test rendering, fieldName='test' builds synthetic scalar fields.
+    - Camera motion is handled by Camera class via user-defined keyframes (stops).
   """
   txt_texts = []
   txt_positions = []
@@ -74,6 +141,34 @@ class TorusProjection:
     
   def setup(self, simulation : Simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], t0=0.0,
             intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, imgSize=(800,600), tref=1e-3, font_size=12):
+    """
+    Configure toroidal, poloidal, and flux-surface projection objects.
+
+    Parameters:
+      simulation (Simulation): Simulation object with geometry, normalization, and field metadata.
+      timeFrame (int): Initial time frame index to load. Default 0.
+      Nint_polproj (int): Number of interpolation points along poloidal (R,Z) direction for poloidal cuts. Higher -> smoother. Default 16.
+      Nint_fsproj (int): Number of interpolation points along theta (poloidal angle) for flux-surface projections. Default 32.
+      phiLim (list[float] | list): List of toroidal angles (rad) at which poloidal cross-sections are taken. If single value, converted to list. Default [0, np.pi].
+      rhoLim (list[float] | list): List of normalized radii (or minor radius values) defining flux surfaces to project. If single value, converted to list. Default [0.8, 1.5].
+      t0 (float): Time offset (in units of tref) added to displayed time labels. Default 0.0.
+      intMethod (str): Integration / interpolation method key passed to Poloidal/Flux surface projection objects (e.g., 'trapz32'). Default 'trapz32'.
+      figSize (tuple[int,int]): Matplotlib-like figure size used internally by projection helpers (not the 3D window). Default (8, 9).
+      zExt (bool): If True, extend/interpolate poloidal grid in Z for smoother surfaces. Default True.
+      gridCheck (bool): If True, perform diagnostic checks/prints on grids. Default False.
+      TSBC (bool): If True, apply time series boundary condition handling in projections (implementation dependent). Default True.
+      imgSize (tuple[int,int]): 3D rendering window size in pixels (width, height). Default (800, 600).
+      tref (float): Reference physical time scale (seconds) used to normalize simulation time to milliseconds in labels. Default 1e-3 (1 ms).
+      font_size (int): Base font size for overlaid text annotations. Default 12.
+
+    Side Effects:
+      Initializes self.polprojs and self.fsprojs lists.
+      Sets timing, geometry, and rendering related attributes.
+      Prepares colorbar sizing relative to font size.
+
+    Returns:
+      None
+    """
     self.sim = simulation
     self.phiLim = phiLim if isinstance(phiLim, list) else [phiLim]
     self.rhoLim = rhoLim if isinstance(rhoLim, list) else [rhoLim]
@@ -312,6 +407,38 @@ class TorusProjection:
     
   def plot(self, fieldName, timeFrame, filePrefix='', colorMap = None, fluctuation='', 
            logScale = False, clim=None, jupyter_backend='none', save_html=False, cameraSettings=None):
+    """
+    Render a single torus projection frame and save a PNG (and optional HTML).
+
+    Parameters:
+      fieldName (str): Name of the field to plot. Special value 'test' builds synthetic data.
+      timeFrame (int | list[int]): Time frame index or list (for averaging window when using fluctuations).
+      filePrefix (str, optional): Prefix added to output filenames. Default ''.
+      colorMap (str | list | None, optional): Colormap name. If None, pulled from sim.fields_info. For 'test', a list of colors is used.
+      fluctuation (str | bool, optional): 
+      '' (default) for raw field.
+      'tavg', 'tavgrelative' for (relative) time-average fluctuation.
+      'yavg', 'yavgrelative' for (relative) y-average fluctuation.
+      True is interpreted as 'yavg'.
+      logScale (bool, optional): Apply logarithmic color scaling. Default False.
+      clim (tuple[float, float] | None, optional): Color limits. None -> auto. Empty list [] also treated as auto.
+      jupyter_backend (str, optional): PyVista Jupyter backend ('none','static','pythreejs','client'). Default 'none'.
+      save_html (bool, optional): If True, also exports an interactive HTML file.
+      cameraSettings (dict | None, optional): Dict with keys: 'position', 'looking_at', 'zoom'. If None, uses simulation default.
+
+    Side Effects:
+      Writes PNG to: {filePrefix}torproj_<[d]fieldName>.png
+      Optionally writes HTML to: {filePrefix}torproj_<[d]fieldName>.html
+      Modifies internal text overlay lists (cleared at end).
+
+    Notes:
+      If fluctuation specified, output filename is prefixed with 'd' (e.g., dTe).
+      Relative fluctuations are expressed in percent.
+      When timeFrame is a list, the last element is plotted; the full list is used for averaging.
+
+    Returns:
+      None
+    """
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if isinstance(timeFrame, list): timeFrame = timeFrame[-1]
     if clim == []: clim = None
@@ -337,6 +464,46 @@ class TorusProjection:
 
   def movie(self, fieldName, timeFrames, filePrefix='', colorMap = 'inferno', fluctuation='',
            clim=[], logScale=False, fps=14, cameraPath=[], movie_type='gif'):
+    """
+    Create an animated torus projection (GIF or MP4).
+
+    Parameters:
+      fieldName (str): Name of field to render. Special 'test' generates synthetic data.
+      timeFrames (list[int]): Ordered list of time frame indices to include (each becomes a frame).
+      filePrefix (str, optional): Filename prefix for outputs. Default ''.
+      colorMap (str, optional): Colormap name. If None/empty, pulled from sim.fields_info. Ignored if fluctuation set (forced to 'bwr'). Default 'inferno'.
+      fluctuation (str | bool, optional):
+      '' (default) for raw field.
+      'tavg', 'tavgrelative' -> subtract (and optionally normalize to %) time average over provided window.
+      'yavg', 'yavgrelative' -> subtract (and optionally normalize to %) y-average.
+      True is interpreted as 'yavg'.
+      clim (list | tuple | None, optional): [vmin, vmax] color limits. [] or None -> automatic per PyVista.
+      logScale (bool, optional): Use logarithmic coloring. Default False.
+      fps (int, optional): Frames per second in output movie. Default 14.
+      cameraPath (list[dict], optional): Keyframe camera settings. Each dict keys:
+      'position': (x,y,z) in units of major-radius (scaled internally),
+      'looking_at': (x,y,z),
+      'zoom': float.
+      If >=2 provided, camera interpolates linearly between them across frames.
+      movie_type (str, optional): 'gif' or 'mp4' (accepts 'gif' or '.gif'; everything else -> mp4). Default 'gif'.
+
+    Behavior:
+      - Builds first frame as in plot(); subsequent frames update scalar arrays in existing meshes for speed.
+      - If fluctuation specified, output filename is prefixed with 'd'.
+      - Time label auto-updated each frame (ms units scaled by tref and offset t0).
+      - Camera motion handled by Camera class (static if cameraPath empty).
+
+    Output:
+      Writes animated file:
+      {filePrefix}torproj_movie_[d]fieldName.(gif|mp4)
+
+    Side Effects:
+      Uses off-screen PyVista plotter.
+      Prints incremental progress to stdout.
+
+    Returns:
+      None
+    """
     if isinstance(fluctuation, bool): fluctuation = 'yavg' if fluctuation else ''
     if clim == []: clim = None
     if fieldName != 'test': colorMap = colorMap if colorMap else self.sim.fields_info[fieldName+'colormap']
