@@ -97,7 +97,9 @@ class TorusProjection:
     'title_font_size': 15,
     'label_font_size': 14,
     'n_labels': 5,
-    'fmt': '%.1e'           # Scientific notation format
+    'fmt': '%.1e',           # Scientific notation format
+    'shadow': True,
+    'vertical': True,
   }
   
   # Default vessel rendering parameters
@@ -133,6 +135,7 @@ class TorusProjection:
   timeFrame0 = 0
   tref = 1e-3 # reference time in s (default 1 ms)
   t0 = 0.0 # time offset in units of tref (ms by default)
+  time_pos = 'lower_left'
   
   def __init__(self):
     self.polprojs = []
@@ -381,7 +384,6 @@ class TorusProjection:
                          smooth_shading=self.mesh_smooth_shading, lighting=self.mesh_lighting, log_scale=logScale,
                          scalar_bar_args=self.colorbar_args,
                          specular=self.mesh_specular, specular_power=self.mesh_specular_power)
-    
     if self.show_vessel and self.sim.geom_param.vesselData is not None:
       plotter = self.draw_vessel(plotter)
     
@@ -394,7 +396,11 @@ class TorusProjection:
     else:
       self.add_text(self.sim.dischargeID, position='upper_left', 
                     font_size=self.font_size, name="dischargeID")
-    self.add_text(f"t={(time + self.t0):5.3f} ms", position='lower_left', 
+    if self.additional_text['position'] == 'lower_left':
+      time_pos = 'lower_right'
+    else:
+      time_pos = self.time_pos
+    self.add_text(f"t={(time + self.t0):5.3f} ms", position=time_pos, 
                   font_size=self.font_size, name="time_label")
     plotter = self.write_texts(plotter)
     
