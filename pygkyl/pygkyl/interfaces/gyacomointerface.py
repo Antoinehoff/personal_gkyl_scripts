@@ -472,7 +472,7 @@ def get_gyacomo_cbc_config(simdir,simidx,params):
     simulation.dischargeID = 'GYACOMO, Cyclone Base Case'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData = d3d_vessel_data
+    simulation.geom_param.vessel_data = d3d_vessel_data
 
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -572,7 +572,7 @@ def get_gyacomo_multiscale_config(simdir,simidx,params):
     simulation.dischargeID = 'GYACOMO, DIII-D #186473'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData = d3d_vessel_data
+    simulation.geom_param.vessel_data = d3d_vessel_data
 
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {

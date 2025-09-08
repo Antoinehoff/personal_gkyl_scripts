@@ -118,9 +118,9 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     }
     # One side camera for high resolution
     simulation.geom_param.camera_poloidal = {
-        'position':(1., 1.15, 0.2),
+        'position':(2.6, 1.3, 0.2),
         'looking_at':(0, 0.75, 0.026),
-            'zoom': 0.44
+            'zoom': 1.0
     }
     return simulation
 
@@ -207,9 +207,9 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     }
     # One side camera for high resolution
     simulation.geom_param.camera_poloidal = {
-        'position':(1., 1.15, 0.2),
+        'position':(2.6, 1.3, 0.2),
         'looking_at':(0, 0.75, 0.026),
-            'zoom': 0.44
+            'zoom': 1.0
     }
     return simulation
 
