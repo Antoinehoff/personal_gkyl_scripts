@@ -1,8 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os, sys
+import postgkyl as pg
+from copy import deepcopy
 
 from scipy.interpolate import pchip_interpolate
+from scipy.interpolate import RegularGridInterpolator
 from matplotlib.patches import Rectangle
 
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
@@ -10,7 +13,7 @@ from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from matplotlib import ticker
 from matplotlib import colors
 
-from ..classes import Frame, TimeSerie
+from ..classes import Frame, TimeSerie, Simulation
 from ..tools import fig_tools, math_tools
 
 #.Some fontsizes used in plots.
@@ -23,7 +26,7 @@ class PoloidalProjection:
   def __init__(self):
     self.sim = None
     self.geom = None
-    self.ixLCFS_C = 0
+    self.ixLCFS_C = None
     self.bcPhaseShift = 0
     self.kyDimsC = 0
     self.zGridEx = None
@@ -37,7 +40,7 @@ class PoloidalProjection:
     self.Zlcfs = None
     self.nzInterp = 0
     self.figSize = None
-    self.inset = None
+    self.insets = []
     self.phiTor = 0
     self.alpha_rz_phi0 = None
     self.dimsI = 0
@@ -47,8 +50,9 @@ class PoloidalProjection:
     self.TSBC = True
     self.dpi = 150
     
-  def setup(self, simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
-            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150):
+  def setup(self, simulation: Simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
+            intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150,
+            nodefilename = ''):
 
     # Store simulation and a link to geometry objects
     self.sim = simulation
@@ -57,11 +61,12 @@ class PoloidalProjection:
     self.figSize = figSize
     self.dpi = dpi
     self.timeFrame0 = timeFrame
+    self.nodefilename = nodefilename
 
-    if self.sim.polprojInset is not None:
-      self.inset = self.sim.polprojInset
+    if self.sim.polprojInsets is not None:
+      self.insets = deepcopy(self.sim.polprojInsets)
     else:
-      self.inset = Inset()
+      self.insets = [Inset()]
     self.phiTor = phiTor
     self.gridCheck = gridCheck
     self.TSBC = TSBC
@@ -96,7 +101,10 @@ class PoloidalProjection:
       self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
     else:
       self.LyC = 2.*np.pi*self.geom.r0/self.geom.q0
-
+      
+    # Minimal toroidal mode number (must be used in the toroidal rotation)
+    self.n0 = 2*np.pi * self.geom.Cy/ self.LyC
+    
     #.Precompute grids and arrays needed in transforming/plotting data
     field = np.squeeze(field_frame.values)
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
@@ -177,34 +185,82 @@ class PoloidalProjection:
     self.compute_nodal_coordinates()
     
   def compute_alpha(self, method='trapz32'):
+    phi0 = 0.0
     #.Compute alpha(r,z,phi=0) which is independent of y.
     self.alpha_rz_phi0 = np.zeros([self.dimsC[0],self.nzI])
     for ix in range(self.dimsC[0]): # we do it point by point because we integrate over r for each point
       dPsidr = self.geom.dPsidr(self.geom.r_x(self.meshC[0][ix]),method=method)
       for iz in range(self.nzI):
-          self.alpha_rz_phi0[ix,iz]  = self.geom.alpha0(self.geom.r_x(self.meshC[0][ix]),self.zgridI[iz], 0.0, method=method)/dPsidr
+          self.alpha_rz_phi0[ix,iz]  = \
+            self.geom.alpha0(self.geom.r_x(self.meshC[0][ix]),self.zgridI[iz], phi0, method=method)\
+              /dPsidr
 
   def compute_xyz2RZ(self,phiTor=0.0):
     phiTor += np.pi # To match the obmp with varphi=0
     # this can be a very big array
     self.xyz2RZ = np.zeros([self.dimsC[0],2*self.kyDimsC[1],self.nzI], dtype=np.cdouble)
-    n0 = 2*np.pi * self.geom.Cy/ self.LyC
     for k in range(self.kyDimsC[1]):
         for iz in range(self.nzI):
-            #.Positive ky's.
-            ### Not sure at all about this phase factor
-            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*(n0*(self.alpha_rz_phi0[:,iz]) + phiTor))
+            shift = self.n0*(self.alpha_rz_phi0[:,iz]) + phiTor
+            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*shift)
             #.Negative ky's.
             self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
             
   def compute_nodal_coordinates(self):
     #.Compute R(x,z) and Z(x,z)
     xxI, zzI = math_tools.custom_meshgrid(self.meshC[0],self.zgridI)
-    self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)
-        
-    rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
-    Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
-    Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+    self.dimsI = np.shape(xxI) # interpolation plane dimensions (R,Z)  
+
+    # Get the (R,Z) grid (Rint,Zint) according to the interpolated z-grid
+    if self.sim.geom_param.geom_type == 'Miller':
+      rrI = self.geom.r_x(xxI) # Call to analytic geometry functions (Miller geometry)
+      Rint = self.geom.R_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+      Zint = self.geom.Z_rt(rrI,zzI) # Call to analytic geometry functions (Miller geometry)
+      del rrI
+    
+    elif self.sim.geom_param.geom_type in ['efit', 'Millernodal']:
+      if len(self.nodefilename) > 0 : 
+        nodefile = self.nodefilename
+        if not os.path.isfile(nodefile): 
+          ValueError("File name for nodes {nodefile} is not found.")
+      else:
+        simName = self.sim.data_param.fileprefix
+        nodefile = simName+"-nodes_intZ.gkyl"
+        if not os.path.isfile(nodefile): nodefile =  simName+"-nodes.gkyl"
+      nodalData = pg.GData(nodefile)
+      nodalVals = nodalData.get_values()
+      alpha_idx = 0
+      if self.sim.geom_param.geom_type == 'efit':
+        R = nodalVals[:, alpha_idx, :, 0]
+        Z = nodalVals[:, alpha_idx, :, 1]
+        Phi = nodalVals[:, alpha_idx, :, 2] 
+      elif self.sim.geom_param.geom_type == 'Millernodal':
+        X = nodalVals[:, alpha_idx, :, 0]
+        Y = nodalVals[:, alpha_idx, :, 1]
+        Z = nodalVals[:, alpha_idx, :, 2] + self.sim.geom_param.Z_axis
+        R = np.sqrt(X**2 + Y**2)  # R = sqrt(x^2 + y^2)
+      nodalGridTemp = nodalData.get_grid()   # contains one more element than number of nodes.
+      nodalGrid = []
+      for d in range(0,len(nodalGridTemp)):
+          nodalGrid.append( np.linspace(nodalGridTemp[d][0], nodalGridTemp[d][-1], len(nodalGridTemp[d])-1) )
+
+      RInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), R)
+      ZInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Z)
+      PhiInterpolator = RegularGridInterpolator((nodalGrid[0], nodalGrid[2]), Phi)
+
+      Rint = RInterpolator((xxI, zzI))
+      Zint = ZInterpolator((xxI, zzI))
+      Phiint = PhiInterpolator((xxI, zzI))
+
+      if self.sim.geom_param.geom_type == 'efit':
+        self.alpha_rz_phi0 = -self.gridsN[1][alpha_idx] - Phiint # Overwrite the results of compute_alpha
+        phiTor = np.pi
+        for k in range(self.kyDimsC[1]): # Overwrite the results of compute_xyz2RZ
+          for iz in range(self.nzI):
+            shift = -2*np.pi*self.alpha_rz_phi0[:,iz]/self.LyC + phiTor
+            self.xyz2RZ[:,+k,iz]  = np.exp(1j*k*shift)
+            #.Negative ky's.
+            self.xyz2RZ[:,-k,iz] = np.conj(self.xyz2RZ[:,+k,iz])
 
     self.RIntN, self.ZIntN = np.zeros((self.dimsI[0]+1,self.dimsI[1]+1)), np.zeros((self.dimsI[0]+1,self.dimsI[1]+1))
     for j in range(self.dimsI[1]):
@@ -222,8 +278,10 @@ class PoloidalProjection:
   def toroidal_rotate(self, dphi=0.0):
     '''
     Rotate by dphi in the toroidal direction.
-    This is done by multiplying the projection by exp(1j*k*dphi) for each k.
+    This is done by multiplying the projection by exp(1j*k*dphi) for each k,
+    which introduces a phase shift in the Fourier space.
     '''
+    dphi *= self.n0 # Take into account the minimal toroidal mode number
     self.phiTor += dphi
     for k in range(self.kyDimsC[1]):
       for iz in range(self.nzI):
@@ -256,14 +314,17 @@ class PoloidalProjection:
       field_ex[:,:, -1] = proj_zExt_up
       field = field_ex
       
+    # select the radial region of interest
+    field = field[self.ix0:self.ix1,:,:]
+      
     #.Approach: FFT along y, then follow a procedure similar to that in pseudospectral
     #.codes (e.g. GENE, see Xavier Lapillonne's PhD thesis 2010, section 3.2.2, page 55).
     field_ky = np.fft.rfft(field, axis=1, norm="forward")
-    field_ky = field_ky[self.ix0:self.ix1,:,:] # select the radial region of interest
+    # field_ky = field_ky[self.ix0:self.ix1,:,:] # select the radial region of interest
     
     if self.TSBC:
       #.Apply twist-shift BCs in the closed-flux region.
-      if self.ixLCFS_C is None: icore_end = self.dimsC[0]
+      if self.ixLCFS_C is None: icore_end = self.dimsC[0] # SOL only
       else: icore_end = self.ixLCFS_C
       xGridCore = self.meshC[0][:icore_end] # x grid on in the core region
       torModNum = 2.*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
@@ -320,10 +381,10 @@ class PoloidalProjection:
       evalDGfunc = None
     field_RZ = self.project_field(field_frame.values, evalDGfunc=evalDGfunc)
     return field_RZ, self.RIntN, self.ZIntN
-
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', inset=True, fluctuation='',
+  
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average='', show_title=True, show_figure=True):
+           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -411,7 +472,7 @@ class PoloidalProjection:
     #.Create the figure.
     ax1aPos   = [ [0.10, 0.08, 0.76, 0.88] ]
     cax1aPos  = [0.88, 0.08, 0.02, 0.88]
-    fig1a     = plt.figure(figsize=self.figSize, dpi=150)
+    fig1a     = plt.figure(figsize=self.figSize, dpi=self.dpi)
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))
@@ -423,7 +484,7 @@ class PoloidalProjection:
     hpl1a.append(pcm1)
 
     #fig1a.suptitle
-    if show_title: ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
+    ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
     ax1a[0].set_xlabel(r'$R$ (m)',fontsize=xyLabelFontSize, labelpad=-2)
     #setTickFontSize(ax1a[0],tickFontSize)
     ax1a[0].set_ylabel(r'$Z$ (m)',fontsize=xyLabelFontSize, labelpad=-10)
@@ -433,40 +494,57 @@ class PoloidalProjection:
                     rotation=270, labelpad=18, fontsize=colorBarLabelFontSize)
     hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
-    if self.ixLCFS_C is not None:
-      #.Plot lcfs
+    #.Plot lcfs
+    if show_LCFS:
       ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
-
-      #.Plot the limiter
+      LCFSinset = [self.Rlcfs,self.Zlcfs,lcfColor]
+    else:
+      LCFSinset = []
+      
+    #.Plot the limiter
+    if show_limiter:
       xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
       xCorner = np.min(self.RIntN)
       yWidth = 0.01
       yCorner = self.geom.Z_axis - 0.5*yWidth
       ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
+      limiter = [yWidth]
+    else:
+      limiter = []
+      
+    #.Plot the vessel contours
+    if show_vessel:
+      if self.sim.geom_param.vessel_data is not None:
+        Rvess = self.sim.geom_param.vessel_data['R']
+        Zvess = self.sim.geom_param.vessel_data['Z']
+        ax1a[0].plot(Rvess,Zvess,linewidth=1.0,linestyle='-',color='black',alpha=.8)
 
-      if inset:
-        self.inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
-                            colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
-                            LCFS=[self.Rlcfs,self.Zlcfs,lcfColor], limiter=[yWidth])      
+    if show_inset:
+      for inset in self.insets:
+        inset.add_inset(fig1a, ax1a[0], self.RIntN, self.ZIntN, field_RZ, colorMap,
+                        colorScale, minSOL, maxSOL, climInset, logScaleFloor, shading,
+                        LCFS=LCFSinset, limiter=limiter)      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
 
-    if xlim: ax1a.set_xlim(xlim)
-    if ylim: ax1a.set_ylim(ylim)
+    if xlim: ax1a[0].set_xlim(xlim)
+    if ylim: ax1a[0].set_ylim(ylim)
     if colorScale == 'log':
         colornorm = colors.LogNorm(vmax=fldMax, vmin=logScaleFloor*fldMax) if minSOL > 0 \
             else colors.SymLogNorm(vmax=fldMax, vmin=fldMin, linscale=1.0, linthresh=logScaleFloor*fldMax)
         pcm1.set_norm(colornorm)
     if clim: pcm1.set_clim(clim)
-    
-    if outFilename: plt.savefig(outFilename)
-    if show_figure: plt.show()
-    plt.close(fig1a)
 
-  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='', inset=True,
+    if outFilename:
+        plt.savefig(outFilename)
+        plt.close()
+    else:
+        plt.show()
+
+  def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='',
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,
           pilLoop=0, pilOptimize=False, pilDuration=100, fluctuation='', timeFrame=[],
-          rmFrames=True):
+          rmFrames=True, show_LCFS=True, show_limiter=True, show_inset=True):
       colorMap = fig_tools.check_colormap(colorMap)    
       # Naming
       movieName = fieldName+'_RZ'
@@ -499,9 +577,9 @@ class PoloidalProjection:
           frameFileList.append(f'{movDirTmp}/frame_{tf}.png')
 
           self.plot(fieldName=fieldName, timeFrame=tf, outFilename=frameFileName,
-                          colorMap = colorMap, inset=inset, show_figure=False,
-                          colorScale=colorScale, logScaleFloor=logScaleFloor,
+                          colorMap = colorMap, colorScale=colorScale, logScaleFloor=logScaleFloor,
                           xlim=xlim, ylim=ylim, clim=clim, climInset=climInset,
+                          show_LCFS=show_LCFS, show_limiter=show_limiter, show_inset=show_inset,
                           fluctuation=fluctuation, favg=favg)
           cutname = ['RZ'+str(self.nzInterp)]
 
@@ -516,16 +594,26 @@ class PoloidalProjection:
       fig_tools.compile_movie(frameFileList, movieName, rmFrames=rmFrames,
                               pilLoop=pilLoop, pilOptimize=pilOptimize, pilDuration=pilDuration)
       
-  def reset_inset(self):
-    self.inset = Inset()
+  def reset_insets(self):
+    if self.sim.polprojInsets is not None:
+      self.insets = deepcopy(self.sim.polprojInsets)
+    else:
+      self.insets = []
+      
+  def set_inset(self, index=0, **kwargs):
+    self.insets[index].set(**kwargs)
+      
+  def add_inset(self, **kwargs):
+    self.insets.append(Inset(**kwargs))
           
 class Inset:
+  
   """
   Class to add an inset to a plot.
   """
   def __init__(self, zoom=1.5, 
                zoomLoc='lower left', 
-               insetRelPos=(0.35,0.35), 
+               lowerCornerRelPos=(0.35,0.35), 
                vmin=0, vmax=1,
                width="10%", 
                height="100%", 
@@ -540,7 +628,7 @@ class Inset:
                markLoc = [1, 4]):
     self.zoom = zoom
     self.zoomLoc = zoomLoc
-    self.lowerCornerRelPos = insetRelPos
+    self.lowerCornerRelPos = lowerCornerRelPos
     self.vmin = vmin
     self.vmax = vmax
     self.width = width
@@ -555,6 +643,11 @@ class Inset:
     self.shading = shading
     self.anchorColorbar = anchorColorbar
     self.markLoc = markLoc
+    
+  def set(self, **kwargs):
+    for key, value in kwargs.items():
+      if hasattr(self, key):
+        setattr(self, key, value)
       
   def add_inset(self, fig, ax, R, Z, fieldRZ, colorMap, colorScale, 
                 minSOL, maxSOL, climInset, logScaleFloor, shading, LCFS=[], limiter=[]):

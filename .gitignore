@@ -4,13 +4,14 @@
 *.ipynb_checkpoints
 *.pkl
 *.gkyl
+*.nc
 *.gif
 *.mp4
 *.json
 *.dat
 simulation_scripts/.DS_Store
 .*
-sim_data_dir_example/*
+*data
 simulation_scripts/.DS_Store
 pygkyl/pygkyl.egg-info
 pygkyl/build

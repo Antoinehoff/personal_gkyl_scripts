@@ -2,8 +2,13 @@ import h5py
 import numpy as np
 from ..tools import math_tools as tools
 from ..classes.dataparam import DataParam
+from ..classes.simulation import Simulation
+from ..classes.species import Species
+from ..projections.poloidalprojection import Inset
 from ..classes.normalization import Normalization
+from ..configs.vessel_data import d3d_vessel_data
 import os
+import matplotlib.pyplot as plt
 
 class GyacomoInterface:
     # Gyacomo interface for reading data from Gyacomo HDF5 files
@@ -15,12 +20,19 @@ class GyacomoInterface:
     n0 = 1.0 # density scale
     T0 = 1.0 # temperature scale
     t0 = 1.0 # time scale
-    V0 = 1.0 # potential scale
+    phi0 = 1.0 # potential scale
     
-    def __init__(self,filename,simulation):
-        self.filename = filename
-        if not os.path.exists(self.filename):
-            raise FileNotFoundError(f"File {self.filename} does not exist.")        
+    def __init__(self, simulation, simdir, simidx):
+        self.simdir = simdir
+        if isinstance(simidx, int):
+            self.simidx = [simidx]
+        else:
+            self.simidx = simidx
+        
+        self.filename0 = self.simdir + f'/outputs_{self.simidx[0]:02d}.h5'
+        self.file_no_ext = self.filename0[:-5]
+        if not os.path.exists(self.filename0):
+            raise FileNotFoundError(f"File {self.filename0} does not exist.")        
         
         self.field_map = {
             'phi': ('phi', '', '3D', [r'$x/\rho_s$', r'$y/\rho_s$', r'$z/\rho_s$', r'$\phi e / T_e$']),
@@ -40,29 +52,34 @@ class GyacomoInterface:
             'Nipjz': ('Napjz', 'ion', '3D', [r'$p$', r'$j$', r'$z$', r'$N_{i}^{pj}$']),
             'Nepjz': ('Napjz', 'elc', '3D', [r'$p$', r'$j$', r'$z$', r'$N_e^{pj}$']),
         }
-        
         self.field_map['field'] = self.field_map['phi']
         
-        self.normalization = {}
-        self.l0 = simulation.get_rho_s()
-        self.R0 = simulation.geom_param.R0
-        self.u0 = simulation.get_c_s()
-        self.n0 = 1/self.l0/self.l0/self.R0
-        self.T0 = simulation.species['elc'].T0
-        self.t0 = self.R0 / self.u0
-        self.V0 = self.T0 / simulation.species['ion'].q
-        
-        self.load_grids()
         self.load_params()
-        self.load_available_frames()
         
-        self.available_frames = {}
-        for key in self.field_map:
-            self.available_frames[key] = self.get_available_frames(key)
-        
+        self.normalization = {}
+        if simulation is not None:
+            self.l0 = simulation.get_rho_s()
+            self.R0 = simulation.geom_param.R0
+            self.u0 = simulation.get_c_s()
+            self.n0 = 1/self.l0/self.l0/self.R0
+            self.T0 = simulation.species['elc'].T0
+            self.t0 = self.R0 / self.u0
+            self.phi0 = self.T0 / simulation.species['ion'].q
+            self.load_grids()
+            self.load_available_frames()  
+            self.available_frames = {}
+            for key in self.field_map:
+                self.available_frames[key] = self.get_available_frames(key)
+            
+    def outfile(self,idx):
+        # remove XX.h5 from filename0
+        file_no_ext = self.filename0[:-5]
+        # add the new index
+        new_filename = file_no_ext + f'{idx:02d}.h5'
+        return new_filename
 
     def load_grids(self):
-        with h5py.File(self.filename, 'r') as file:
+        with h5py.File(self.filename0, 'r') as file:
             # Load the grids
             self.kxgrid = file[f'data/grid/coordkx'][:]
             self.kygrid = file[f'data/grid/coordky'][:]
@@ -84,7 +101,7 @@ class GyacomoInterface:
 
     def load_group(self,group):
         data = {}
-        with h5py.File(self.filename, 'r') as file:
+        with h5py.File(self.filename0, 'r') as file:
             g_  = file[f"data/"+group]
             for key in g_.keys():
                 name='data/'+group+'/'+key
@@ -92,29 +109,57 @@ class GyacomoInterface:
         return data
 
     def load_params(self):
-        jobid = self.filename[-5:-3]
-        with h5py.File(self.filename, 'r') as file:
+        jobid = self.filename0[-5:-3]
+        with h5py.File(self.filename0, 'r') as file:
             nml_str = file[f"files/STDIN."+jobid][0]
             nml_str = nml_str.decode('utf-8')
             self.params = self.read_namelist(nml_str)
 
     def load_available_frames(self):
-        with h5py.File(self.filename, 'r') as file:
-            self.time0D  = file['data/var0d/time']
-            self.time0D  = self.time0D[:]
-            self.time3D  = file['data/var3d/time']
-            self.time3D  = self.time3D[:]
-            self.time5D  = file['data/var5d/time']
-            self.time5D  = self.time5D[:]
+        self.time0D = {'t': [], 'tidx': [], 'sidx': []}
+        self.time3D = {'t': [], 'tidx': [], 'sidx': []}
+        self.time5D = {'t': [], 'tidx': [], 'sidx': []}
+        for sidx in self.simidx:
+            with h5py.File(self.outfile(sidx), 'r') as file:
+                time0D  = file['data/var0d/time']
+                time0D  = time0D[:]
+                time3D  = file['data/var3d/time']
+                time3D  = time3D[:]
+                time5D  = file['data/var5d/time']
+                time5D  = time5D[:]
+                
+            self.time0D['t'].append(time0D)
+            self.time0D['tidx'].append([j+1 for j in range(len(time0D))])
+            self.time0D['sidx'].append([sidx for j in range(len(time0D))])
+            
+            self.time3D['t'].append(time3D)
+            self.time3D['tidx'].append([j+1 for j in range(len(time3D))])
+            self.time3D['sidx'].append([sidx for j in range(len(time3D))])
+            
+            self.time5D['tidx'].append([j+1 for j in range(len(time5D))])
+            self.time5D['t'].append(time5D)
+            self.time5D['sidx'].append([sidx for j in range(len(time5D))])
+            
+        self.time0D['t'] = np.concatenate(self.time0D['t'])
+        self.time0D['tidx'] = np.concatenate(self.time0D['tidx'])
+        self.time0D['sidx'] = np.concatenate(self.time0D['sidx'])
+        
+        self.time3D['t'] = np.concatenate(self.time3D['t'])
+        self.time3D['tidx'] = np.concatenate(self.time3D['tidx'])
+        self.time3D['sidx'] = np.concatenate(self.time3D['sidx'])
+        
+        self.time5D['t'] = np.concatenate(self.time5D['t'])
+        self.time5D['tidx'] = np.concatenate(self.time5D['tidx'])
+        self.time5D['sidx'] = np.concatenate(self.time5D['sidx'])
 
     def get_available_frames(self, fieldname):
         _, _, dimensionality, _ = self.field_map[fieldname]
         if dimensionality == '0D':
-            return [i for i in range(1,len(self.time0D))]
+            return [i for i in range(len(self.time0D['t']))]
         elif dimensionality == '3D':
-            return [i for i in range(1,len(self.time3D))]
+            return [i for i in range(len(self.time3D['t']))]
         elif dimensionality == '5D':
-            return [i for i in range(1,len(self.time5D))]
+            return [i for i in range(len(self.time5D['t']))]
         else:
             raise ValueError(f"Unknown dimensionality: {dimensionality}")
 
@@ -131,26 +176,42 @@ class GyacomoInterface:
             raise ValueError(f"Unknown dimensionality: {dimensionality}")
 
     def load_data_0D(self, dname):
-        with h5py.File(self.filename, 'r') as file:
-            # Load time data
-            time  = file['data/var0d/time']
-            time  = time[:]
-            var0D = file['data/var0d/'+dname]
-            var0D = var0D[:]
-            grids = [time]
-        return grids, var0D
+        spec_idx = 1 if dname[-1] == 'e' else 0
+        dname = dname[:-1]
+        time = []
+        var0D = []
+        for sidx in self.simidx:
+            outfile = self.outfile(sidx)
+            with h5py.File(outfile, 'r') as file:
+                # Load time data
+                t = file['data/var0d/time']
+                time.append(t[:])
+                nt = len(t[:])
+                y = file['data/var0d/'+dname]
+                y = np.reshape(y[:], (nt, 2))
+                var0D.append(y[:,spec_idx])
+        time = np.concatenate(time)
+        var0D = np.concatenate(var0D)
+                
+        return [time], var0D
 
-    def load_data_3D(self, dname, tf, xyz=True, species='ion'):
-        with h5py.File(self.filename, 'r') as file:
+    def load_data_3D(self, dname, tidx, xyz=True, species='ion'):
+        if isinstance(tidx, float):
+            tidx = np.argmin(np.abs(self.time3D['t'] - tidx))
+        time = self.time3D['t'][tidx]
+        fidx = self.time3D['tidx'][tidx]
+        sidx = self.time3D['sidx'][tidx]
+        outfile = self.outfile(sidx)
+        with h5py.File(outfile, 'r') as file:
             # load time
-            time  = file['data/var3d/time']
-            time  = time[:]
+            t  = file['data/var3d/time']
+            t  = t[:]
             # Load data
             try:
-                data = file[f'data/var3d/{dname}/{tf:06d}']
+                data = file[f'data/var3d/{dname}/{fidx:06d}']
             except:
                 g_ = file[f'data/var3d/']
-                print('Dataset: '+f'data/var3d/{dname}/{tf:06d}'+' not found in '+self.filename)
+                print('Dataset: '+f'data/var3d/{dname}/{fidx:06d}'+' not found in '+ outfile)
                 print('Available fields: ')
                 msg = ''
                 for key in g_:
@@ -171,12 +232,10 @@ class GyacomoInterface:
                 data = data_real
                 grids = [self.xgrid, self.ygrid, self.zgrid]
             
-            # exchange first and second dimensions of the data
-            #data = np.transpose(data, (1, 0, 2))
-        return grids, time[tf], data
+        return grids, time, data
 
     def load_data_5D(self,dname,tf):
-        with h5py.File(self.filename, 'r') as file:
+        with h5py.File(self.filename0, 'r') as file:
             # load time
             time  = file['data/var5d/time']
             time  = time[:]
@@ -277,7 +336,259 @@ class GyacomoInterface:
         return normalization
     
     def set_mksa_normalization(self, normalization):
-        normalization.change('phi', self.V0, 0, r'$\phi$', 'V')
+        normalization.change('phi', self.phi0, 0, r'$\phi$', 'V')
         
+    def plot_fluxes(self, dnames):
+        
+        if isinstance(dnames, str):
+            dnames = [[dnames]]
+        elif isinstance(dnames, list) and all(isinstance(d, str) for d in dnames):
+            dnames = [dnames]
+        
+        nsubplots = len(dnames)
+        nrow = nsubplots // 2 + nsubplots % 2
+        ncol = 2 if nsubplots > 1 else 1
+        fig, axs = plt.subplots(nrow, ncol, figsize=(4*ncol, 3*nrow), sharex=True)
+        
+        if isinstance(axs, np.ndarray):
+            axs = axs.flatten()
+        elif nsubplots == 1:
+            axs = [axs]
+        spidx = 0  
+        for spname in dnames:
+            cidx = 0
+            for name in spname:
+                vlabel = self.plot_flux_single(name, axs[spidx])
+                cidx += 1
+            spidx += 1
+            if cidx == 1:
+                axs[0].set_ylabel(vlabel)
+            else:
+                axs[0].legend()
+    
+        xlabel = r'$t c_s/R_0$'
+        axs[-1].set_xlabel(xlabel)
+        
+    def plot_flux_single(self, name, ax):
+            if name not in ['gflux_xi', 'hflux_xi', 'pflux_xi', 'gflux_xe', 'hflux_xe', 'pflux_xe']:
+                raise ValueError(f"Unknown 0D fieldname: {name}, only 'gflux_xs', 'hflux_xs', 'pflux_xs' (s=e,i), are supported.")
+            grids, values = self.load_data_0D(name)
+            time = grids[0]
+            spec = name[-1]
+            if name.startswith('gflux'):
+                vlabel = r'$G_{x,e}$' if spec == 'e' else r'$G_{x,i}$'
+            elif name.startswith('hflux'):
+                vlabel = r'$Q_{x,e}$' if spec == 'e' else r'$Q_{x,i}$'
+            elif name.startswith('pflux'):
+                vlabel = r'$\Gamma_{p,e}$' if spec == 'e' else r'$\Gamma_{p,i}$'
+            ax.plot(time, values, label=vlabel)
+            
+            return vlabel
 
-        return normalization
+def get_gyacomo_sim_config(configName,simdir,simidx):
+    # Load the parameters of the simulation
+    gyac = GyacomoInterface(None,simdir,simidx)
+    params = gyac.params.copy()
+    if 'multiscale' in configName:
+        return get_gyacomo_multiscale_config(simdir,simidx,params)
+    if 'cbc' in configName:
+        return get_gyacomo_cbc_config(simdir,simidx,params)
+    else:
+        print("Use default Gyacomo CBC configuration.")
+        return get_gyacomo_cbc_config(simdir,simidx,params)
+        
+def get_gyacomo_cbc_config(simdir,simidx,params):
+    '''
+    This function returns a simulation object for analyzing a Gyacomo simulation.
+    '''
+    R_axis = 1.7074685 # DIII-D
+    B_axis = 2.5
+    amid = 0.64
+    R_LCFSmid = R_axis + amid
+    r0 = 0.5*amid
+    simulation = Simulation(dimensionality='3x2v', code='gyacomo')
+
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(R):
+        r = R - R_axis
+        q0 = params['GEOMETRY']['q0']
+        s0 = params['GEOMETRY']['shear']
+        return q0 * (1 + s0 * (r - r0) / r0)
+
+    simulation.set_geom_param(
+        B_axis      = B_axis, # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis, # Magnetic axis major radius
+        Z_axis      = 0.0, # Magnetic axis height (assumed zero)
+        R_LCFSmid   = R_LCFSmid, # Major radius of LCFS at the midplane
+        a_shift     = 0.0, # Parameter in Shafranov shift
+        kappa       = params['GEOMETRY']['kappa'],
+        delta       = params['GEOMETRY']['delta'],
+        qprofile_R  = qprofile, # Safety factor
+        x_LCFS      = 1.0, # position of the LCFS (dummy, will be updated later)
+        x_out       = 0.0 # SOL domain width (gyacomo does not simulate SOL)
+    )
+    
+    # Define the species
+    # Temperature and density are taken from Greenfield et al. 1997, Nucl. Fusion 37 1215
+    simulation.add_species(Species(name='ion',
+                m=simulation.phys_param.mp, # Ion mass (proton), Deutrerium is 2.01410177811
+                q=simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+    
+    Lx = params['GRID']['Lx'] * simulation.get_rho_s()
+    Rcenter = R_axis + r0
+    x_LCFS = R_LCFSmid - Rcenter
+    x_in = R_LCFSmid - r0 - Lx / 2.0
+    x_out = R_LCFSmid - r0 + Lx / 2.0
+    simulation.geom_param.change(x_LCFS= x_LCFS, x_in=x_in, x_out=x_out)
+
+    simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
+    
+    simulation.available_frames = simulation.gyac.available_frames
+    simulation.data_param = simulation.gyac.adapt_data_param(simulation=simulation)
+    simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [2.12,2.25],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
+    
+    # Add discharge ID
+    simulation.dischargeID = 'GYACOMO, Cyclone Base Case'
+    
+    # Add vessel data filename
+    simulation.geom_param.vessel_data = d3d_vessel_data
+
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    # Cameras for 1:2 formats
+    simulation.geom_param.camera_zoom_1by2 = {   
+        'position':(1.2, 1.2, 0.6),
+        'looking_at':(0., 0.75, 0.1),
+        'zoom': 1.0
+    }
+
+    return simulation
+
+def get_gyacomo_multiscale_config(simdir,simidx,params):
+    '''
+    This function returns a simulation object for analyzing a Gyacomo simulation.
+    '''
+    R_axis = 1.7074685 # DIII-D
+    B_axis = 2.5
+    amid = 0.64
+    R_LCFSmid = R_axis + amid
+    r0 = 0.95*amid
+    simulation = Simulation(dimensionality='3x2v', code='gyacomo')
+
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(R):
+        r = R - R_axis
+        q0 = params['GEOMETRY']['q0']
+        s0 = params['GEOMETRY']['shear']
+        return q0 * (1 + s0 * (r - r0) / r0)
+
+    simulation.set_geom_param(
+        B_axis      = B_axis, # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis, # Magnetic axis major radius
+        Z_axis      = 0.0, # Magnetic axis height (assumed zero)
+        R_LCFSmid   = R_LCFSmid,   # Major radius of LCFS at the midplane
+        a_shift     = 0.0, # Parameter in Shafranov shift
+        kappa       = params['GEOMETRY']['kappa'],
+        delta       = params['GEOMETRY']['delta'],
+        qprofile_R  = qprofile, # Safety factor
+        x_LCFS      = 1.0, # position of the LCFS (dummy, will be updated later)
+        x_out       = 0.0 # SOL domain width (gyacomo does not simulate SOL)
+    )
+    
+    # Define the species
+    # Temperature and density are taken from Greenfield et al. 1997, Nucl. Fusion 37 1215
+    simulation.add_species(Species(name='ion',
+                m=simulation.phys_param.mp, # Ion mass (proton), Deutrerium is 2.01410177811
+                q=simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV,
+                T0=1500*simulation.phys_param.eV, 
+                n0=4e19))
+
+    Lx = params['GRID']['Lx'] * simulation.get_rho_s()
+    Rcenter = R_axis + r0
+    x_LCFS = R_LCFSmid - Rcenter
+    x_in = R_LCFSmid - r0 - Lx / 2.0
+    x_out = R_LCFSmid - r0 + Lx / 2.0
+    simulation.geom_param.change(x_LCFS= x_LCFS, x_in=x_in, x_out=x_out)
+    
+    simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
+    
+    # Set up the flux tube size within the cartesian domain.
+    simulation.geom_param.x_in = (amid - r0 + Lx/2.0)
+    simulation.geom_param.x_LCFS = R_LCFSmid - (R_axis + r0)
+    simulation.geom_param.x_out = -(amid - r0 - Lx/2.0)
+    simulation.geom_param.update_geom_params()
+    
+    
+    simulation.available_frames = simulation.gyac.available_frames
+    simulation.data_param = simulation.gyac.adapt_data_param(simulation=simulation)
+    simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.3,0.3],
+            xlim = [2.24,2.38],
+            ylim = [-0.15,0.15],
+            zoom = 3.0,
+            markLoc=[1,4])
+    ]
+    
+    # Add discharge ID
+    simulation.dischargeID = 'GYACOMO, DIII-D #186473'
+    
+    # Add vessel data filename
+    simulation.geom_param.vessel_data = d3d_vessel_data
+
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.5, 2.52, 0.6),
+        'looking_at':(0.0, -0.2, -0.2),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {   
+        'position':(0.83, 0.78, -0.1),
+        'looking_at':(0., 0.74, -0.19),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(0.4, 0.9, 0.0),
+        'looking_at':(0.0, 0.98, 0.0),
+            'zoom': 1.0
+    }
+
+    return simulation

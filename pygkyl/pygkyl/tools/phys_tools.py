@@ -56,7 +56,7 @@ def larmor_radius(charge, mass, temperature, Bfield):
     omega = gyrofrequency(charge, mass, Bfield)
     velocity = thermal_vel(temperature, mass)
     rho_L = velocity / omega
-    return rho_L
+    return np.abs(rho_L)
 
 def banana_width(charge, mass, temperature, Bfield, qfactor, epsilon):
     '''
@@ -182,3 +182,15 @@ def nustar(n_s, q_s, m_s, T_s, n_r, q_r, m_r, T_r, Bfield=0.0, q0=1.0, R0=1.0, r
     nu_star = nu * (q0 * R0 / (epsilon**(3/2)*v_ts))  # Collisional parameter
     
     return nu_star
+
+def plasma_permittivity(n, q, rho, T):
+    '''
+    Calculate the plasma permittivity.
+    Parameters:
+    q (float): Charge of the particle [C].
+    rho (float): Larmor radius of the particle [m].
+    T (float): Temperature of the particle [J].
+    Returns:
+    epsilon (float): Plasma permittivity [F/m].
+    '''
+    return n * q**2 * rho**2 / T

@@ -3,31 +3,19 @@ from ..tools import phys_tools
 
 
 class Species:
-    """
-    A class to represent a plasma species.
+    """Represents a plasma species with its physical properties."""
+    def __init__(self, name, m, q, T0, n0, Bref = 0.0):
+        """
+        Initializes a Species object.
 
-    Attributes:
-    -----------
-    name : str
-        Name of the species.
-    m : float
-        Mass of the species in kilograms.
-    q : float
-        Charge of the species in coulombs.
-    T0 : float
-        Initial temperature of the species in kelvin.
-    n0 : float
-        Initial density of the species in per cubic meter.
-    vt : float
-        Thermal velocity of the species.
-    omega_c : float or None
-        Cyclotron frequency of the species.
-    rho : float or None
-        Larmor radius of the species.
-    mu0 : float or None
-        Magnetic moment of the species.
-    """
-    def __init__(self, name, m, q, T0, n0):
+        Args:
+            name (str): Name of the species (e.g., 'electron').
+            m (float): Mass in kg.
+            q (float): Charge in C.
+            T0 (float): Reference temperature in J.
+            n0 (float): Reference density in m^-3.
+            Bref (float, optional): Reference magnetic field in Tesla. If > 0, gyromotion parameters are calculated. Defaults to 0.0.
+        """
         self.name    = name   # Name of the species
         self.nshort  = name[0] # Short name (first letter of the name)
         self.m       = m      # Mass in kg
@@ -41,6 +29,10 @@ class Species:
         self.omega_c = None # Cyclotron frequency
         self.rho     = None # Larmor radius
         self.mu0     = None # Magnetic moment
+        self.epsilon = None # Plasma permittivity
+        
+        if Bref > 0.0:
+            self.set_gyromotion(Bref)
         
     def set_gyromotion(self, B):
         """
@@ -54,7 +46,8 @@ class Species:
         self.omega_c = phys_tools.gyrofrequency(self.q, self.m, B)
         self.rho = phys_tools.larmor_radius(self.q, self.m, self.T0, B)
         self.mu0 = self.T0 / B
-        
+        self.epsilon = phys_tools.plasma_permittivity(self.n0, self.q, self.rho, self.T0)
+
     def info(self):
         """Display species information and related parameters"""
         print(f"Species: {self.name}")

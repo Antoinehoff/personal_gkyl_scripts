@@ -28,9 +28,43 @@ alias bashrc_edit='vi ~/.bashrc'
 alias replace_filename_pattern='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/replace_filename_pattern.sh'
 alias grant_access='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/grant_access.sh'
 
+check_job_status() {
+    if [[ -z "$1" ]]; then
+        echo "Usage: check_job_status <jobid>"
+        return 1
+    fi
+    local jobid=$1
+    local state
+    state=$(squeue -j "$jobid" -h -o "%T" 2>/dev/null)
+    if [[ -n "$state" ]]; then
+        echo "$state"
+        return 0
+    fi
+    state=$(sacct -j "$jobid" --format=State --noheader --parsable2 2>/dev/null | head -1)
+    if [[ -n "$state" ]]; then
+        echo "$state"
+        return 0
+    fi
+    echo "NOT_FOUND"
+    return 1
+}
+
+gif2mp4() {
+    if [[ $# -lt 1 ]]; then
+        echo "Usage: gif2mp4 <input.gif> [output.mp4]"
+        return 1
+    fi
+    local input="$1"
+    local output="$2"
+    if [[ -z "$output" ]]; then
+        output="${input%.*}.mp4"
+    fi
+    ffmpeg -i "$input" -r 30 -c:v libx264 -crf 18 -pix_fmt yuv420p "$output"
+}
+
 # Gkeyll specific commands
 alias pgkyl_env_setup='source ~/py_venv/pgkyl/bin/activate'
-alias gkyl_module='module load PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12'
+alias gkyl_module='module load python PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12'
 alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_total_runtime.sh'
 alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_available_frames.sh'
 alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'
@@ -46,17 +80,30 @@ alias gkyl_create_restart_link='sh ~/personal_gkyl_scripts/simulation_scripts/ut
 gkyl_run_gpu() {
     # Check if the number of arguments is less than 1 or if -h or --help is provided
     if [[ $# -lt 1 || "$1" == "-h" || "$1" == "--help" ]]; then
-        echo "Usage: gkyl_run_gpus <ngpu> [additional options]"
-        echo "Run the g0 program with the specified number of GPUs."
-        echo "Example: gkyl_run_gpus 4 --option1 value1 --option2 value2"
+        echo "Usage: gkyl_run_gpus <ngpu> [additional gkyl options]"
+        echo "Run the 'gkeyll' executable with the specified number of GPUs using srun."
+        echo "This function automatically calculates the number of nodes needed."
+        echo "Example: gkyl_run_gpus 8 your_input_file.lua"
         return 1
     fi
+
     local ngpu=$1
     shift  # Shift the arguments to remove the first one (ngpu)
-    srun -n "$ngpu" -u ./g0 -g -M -e "$ngpu" "$@" | tee gkyl_run_gpu.log
+
+    # Assuming 4 GPUs per node, calculate the number of nodes required.
+    local gpus_per_node=4
+    local nnodes=$(( (ngpu + gpus_per_node - 1) / gpus_per_node ))
+
+    # Use -N to specify the calculated number of nodes.
+    # --ntasks is set to the number of GPUs, assuming one task per GPU.
+    CMD="srun -N $nnodes --ntasks=$ngpu --gpus-per-task=1 --gpu-bind=closest -u ./gkeyll -g -M -e $ngpu $* | tee gkyl_run_gpu.log"
+    echo "Executing command: $CMD"
+    eval $CMD
 }
 
 # Gyacomo specific commands
 alias gyac_continue='sh ~/gyacomo/scripts/shell_scripts/continue.sh'
 alias gyac_new_prob='sh ~/gyacomo/new_prob.sh'
+alias gyac_submit='sh ~/gyacomo/scripts/shell_scripts/gyac_submit.sh'
+
 gkyl_setup_gpu

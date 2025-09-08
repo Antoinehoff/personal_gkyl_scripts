@@ -43,7 +43,8 @@ import os, re
 def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
                            twindow=[], space_time=False, cmap='inferno',
                            fluctuation='', plot_type='pcolormesh', yscale='linear',
-                           xlim=[], ylim=[], clim=[], figout=[], colorscale='linear'):
+                           xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
+                           show_title=True):
     if not isinstance(twindow, list): twindow = [twindow]
     if clim: clim = [clim] if not isinstance(clim[0], list) else clim
     cmap0 = cmap
@@ -98,13 +99,14 @@ def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
             sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm)
             sm.set_array([])
             cbar = fig.colorbar(sm, ax=ax)
-            fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2], xlim=xlim, ylim=ylim, figout=figout,
+            fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2] if show_title else '', 
+                                    xlim=xlim, ylim=ylim, figout=figout,
                                     xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar, yscale=yscale)
         kf += 1  # field counter
         
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             time_frames=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
-            figout = [], errorbar = False):
+            figout = [], errorbar = False, show_title = True):
     
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
 
@@ -141,12 +143,13 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
         show_legend = len(subfields)>1
         title = slicetitle+tlabel+r'$=%2.2e$'%(t[0]) if t[0] == t[-1] else \
                 slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
-        fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title, legend=show_legend,
-                                figout=figout, grid=grid, xlim=xlim, ylim=ylim, xscale=xscale, yscale=yscale)
+        fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title if show_title else '', 
+                                legend=show_legend, figout=figout, grid=grid, xlim=xlim, ylim=ylim,
+                                xscale=xscale, yscale=yscale)
 
 def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
                 fieldnames='', cmap=None, time_average=False, fluctuation='', plot_type='pcolormesh',
-                xlim=[], ylim=[], clim=[], colorscale = 'linear',
+                xlim=[], ylim=[], clim=[], colorscale = 'linear', show_title=True,
                 figout=[],cutout=[], val_out=[], frames_to_plot = None):
     if isinstance(fluctuation,bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(time_frame, int): time_frame = [time_frame]
@@ -227,7 +230,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
                           cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
                           xlabel=xlabel, ylabel=ylabel, 
-                          colorscale=colorscale, clabel=lbl, title=frame.fulltitle, 
+                          colorscale=colorscale, clabel=lbl, title=frame.fulltitle if show_title else '', 
                           vmin=vmin, vmax=vmax, plot_type=plot_type)
         kf += 1 # field counter
     
@@ -246,6 +249,7 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=[], field
     
     if isinstance(fieldnames,str):
         dataname = fieldnames + '_'
+        fieldnames = [fieldnames]
     else:
         dataname = ''
         for f_ in fieldnames:
@@ -772,7 +776,8 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
                             title=title_, legend=legend, xlim=xlim, ylim=ylim)
     
 def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, show_avg=True,
-              title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True):
+              title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,
+              data_out = []):
     def get_int_mom_data(simulation, fieldname):
         try:
             intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
@@ -807,13 +812,15 @@ def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, sho
     if showall:
         for iw,wall in zip(range(len(walls)), walls):
             ax.plot(time, losses[iw], label=r'$%s_{%s}$'%(symbol,wall_labels[wall]))
+            data_out.append((time, losses[iw], r'$%s_{%s}$'%(symbol,wall_labels[wall])))
     labeltot = r'$%s_{SOL}$'%symbol if walls == ['x_u','z_l','z_u'] else r'$%s_{tot}$'%symbol
     ax.plot(time, total_loss, label=labeltot)
+    data_out.append((time, total_loss, labeltot))
     if show_avg:
         # Add horizontal line at average balance value
         ax.plot([time[-nt//3], time[-1]], [loss_avg, loss_avg],
                 '--k', alpha=0.5, label='%s %s' % (fig_tools.optimize_str_format(loss_avg), vunits))
-    
+        data_out.append((time, [loss_avg]*len(time), '%s %s' % (fig_tools.optimize_str_format(loss_avg), vunits)))
     xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
     ylabel = vunits
     title_ = f'%s Loss' % losstype.capitalize() if  title else ''

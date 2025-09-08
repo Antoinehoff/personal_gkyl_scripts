@@ -76,9 +76,11 @@ else
     COMMAND="salloc --account $ACCOUNT --nodes $NODES --time=$TIME --constraint=$CONSTRAINT --qos=$QOS"
 fi
 
-# Print the command if requested
+# Print the command
+echo "$COMMAND"
+
+# Stop if print only
 if $PRINT_ONLY; then
-    echo "$COMMAND"
     exit 0
 fi
 

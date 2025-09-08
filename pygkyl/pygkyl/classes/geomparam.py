@@ -71,9 +71,13 @@ class GeomParam:
         self.z          = None # z-grid
         self.Lz         = None # z box size
         self.n0         = None # Toroidal mode number
-        self.vessel_height = 1.0 # Vessel height [m]
-        self.vessel_Rmin = 0.6 # Vessel minimum major radius [m]
-        self.vessel_Rmax = 1.2 # Vessel maximum major radius [m]
+        self.vessel_data = None # Data for the vessel corners
+        self.camera_global = None # Camera settings for visualization
+        self.camera_zoom_lower = None # Camera settings for lower zoom level
+        self.camera_zoom_obmp = None # Camera settings for obmp zoom level
+        self.camera_global_2by1 = None # Camera settings for 2by1 zoom level
+        self.camera_zoom_2by1 = None # Camera settings for lower zoom level in 2by1 mode
+        self.camera_poloidal = None # Camera settings for poloidal view
         
     def change(self,**kwargs):
         """
@@ -107,7 +111,7 @@ class GeomParam:
                 self.qfit = [497.3420166252413,-1408.736172826569,1331.4134861681464,-419.00692601227627]
             self.qprofile_R = lambda R: np.polyval(self.qfit, R)
         self.q0 = self.qprofile_R(self.R0)
-        self.Cy = self.r0/self.q0
+        self.Cy = self.r0/self.q0 if self.q0 != 0 else 0.0
         
     def load_metric(self,fileprefix):
         #-- load B (bmag)
