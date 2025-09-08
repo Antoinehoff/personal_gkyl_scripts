@@ -381,10 +381,10 @@ class PoloidalProjection:
       evalDGfunc = None
     field_RZ = self.project_field(field_frame.values, evalDGfunc=evalDGfunc)
     return field_RZ, self.RIntN, self.ZIntN
-
+  
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True):
+           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -511,6 +511,13 @@ class PoloidalProjection:
       limiter = [yWidth]
     else:
       limiter = []
+      
+    #.Plot the vessel contours
+    if show_vessel:
+      if self.sim.geom_param.vessel_data is not None:
+        Rvess = self.sim.geom_param.vessel_data['R']
+        Zvess = self.sim.geom_param.vessel_data['Z']
+        ax1a[0].plot(Rvess,Zvess,linewidth=1.0,linestyle='-',color='black',alpha=.8)
 
     if show_inset:
       for inset in self.insets:

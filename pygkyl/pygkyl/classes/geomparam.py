@@ -77,6 +77,7 @@ class GeomParam:
         self.camera_zoom_obmp = None # Camera settings for obmp zoom level
         self.camera_global_2by1 = None # Camera settings for 2by1 zoom level
         self.camera_zoom_2by1 = None # Camera settings for lower zoom level in 2by1 mode
+        self.camera_poloidal = None # Camera settings for poloidal view
         
     def change(self,**kwargs):
         """

@@ -319,8 +319,8 @@ class TorusProjection:
       plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False)
    
       # Draw the vessel
-      Rvess = self.sim.geom_param.vesselData['R']
-      Zvess = self.sim.geom_param.vesselData['Z']
+      Rvess = self.sim.geom_param.vessel_data['R']
+      Zvess = self.sim.geom_param.vessel_data['Z']
       
       # scale slightly the vessel to avoid intersection with the plasma
       Rplas_min = self.polprojs[0].RIntN.min()
@@ -384,7 +384,7 @@ class TorusProjection:
                          smooth_shading=self.mesh_smooth_shading, lighting=self.mesh_lighting, log_scale=logScale,
                          scalar_bar_args=self.colorbar_args,
                          specular=self.mesh_specular, specular_power=self.mesh_specular_power)
-    if self.show_vessel and self.sim.geom_param.vesselData is not None:
+    if self.show_vessel and self.sim.geom_param.vessel_data is not None:
       plotter = self.draw_vessel(plotter)
     
     plotter.set_background(self.background_color)

@@ -87,7 +87,7 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     simulation.dischargeID = 'TCV #65125'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData = tcv_vessel_data
+    simulation.geom_param.vessel_data = tcv_vessel_data
 
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -117,8 +117,8 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
         'zoom': 1.0
     }
     # One side camera for high resolution
-    simulation.geom_param.camera_one_side_hd = {
-        'position':(1., 1.25, 0.2),
+    simulation.geom_param.camera_poloidal = {
+        'position':(1., 1.15, 0.2),
         'looking_at':(0, 0.75, 0.026),
             'zoom': 0.44
     }
@@ -176,7 +176,7 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.dischargeID = 'TCV #65130'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData = tcv_vessel_data
+    simulation.geom_param.vessel_data = tcv_vessel_data
     
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -206,8 +206,8 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         'zoom': 1.0
     }
     # One side camera for high resolution
-    simulation.geom_param.camera_one_side_hd = {
-        'position':(1., 1.25, 0.2),
+    simulation.geom_param.camera_poloidal = {
+        'position':(1., 1.15, 0.2),
         'looking_at':(0, 0.75, 0.026),
             'zoom': 0.44
     }
@@ -264,7 +264,7 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     simulation.dischargeID = 'DIII-D #171650'
         
     # Add vessel data filename
-    simulation.geom_param.vesselData = d3d_vessel_data
+    simulation.geom_param.vessel_data = d3d_vessel_data
     
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -289,7 +289,7 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         'zoom': 1.0
     }
     # One side camera for high resolution
-    simulation.geom_param.camera_one_side_hd = {
+    simulation.geom_param.camera_poloidal = {
         'position':(1., 1.25, 0),
         'looking_at':(0, -4.25, 0),
             'zoom': 0.57
@@ -347,7 +347,7 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.dischargeID = 'DIII-D #171646'
         
     # Add vessel data filename
-    simulation.geom_param.vesselData = d3d_vessel_data
+    simulation.geom_param.vessel_data = d3d_vessel_data
     
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -377,7 +377,7 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         'zoom': 1.0
     }
     # One side camera for high resolution
-    simulation.geom_param.camera_one_side_hd = {
+    simulation.geom_param.camera_poloidal = {
         'position':(1., 1.25, 0),
         'looking_at':(0, -4.25, 0),
             'zoom': 0.57
@@ -436,7 +436,7 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.dischargeID = 'NSTX-U'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData = nstxu_vessel_data
+    simulation.geom_param.vessel_data = nstxu_vessel_data
 
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -509,7 +509,7 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     simulation.dischargeID = 'SPARC'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData = sparc_vessel_data
+    simulation.geom_param.vessel_data = sparc_vessel_data
 
     # Add view points for the toroidal projection
     simulation.geom_param.camera_global = {
@@ -575,7 +575,7 @@ def get_aug_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensio
     simulation.dischargeID = 'ASDEX-U'
     
     # Add vessel data filename
-    simulation.geom_param.vesselData = sparc_vessel_data # To be replaced with ASDEX-U vessel data when available
+    simulation.geom_param.vessel_data = sparc_vessel_data # To be replaced with ASDEX-U vessel data when available
 
     # Add view points for the toroidal projection (to be adjusted)
     simulation.geom_param.camera_global = {
