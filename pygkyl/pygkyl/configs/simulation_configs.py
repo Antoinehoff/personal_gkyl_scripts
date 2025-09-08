@@ -116,6 +116,12 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
         'looking_at':(0., 0.795, 0.05),
         'zoom': 1.0
     }
+    # One side camera for high resolution
+    simulation.geom_param.camera_one_side_hd = {
+        'position':(1., 1.25, 0.2),
+        'looking_at':(0, 0.75, 0.026),
+            'zoom': 0.44
+    }
     return simulation
 
 def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
@@ -199,6 +205,12 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         'looking_at':(0., 0.795, 0.05),
         'zoom': 1.0
     }
+    # One side camera for high resolution
+    simulation.geom_param.camera_one_side_hd = {
+        'position':(1., 1.25, 0.2),
+        'looking_at':(0, 0.75, 0.026),
+            'zoom': 0.44
+    }
     return simulation
 
 def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
@@ -265,7 +277,23 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
         'looking_at':(0., 0.74, -0.17),
         'zoom': 1.0
     }
-
+    # Cameras for 1:2 formats
+    simulation.geom_param.camera_global_1by2 = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0.0, 0.8, 0),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_1by2 = {   
+        'position':(2.0, 0.78, 0.1),
+        'looking_at':(0., 0.74, 0.05),
+        'zoom': 1.0
+    }
+    # One side camera for high resolution
+    simulation.geom_param.camera_one_side_hd = {
+        'position':(1., 1.25, 0),
+        'looking_at':(0, -4.25, 0),
+            'zoom': 0.57
+    }
     return simulation
 
 def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
@@ -347,6 +375,12 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
         'position':(2.0, 0.78, 0.1),
         'looking_at':(0., 0.74, 0.05),
         'zoom': 1.0
+    }
+    # One side camera for high resolution
+    simulation.geom_param.camera_one_side_hd = {
+        'position':(1., 1.25, 0),
+        'looking_at':(0, -4.25, 0),
+            'zoom': 0.57
     }
     return simulation
 
