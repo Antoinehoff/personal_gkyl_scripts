@@ -29,6 +29,7 @@ class Species:
         self.omega_c = None # Cyclotron frequency
         self.rho     = None # Larmor radius
         self.mu0     = None # Magnetic moment
+        self.epsilon = None # Plasma permittivity
         
         if Bref > 0.0:
             self.set_gyromotion(Bref)
@@ -45,7 +46,8 @@ class Species:
         self.omega_c = phys_tools.gyrofrequency(self.q, self.m, B)
         self.rho = phys_tools.larmor_radius(self.q, self.m, self.T0, B)
         self.mu0 = self.T0 / B
-        
+        self.epsilon = phys_tools.plasma_permittivity(self.n0, self.q, self.rho, self.T0)
+
     def info(self):
         """Display species information and related parameters"""
         print(f"Species: {self.name}")
