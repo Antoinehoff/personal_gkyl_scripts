@@ -30,7 +30,7 @@ class FlanInterface:
         
         grids = [x.astype(float), y.astype(float), z.astype(float)]
         
-        jacobian = flan_nc['jacobian'][:].data.astype(float)
+        jacobian = flan_nc['J'][:].data.astype(float)
         
         jacobian = 0.5* (jacobian[1:,1:,1:] + jacobian[:-1,:-1,:-1])
         

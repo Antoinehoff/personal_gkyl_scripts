@@ -1087,13 +1087,13 @@ class DataParam:
                     
         #--- Flan interface
         def receipe_flan(gdata_list): return
-        name = 'flan_imp_density'
+        name = 'flan_nz'
         symbol = r'$n_{Z}$'
         units = r'm$^{-3}$'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
-        name = 'flan_imp_counts'
+        name = 'flan_Nz'
         symbol = r'$N_{Z}$'
         units = r''
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
@@ -1105,31 +1105,31 @@ class DataParam:
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
-        name = 'flan_electron_dens'
+        name = 'flan_ne'
         symbol = r'$n_{e}$'
         units = r'm$^{-3}$'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
-        name = 'flan_electron_temp'
+        name = 'flan_Te'
         symbol = r'$T_{e}$'
         units = r'eV'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
         
-        name = 'flan_ion_temp'
+        name = 'flan_Ti'
         symbol = r'$T_{i}$'
         units = r'eV'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
-        name = 'flan_plasma_pot'
+        name = 'flan_Vp'
         symbol = r'$V_{p}$'
         units = r'V'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
-        name = 'flan_bmag_R'
+        name = 'flan_B_R'
         symbol = r'$B_{R}$'
         units = r'T'
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
@@ -1143,34 +1143,41 @@ class DataParam:
             field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
 
             # Cartesian velocity components
-            name = 'flan_imp_v'+Dir
+            name = 'flan_v_'+Dir
             symbol = r'$v_{Z,%s}$'%dir
             units = r'm/s'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
             # Cartesian electric field components
-            name = 'flan_elec_'+Dir
+            name = 'flan_E_'+Dir
             symbol = r'$E_{%s}$'%dir
             units = r'V/m'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
             # Cartesian ion velocity components
-            name = 'flan_ion_flow_'+Dir
+            name = 'flan_Ui_'+Dir
             symbol = r'$u_{%s}$'%dir
             units = r'm/s'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
             # Cartesian magentic field components
-            name = 'flan_bmag_'+Dir
+            name = 'flan_B_'+Dir
             symbol = r'$B_{%s}$'%dir
             units = r'T'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
             # Cartesian magentic field components
-            name = 'flan_gradb_'+Dir
+            name = 'flan_gradB_'+Dir
             symbol = r'$\nabla B_{%s}$'%dir
             units = r'T/m'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+			# Cartesian impurity density gradients
+            name = 'flan_imp_grad'+Dir+"_nz"
+            symbol = r'$\nabla nz_{%s}$'%dir
+            units = r'$m^{-3}$/m'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
 
         #-------------- END of the new diagnostics definitions
         
