@@ -1,6 +1,16 @@
 import numpy as np
 from ..tools import phys_tools
 
+# define a dictionary of color for different species
+species_colors = {
+    'elc': 'blue',
+    'ion': 'red',
+    'e-': 'blue',
+    'D+': 'green',
+    'T+': 'orange',
+    'W10+': 'brown',
+    'W45+': 'purple',
+}
 
 class Species:
     """Represents a plasma species with its physical properties."""
@@ -24,6 +34,7 @@ class Species:
         self.n0      = n0     # reference density in m^-3
         self.vt      = phys_tools.thermal_vel(T0,m)  # Thermal velocity vth = sqrt(T0/m)
         self.omega_p = phys_tools.plasma_frequency(n0, q, m)  # Plasma frequency
+        self.color   = species_colors.get(self.name, 'black')
         
         
         self.omega_c = None # Cyclotron frequency
