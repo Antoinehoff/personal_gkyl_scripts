@@ -6,22 +6,20 @@ amu = 1.66e-27 # atomic mass unit in kg
 
 # Gyroaveraging functions
 def gamma0_ex(kperp, rho): 
-    return np.exp(-(kperp*rho)**2)*np.i0((kperp*rho)**2) # Eq. (8) in Held et al. 2023
+    bsq = rho**2*kperp**2
+    return np.exp(-bsq)*np.i0(bsq) # Eq. (8) in Held et al. 2023
 
 def gamma1_ex(kperp, rho): 
-    return np.exp(-0.5*(kperp*rho)**2) # Eq. (7) in Held et al. 2023
-
-def gamma2_ex(kperp, rho): 
-    return -0.5*(kperp*rho)**2*np.exp(-0.5*(kperp*rho)**2)
-
-def gamma3_ex(kperp, rho): 
-    return ((kperp*rho)**4/4 - (kperp*rho)**2)*gamma1_ex(kperp,s)
-
-def gamma1_pade(kperp, rho): 
-    return 1.0/(1.0 + 0.5*(kperp*rho)**2) # Eq. (4a) in Held et al. 2023
+    bsq = rho**2*kperp**2
+    return np.exp(-0.5*bsq) # Eq. (7) in Held et al. 2023
 
 def gamma0_pade(kperp, rho): 
-    return 1.0/(1.0 + (kperp*rho)**2) # Eq. (4b) in Held et al. 2023
+    bsq = rho**2*kperp**2
+    return 1.0/(1.0 + bsq) # Eq. (4b) in Held et al. 2023
+
+def gamma1_pade(kperp, rho): 
+    bsq = rho**2*kperp**2
+    return 1.0/(1.0 + 0.5*bsq) # Eq. (4a) in Held et al. 2023
 
 def pol_s(kperp, n, q, m, T, Bref, G0func=gamma0_ex):
     rho = pygkyl.phys_tools.larmor_radius(q, m, T, Bref)
@@ -37,8 +35,8 @@ def pol_op(kperp, n_list, q_list, m_list, T_list, Bref, G0func=gamma0_ex):
     return polop
 
 class Context:
-    def __init__(self, species_list:pygkyl.Species=[], Bref=2.0, qref=1, Tref=100, nref=1e19, mref=2.014*amu, Nrho=150, N=96*2):
-        self.species = species_list
+    def __init__(self, ion_list:pygkyl.Species=[], Bref=2.0, qref=1, Tref=100, nref=1e19, mref=2.014*amu, Nrho=150, N=96*2):
+        self.species = ion_list
         self.Bref = Bref # reference magnetic field in tesla
         self.qref = qref*eV # reference charge in coulombs
         self.Tref = Tref*eV # reference temperature in joules
@@ -46,6 +44,7 @@ class Context:
         self.mref = mref # reference mass in kg
         self.Nrho = Nrho # number of Larmor radii to simulate
         self.N = N # number of grid points in k-space
+        self.sigma = 0.0 # total charge density
         self.refresh()
         
     def refresh(self):
@@ -71,6 +70,15 @@ class Context:
             self.Tavg_ion = self.Tref
             self.mavg_ion = self.mref
             self.rhoavg_ion = self.rhoref
+
+    def get_charge_density(self, kperp, G1func=gamma1_ex):
+        self.sigma = 0.0
+        for s in self.species:
+            self.sigma += s.q *  G1func(kperp, s.rho) * s.n0
+        
+        # electron contribution for quasineutrality
+        self.sigma += -self.qtot_ion * G1func(kperp, pygkyl.phys_tools.larmor_radius(-eV, 5.4858e-4*amu, self.Tref, self.Bref))
+        return self.sigma
     
     def add_species(self, species:pygkyl.Species):
         species.set_gyromotion(self.Bref)
@@ -82,10 +90,14 @@ class Context:
         self.refresh()
         
     def species_set(self, specie_name, **kwargs):
+        found_s = False
         for s in self.species:
             if s.name == specie_name:
+                found_s = True
                 for key, value in kwargs.items():
                     setattr(s, key, value)
+        if not found_s:
+            raise ValueError(f"Species {specie_name} not found in context.")                
         self.refresh()
         
     def species_get(self, specie_name, key):
