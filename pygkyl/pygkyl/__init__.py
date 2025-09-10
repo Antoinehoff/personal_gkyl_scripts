@@ -18,6 +18,7 @@ from .tools import fig_tools, math_tools, phys_tools, DG_tools, eqdsk_tools
 from .utils import file_utils, math_utils, plot_utils
 from .configs import simulation_configs
 from .interfaces.pgkyl_interface import get_gkyl_data, get_gkyl_values, get_gkyl_grid
+from .ext import gkeyll_gk_balance
 
 __all__ = [
     'Species',
@@ -49,4 +50,5 @@ __all__ = [
     'get_gkyl_data',
     'get_gkyl_values',
     'get_gkyl_grid',
+    'gkeyll_gk_balance'
 ]
