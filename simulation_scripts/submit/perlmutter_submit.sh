@@ -275,7 +275,7 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     mkdir -p wk
     cp $INPUT_FILE wk/input_$FRAME_SUFFIX.c
     mv $SCRIPTNAME wk/.
-    mv $EXEC_NAME wk/$GKYLEXE
+    cp $EXEC_NAME wk/$GKYLEXE
     cd wk
     
     # Submit job and capture the job ID
