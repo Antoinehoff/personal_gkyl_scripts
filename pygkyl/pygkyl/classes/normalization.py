@@ -149,7 +149,20 @@ class Normalization:
                     shift  = 0
                     symbol = r'$u_{\parallel %s}/v_{t0 %s}$'%(spec.nshort,spec.nshort)
                     units  = ''
+                if key == 'vpar%s'%spec.nshort:
+                    scale  = spec.vt
+                    shift  = 0
+                    symbol = r'$v_{\parallel %s}/v_{t0 %s}$'%(spec.nshort,spec.nshort)
+                    units  = ''
 
+        #-- Magnetic moment normalization
+        elif norm in ['mu0', 'mu']:
+            for spec in self.simulation.species.values():
+                if key == 'mu%s'%spec.nshort:
+                    scale  = spec.mu0
+                    shift  = 0
+                    symbol = r'$\mu_{%s}/\mu_{0 %s}$'%(spec.nshort,spec.nshort)
+                    units  = ''
         #-- Energy normalization
         elif norm in ['MJ','J']:
             scale = 1e6 if norm == 'MJ' else 1.0

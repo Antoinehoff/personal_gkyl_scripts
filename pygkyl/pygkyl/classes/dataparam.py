@@ -187,7 +187,10 @@ class DataParam:
                     k = 'src_'+keys[i]+shortname if add_source else keys[i]+shortname
                     file_dict[k+'file'] = prefix[i]
                     file_dict[k+'comp'] = comps[i]
-                    file_dict[k+'gnames'] = gnames[0:3]
+                    if keys[i] == 'f':
+                        file_dict[k+'gnames'] = gnames
+                    else:
+                        file_dict[k+'gnames'] = gnames[0:3]
                     
         # Store a list of all the different file names we may look for.
         file_dict['names'] = []
@@ -270,6 +273,8 @@ class DataParam:
         # add routinely other quantities of interest
         for spec in species.values():
             s_ = spec.nshort
+            default_qttes.append(['vpar%s'%s_, r'$v_{\parallel %s}$'%s_, 'm/s'])
+            default_qttes.append(['mu%s'%s_, r'$\mu_%s$'%s_, 'J/T'])
             for add_source in [False, True]:
                 src_ = 'src_' if add_source else ''
                 S_ = 'S' if add_source else ''
