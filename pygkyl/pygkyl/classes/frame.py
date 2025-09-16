@@ -291,9 +291,10 @@ class Frame:
         slicetitle = ''
         norm = self.simulation.normalization.dict
         for k_, c_ in self.slicecoords.items():
+            s = '' if k_ in ['x','y','z'] else file_utils.find_species(self.filenames[0])[0]
             if isinstance(c_, float):
                 fmt = fig_tools.optimize_str_format(c_)
-                slicetitle += norm[k_ + 'symbol'] + '=' + fmt%c_ + norm[k_ + 'units'] + ', '
+                slicetitle += norm[k_+s+'symbol'] + '=' + fmt%c_ + norm[k_+s+'units'] + ', '
             else:
                 slicetitle += c_ + ', '
 

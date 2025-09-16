@@ -252,6 +252,14 @@ class Normalization:
                 self.set(    'T%s'%spec.nshort, norm)
                 self.set( 'Tpar%s'%spec.nshort, norm)
                 self.set('Tperp%s'%spec.nshort, norm)
+                
+        elif key.lower() == 'vpar':
+            for spec in self.simulation.species.values():
+                self.set('vpar%s'%spec.nshort, norm)
+                
+        elif key.lower() == 'mu':
+            for spec in self.simulation.species.values():
+                self.set('mu%s'%spec.nshort, norm)
 
         elif key.lower() == 'fluid velocities':
             for spec in self.simulation.species.values():
