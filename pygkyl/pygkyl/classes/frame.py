@@ -115,9 +115,7 @@ class Frame:
         for subname in self.composition:
             subdataname = self.simulation.data_param.file_info_dict[subname + 'file']
             self.datanames.append(subdataname)
-            if subname in ['b_x', 'b_y', 'b_z', 'Jacobian', 'Bmag', 
-                           'g_xx', 'g_xy', 'g_xz', 'g_yy', 'g_yz', 'g_zz',
-                           'gxx', 'gxy', 'gxz', 'gyy', 'gyz', 'gzz']\
+            if subname in self.simulation.data_param.time_independent_fields \
                         or 'Jacobvel' in subname:
                 name_tf = subdataname
             else:

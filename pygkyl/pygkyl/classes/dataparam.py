@@ -47,6 +47,10 @@ class DataParam:
         self.set_data_file_dict(checkfiles=checkfiles)
         self.default_mom_type = None
         self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
+        self.time_independent_fields = [
+            'b_x', 'b_y', 'b_z', 'Jacobian', 'Bmag', 
+            'g_xx', 'g_xy', 'g_xz', 'g_yy', 'g_yz', 'g_zz',
+            'gxx', 'gxy', 'gxz', 'gyy', 'gyz', 'gzz']
         
     def set_data_file_dict(self, checkfiles=True):
         '''
@@ -356,8 +360,8 @@ class DataParam:
                 rotbj = receipe_nabla_b([gdata_list[j],gdata_list[k],gdata_list[-1]],i=j)
                 rotbk = receipe_nabla_b([gdata_list[k],gdata_list[i],gdata_list[-1]],i=k)
                 return -(bj*rotbk - bk*rotbj)
+            default_qttes.append([name,symbol,units,field2load,receipe_curv])
             
-
             # ExB velocity
             name       = 'ExB_v_%s'%(ci_)
             symbol     = r'$u_{E,%s}$'%(ci_)

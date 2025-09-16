@@ -56,7 +56,9 @@ class TimeSerie:
         all_tf = file_utils.find_available_frames(self.simulation,dataname=self.filename)
         if self.verbose: print('Available time frames of ',self.filename,' :',all_tf)
         # select only the ones in the time frames if time_frames is provided
-        if self.time_frames:
+        if self.fieldname in self.simulation.data_param.time_independent_fields:
+           time_frames = [0] 
+        elif len(self.time_frames)>0:
             time_frames = [tf for tf in all_tf if tf in self.time_frames]
         else:
             time_frames = all_tf
@@ -64,7 +66,7 @@ class TimeSerie:
         for it,tf in enumerate(time_frames):
             frame = Frame(self.simulation,self.fieldname,tf,load=True, fourier_y=self.fourier_y)
             add_frame = False
-            if self.time_window:
+            if len(self.time_window) > 0:
                 if frame.time >= self.time_window[0] and frame.time <= self.time_window[1]:
                     add_frame = True
             else:
