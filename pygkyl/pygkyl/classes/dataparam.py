@@ -187,7 +187,10 @@ class DataParam:
                     k = 'src_'+keys[i]+shortname if add_source else keys[i]+shortname
                     file_dict[k+'file'] = prefix[i]
                     file_dict[k+'comp'] = comps[i]
-                    file_dict[k+'gnames'] = gnames[0:3]
+                    if keys[i] == 'f':
+                        file_dict[k+'gnames'] = gnames
+                    else:
+                        file_dict[k+'gnames'] = gnames[0:3]
                     
         # Store a list of all the different file names we may look for.
         file_dict['names'] = []
@@ -270,6 +273,8 @@ class DataParam:
         # add routinely other quantities of interest
         for spec in species.values():
             s_ = spec.nshort
+            default_qttes.append(['vpar%s'%s_, r'$v_{\parallel %s}$'%s_, 'm/s'])
+            default_qttes.append(['mu%s'%s_, r'$\mu_%s$'%s_, 'J/T'])
             for add_source in [False, True]:
                 src_ = 'src_' if add_source else ''
                 S_ = 'S' if add_source else ''
@@ -584,6 +589,24 @@ class DataParam:
                 ndot = pgkyl_.get_values(gdata_list[2])
                 return 2/3 * Edot / ndot
             default_qttes.append([name,symbol,units,field2load,receipe_src_Ts])
+
+            # Larmor radius
+            name = 'rho%s'%(s_)
+            symbol = r'$\rho_{%s}$'%(s_)
+            units = r'm'
+            field2load = ['Tperp%s'%(s_),'Bmag']
+            def receipe_rhos(gdata_list,q=spec.q,m=spec.m):
+                """
+                Larmor radius: rho = sqrt(m Tperp) / (|q| B)
+                """
+                e = 1.602176634e-19
+                Tperp = pgkyl_.get_values(gdata_list[0]) * phys_tools.kB
+                Bmag = pgkyl_.get_values(gdata_list[1])
+                # remove unphysical values
+                Tperp[Tperp <= 0] = np.nan # avoid sqrt(negative
+                Bmag[Bmag <= 0] = np.nan # avoid div by 0
+                return np.sqrt(m * Tperp) / (np.abs(q) * Bmag)
+            default_qttes.append([name,symbol,units,field2load,receipe_rhos])
             
             for rpec in species.values():
                 r_ = rpec.nshort
@@ -778,6 +801,36 @@ class DataParam:
             mi = species['ion'].m
             return Ti*mi/(Te*me)
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
+
+        #Debye length (total)
+        name = 'lambdaD'
+        symbol = r'$\lambda_{D}$'
+        units = r'm'
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%(s_))
+            field2load.append('Tpar%s'%(s_))
+            field2load.append('Tperp%s'%(s_))
+        def receipe_lambdaD(gdata_list,species=species):
+            e0 = 8.854187817e-12
+            e = 1.602176634e-19
+            num = 0.0
+            denom = 0.0
+            k    = 0
+            for spec in species.values():
+                dens = pgkyl_.get_values(gdata_list[0+k])
+                Ttot = receipe_Ttots(gdata_list[1+k:3+k])*spec.m*e
+                # remove unphysical values
+                dens[dens <= 0] = np.nan # avoid div by 0
+                Ttot[Ttot <= 0] = np.nan # avoid sqrt(negative)
+                num += Ttot / phys_tools.kB
+                denom += dens*spec.q**2
+                k    += 3
+
+            fout = num/denom/len(species)
+            return np.sqrt(e0 * fout)
+        default_qttes.append([name,symbol,units,field2load,receipe_lambdaD])
 
         #parallel current density
         name       = 'jpar'
@@ -1200,7 +1253,7 @@ class DataParam:
                            'src_n','src_T','src_Tpar','src_Tperp','src_p',
                            'src_BM_n','src_BM_Tpar','src_BM_Tperp',
                             'src_MM_n','src_MM_T','src_HM_n','src_HM_H',
-                           'f','src_f']
+                           'f','src_f','rho','lambdaD']
         for sdepfield in spec_dep_fields:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)

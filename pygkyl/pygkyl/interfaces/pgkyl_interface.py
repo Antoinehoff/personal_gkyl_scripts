@@ -14,6 +14,23 @@ Functions:
 
 import postgkyl as pg
 import numpy as np
+from ..utils import file_utils
+
+def get_dg_and_gdata(filename:str, polyorder=1, polytype='ms'):
+    if polytype == 'gkhyb':
+        # retrieve the file prefix by removing from the end to the last hifen
+        prefix = filename[:filename.rfind('-')]
+        # find the species name, which is the three letters after the last hifen
+        species = file_utils.find_species(filename)
+        mapc2p_vel_name = prefix + '-' + species + '_mapc2p_vel.gkyl'
+        jacobvel_name = prefix + '-' + species + '_jacobvel.gkyl'
+        Gdata = pg.data.GData(filename, mapc2p_vel_name=mapc2p_vel_name)
+        Jv_Gdata = pg.data.GData(jacobvel_name, mapc2p_vel_name=mapc2p_vel_name)
+        Gdata._values = Gdata.get_values() / Jv_Gdata.get_values()
+    else:
+        Gdata = pg.data.GData(filename)
+    dg = pg.data.GInterpModal(Gdata, poly_order=polyorder, basis_type=polytype)
+    return dg, Gdata
 
 def get_values(Gdata):
     # handle 2D and 3D data differently
@@ -33,15 +50,15 @@ def interpolate(Gdata,comp,polyorder=1, polytype='ms'):
         return np.concatenate((values, values), axis=1)
     
 def get_grid(Gdata):
-    values = Gdata.get_grid()
-    if len(values) == 3 :
+    values = Gdata.get_grid()        
+    if len(values) >= 3 :
         return values
     elif len(values) == 2 :
         return [values[0], np.array([0, 1/3, 2/3]), values[1]]
     
 def get_cells(Gdata):
     cells = Gdata.ctx['cells']
-    if len(cells) == 3 :   
+    if len(cells) >= 3 :   
         return cells
     else :        
         cells = [cells[0], 2, cells[1]]
