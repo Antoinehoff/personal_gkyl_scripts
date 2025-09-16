@@ -175,9 +175,10 @@ class Frame:
         self.Gdata = []
         for (f_, c_) in zip(self.filenames, self.comp):
             dg, Gdata = pgkyl_.get_dg_and_gdata(f_, polyorder=self.polyorder, polytype=self.polytype)
-            # The following call is surprinsingly slow. ~8s for dist func where in the notebook it's 2s.
+            # this is dumb but I can't figure out how to avoid the double interpolation
+            # without messing up the xNodal attribute
+            self.xNodal, _ = dg.interpolate(c_, overwrite=False)
             dg.interpolate(c_, overwrite=True)
-            self.xNodal = Gdata.get_grid()
             self.Gdata.append(Gdata)
             if Gdata.ctx['time']:
                 self.time = Gdata.ctx['time']
