@@ -802,36 +802,37 @@ class DataParam:
             return Ti*mi/(Te*me)
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
 
-        #Debye length (total)
+        #Debye length (lambda_D = sqrt(e0 kB Te / (n_e e^2)))
         name = 'lambdaD'
         symbol = r'$\lambda_{D}$'
         units = r'm'
-        field2load = []
-        for spec in species.values():
-            s_ = spec.nshort
-            field2load.append('n%s'%(s_))
-            field2load.append('Tpar%s'%(s_))
-            field2load.append('Tperp%s'%(s_))
+        field2load = ['ne','Tpare','Tperpe']
         def receipe_lambdaD(gdata_list,species=species):
-            e0 = 8.854187817e-12
             e = 1.602176634e-19
-            num = 0.0
-            denom = 0.0
-            k    = 0
-            for spec in species.values():
-                dens = pgkyl_.get_values(gdata_list[0+k])
-                Ttot = receipe_Ttots(gdata_list[1+k:3+k])*spec.m*e
-                # remove unphysical values
-                dens[dens <= 0] = np.nan # avoid div by 0
-                Ttot[Ttot <= 0] = np.nan # avoid sqrt(negative)
-                num += Ttot / phys_tools.kB
-                denom += dens*spec.q**2
-                k    += 3
-
-            fout = num/denom/len(species)
-            return np.sqrt(e0 * fout)
+            e0 = 8.854187817e-12
+            me = species['elc'].m
+            ne = pgkyl_.get_values(gdata_list[0])
+            Te = receipe_Ttots(gdata_list[1:3])
+            # remove unphysical values
+            Te[Te <= 0] = np.nan # avoid sqrt(negative
+            ne[ne <= 0] = np.nan # avoid div by 0
+            return np.sqrt(e0 * Te * phys_tools.kB / (ne * e**2))
         default_qttes.append([name,symbol,units,field2load,receipe_lambdaD])
-
+        
+        #electron larmor radius to Debye length ratio
+        name = 'rhoe_lambdaD'
+        symbol = r'$\rho_{e}/\lambda_{D}$'
+        units = ''
+        field2load = ['ne','Bmag']
+        def receipe_rhoe_lambdaD(gdata_list,species=species):
+            me = species['elc'].m
+            eps0 = 8.854187817e-12
+            ne = pgkyl_.get_values(gdata_list[0])
+            ne[ne <= 0] = np.nan # avoid div by 0
+            Bmag = pgkyl_.get_values(gdata_list[1])
+            return np.sqrt(me*ne/eps0)/Bmag
+        default_qttes.append([name,symbol,units,field2load,receipe_rhoe_lambdaD])
+        
         #parallel current density
         name       = 'jpar'
         symbol     = r'$\sum_s j_{\parallel s}$'
@@ -1242,7 +1243,7 @@ class DataParam:
             default_units_dict[key+'receipe']  = receipe[key]
 
         # add default colormap for each fields
-        positive_fields = ['Bmag','pow_src',
+        positive_fields = ['Bmag','pow_src','rhoe_lambdaD',
                            'flan_imp_density','flan_imp_counts'] # spec. indep
         
         spec_dep_fields = ['M0','M2','M2par','M2perp',
