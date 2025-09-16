@@ -16,6 +16,7 @@ import numpy as np
 eV = 1.602e-19 # electron volt [J]
 eps0 = 8.854e-12 # vacuum permittivity [F/m]
 hbar = 6.62606896e-34/(2.0*np.pi)  # reduced Planck constant [J*s]
+kB = 1.380649e-23  # Boltzmann constant [J/K]
 
 def thermal_vel(temperature, mass):
     '''
