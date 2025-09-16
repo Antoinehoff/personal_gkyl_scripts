@@ -297,12 +297,16 @@ class Frame:
                 slicetitle += c_ + ', '
 
         self.slicetitle = slicetitle
-        self.timetitle = self.tsymbol + '=%2.2f' % self.time + self.tunits
+        if self.name in self.simulation.data_param.time_independent_fields:
+            self.timetitle = ''
+            self.slicetitle = self.slicetitle[:-2] if len(self.slicetitle) > 2 else self.slicetitle
+        else:
+            self.timetitle = self.tsymbol + '=%2.2f' % self.time + self.tunits
         self.fulltitle = self.slicetitle + self.timetitle
-
-    def select_slice(self, direction, cut):
+        
+    def get_slice(self, direction, cut):
         """
-        Select a slice of the data along a specified direction.
+        Get a slice of the data along a specified direction.
         """
         direction_map = {'x': 0, 'y': 1, 'z': 2, 'vpar': 3, 'mu': 4}
 
@@ -315,16 +319,18 @@ class Frame:
         if cut in ['avg', 'int']:
             cut_coord = direction + '-' + cut
             grid = self.cgrids[ic][:]
-            self.values = np.trapz(self.values * self.Jacobian, grid, axis=ic)
-            self.Jacobian = np.trapz(self.Jacobian, grid, axis=ic)
+            values = np.trapz(self.values * self.Jacobian, grid, axis=ic)
+            Jacobian = np.trapz(self.Jacobian, grid, axis=ic)
             if cut == 'avg':
-                self.values /= self.Jacobian
+                values /= Jacobian
         elif cut == 'max':
             cut_coord = direction + '-max'
-            self.values = np.max(self.values, axis=ic)
+            values = np.max(self.values, axis=ic)
+            Jacobian = np.max(self.Jacobian, axis=ic)
         elif cut == 'mean':
             cut_coord = direction + '-mean'
-            self.values = np.mean(self.values, axis=ic)
+            values = np.mean(self.values, axis=ic)
+            Jacobian = np.mean(self.Jacobian, axis=ic)
         else:
             if isinstance(cut, int):
                 cut_index = np.minimum(cut, len(self.grids[ic]) - 2)
@@ -332,12 +338,19 @@ class Frame:
                 cut_index = (np.abs(self.grids[ic] - cut)).argmin()
                 cut_index = np.minimum(cut_index, len(self.grids[ic]) - 2)
             cut_coord = self.grids[ic][cut_index]
-            self.values = np.take(np.copy(self.values), cut_index, axis=ic)
-            self.Jacobian = np.take(np.copy(self.Jacobian), cut_index, axis=ic)
+            values = np.take(np.copy(self.values), cut_index, axis=ic)
+            Jacobian = np.take(np.copy(self.Jacobian), cut_index, axis=ic)
 
-        self.values = np.expand_dims(self.values, axis=ic)
-        self.Jacobian = np.expand_dims(self.Jacobian, axis=ic)
+        values = np.expand_dims(values, axis=ic)
+        Jacobian = np.expand_dims(Jacobian, axis=ic)
 
+        return values, Jacobian, ic, cut_coord, cut_index
+
+    def select_slice(self, direction, cut):
+        """
+        Reduce the data dimensionality by selecting a slice along a specified direction.
+        """
+        self.values, self.Jacobian, ic, cut_coord, cut_index = self.get_slice(direction, cut)
         self.sliceddim.append(ic)
         self.slicecoords[direction] = cut_coord
         self.sliceindex[direction] = cut_index
@@ -362,6 +375,28 @@ class Frame:
                 direction = ax_to_cut[i_].replace('v','vpar').replace('m','mu')
                 self.select_slice(direction=direction, cut=ccoord[i_])
         self.refresh(values=False)
+        
+    def get_value(self, coords):
+        """
+        Get the value at specified coordinates.
+        """
+        if len(coords) != self.dimensionality:
+            raise ValueError(f"Coordinates length {len(coords)} does not match dimensionality {self.dimensionality}")
+        
+        idx = []
+        for i, coord in enumerate(coords):
+            if isinstance(coord, (float)):
+                index = (np.abs(self.grids[i] - coord)).argmin()
+                idx.append(index)
+            elif isinstance(coord, int):
+                index = np.minimum(coord, len(self.grids[i]) - 2)
+                idx.append(index)
+            elif coord == 'all':
+                idx.append(slice(0, len(self.grids[i]) - 1))
+            else:
+                raise ValueError(f"Invalid coordinate '{coord}' for dimension {i}")
+        
+        return self.values[tuple(idx)]
         
     def compute_volume_integral(self, jacob_squared=False, average=False):
         """
