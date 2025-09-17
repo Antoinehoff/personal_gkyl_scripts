@@ -6,164 +6,243 @@ import matplotlib.pyplot as plt
 from ..classes import Frame, Simulation
 
 class GyrazeInterface:
-    def __init__(self, simulation:Simulation):
+    def __init__(self, simulation:Simulation, **kwargs):
         self.simulation = simulation
+        self.filter_negativity : bool = kwargs.get('filter_negativity', False)
+        self.number_datasets : bool = kwargs.get('number_datasets', False)
+        self.outfilename : str = kwargs.get('outfilename', 'data.h5')
+
         self.frames = self.simulation.available_frames['ion']
+        self.nspec = len(self.simulation.species)
+        self.me = self.simulation.species['elc'].m
+        self.mi = self.simulation.species['ion'].m
+        self.mioverme = self.mi/self.me
+        self.e = np.abs(self.simulation.species['elc'].q)
+        self.Bmag = None
+        self.phi = None
+        self.ne = None
+        self.ni = None
+        self.Te = None
+        self.Ti = None
+        self.fe = None
+        self.fi = None
+        self.gamma = None
+        self.xgrid = None
+        self.ygrid = None
+        self.zgrid = None
+        self.vparegrid = None
+        self.muegrid = None
+        self.vparigrid = None
+        self.muigrid = None
+        self.B0 = None
+        self.phi0 = None
+        self.ne0 = None
+        self.ni0 = None
+        self.Te0 = None
+        self.Ti0 = None
+        self.fe0 = None
+        self.fi0 = None
+        self.gamma0 = None
+        self.nioverne = None
+        self.TioverTe = None
+        self.alphadeg = None
+        self.vpare_norm = None
+        self.mue_norm = None
+        self.vpari_norm = None
+        self.mui_norm = None
+        self.fe_mpe_args_text = None
+        self.fe_mpe_text = None
+        self.fi_mpi_args_text = None
+        self.fi_mpi_text = None
+        self.input_physparams_text = None
+        self.skip_point = False
+        self.nsample = None
+        self.nskipped = None
 
     def load_frames(self, timeframe):
-        Bmag = Frame(simulation=self.simulation,fieldname='Bmag',tf=timeframe,load=True)
-        phi = Frame(simulation=self.simulation,fieldname='phi',tf=timeframe,load=True)
-        ne = Frame(simulation=self.simulation,fieldname='ne',tf=timeframe,load=True)
-        ni = Frame(simulation=self.simulation,fieldname='ni',tf=timeframe,load=True)
-        Te = Frame(simulation=self.simulation,fieldname='Te',tf=timeframe,load=True)
-        Ti = Frame(simulation=self.simulation,fieldname='Ti',tf=timeframe,load=True)
-        fe = Frame(simulation=self.simulation,fieldname='fe',tf=timeframe,load=True)
-        fi = Frame(simulation=self.simulation,fieldname='fi',tf=timeframe,load=True)
-        gamma = Frame(simulation=self.simulation,fieldname='rhoe_lambdaD',tf=timeframe,load=True)
-        return Bmag, phi, ne, ni, Te, Ti, fe, fi, gamma
+        self.Bmag = Frame(simulation=self.simulation,fieldname='Bmag',tf=timeframe,load=True)
+        self.phi = Frame(simulation=self.simulation,fieldname='phi',tf=timeframe,load=True)
+        self.ne = Frame(simulation=self.simulation,fieldname='ne',tf=timeframe,load=True)
+        self.ni = Frame(simulation=self.simulation,fieldname='ni',tf=timeframe,load=True)
+        self.Te = Frame(simulation=self.simulation,fieldname='Te',tf=timeframe,load=True)
+        self.Ti = Frame(simulation=self.simulation,fieldname='Ti',tf=timeframe,load=True)
+        self.fe = Frame(simulation=self.simulation,fieldname='fe',tf=timeframe,load=True)
+        self.fi = Frame(simulation=self.simulation,fieldname='fi',tf=timeframe,load=True)
+        self.gamma = Frame(simulation=self.simulation,fieldname='rhoe_lambdaD',tf=timeframe,load=True)
 
-    def eval_frames(self,frames, x, y, z):
-        values = []
-        for frame in frames:
-            if frame.dimensionality == 3:
-                values.append(frame.get_values([x, y, z]))
-            elif frame.dimensionality == 5:
-                values.append(frame.get_values([x, y, z, 'all', 'all']))
-                
-    def get_grids(self,distf_frame:Frame):
-        xgrid = distf_frame.new_grids[0]
-        ygrid = distf_frame.new_grids[1]
-        zgrid = distf_frame.new_grids[2]
-        vpargrid = distf_frame.new_grids[3]
-        mugrid = distf_frame.new_grids[4]
-        return xgrid, ygrid, zgrid, vpargrid, mugrid
+    def eval_frames(self, x, y, z):
+        self.B0 = self.Bmag.get_value([x, y, z])
+        self.phi0 = self.phi.get_value([x, y, z])
+        self.ne0 = self.ne.get_value([x, y, z])
+        self.ni0 = self.ni.get_value([x, y, z])
+        self.Te0 = self.Te.get_value([x, y, z])
+        self.Ti0 = self.Ti.get_value([x, y, z])
+        self.gamma0 = self.gamma.get_value([x, y, z])
+        self.fe0 = self.fe.get_value([x, y, z, 'all', 'all'])
+        self.fi0 = self.fi.get_value([x, y, z, 'all', 'all'])
+        # skip this point if negativity is found
+        if np.any([self.Ti0<0, self.Te0<0, self.ne0<0, self.ni0<0]):
+            self.skip_point = True
+            return
+        if self.filter_negativity:
+            self.fe0[self.fe0<0] = 0.0
+            self.fi0[self.fi0<0] = 0.0
+        self.nioverne = self.ni0/self.ne0
+        self.TioverTe = self.Ti0/self.Te0
+        self.vpare_norm = self.vparegrid / np.sqrt(self.Te0*self.e/self.me)
+        self.mue_norm = self.muegrid / (self.Te0*self.e/self.B0)
+        self.vpari_norm = self.vparigrid / np.sqrt(self.Ti0*self.e/self.mi)
+        self.mui_norm = self.muigrid / (self.Ti0*self.e/self.B0)
 
-    def get_ranges(self, xgrid, ygrid, zgrid, xmin, xmax, Nx, Ny, zplane):
-        ixmin = np.argmin(np.abs(xgrid - xmin))
-        ixmax = np.argmin(np.abs(xgrid - xmax))
+    def get_grids(self):
+        self.xgrid = self.fe.new_grids[0]
+        self.ygrid = self.fe.new_grids[1]
+        self.zgrid = self.fe.new_grids[2]
+
+        self.vparegrid = self.fe.new_grids[3]
+        self.muegrid = self.fe.new_grids[4]
+
+        self.vparigrid = self.fi.new_grids[3]
+        self.muigrid = self.fi.new_grids[4]
+
+    def get_ranges(self, xmin, xmax, Nx, Ny, zplane):
+        ixmin = np.argmin(np.abs(self.xgrid - xmin))
+        ixmax = np.argmin(np.abs(self.xgrid - xmax))
         iymin = 0
-        iymax = len(ygrid)-1
+        iymax = len(self.ygrid)-1
         if zplane=='upper':
-            izplane = np.argmax(zgrid)
+            izplanes = [np.argmax(self.zgrid)]
         elif zplane=='lower':
-            izplane = np.argmin(zgrid)
-        
+            izplanes = [np.argmin(self.zgrid)]
+        elif zplane=='both':
+            izplanes = [np.argmin(self.zgrid), np.argmax(self.zgrid)]
+
         xindices = np.linspace(ixmin, ixmax, Nx, dtype=int)
         yindices = np.linspace(iymin, iymax, Ny, dtype=int)
         # remove duplicates
         xindices = np.unique(xindices)
         yindices = np.unique(yindices)
-        return xindices, yindices, izplane
+        return xindices, yindices, izplanes
 
+    def write_F_mps_files(self, munorm, vpnorm, f0, species):
+        species_str = 'e' if species=='elc' else 'i'
+        with open(f'F{species_str}_mp{species_str}_args.txt', 'w') as f:
+            f.write(' '.join(map(str, munorm)) + '\n')
+            f.write(' '.join(map(str, vpnorm)))
+        np.savetxt(f'F{species_str}_mp{species_str}.txt', f0.squeeze().T)
 
-    def generate_gyraze_data(self):
-        tf = self.frames_phsp[-1]
+    def write_input_physparams_file(self):
+        with open('input_physparams.txt', 'w') as f:
+            f.write('#set type_distfunc_entrance (= ADHOC or other string)\n')
+            f.write('GKEYLL\n')
+            f.write('#set alphadeg\n')
+            f.write(f'{self.alphadeg}\n')
+            f.write('#set gamma_ref (keep zero to solve only magnetic presheath)\n')
+            f.write(f'{self.gamma0}\n')
+            f.write('#set nspec\n')
+            f.write(f'{self.nspec}\n')
+            f.write('#set nioverne\n')
+            f.write(f'{self.nioverne}\n')
+            f.write('#set TioverTe\n')
+            f.write(f'{self.TioverTe}\n')
+            f.write('#set mioverme\n')
+            f.write(f'{self.mioverme}\n')
+            f.write('#set set_current (flag)\n')
+            f.write('0\n')
+            f.write('#set target_current or phi_wall\n')
+            f.write(f'{self.phi0}\n')
 
-        xmin = 1.1
-        xmax = 1.3
-        Nxsample = 3 # number of x samples
-        Nysample = 4 # number of y samples
-        zplane = 'upper' # 'upper' or 'lower' side of the limiter
-        alphadeg = 0.1 # angle of the magnetic field to the wall in degree
-        nspec = 2
+    def read_txt_files(self):
+        with open('Fe_mpe_args.txt', 'r') as f:
+            self.fe_mpe_args_text = f.read()
+        with open('Fe_mpe.txt', 'r') as f:
+            self.fe_mpe_text = f.read()
+        with open('Fi_mpi_args.txt', 'r') as f:
+            self.fi_mpi_args_text = f.read()
+        with open('Fi_mpi.txt', 'r') as f:
+            self.fi_mpi_text = f.read()
+        with open('input_physparams.txt', 'r') as f:
+            self.input_physparams_text = f.read()
 
-        # ----- END OF USER INPUTS -----
+    def append_h5file(self,hf,x0,y0,z0,tf):
+        # Create a new group for each (x0, y0, z0) triplet
+        if self.number_datasets:
+            group_name = f'{self.nsample:06d}'
+        else:
+            group_name = f'x_{x0:.3f}_y_{y0:.3f}_z_{z0:.3f}_alpha_{self.alphadeg:.3f}_tf_{tf}'
+        grp = hf.create_group(group_name)
+        # Store text file contents as strings
+        grp.create_dataset('Fe_mpe_args.txt', data=self.fe_mpe_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('Fe_mpe.txt', data=self.fe_mpe_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('Fi_mpi_args.txt', data=self.fi_mpi_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('Fi_mpi.txt', data=self.fi_mpi_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('input_physparams.txt', data=self.input_physparams_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        # add metadata attributes
+        grp.attrs['x0'] = x0
+        grp.attrs['y0'] = y0
+        grp.attrs['z0'] = z0
+        grp.attrs['alphadeg'] = self.alphadeg
+        grp.attrs['tf'] = tf
+        grp.attrs['B0'] = self.B0
+        grp.attrs['phi0'] = self.phi0
+        grp.attrs['ne0'] = self.ne0
+        grp.attrs['ni0'] = self.ni0
+        grp.attrs['Te0'] = self.Te0
+        grp.attrs['Ti0'] = self.Ti0
+        grp.attrs['gamma0'] = self.gamma0
+        grp.attrs['nioverne'] = self.nioverne
+        grp.attrs['TioverTe'] = self.TioverTe
+        grp.attrs['mioverme'] = self.mioverme
+        grp.attrs['mi'] = self.mi
+        grp.attrs['me'] = self.me
+        grp.attrs['e'] = self.e
+        grp.attrs['simprefix'] = self.simulation.data_param.fileprefix
 
-        # Load the frames
-        Bmag, phi, ne, ni, Te, Ti, fe, fi, gamma = self.load_frames(tf)
-        xgrid, ygrid, zgrid, vparegrid, muegrid = self.get_grids(fe)
-        xgrid, ygrid, zgrid, vparigrid, muigrid = self.get_grids(fi)
+    def clean_txt_files(self):
+        os.remove('Fe_mpe_args.txt')
+        os.remove('Fe_mpe.txt')
+        os.remove('Fi_mpi_args.txt')
+        os.remove('Fi_mpi.txt')
+        os.remove('input_physparams.txt')
 
-        me = self.simulation.species['elc'].m
-        mi = self.simulation.species['ion'].m
-        mioverme = mi/me
-        e = np.abs(self.simulation.species['elc'].q)
+    def generate(self,tf,xmin,xmax,Nxsample,Nysample,alphadeg,zplane='both',verbose=False):
+        self.alphadeg = alphadeg
+        self.load_frames(tf)
+        self.get_grids()
+        xindices, yindices, izplanes = self.get_ranges(xmin, xmax, Nxsample, Nysample, zplane)
 
-        xindices, yindices, izplane = self.get_ranges(xgrid, ygrid, zgrid, xmin, xmax, Nxsample, Nysample, zplane)
-        # Sample points in the (x,y) plane
-        for ix in xindices:
-            for iy in yindices:
-                print(f'ix={ix}, x0={xgrid[ix]:.3f}, iy={iy}, y0={ygrid[iy]:.3f}, iz={izplane}, z0={zgrid[izplane]:.3f}')
-                x0 = xgrid[ix]
-                y0 = ygrid[iy]
-                z0 = zgrid[izplane]
-                
-                B0, phi0, ne0, ni0, Te0, Ti0, fe0, fi0, gamma0 = self.eval_frames([Bmag, phi, ne, ni, Te, Ti, fe, fi, gamma], x0, y0, z0)
+        with h5py.File(self.outfilename, 'w') as hf:
+            hf.attrs['description'] = 'Gyraze input data files from Gkeyll simulation'
+            self.nsample = 0
+            self.nskipped = 0
+            # Sample points in the (x,y) plane
+            for ix in xindices:
+                for iy in yindices:
+                    for izplane in izplanes:
+                        if verbose: print(f'ix={ix}, x0={self.xgrid[ix]:.3f}, iy={iy}, y0={self.ygrid[iy]:.3f}, iz={izplane}, z0={self.zgrid[izplane]:.3f}')
+                        x0 = self.xgrid[ix]
+                        y0 = self.ygrid[iy]
+                        z0 = self.zgrid[izplane]
 
-                nioverne = ni0/ne0
-                TioverTe = Ti0/Te0
+                        self.eval_frames(x0, y0, z0)
 
-                vpnorme = vparegrid / np.sqrt(Te0*e/me)
-                munorme = muegrid / (Te0*e/B0)
-                vpnormi = vparigrid / np.sqrt(Ti0*e/mi)
-                munormi = muigrid / (Ti0*e/B0)
+                        if self.skip_point:
+                            if verbose: print(f'Skipping point due to negativity in Ti, Te, ni, or ne')
+                            self.skip_point = False
+                            self.nskipped += 1
+                            continue                    
 
-                ## Filter negativity in fe0 and fi0
-                fe0[fe0<0] = 0.0
-                fi0[fi0<0] = 0.0
-
-                # Create Fe_mpe_args.txt file
-                with open('Fe_mpe_args.txt', 'w') as f:
-                    # Write xperp values in the first line
-                    f.write(' '.join(map(str, munorme)) + '\n')
-                    # Write spar values in the second line
-                    f.write(' '.join(map(str, vpnorme)))
-                # Write Fe_mpe.txt file with electron distribution function values
-                np.savetxt('Fe_mpe.txt', fe0.squeeze().T)
+                        self.write_F_mps_files(self.mue_norm, self.vpare_norm, self.fe0, 'elc')
+                        self.write_F_mps_files(self.mui_norm, self.vpari_norm, self.fi0, 'ion')
+                        self.write_input_physparams_file()
                             
-                # Same for the ions
-                with open('Fi_mpi_args.txt', 'w') as f:
-                    # Write xperp values in the first line
-                    f.write(' '.join(map(str, munormi)) + '\n')
-                    # Write spar values in the second line
-                    f.write(' '.join(map(str, vpnormi)))  
-                np.savetxt('Fi_mpi.txt', fi0.squeeze().T)
+                        # Read the contents of the text files
+                        self.read_txt_files()
 
-                # Create input_physparams.txt file with the physical parameters
-                with open('input_physparams.txt', 'w') as f:
-                    f.write('#set type_distfunc_entrance (= ADHOC or other string)\n')
-                    f.write('GKEYLL\n')
-                    f.write('#set alphadeg\n')
-                    f.write(f'{alphadeg}\n')
-                    f.write('#set gamma_ref (keep zero to solve only magnetic presheath)\n')
-                    f.write(f'{gamma0}\n')
-                    f.write('#set nspec\n')
-                    f.write(f'{nspec}\n')
-                    f.write('#set nioverne\n')
-                    f.write(f'{nioverne}\n')
-                    f.write('#set TioverTe\n')
-                    f.write(f'{TioverTe}\n')
-                    f.write('#set mioverme\n')
-                    f.write(f'{mioverme}\n')
-                    f.write('#set set_current (flag)\n')
-                    f.write('0\n')
-                    f.write('#set target_current or phi_wall\n')
-                    f.write(f'{phi0}\n')
-                    
-                # Read the contents of the text files
-                with open('Fe_mpe_args.txt', 'r') as f:
-                    fe_mpe_args_text = f.read()
-                with open('Fe_mpe.txt', 'r') as f:
-                    fe_mpe_text = f.read()
-                with open('Fi_mpi_args.txt', 'r') as f:
-                    fi_mpi_args_text = f.read()
-                with open('Fi_mpi.txt', 'r') as f:
-                    fi_mpi_text = f.read()
-                with open('input_physparams.txt', 'r') as f:
-                    input_physparams_text = f.read()
+                        self.append_h5file(hf, x0, y0, z0, tf)
 
-                # Create an HDF5 file and store the data from the text files
-                with h5py.File('data.h5', 'w') as hf:
-                    # Store text file contents as strings
-                    hf.create_dataset('Fe_mpe_args.txt', data=fe_mpe_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
-                    hf.create_dataset('Fe_mpe.txt', data=fe_mpe_text, dtype=h5py.string_dtype(encoding='utf-8'))
-                    hf.create_dataset('Fi_mpi_args.txt', data=fi_mpi_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
-                    hf.create_dataset('Fi_mpi.txt', data=fi_mpi_text, dtype=h5py.string_dtype(encoding='utf-8'))
-                    hf.create_dataset('input_physparams.txt', data=input_physparams_text, dtype=h5py.string_dtype(encoding='utf-8'))
-                    
-                # Remove the intermediate text files
-                os.remove('Fe_mpe_args.txt')
-                os.remove('Fe_mpe.txt')
-                os.remove('Fi_mpi_args.txt')
-                os.remove('Fi_mpi.txt')
-                os.remove('input_physparams.txt')
+                        self.clean_txt_files()
+
+                        self.nsample += 1
+            hf.attrs['nsample'] = self.nsample
+        print(f'Wrote {self.nsample} datasets to {self.outfilename}, skipped {self.nskipped} datasets due to negative moments.')

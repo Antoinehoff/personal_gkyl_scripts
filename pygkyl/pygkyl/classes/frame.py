@@ -386,13 +386,13 @@ class Frame:
         idx = []
         for i, coord in enumerate(coords):
             if isinstance(coord, (float)):
-                index = (np.abs(self.grids[i] - coord)).argmin()
+                index = (np.abs(self.new_grids[i] - coord)).argmin()
                 idx.append(index)
             elif isinstance(coord, int):
-                index = np.minimum(coord, len(self.grids[i]) - 2)
+                index = np.minimum(coord, len(self.new_grids[i]) - 2)
                 idx.append(index)
             elif coord == 'all':
-                idx.append(slice(0, len(self.grids[i]) - 1))
+                idx.append(slice(0, len(self.new_grids[i]) - 1))
             else:
                 raise ValueError(f"Invalid coordinate '{coord}' for dimension {i}")
         
