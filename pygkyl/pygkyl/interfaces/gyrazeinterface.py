@@ -2,6 +2,7 @@ import h5py
 import numpy as np
 import os
 import matplotlib.pyplot as plt
+import io
 
 from ..classes import Frame, Simulation
 
@@ -124,47 +125,43 @@ class GyrazeInterface:
         yindices = np.unique(yindices)
         return xindices, yindices, izplanes
 
-    def write_F_mps_files(self, munorm, vpnorm, f0, species):
+    def generate_F_mps_content(self, munorm, vpnorm, f0, species):
         species_str = 'e' if species=='elc' else 'i'
-        with open(f'F{species_str}_mp{species_str}_args.txt', 'w') as f:
-            f.write(' '.join(map(str, munorm)) + '\n')
-            f.write(' '.join(map(str, vpnorm)))
-        np.savetxt(f'F{species_str}_mp{species_str}.txt', f0.squeeze().T)
+        
+        # Generate args content
+        args_content = ' '.join(map(str, munorm)) + '\n' + ' '.join(map(str, vpnorm))
+        
+        # Generate f0 content using StringIO to mimic savetxt behavior
+        f0_buffer = io.StringIO()
+        np.savetxt(f0_buffer, f0.squeeze().T, fmt='%.16e')
+        f0_content = f0_buffer.getvalue()
+        
+        return args_content, f0_content
 
-    def write_input_physparams_file(self):
-        with open('input_physparams.txt', 'w') as f:
-            f.write('#set type_distfunc_entrance (= ADHOC or other string)\n')
-            f.write('GKEYLL\n')
-            f.write('#set alphadeg\n')
-            f.write(f'{self.alphadeg}\n')
-            f.write('#set gamma_ref (keep zero to solve only magnetic presheath)\n')
-            f.write(f'{self.gamma0}\n')
-            f.write('#set nspec\n')
-            f.write(f'{self.nspec}\n')
-            f.write('#set nioverne\n')
-            f.write(f'{self.nioverne}\n')
-            f.write('#set TioverTe\n')
-            f.write(f'{self.TioverTe}\n')
-            f.write('#set mioverme\n')
-            f.write(f'{self.mioverme}\n')
-            f.write('#set set_current (flag)\n')
-            f.write('0\n')
-            f.write('#set target_current or phi_wall\n')
-            f.write(f'{self.phi0}\n')
+    def generate_input_physparams_content(self):
+        content = (
+            '#set type_distfunc_entrance (= ADHOC or other string)\n'
+            'GKEYLL\n'
+            '#set alphadeg\n'
+            f'{self.alphadeg}\n'
+            '#set gamma_ref (keep zero to solve only magnetic presheath)\n'
+            f'{self.gamma0}\n'
+            '#set nspec\n'
+            f'{self.nspec}\n'
+            '#set nioverne\n'
+            f'{self.nioverne}\n'
+            '#set TioverTe\n'
+            f'{self.TioverTe}\n'
+            '#set mioverme\n'
+            f'{self.mioverme}\n'
+            '#set set_current (flag)\n'
+            '0\n'
+            '#set target_current or phi_wall\n'
+            f'{self.phi0}\n'
+        )
+        return content
 
-    def read_txt_files(self):
-        with open('Fe_mpe_args.txt', 'r') as f:
-            self.fe_mpe_args_text = f.read()
-        with open('Fe_mpe.txt', 'r') as f:
-            self.fe_mpe_text = f.read()
-        with open('Fi_mpi_args.txt', 'r') as f:
-            self.fi_mpi_args_text = f.read()
-        with open('Fi_mpi.txt', 'r') as f:
-            self.fi_mpi_text = f.read()
-        with open('input_physparams.txt', 'r') as f:
-            self.input_physparams_text = f.read()
-
-    def append_h5file(self,hf,x0,y0,z0,tf):
+    def append_h5file(self,hf,x0,y0,z0,tf,fe_mpe_args_text,fe_mpe_text,fi_mpi_args_text,fi_mpi_text,input_physparams_text):
         # Create a new group for each (x0, y0, z0) triplet
         if self.number_datasets:
             group_name = f'{self.nsample:06d}'
@@ -172,11 +169,11 @@ class GyrazeInterface:
             group_name = f'x_{x0:.3f}_y_{y0:.3f}_z_{z0:.3f}_alpha_{self.alphadeg:.3f}_tf_{tf}'
         grp = hf.create_group(group_name)
         # Store text file contents as strings
-        grp.create_dataset('Fe_mpe_args.txt', data=self.fe_mpe_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
-        grp.create_dataset('Fe_mpe.txt', data=self.fe_mpe_text, dtype=h5py.string_dtype(encoding='utf-8'))
-        grp.create_dataset('Fi_mpi_args.txt', data=self.fi_mpi_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
-        grp.create_dataset('Fi_mpi.txt', data=self.fi_mpi_text, dtype=h5py.string_dtype(encoding='utf-8'))
-        grp.create_dataset('input_physparams.txt', data=self.input_physparams_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('Fe_mpe_args.txt', data=fe_mpe_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('Fe_mpe.txt', data=fe_mpe_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('Fi_mpi_args.txt', data=fi_mpi_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('Fi_mpi.txt', data=fi_mpi_text, dtype=h5py.string_dtype(encoding='utf-8'))
+        grp.create_dataset('input_physparams.txt', data=input_physparams_text, dtype=h5py.string_dtype(encoding='utf-8'))
         # add metadata attributes
         grp.attrs['x0'] = x0
         grp.attrs['y0'] = y0
@@ -197,13 +194,6 @@ class GyrazeInterface:
         grp.attrs['me'] = self.me
         grp.attrs['e'] = self.e
         grp.attrs['simprefix'] = self.simulation.data_param.fileprefix
-
-    def clean_txt_files(self):
-        os.remove('Fe_mpe_args.txt')
-        os.remove('Fe_mpe.txt')
-        os.remove('Fi_mpi_args.txt')
-        os.remove('Fi_mpi.txt')
-        os.remove('input_physparams.txt')
 
     def generate(self,tf,xmin,xmax,Nxsample,Nysample,alphadeg,zplane='both',verbose=False):
         self.alphadeg = alphadeg
@@ -232,16 +222,12 @@ class GyrazeInterface:
                             self.nskipped += 1
                             continue                    
 
-                        self.write_F_mps_files(self.mue_norm, self.vpare_norm, self.fe0, 'elc')
-                        self.write_F_mps_files(self.mui_norm, self.vpari_norm, self.fi0, 'ion')
-                        self.write_input_physparams_file()
-                            
-                        # Read the contents of the text files
-                        self.read_txt_files()
+                        # Generate content directly as strings
+                        fe_mpe_args_text, fe_mpe_text = self.generate_F_mps_content(self.mue_norm, self.vpare_norm, self.fe0, 'elc')
+                        fi_mpi_args_text, fi_mpi_text = self.generate_F_mps_content(self.mui_norm, self.vpari_norm, self.fi0, 'ion')
+                        input_physparams_text = self.generate_input_physparams_content()
 
-                        self.append_h5file(hf, x0, y0, z0, tf)
-
-                        self.clean_txt_files()
+                        self.append_h5file(hf, x0, y0, z0, tf, fe_mpe_args_text, fe_mpe_text, fi_mpi_args_text, fi_mpi_text, input_physparams_text)
 
                         self.nsample += 1
             hf.attrs['nsample'] = self.nsample
