@@ -127,6 +127,7 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
 def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
+    Discharge #65130
     '''
     R_axis = 0.8868
     if x_LCFS is None : x_LCFS = 0.04
