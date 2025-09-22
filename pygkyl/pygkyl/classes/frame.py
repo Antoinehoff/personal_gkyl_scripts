@@ -184,7 +184,7 @@ class Frame:
         #.Centered mesh creation
         gridsN = self.xNodal # nodal grids
         mesh = []
-        for i in range(self.simulation.DG_basis.dimensionality):
+        for i in range(self.dimensionality):
             nNodes  = len(gridsN[i])
             mesh.append(np.multiply(0.5,gridsN[i][0:nNodes-1]+gridsN[i][1:nNodes]))
         self.cgrids = [m for m in mesh]
@@ -392,7 +392,7 @@ class Frame:
                 index = np.minimum(coord, len(self.new_grids[i]) - 2)
                 idx.append(index)
             elif coord == 'all':
-                idx.append(slice(0, len(self.new_grids[i]) - 1))
+                idx.append(slice(0, len(self.new_grids[i])))
             else:
                 raise ValueError(f"Invalid coordinate '{coord}' for dimension {i}")
         
