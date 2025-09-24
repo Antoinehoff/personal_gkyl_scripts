@@ -184,7 +184,7 @@ class Frame:
         #.Centered mesh creation
         gridsN = self.xNodal # nodal grids
         mesh = []
-        for i in range(self.dimensionality):
+        for i in range(len(gridsN)):
             nNodes  = len(gridsN[i])
             mesh.append(np.multiply(0.5,gridsN[i][0:nNodes-1]+gridsN[i][1:nNodes]))
         self.cgrids = [m for m in mesh]
