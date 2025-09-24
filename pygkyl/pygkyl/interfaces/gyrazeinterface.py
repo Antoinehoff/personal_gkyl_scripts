@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import io
 import time
+from typing import List, Union, Optional
 from ..classes import Frame, Simulation
 
 def get_local_maxwellian(n0, upar0, T0, m, B0, vpar, mu):
@@ -332,19 +333,19 @@ class GyrazeInterface:
             '#set alphadeg\n'
             f'{self.alphadeg}\n'
             '#set gamma_ref (keep zero to solve only magnetic presheath)\n'
-            f'{self.dataset.attributes['gamma'].v0}\n'
+            f"{self.dataset.attributes['gamma'].v0}\n"
             '#set nspec\n'
             f'{self.nspec}\n'
             '#set nioverne\n'
-            f'{self.dataset.attributes['nioverne'].v0}\n'
+            f"{self.dataset.attributes['nioverne'].v0}\n"
             '#set TioverTe\n'
-            f'{self.dataset.attributes['TioverTe'].v0}\n'
+            f"{self.dataset.attributes['TioverTe'].v0}\n"
             '#set mioverme\n'
             f'{self.mioverme}\n'
             '#set set_current (flag)\n'
             '0\n'
             '#set target_current or phi_wall\n'
-            f'{self.dataset.attributes['phi_norm'].v0}'
+            f"{self.dataset.attributes['phi_norm'].v0}"
         )
         return content
     
@@ -413,26 +414,28 @@ class GyrazeInterface:
                 ext0 = '' if attr.fieldname in ['TioverTe', 'mioverme', 'nioverne'] else '0'
                 grp.attrs[attr_name + ext0] = attr.v0
 
-    def generate(self, time_frames:list[int]=None, xmin:float=None, xmax:float=None, 
-                 Nxsample:int=None, Nysample:int=None, alphadeg:float=None, 
-                 zplane:str=None, verbose:bool=False):
+    def generate(self, time_frames: Optional[Union[List[int], int]] = None, 
+                 xmin: Optional[float] = None, xmax: Optional[float] = None, 
+                 Nxsample: Optional[int] = None, Nysample: Optional[int] = None, 
+                 alphadeg: Optional[float] = None, 
+                 zplane: Optional[str] = None, verbose: bool = False):
         '''
         Main interface function to generate Gyraze input data files from Gkeyll simulation data.
         Parameters:
         -----------
-        time_frames : list of int
-            List of time frames to process. If None, use all available frames.
-        xmin : float
+        time_frames : list of int or int, optional
+            List of time frames to process or single int. If None, use all available frames.
+        xmin : float, optional
             Minimum x value for sampling. If None, use x_LCFS + dx.
-        xmax : float
+        xmax : float, optional
             Maximum x value for sampling. If None, use Lx - dx.
-        Nxsample : int
+        Nxsample : int, optional
             Number of x points to sample. If None, use all SOL points.
-        Nysample : int
+        Nysample : int, optional
             Number of y points to sample. If None, use all points.
-        alphadeg : float
+        alphadeg : float, optional
             Angle in degrees between magnetic field and wall normal. If None, use 0.3.
-        zplane : str
+        zplane : str, optional
             Which z-plane to sample. If None, both upper and lower side of the limiter. Options: 'upper', 'lower', 'both'.
         verbose : bool
             If True, print detailed information during processing.
@@ -857,7 +860,9 @@ class GyrazeInterface:
             print(f"ERROR: Failed to load HDF5 file: {e}")
             return False
 
-    def plot_attribute_histograms(self, attributes=None, bins=25, figsize=(10, 10), save_fig=None):
+    def plot_attribute_histograms(self, attributes: Optional[List[str]] = None, 
+                                 bins: int = 25, figsize: tuple = (10, 10), 
+                                 save_fig: Optional[str] = None):
         """
         Plot histograms of specified attributes from all datasets in the HDF5 file.
         
@@ -940,7 +945,10 @@ class GyrazeInterface:
         
         plt.show()
 
-    def plot_attribute_scatter(self, attr_x, attr_y, figsize=(8, 6), save_fig=None, color_by=None, colormap='viridis', fxy=None, **kwargs):
+    def plot_attribute_scatter(self, attr_x: str, attr_y: str, 
+                              figsize: tuple = (8, 6), save_fig: Optional[str] = None, 
+                              color_by: Optional[str] = None, colormap: str = 'viridis', 
+                              fxy: Optional[callable] = None, **kwargs):
         """
         Create a scatter plot of two attributes with optional color coding and fit line.
         This method generates a scatter plot comparing two attributes from the collected data.
@@ -1085,7 +1093,7 @@ class GyrazeInterface:
         }
         return labels.get(attr_name, attr_name)
 
-    def get_attribute_statistics(self, attributes=None):
+    def get_attribute_statistics(self, attributes: Optional[List[str]] = None):
         if attributes is None:
             attributes = ['B0','phi0','ni0','ne0','Ti0','Te0','gamma0','nioverne','TioverTe']
         
@@ -1116,7 +1124,7 @@ class GyrazeInterface:
         
         return stats
 
-    def print_statistics(self, attributes=None):
+    def print_statistics(self, attributes: Optional[List[str]] = None):
         """
         Print formatted statistical summary of attributes.
         
