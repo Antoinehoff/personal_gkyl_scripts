@@ -1,4 +1,4 @@
-from ..interfaces import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgi
 import numpy as np
 
 class IntegratedMoment:
@@ -162,19 +162,19 @@ class IntegratedMoment:
         for s_ in species_list:
             for bf_ in self.bflux_list:
                 f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+self.fdot+'_integrated_'
-                if not pgkyl_.file_exists(f_+'moms.gkyl'):
+                if not pgi.file_exists(f_+'moms.gkyl'):
                     f_ += self.momtype+'Moments.gkyl'
-                    if not pgkyl_.file_exists(f_):
+                    if not pgi.file_exists(f_):
                         # in 2x2v, z is called y for these files
                         f_ = f_.replace('bflux_z','bflux_y')
                 else:
                     f_ += 'moms.gkyl'
                     
-                if not pgkyl_.file_exists(f_):
+                if not pgi.file_exists(f_):
                     raise FileNotFoundError(f_ + ' does not exist.')
                 
-                Gdata = pgkyl_.get_gkyl_data(f_)
-                self.values += pgkyl_.get_values(Gdata) * self.scale[species_list.index(s_)]
+                Gdata = pgi.get_gkyl_data(f_)
+                self.values += pgi.get_values(Gdata) * self.scale[species_list.index(s_)]
 
         self.time = np.squeeze(Gdata.get_grid()) / self.simulation.normalization.dict['tscale']
         self.values = self.receipe(self.values)
@@ -206,8 +206,8 @@ class IntegratedMoment:
         else:
             species = self.spec_s[0]
         f_ = self.simulation.data_param.fileprefix+'-'+species+'_integrated_moms.gkyl'
-        Gdata = pgkyl_.get_gkyl_data(f_)
-        datashape = np.shape(pgkyl_.get_values(Gdata))
+        Gdata = pgi.get_gkyl_data(f_)
+        datashape = np.shape(pgi.get_values(Gdata))
         self.momtype = 'BiMaxwellian' if datashape[1] == 4 else 'Hamiltonian'
         
     def process_name(self,name):

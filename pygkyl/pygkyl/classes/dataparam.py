@@ -1,7 +1,7 @@
 import copy
 import numpy as np
 import os
-from ..interfaces import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgi
 from ..utils import file_utils as file_utils
 from ..tools import phys_tools
 import glob
@@ -314,7 +314,7 @@ class DataParam:
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
         def identity(gdata_list):
-            return pgkyl_.get_values(gdata_list[0])
+            return pgi.get_values(gdata_list[0])
         # so we can define the compositions in one line here
         for i in range(len(default_qttes)):
             default_qttes[i].append([default_qttes[i][0]])
@@ -336,9 +336,9 @@ class DataParam:
             def receipe_nabla_b(gdata_list,i=i_):
                 j = np.mod(i+1,3)
                 k = np.mod(i+2,3)
-                bj     = pgkyl_.get_values(gdata_list[0])
-                bk     = pgkyl_.get_values(gdata_list[1])
-                Jacob   = pgkyl_.get_values(gdata_list[2])
+                bj     = pgi.get_values(gdata_list[0])
+                bk     = pgi.get_values(gdata_list[1])
+                Jacob   = pgi.get_values(gdata_list[2])
                 grids   = gdata_list[0].get_grid()
                 jgrid   = grids[j][:-1]
                 kgrid   = grids[k][:-1]
@@ -355,8 +355,8 @@ class DataParam:
             def receipe_curv(gdata_list,i=i_):
                 j = np.mod(i+1,3)
                 k = np.mod(i+2,3)
-                bj     = pgkyl_.get_values(gdata_list[1])
-                bk     = pgkyl_.get_values(gdata_list[2])
+                bj     = pgi.get_values(gdata_list[1])
+                bk     = pgi.get_values(gdata_list[2])
                 rotbj = receipe_nabla_b([gdata_list[j],gdata_list[k],gdata_list[-1]],i=j)
                 rotbk = receipe_nabla_b([gdata_list[k],gdata_list[i],gdata_list[-1]],i=k)
                 return -(bj*rotbk - bk*rotbj)
@@ -370,11 +370,11 @@ class DataParam:
             # The receipe depends on the direction 
             # because of the phi derivative
             def receipe_vExB(gdata_list,i=i_):
-                phi     = pgkyl_.get_values(gdata_list[0])
-                b_j     = pgkyl_.get_values(gdata_list[1])
-                b_k     = pgkyl_.get_values(gdata_list[2])
-                Bmag    = pgkyl_.get_values(gdata_list[3])
-                Jacob   = pgkyl_.get_values(gdata_list[4])
+                phi     = pgi.get_values(gdata_list[0])
+                b_j     = pgi.get_values(gdata_list[1])
+                b_k     = pgi.get_values(gdata_list[2])
+                Bmag    = pgi.get_values(gdata_list[3])
+                Jacob   = pgi.get_values(gdata_list[4])
                 grids   = gdata_list[0].get_grid()
                 j       = np.mod(i+1,3)
                 k       = np.mod(i+2,3)
@@ -417,8 +417,8 @@ class DataParam:
             units      = ''
             field2load = ['upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_spars(gdata_list):
-                upar = pgkyl_.get_values(gdata_list[0])
-                Tom  = (pgkyl_.get_values(gdata_list[1]) + 2.0*pgkyl_.get_values(gdata_list[2]))/3.0
+                upar = pgi.get_values(gdata_list[0])
+                Tom  = (pgi.get_values(gdata_list[1]) + 2.0*pgi.get_values(gdata_list[2]))/3.0
                 vt   = np.sqrt(2*Tom)
                 return upar/vt
             default_qttes.append([name,symbol,units,field2load,receipe_spars])      
@@ -429,7 +429,7 @@ class DataParam:
             units      = 'J/kg' # T is stored as T/m in gkeyll
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Ttots(gdata_list):
-                return (pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0
+                return (pgi.get_values(gdata_list[0]) + 2.0*pgi.get_values(gdata_list[1]))/3.0
             default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
             
             #normalized radial density gradient
@@ -438,7 +438,7 @@ class DataParam:
             units      = '1/m'
             field2load = ['n%s'%(s_)]
             def receipe_gradn(gdata_list):
-                dens = pgkyl_.get_values(gdata_list[0])
+                dens = pgi.get_values(gdata_list[0])
                 dens[dens <= 0] = np.nan # avoid log(0)
                 grids = gdata_list[0].get_grid()
                 return -np.gradient(np.log(dens), grids[0][:-1], axis=0)
@@ -450,7 +450,7 @@ class DataParam:
             units      = '1/m'
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_gradT(gdata_list):
-                temp = pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1])/3.0
+                temp = pgi.get_values(gdata_list[0]) + 2.0*pgi.get_values(gdata_list[1])/3.0
                 temp[temp <= 0] = np.nan # avoid log(0)
                 grids = gdata_list[0].get_grid()
                 return -np.gradient(np.log(temp), grids[0][:-1], axis=0)
@@ -462,7 +462,7 @@ class DataParam:
             units      = r'J/m$^3$'
             field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Wkins(gdata_list,m=spec.m):
-                dens = pgkyl_.get_values(gdata_list[0])
+                dens = pgi.get_values(gdata_list[0])
                 Ttot = receipe_Ttots(gdata_list[1:3])
                 return dens*m*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_Wkins])
@@ -473,8 +473,8 @@ class DataParam:
             units      = r'J/m$^3$'
             field2load = ['n%s'%s_,'upar%s'%(s_)]
             def receipe_Wflus(gdata_list,m=spec.m):
-                dens = pgkyl_.get_values(gdata_list[0])
-                upar = pgkyl_.get_values(gdata_list[1])
+                dens = pgi.get_values(gdata_list[0])
+                upar = pgi.get_values(gdata_list[1])
                 return dens*m*np.power(upar,2)/2.0
             default_qttes.append([name,symbol,units,field2load,receipe_Wflus])
 
@@ -484,8 +484,8 @@ class DataParam:
             units      = r'J/m$^3$'
             field2load = ['phi','n%s'%s_]
             def receipe_Wpots(gdata_list,q=spec.q):
-                qphi = q*pgkyl_.get_values(gdata_list[0])
-                dens = pgkyl_.get_values(gdata_list[1])
+                qphi = q*pgi.get_values(gdata_list[0])
+                dens = pgi.get_values(gdata_list[1])
                 return dens*qphi
             default_qttes.append([name,symbol,units,field2load,receipe_Wpots])
 
@@ -496,9 +496,9 @@ class DataParam:
             field2load = ['phi','n%s'%s_,'upar%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
             # We need the mass and the charge to converte J/kg (temp) and V (phi) in Joules
             def receipe_Ws(gdata_list,q=spec.q,m=spec.m):
-                qphi = q*pgkyl_.get_values(gdata_list[0])
-                dens = pgkyl_.get_values(gdata_list[1])
-                upar = pgkyl_.get_values(gdata_list[2])
+                qphi = q*pgi.get_values(gdata_list[0])
+                dens = pgi.get_values(gdata_list[1])
+                upar = pgi.get_values(gdata_list[2])
                 Ttot = receipe_Ttots(gdata_list[3:5])
                 return dens*(m*np.power(upar,2)/2 + m*Ttot + qphi)
             default_qttes.append([name,symbol,units,field2load,receipe_Ws])
@@ -509,7 +509,7 @@ class DataParam:
             units      = r'J/m$^3$'
             field2load = ['M2%s'%s_]
             def receipe_WkinM2s(gdata_list,m=spec.m):
-                return m*pgkyl_.get_values(gdata_list[0])/2.0
+                return m*pgi.get_values(gdata_list[0])/2.0
             default_qttes.append([name,symbol,units,field2load,receipe_WkinM2s])
 
             #total pressure speciewise
@@ -519,7 +519,7 @@ class DataParam:
             field2load = ['n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_ptots(gdata_list):
                 Ttot = receipe_Ttots(gdata_list[1:3])
-                return pgkyl_.get_values(gdata_list[0])*Ttot
+                return pgi.get_values(gdata_list[0])*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_ptots])
 
             #parallel pressures
@@ -528,7 +528,7 @@ class DataParam:
             units      = 'J/kg/m$^{3}$'
             field2load = ['n%s'%(s_),'Tpar%s'%(s_)]
             def receipe_ppars(gdata_list):
-                return pgkyl_.get_values(gdata_list[0])*pgkyl_.get_values(gdata_list[1])/3.0
+                return pgi.get_values(gdata_list[0])*pgi.get_values(gdata_list[1])/3.0
             default_qttes.append([name,symbol,units,field2load,receipe_ppars])
 
             #perpendicular pressures
@@ -537,7 +537,7 @@ class DataParam:
             units      = 'J/kg/m$^{3}$'
             field2load = ['n%s'%(s_),'Tperp%s'%(s_)]
             def receipe_pperps(gdata_list):
-                return pgkyl_.get_values(gdata_list[0])*pgkyl_.get_values(gdata_list[1])*2.0/3.0     
+                return pgi.get_values(gdata_list[0])*pgi.get_values(gdata_list[1])*2.0/3.0     
             default_qttes.append([name,symbol,units,field2load,receipe_pperps])
 
             #normalized pressure beta
@@ -547,9 +547,9 @@ class DataParam:
             field2load = ['n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'Bmag']
             def receipe_betas(gdata_list,m=spec.m):
                 mu0 = 4.0*np.pi*1e-7
-                dens = pgkyl_.get_values(gdata_list[0])
+                dens = pgi.get_values(gdata_list[0])
                 Ttot = receipe_Ttots(gdata_list[1:3])
-                Bmag = pgkyl_.get_values(gdata_list[3])
+                Bmag = pgi.get_values(gdata_list[3])
                 return 100 * dens * m*Ttot* 2*mu0/np.power(Bmag,2)
             default_qttes.append([name,symbol,units,field2load,receipe_betas])
             
@@ -562,7 +562,7 @@ class DataParam:
                 """
                 Source density: n = n_s
                 """
-                return pgkyl_.get_values(gdata_list[0])
+                return pgi.get_values(gdata_list[0])
             default_qttes.append([name,symbol,units,field2load,receipe_src_ns])
             
             #source power
@@ -574,9 +574,9 @@ class DataParam:
                 """
                 Source power density: P = d(H - q n phi)/dt
                 """
-                Hdot = pgkyl_.get_values(gdata_list[0])
-                phi = pgkyl_.get_values(gdata_list[1])
-                ndot = pgkyl_.get_values(gdata_list[2])
+                Hdot = pgi.get_values(gdata_list[0])
+                phi = pgi.get_values(gdata_list[1])
+                ndot = pgi.get_values(gdata_list[2])
                 return Hdot - ndot * q * phi
             default_qttes.append([name,symbol,units,field2load,receipe_src_Ps])
             
@@ -590,7 +590,7 @@ class DataParam:
                 Source temperature density: T = 2/3 Edot / ndot
                 """
                 Edot = receipe_src_Ps(gdata_list,q=q)
-                ndot = pgkyl_.get_values(gdata_list[2])
+                ndot = pgi.get_values(gdata_list[2])
                 return 2/3 * Edot / ndot
             default_qttes.append([name,symbol,units,field2load,receipe_src_Ts])
 
@@ -604,8 +604,8 @@ class DataParam:
                 Larmor radius: rho = sqrt(m Tperp) / (|q| B)
                 """
                 e = 1.602176634e-19
-                Tperp = pgkyl_.get_values(gdata_list[0]) * phys_tools.kB
-                Bmag = pgkyl_.get_values(gdata_list[1])
+                Tperp = pgi.get_values(gdata_list[0]) * phys_tools.kB
+                Bmag = pgi.get_values(gdata_list[1])
                 # remove unphysical values
                 Tperp[Tperp <= 0] = np.nan # avoid sqrt(negative
                 Bmag[Bmag <= 0] = np.nan # avoid div by 0
@@ -623,11 +623,11 @@ class DataParam:
                               'n%s'%(r_), 'Tpar%s'%(r_), 'Tperp%s'%(r_),
                               'Bmag']
                 def receipe_nu(gdata_list,qs=spec.q,ms=spec.m,qr=rpec.q,mr=rpec.m):
-                    ns = pgkyl_.get_values(gdata_list[0])
+                    ns = pgi.get_values(gdata_list[0])
                     Ts = receipe_Ttots(gdata_list[1:3])*ms
-                    nr = pgkyl_.get_values(gdata_list[3])
+                    nr = pgi.get_values(gdata_list[3])
                     Tr = receipe_Ttots(gdata_list[4:6])*mr
-                    Bmag = pgkyl_.get_values(gdata_list[6])
+                    Bmag = pgi.get_values(gdata_list[6])
                     return phys_tools.collision_freq(ns, qs, ms, Ts, nr, qr, mr, Tr, Bmag)
                 default_qttes.append([name,symbol,units,field2load,receipe_nu])
                 
@@ -655,11 +655,11 @@ class DataParam:
                 units      = r'm/s'
                 field2load = ['Tperp%s'%s_,'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 def receipe_vgB(gdata_list,i=i_,q=spec.q,m=spec.m):
-                    Tperp   = pgkyl_.get_values(gdata_list[0])*m
-                    b_j     = pgkyl_.get_values(gdata_list[1])
-                    b_k     = pgkyl_.get_values(gdata_list[2])
-                    Bmag    = pgkyl_.get_values(gdata_list[3])
-                    Jacob   = pgkyl_.get_values(gdata_list[4])
+                    Tperp   = pgi.get_values(gdata_list[0])*m
+                    b_j     = pgi.get_values(gdata_list[1])
+                    b_k     = pgi.get_values(gdata_list[2])
+                    Bmag    = pgi.get_values(gdata_list[3])
+                    Jacob   = pgi.get_values(gdata_list[4])
                     grids   = gdata_list[0].get_grid()
                     j       = np.mod(i+1,3)
                     k       = np.mod(i+2,3)
@@ -678,7 +678,7 @@ class DataParam:
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_ExB_pflux_s(gdata_list,i=i_):
-                    density = pgkyl_.get_values(gdata_list[0])
+                    density = pgi.get_values(gdata_list[0])
                     vE      = receipe_vExB(gdata_list[1:],i=i)
                     return density*vE
                 
@@ -694,7 +694,7 @@ class DataParam:
                 # because of the phi derivative and on the species 
                 # (temperature from J/kg to J)
                 def receipe_ExB_hflux_s(gdata_list,i=i_,m=spec.m):
-                    density = pgkyl_.get_values(gdata_list[0])
+                    density = pgi.get_values(gdata_list[0])
                     Ttot    = receipe_Ttots(gdata_list[1:3])
                     vE      = receipe_vExB(gdata_list[3:],i=i)
                     return density * m*Ttot * vE
@@ -708,7 +708,7 @@ class DataParam:
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_gradB_pflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
-                    density = pgkyl_.get_values(gdata_list[0])
+                    density = pgi.get_values(gdata_list[0])
                     vgB     = receipe_vgB(gdata_list[1:],i=i,q=q,m=m)
                     return density*vgB
                 default_qttes.append([name,symbol,units,field2load,receipe_gradB_pflux_s])
@@ -722,7 +722,7 @@ class DataParam:
                 # The receipe depends on the direction 
                 # because of the phi derivative
                 def receipe_gradB_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
-                    density = pgkyl_.get_values(gdata_list[0])
+                    density = pgi.get_values(gdata_list[0])
                     Ttot    = receipe_Ttots(gdata_list[1:3])
                     vgB     = receipe_vgB(gdata_list[2:],i=i,q=q,m=m)
                     return density * m*Ttot * vgB
@@ -788,7 +788,7 @@ class DataParam:
             # add species dependent energies
             k = 0
             for spec in species.values():
-                fout += spec.q*pgkyl_.get_values(gdata_list[0+k])
+                fout += spec.q*pgi.get_values(gdata_list[0+k])
                 k    += 1
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_qdens])
@@ -799,8 +799,8 @@ class DataParam:
         units      = '' # T is stored as T/m in gkeyll
         field2load = ['Tpare','Tperpe','Tpari','Tperpi']
         def receipe_Tratio(gdata_list,species=species):
-            Te = (pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0
-            Ti = (pgkyl_.get_values(gdata_list[2]) + 2.0*pgkyl_.get_values(gdata_list[3]))/3.0
+            Te = (pgi.get_values(gdata_list[0]) + 2.0*pgi.get_values(gdata_list[1]))/3.0
+            Ti = (pgi.get_values(gdata_list[2]) + 2.0*pgi.get_values(gdata_list[3]))/3.0
             me = species['elc'].m
             mi = species['ion'].m
             return Ti*mi/(Te*me)
@@ -815,7 +815,7 @@ class DataParam:
             e = 1.602176634e-19
             e0 = 8.854187817e-12
             me = species['elc'].m
-            ne = pgkyl_.get_values(gdata_list[0])
+            ne = pgi.get_values(gdata_list[0])
             Te = receipe_Ttots(gdata_list[1:3])
             # remove unphysical values
             Te[Te <= 0] = np.nan # avoid sqrt(negative
@@ -831,9 +831,9 @@ class DataParam:
         def receipe_rhoe_lambdaD(gdata_list,species=species):
             me = species['elc'].m
             eps0 = 8.854187817e-12
-            ne = pgkyl_.get_values(gdata_list[0])
+            ne = pgi.get_values(gdata_list[0])
             ne[ne <= 0] = np.nan # avoid div by 0
-            Bmag = pgkyl_.get_values(gdata_list[1])
+            Bmag = pgi.get_values(gdata_list[1])
             return np.sqrt(me*ne/eps0)/Bmag
         default_qttes.append([name,symbol,units,field2load,receipe_rhoe_lambdaD])
         
@@ -923,7 +923,7 @@ class DataParam:
             # The receipe depends on the direction 
             # because of the phi derivative
             def receipe_Ei(gdata_list,i=i_):
-                phi     = pgkyl_.get_values(gdata_list[0])
+                phi     = pgi.get_values(gdata_list[0])
                 grids   = gdata_list[0].get_grid()
                 grid    = grids[i][:-1]
                 return -np.gradient(phi, grid, axis=i)

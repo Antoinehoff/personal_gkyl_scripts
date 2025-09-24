@@ -2,7 +2,7 @@ import postgkyl as pg
 import numpy as np
 from ..tools import math_tools as mt
 import copy
-from ..interfaces import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgi
 from ..interfaces import flaninterface as flan_
 from ..tools import DG_tools, fig_tools
 from ..utils import file_utils
@@ -52,6 +52,7 @@ class Frame:
         self.composition = []
         self.polytype = None
         self.dimensionality = None
+        self.axis = None
         self.process_field_name()  # this initializes the above attributes
 
         self.time = None
@@ -61,7 +62,8 @@ class Frame:
         self.dims = None
         self.ndims = None
         self.cells = None
-        self.grids = None # physical grids (get normalized)
+        self.grids = None # generic grids (get normalized)
+        self.pgrids = None # physical grids
         self.cgrids = None # computational grids
         self.values = None
         self.Jacobian = simulation.geom_param.Jacobian
@@ -69,6 +71,7 @@ class Frame:
         self.vol_avg = None
 
         # attribute to handle slices
+        self.mapc2p = None
         self.dim_idx = None
         self.new_grids = []
         self.new_gnames = []
@@ -132,6 +135,11 @@ class Frame:
             self.polytype = 'gkhyb'
         else:
             self.polytype = 'ms'
+        Ndim = sum(d > 2 for d in self.simulation.geom_param.mapc2p[0].shape)
+        if Ndim == 5: self.axis = 'xyzvm'
+        elif Ndim == 4: self.axis = 'xzvm'
+        elif Ndim == 3: self.axis = 'xyz'
+        elif Ndim == 2: self.axis = 'xz'
             
     def get_DG_coeff(self):
         """
@@ -172,7 +180,7 @@ class Frame:
         """
         self.Gdata = []
         for (f_, c_) in zip(self.filenames, self.comp):
-            dg, Gdata = pgkyl_.get_dg_and_gdata(f_, polyorder=self.polyorder, polytype=self.polytype)
+            dg, Gdata = pgi.get_dg_and_gdata(f_, polyorder=self.polyorder, polytype=self.polytype)
             # this is dumb but I can't figure out how to avoid the double interpolation
             # without messing up the xNodal attribute
             self.xNodal, _ = dg.interpolate(c_, overwrite=False)
@@ -180,15 +188,32 @@ class Frame:
             self.Gdata.append(Gdata)
             if Gdata.ctx['time']:
                 self.time = Gdata.ctx['time']
-            
-        #.Centered mesh creation
-        gridsN = self.xNodal # nodal grids
-        mesh = []
-        for i in range(self.dimensionality):
-            nNodes  = len(gridsN[i])
-            mesh.append(np.multiply(0.5,gridsN[i][0:nNodes-1]+gridsN[i][1:nNodes]))
-        self.cgrids = [m for m in mesh]
-        self.grids = [g for g in pgkyl_.get_grid(Gdata) if len(g) > 2]
+
+        self.mapc2p = copy.deepcopy(self.simulation.geom_param.mapc2p)
+        for i in range(len(self.mapc2p)):
+            self.mapc2p[i] = np.squeeze(self.mapc2p[i])
+            if len(self.mapc2p[i].shape) == 2:
+                # To match the shape of 2D gkyl fields (one cell in y so 2 points in y)
+                mapc2p_3D = np.zeros((self.mapc2p[i].shape[0], 2, self.mapc2p[i].shape[1]))
+                mapc2p_3D[:,0,:] = self.mapc2p[i]
+                mapc2p_3D[:,1,:] = self.mapc2p[i]
+                self.mapc2p[i] = mapc2p_3D
+                
+        if self.dimensionality == 5:
+            self.grids = [g for g in pgi.get_grid(Gdata) if len(g) > 2]
+            mesh = []
+            for i in range(len(self.grids)):
+                nNodes  = len(self.grids[i])
+                mesh.append(np.multiply(0.5,self.grids[i][0:nNodes-1]+self.grids[i][1:nNodes]))
+            self.cgrids = [m for m in mesh]
+        else:
+            iz0 = np.argmin(np.abs(self.mapc2p[2][0,0,:]))
+            gx = self.mapc2p[0][:,0,iz0]
+            gy = self.mapc2p[1][0,:,iz0]
+            gz = self.mapc2p[2][0,0,:]
+            self.grids = [gx, gy, gz].copy()
+            self.cgrids = self.grids.copy()
+        
         self.cells = Gdata.ctx['cells']
         self.ndims = len(self.cells)
         self.dim_idx = list(range(self.ndims))
@@ -198,12 +223,13 @@ class Frame:
         if fourier_y: self.fourier_y()
         
     def get_cells_pgkyl(self):
-        return pgkyl_.get_cells(self.Gdata[0])
+        return pgi.get_cells(self.Gdata[0])
 
     def load_flan(self, normalize=True, fourier_y=False):
         flan = flan_.FlanInterface(self.simulation.flandatapath)
         self.time, self.grids, self.Jacobian, self.values = flan.load_data(self.name, self.tf, xyz= not fourier_y)
         self.cgrids = [g for g in self.grids]
+        self.mapc2p = [np.meshgrid(*self.grids, indexing='ij')[0] for g in self.grids]
         if normalize: self.normalize(values=False)
         
     def get_cells_flan(self):
@@ -219,6 +245,7 @@ class Frame:
         self.Jacobian = np.ones_like(self.values)
         self.xNodal = self.grids.copy()
         self.cgrids = self.grids.copy()
+        self.mapc2p = [np.meshgrid(*self.grids, indexing='ij')[0] for g in self.grids]
         if normalize: self.normalize()
         self.refresh(values=False)
         
@@ -237,8 +264,11 @@ class Frame:
         self.new_dims = [c_ for c_ in self.new_cells if c_ > 1]
         self.dim_idx = [d_ for d_ in range(self.dimensionality) if d_ not in self.sliceddim]
         for idx in self.dim_idx:
-            Ngidx = len(self.grids[idx])
-            self.new_grids.append(mt.create_uniform_array(self.grids[idx], Ngidx - 1))
+            if self.dimensionality == 5:
+                Ngidx = len(self.grids[idx])
+                self.new_grids.append(mt.create_uniform_array(self.grids[idx], Ngidx - 1))
+            else:
+                self.new_grids.append(self.grids[idx])
             self.new_gnames.append(self.gnames[idx])
             self.new_gsymbols.append(self.gsymbols[idx])
             self.new_gunits.append(self.gunits[idx])
@@ -290,11 +320,12 @@ class Frame:
         norm = self.simulation.normalization.dict
         for k_, c_ in self.slicecoords.items():
             s = '' if k_ in ['x','y','z'] else file_utils.find_species(self.filenames[0])[0]
-            if isinstance(c_, float):
-                fmt = fig_tools.optimize_str_format(c_)
-                slicetitle += norm[k_+s+'symbol'] + '=' + fmt%c_ + norm[k_+s+'units'] + ', '
-            else:
-                slicetitle += c_ + ', '
+            if k_ in self.axis:
+                if isinstance(c_, float):
+                    fmt = fig_tools.optimize_str_format(c_)
+                    slicetitle += norm[k_+s+'symbol'] + '=' + fmt%c_ + norm[k_+s+'units'] + ', '
+                else:
+                    slicetitle += c_ + ', '
 
         self.slicetitle = slicetitle
         if self.name in self.simulation.data_param.time_independent_fields:
@@ -314,8 +345,7 @@ class Frame:
             raise ValueError("Invalid direction '" + direction + "': must be 'x', 'y', 'z', 'vpar', or 'mu'")
 
         ic = direction_map[direction]
-
-        cut_index = -1
+        cut_index = len(self.grids[ic])//2 # default to middle index
         if cut in ['avg', 'int']:
             cut_coord = direction + '-' + cut
             grid = self.cgrids[ic][:]
@@ -341,16 +371,23 @@ class Frame:
             values = np.take(np.copy(self.values), cut_index, axis=ic)
             Jacobian = np.take(np.copy(self.Jacobian), cut_index, axis=ic)
 
+        mapc2p = []
+        if self.dimensionality <= 3:
+            for i in range(len(self.mapc2p)):
+                tmp = np.take(np.copy(self.mapc2p[i]), cut_index, axis=ic)
+                tmp = np.expand_dims(tmp, axis=ic)
+                mapc2p.append(tmp)
+            
         values = np.expand_dims(values, axis=ic)
         Jacobian = np.expand_dims(Jacobian, axis=ic)
 
-        return values, Jacobian, ic, cut_coord, cut_index
+        return mapc2p, values, Jacobian, ic, cut_coord, cut_index
 
     def select_slice(self, direction, cut):
         """
         Reduce the data dimensionality by selecting a slice along a specified direction.
         """
-        self.values, self.Jacobian, ic, cut_coord, cut_index = self.get_slice(direction, cut)
+        self.mapc2p, self.values, self.Jacobian, ic, cut_coord, cut_index = self.get_slice(direction, cut)
         self.sliceddim.append(ic)
         self.slicecoords[direction] = cut_coord
         self.sliceindex[direction] = cut_index
@@ -371,9 +408,16 @@ class Frame:
             ax_to_cut = 'xyz' if self.dimensionality == 3 else 'xyzvm'
             if not axs == 'scalar':
                 for i_ in range(len(axs_short)): ax_to_cut = ax_to_cut.replace(axs_short[i_], '')
+            ic = 0
             for i_ in range(len(ax_to_cut)):
                 direction = ax_to_cut[i_].replace('v','vpar').replace('m','mu')
-                self.select_slice(direction=direction, cut=ccoord[i_])
+                # skip slicing along y if axis is xz
+                if direction == 'y' and self.axis == 'xz': 
+                    cut = 0
+                else:
+                    cut = ccoord[ic]
+                    ic += 1
+                self.select_slice(direction=direction, cut=cut)
         self.refresh(values=False)
         
     def get_value(self, coords):
@@ -482,7 +526,7 @@ class Frame:
         kymin = 2 * np.pi / Ly
         kymax = Nky * 2 * np.pi / Ly
         ky =  np.linspace(kymin, kymax, Nky)
-        ky = mt.create_uniform_array(ky, Nky + 1)
+        ky = mt.create_uniform_array(ky, Nky)
         ky = ky[1:]
         fft_ky = fft_ky[:, 1:, :] # remove the zero frequency component
 

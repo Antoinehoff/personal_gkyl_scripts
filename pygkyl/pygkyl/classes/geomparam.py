@@ -1,6 +1,6 @@
 import postgkyl as pg
 import numpy as np
-from ..interfaces import pgkyl_interface as pgkyl_
+from ..interfaces import pgkyl_interface as pgi
 from ..tools import math_tools as mt
 import os
 
@@ -58,6 +58,7 @@ class GeomParam:
         self.bmag       = None
         self.b_i        = None
         self.grids      = None
+        self.mapc2p     = None
         self.Jacobian   = None
         self.intJac     = None
         self.dBdx       = None
@@ -119,19 +120,26 @@ class GeomParam:
         # check if fname exist
         if not os.path.exists(fname):
             raise Exception(f"File {fname} does not exist, please review simDir and filePrefix.")
-        Gdata = pg.data.GData(fname)
-        dg = pg.data.GInterpModal(Gdata,1,'ms')
+        dg, Gdata = pgi.get_dg_and_gdata(fname, 1, 'ms')
         dg.interpolate(0,overwrite=True)
-        self.bmag = pgkyl_.get_values(Gdata)
+        self.bmag = pgi.get_values(Gdata)
         self.bmag = self.bmag[:,:,:,0]
         
         #-- load grid
-        self.grids = [0.5*(g[1:]+g[:-1]) for g in pgkyl_.get_grid(Gdata) if len(g) > 1]
+        self.grids = [0.5*(g[1:]+g[:-1]) for g in pgi.get_grid(Gdata) if len(g) > 1]
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
         self.Lx    = self.x[-1]-self.x[0]
         self.Ly    = self.y[-1]-self.y[0]
         self.n0    = 2.*np.pi*self.r0/self.q0/self.Ly
         self.Lz    = self.z[-1]-self.z[0]
+        
+        #-- load mapc2p
+        fname = fileprefix+'-'+'mapc2p.gkyl'
+        dg, Gdata = pgi.get_dg_and_gdata(fname, 1, 'ms')
+        self.mapc2p = []
+        for ic in range(3):
+            _, mapc2p = dg.interpolate(comp=ic)
+            self.mapc2p.append(mapc2p)
 
         #-- compute associated derivatives
         self.dBdx = mt.gradient(self.bmag, self.grids[0], axis=0)  # Derivative w.r.t x
@@ -145,7 +153,7 @@ class GeomParam:
             Gdata = pg.data.GData(fname)
             dg = pg.data.GInterpModal(Gdata,1,'ms')
             dg.interpolate(i,overwrite=True)
-            tmp_ = pgkyl_.get_values(Gdata)
+            tmp_ = pgi.get_values(Gdata)
             self.b_i.append(tmp_[:,:,:,0])
 
         #-- Load Jacobian
@@ -153,7 +161,7 @@ class GeomParam:
         Gdata = pg.data.GData(fname)
         dg = pg.data.GInterpModal(Gdata,1,'ms')
         dg.interpolate(0,overwrite=True)
-        self.Jacobian = pgkyl_.get_values(Gdata)
+        self.Jacobian = pgi.get_values(Gdata)
         self.Jacobian = self.Jacobian[:,:,:,0]
         J_yz          = np.trapz(self.Jacobian,self.x,axis=0)
         J_z           = np.trapz(J_yz,self.y,axis=0)
