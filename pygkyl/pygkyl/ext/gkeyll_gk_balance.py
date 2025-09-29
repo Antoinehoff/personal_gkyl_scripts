@@ -59,7 +59,8 @@ def get_balance_data(data_path, species_names, moment_idx):
     time_bflux = None
     has_source = False
     has_bflux = False
-
+    if not isinstance(species_names, list):
+        species_names = [species_names]
     for sI, species in enumerate(species_names):
         # fdot
         time_fdot_s, fdot_s = read_dyn_vector(f"{data_path}{species}_fdot_integrated_moms.gkyl")
