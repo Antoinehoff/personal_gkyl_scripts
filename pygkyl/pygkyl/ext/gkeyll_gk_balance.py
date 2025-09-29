@@ -168,7 +168,7 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
     # add labels and show legend
     fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, legend=not rm_legend)
 
-def plot_relative_error(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], rm_legend=False):
+def plot_relative_error(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], rm_legend=True):
     moment_idx = 0 if balance_type == 'particle' else 2
     symbol = 'N' if balance_type == 'particle' else r'\mathcal{E}'
 
