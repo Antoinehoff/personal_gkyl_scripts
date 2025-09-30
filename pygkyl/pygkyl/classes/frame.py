@@ -289,7 +289,11 @@ class Frame:
         slicetitle = ''
         norm = self.simulation.normalization.dict
         for k_, c_ in self.slicecoords.items():
+            # to handle species wise phase space coordinates
             s = '' if k_ in ['x','y','z'] else file_utils.find_species(self.filenames[0])[0]
+            # skip y in 2x2v since we always slice at y=0
+            if self.simulation.dimensionality == '2x2v' and k_ == 'y':
+                continue
             if isinstance(c_, float):
                 fmt = fig_tools.optimize_str_format(c_)
                 slicetitle += norm[k_+s+'symbol'] + '=' + fmt%c_ + norm[k_+s+'units'] + ', '
@@ -364,17 +368,15 @@ class Frame:
         """
         ccoord = [ccoord] if not isinstance(ccoord, list) else ccoord
         axs_short = axs.replace('vpar','v').replace('mu','m')
-        
-        if self.simulation.dimensionality == '2x2v':
-            if len(axs) + len(ccoord) == self.ndims: ccoord.insert(1, 0.0)
             
         if axs in ['fluxsurf','phitheta', 'fs']:
             self.flux_surface_projection(xcut=ccoord[0])
         else:
+            if self.simulation.dimensionality == '2x2v':
+                if len(axs_short) + len(ccoord) == self.ndims: ccoord.insert(1, 0.0)
             ax_to_cut = 'xyz' if self.dimensionality == 3 else 'xyzvm'
             if not axs == 'scalar':
                 for i_ in range(len(axs_short)): ax_to_cut = ax_to_cut.replace(axs_short[i_], '')
-            
             # check if the ccoord is consistent with the number of axes to cut
             if len(ccoord) != len(ax_to_cut):
                 raise ValueError(f"Number of cut coordinates {len(ccoord)} does not match number of axes to cut {len(ax_to_cut)}")    
