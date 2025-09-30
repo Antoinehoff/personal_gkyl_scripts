@@ -70,6 +70,8 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
     
     if colorscale == 'log':
         norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
+        # set negative values to nan
+        z[z <= 0] = np.nan
     else:
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
         

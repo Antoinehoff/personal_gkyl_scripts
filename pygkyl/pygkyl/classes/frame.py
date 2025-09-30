@@ -189,6 +189,11 @@ class Frame:
             mesh.append(np.multiply(0.5,gridsN[i][0:nNodes-1]+gridsN[i][1:nNodes]))
         self.cgrids = [m for m in mesh]
         self.grids = [g for g in pgkyl_.get_grid(Gdata) if len(g) > 2]
+        # Remove almost 0 grid points
+        for i in range(len(self.grids)):
+            vmax = np.max(np.abs(self.grids[i]))
+            mask = np.abs(self.grids[i]) < 1e-12*vmax
+            self.grids[i][mask] = 0.0
         self.cells = Gdata.ctx['cells']
         self.ndims = len(self.cells)
         self.dim_idx = list(range(self.ndims))
@@ -238,7 +243,7 @@ class Frame:
         self.dim_idx = [d_ for d_ in range(self.dimensionality) if d_ not in self.sliceddim]
         for idx in self.dim_idx:
             Ngidx = len(self.grids[idx])
-            self.new_grids.append(mt.create_uniform_array(self.grids[idx], Ngidx - 1))
+            self.new_grids.append(mt.adapt_size(self.grids[idx], Ngidx - 1))
             self.new_gnames.append(self.gnames[idx])
             self.new_gsymbols.append(self.gsymbols[idx])
             self.new_gunits.append(self.gunits[idx])
@@ -492,7 +497,7 @@ class Frame:
         kymin = 2 * np.pi / Ly
         kymax = Nky * 2 * np.pi / Ly
         ky =  np.linspace(kymin, kymax, Nky)
-        ky = mt.create_uniform_array(ky, Nky + 1)
+        ky = mt.adapt_size(ky, Nky + 1)
         ky = ky[1:]
         fft_ky = fft_ky[:, 1:, :] # remove the zero frequency component
 

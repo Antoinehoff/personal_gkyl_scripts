@@ -72,13 +72,16 @@ def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
             if ((simulation.data_param.field_info_dict[field + 'colormap'] == 'bwr' or cmap0 == 'bwr' or len(fluctuation) > 0)
                 and not fourier_y):
                 cmap = 'bwr'
-                vmax = np.max(np.abs(values))
+                vmax = np.nanmax(np.abs(values))
                 vmin = -vmax
             else:
                 cmap = cmap0
-                vmax = np.max(np.abs(values))
+                vmax = np.nanmax(np.abs(values))
                 vmin = 0.0
             if cs == 'log' or fourier_y:
+                # set to nan negative values
+                values[values <= 0] = np.nan
+                vmax = np.nanmax(values)
                 # For log scale, clip values and set vmin > 0
                 vmin = np.power(10, np.log10(vmax) - 4) if vmax > 0 else 1e-10
                 values = np.clip(values, vmin, None)
@@ -197,14 +200,17 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             # frame.slice(cut_dir, cut_coord)
             plot_data = frame.values
         
+        if colorscale == 'log':
+            plot_data[plot_data <= 0] = np.nan  # Set negative values to nan for log scale
+            
         if (fluctuation) :
             cmap = 'bwr' if not cmap else cmap
-            vmax = np.max(np.abs(plot_data)) if not clim[kf] else clim[kf][1]
+            vmax = np.nanmax(np.abs(plot_data)) if not clim[kf] else clim[kf][1]
             vmin = -vmax if not clim[kf] else clim[kf][0]
         else:
             cmap = simulation.data_param.field_info_dict[field+'colormap'] if not cmap else cmap
-            vmax = np.max(plot_data) if not clim[kf] else clim[kf][1]
-            vmin = np.min(plot_data) if not clim[kf] else clim[kf][0]
+            vmax = np.nanmax(plot_data) if not clim[kf] else clim[kf][1]
+            vmin = np.nanmin(plot_data) if not clim[kf] else clim[kf][0]
 
         if fourier_y:
             vmin  = np.power(10,np.log10(vmax)-3)
@@ -227,6 +233,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         if "relative" in fluctuation :
             lbl = re.sub(r'\(.*?\)', '', lbl)
             lbl = lbl + ' (\%)'
+            
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
                           cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
                           xlabel=xlabel, ylabel=ylabel, 
