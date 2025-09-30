@@ -365,12 +365,20 @@ class Frame:
         ccoord = [ccoord] if not isinstance(ccoord, list) else ccoord
         axs_short = axs.replace('vpar','v').replace('mu','m')
         
+        if self.simulation.dimensionality == '2x2v':
+            if len(axs) + len(ccoord) == self.ndims: ccoord.insert(1, 0.0)
+            
         if axs in ['fluxsurf','phitheta', 'fs']:
             self.flux_surface_projection(xcut=ccoord[0])
         else:
             ax_to_cut = 'xyz' if self.dimensionality == 3 else 'xyzvm'
             if not axs == 'scalar':
                 for i_ in range(len(axs_short)): ax_to_cut = ax_to_cut.replace(axs_short[i_], '')
+            
+            # check if the ccoord is consistent with the number of axes to cut
+            if len(ccoord) != len(ax_to_cut):
+                raise ValueError(f"Number of cut coordinates {len(ccoord)} does not match number of axes to cut {len(ax_to_cut)}")    
+            
             for i_ in range(len(ax_to_cut)):
                 direction = ax_to_cut[i_].replace('v','vpar').replace('m','mu')
                 self.select_slice(direction=direction, cut=ccoord[i_])

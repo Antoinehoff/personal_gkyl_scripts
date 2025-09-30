@@ -33,8 +33,8 @@ def get_dg_and_gdata(filename:str, polyorder=1, polytype='ms'):
     return dg, Gdata
 
 def get_values(Gdata):
-    # handle 2D and 3D data differently
-    if Gdata.get_values().ndim == 3 :
+    # Extend dimension for 2D and 4D data. Pygkyl considers everythin as 3D or 5D
+    if Gdata.get_values().ndim in [3, 5]:
         values = np.expand_dims(Gdata.get_values(), axis=1)
         return np.concatenate((values, values), axis=1)
     else:
@@ -51,16 +51,22 @@ def interpolate(Gdata,comp,polyorder=1, polytype='ms'):
     
 def get_grid(Gdata):
     values = Gdata.get_grid()        
-    if len(values) >= 3 :
+    if len(values) == 5 :
+        return values
+    elif len(values) == 4 :
+        return [values[0], np.array([0, 1/3, 2/3]), values[1], values[2], values[3]]
+    elif len(values) == 3 :
         return values
     elif len(values) == 2 :
         return [values[0], np.array([0, 1/3, 2/3]), values[1]]
     
 def get_cells(Gdata):
     cells = Gdata.ctx['cells']
-    if len(cells) >= 3 :   
+    if len(cells) in [3,5]:
         return cells
-    else :        
+    elif len(cells) == 4:
+        return [cells[0], 2, cells[1], cells[2], cells[3]]
+    elif len(cells) == 2:
         cells = [cells[0], 2, cells[1]]
         return cells
 
