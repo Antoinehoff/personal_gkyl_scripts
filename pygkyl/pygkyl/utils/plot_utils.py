@@ -24,6 +24,7 @@ from ..tools import fig_tools
 from ..utils import data_utils
 from ..classes import Frame, IntegratedMoment, TimeSerie
 from ..projections import PoloidalProjection, FluxSurfProjection
+from ..interfaces import pgkyl_interface as pg_int
 
 # other commonly used libs
 import numpy as np
@@ -834,3 +835,44 @@ def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, sho
         
     fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
                             title=title_, legend=legend, xlim=xlim, ylim=ylim)
+    
+
+def plot_adapt_src_data(simulation, figout=[], xlim=[], ylim=[], subsrc_labels=[]):
+    elc_src_part_filename = simulation.data_param.fileprefix+'-elc_adapt_sources_particle.gkyl'
+    elc_src_temp_filename = simulation.data_param.fileprefix+'-elc_adapt_sources_temperature.gkyl'
+    ion_src_part_filename = simulation.data_param.fileprefix+'-ion_adapt_sources_particle.gkyl'
+    ion_src_temp_filename = simulation.data_param.fileprefix+'-ion_adapt_sources_temperature.gkyl'
+    files = [elc_src_part_filename, elc_src_temp_filename,
+             ion_src_part_filename, ion_src_temp_filename]
+    for f in files:
+        if not os.path.isfile(f):
+            raise FileNotFoundError(f"Required file '{f}' not found.")
+        
+    ylabels = [r'$\Gamma_{src,e}$ [1/s]', r'$T_{src,e}$ [eV]', r'$\Gamma_{src,i}$ [1/s]', r'$T_{src,i}$ [eV]']
+    scale = [1.0, 1./1.609e-19, 1.0, 1./1.609e-19]
+    tscale = simulation.normalization.dict['tscale']
+
+    data = []
+    time = []
+    for f in files:
+        Gdata = pg_int.get_gkyl_data(f)
+        data.append(np.squeeze(pg_int.get_values(Gdata)))
+        time.append(np.squeeze(Gdata.get_grid()))
+        
+    # Create a 2x2 subplot
+    fig, axs = plt.subplots(2, 2, figsize=(2*fig_tools.default_figsz[0], 2*fig_tools.default_figsz[1]))
+    axs = axs.flatten()
+    
+    nsubsources = data[0].shape[1]
+    if not len(subsrc_labels) == nsubsources:
+        subsrc_labels = [r'$S^{%d}$' % (i+1) for i in range(nsubsources)]
+    
+    for i in range(4):
+        ax = axs[i]
+        for j in range(nsubsources):
+            ax.plot(time[i]*tscale, data[i][:,j]*scale[i], label=subsrc_labels[j])
+        # ax.set_ylabel(ylabels[i])
+        # ax.set_xlabel(simulation.normalization.dict['tunits'])
+        
+        fig_tools.finalize_plot(ax, fig, xlabel=simulation.normalization.dict['tunits'], 
+                                ylabel=ylabels[i], figout=[], xlim=xlim, ylim=ylim, legend=True)
