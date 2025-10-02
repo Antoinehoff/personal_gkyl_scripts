@@ -849,7 +849,7 @@ def plot_adapt_src_data(simulation, figout=[], xlim=[], ylim=[], subsrc_labels=[
             raise FileNotFoundError(f"Required file '{f}' not found.")
         
     ylabels = [r'$\Gamma_{src,e}$ [1/s]', r'$T_{src,e}$ [eV]', r'$\Gamma_{src,i}$ [1/s]', r'$T_{src,i}$ [eV]']
-    scale = [1.0, 1./1.609e-19, 1.0, 1./1.609e-19]
+    scale = [1.0, 1.609e-19, 1.0, 1.609e-19]
     tscale = simulation.normalization.dict['tscale']
 
     data = []
@@ -870,7 +870,7 @@ def plot_adapt_src_data(simulation, figout=[], xlim=[], ylim=[], subsrc_labels=[
     for i in range(4):
         ax = axs[i]
         for j in range(nsubsources):
-            ax.plot(time[i]*tscale, data[i][:,j]*scale[i], label=subsrc_labels[j])
+            ax.plot(time[i]/tscale, data[i][:,j]/scale[i], label=subsrc_labels[j])
         # ax.set_ylabel(ylabels[i])
         # ax.set_xlabel(simulation.normalization.dict['tunits'])
         
