@@ -169,7 +169,8 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
     # add labels and show legend
     fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, legend=not rm_legend)
 
-def plot_relative_error(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], rm_legend=True):
+def plot_relative_error(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
+                        rm_legend=True, data =[], show_plot=True):
     moment_idx = 0 if balance_type == 'particle' else 2
     symbol = 'N' if balance_type == 'particle' else r'\mathcal{E}'
 
@@ -210,6 +211,11 @@ def plot_relative_error(simulation, balance_type='particle', species=['elc', 'io
     ax.set_xlim(time_fdot[0], time_fdot[-1])
     setTickFontSize(ax, tickFontSize)
 
-    # add labels and show legend
-    fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, legend=not rm_legend)
-
+    if show_plot:
+        # add labels and show legend
+        fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, legend=not rm_legend)
+    else:
+        plt.close(fig)
+    
+    data.append(time_dt)
+    data.append(np.abs(mom_err_norm))
