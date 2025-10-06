@@ -154,7 +154,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
 def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
                 fieldnames='', cmap=None, time_average=False, fluctuation='', plot_type='pcolormesh',
                 xlim=[], ylim=[], clim=[], colorscale = 'linear', show_title=True,
-                figout=[],cutout=[], val_out=[], frames_to_plot = None):
+                figout=[],cutout=[], val_out=[], frames_to_plot = None, cmap_period=1):
     if isinstance(fluctuation,bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(time_frame, int): time_frame = [time_frame]
     if isinstance(fieldnames, str): fieldnames = [fieldnames]
@@ -237,7 +237,7 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
             
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
                           cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
-                          xlabel=xlabel, ylabel=ylabel, 
+                          xlabel=xlabel, ylabel=ylabel, cmap_period=cmap_period,
                           colorscale=colorscale, clabel=lbl, title=frame.fulltitle if show_title else '', 
                           vmin=vmin, vmax=vmax, plot_type=plot_type)
         kf += 1 # field counter
@@ -477,7 +477,7 @@ def plot_GB_loss(simulation, twindow, losstype = 'particle', integrate = False, 
         if not integrate: ylabel = ylabel+'/s'
         fig_tools.finalize_plot(ax, fig, xlabel=r'$t$ ($\mu$s)', ylabel=ylabel, figout=figout, legend=True)
 
-def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,figout=[],twindow=[]):
+def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,figout=[],twindow=[],data=[]):
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
@@ -494,6 +494,7 @@ def plot_integrated_moment(simulation,fieldnames,xlim=[],ylim=[],ddt=False,figou
                 int_mom.values = int_mom.values[it0:it1]
             # Plot
             ax.plot(int_mom.time,int_mom.values,label=int_mom.symbol)
+            data.append((int_mom.time,int_mom.values))
         # add labels and show legend
         fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, 
                                 xlim=xlim, ylim=ylim, legend=True)
@@ -726,7 +727,7 @@ def plot_nodes(simulation):
     plt.show()
 
 def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,
-                 volfrac_scaled=True, show_avg=True):
+                 volfrac_scaled=True, show_avg=True, show_plot=True):
     from scipy.ndimage import gaussian_filter1d    
     def get_int_mom_data(simulation, fieldname):
         try:
@@ -779,9 +780,12 @@ def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim
         ylabel = r'$%s_{\text{src}} - %s_{\text{loss}} - \partial %s / \partial t$'%(symbol_src, symbol_src, symbol_mom)
         ylabel += ' [%s]' % vunits if vunits else ''
     title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
-        
-    fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
-                            title=title_, legend=legend, xlim=xlim, ylim=ylim)
+    
+    if show_plot:
+        fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
+                                title=title_, legend=legend, xlim=xlim, ylim=ylim)
+    else:
+        plt.close(fig)
     
 def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, show_avg=True,
               title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,
@@ -797,8 +801,8 @@ def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, sho
         raise ValueError("Invalid losstype. Choose 'particle' or 'energy'.")
     
     walls = walls if walls else ['x_u','z_l','z_u']
-    wall_labels = {'x_l': r'\text{core}', 'x_u': r'\text{wall}', 'z_l': r'\text{lim,low}', 'z_u': r'\text{lim,up}'}
-    symbol = '\Gamma' if losstype == 'particle' else 'P'
+    wall_labels = {'x_l': r'{core}', 'x_u': r'{wall}', 'z_l': r'{lim,low}', 'z_u': r'{lim,up}'}
+    symbol = r'\Gamma' if losstype == 'particle' else 'P'
     
     losses = []
     for wall in walls:
