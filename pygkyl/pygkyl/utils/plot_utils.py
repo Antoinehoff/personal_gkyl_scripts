@@ -45,7 +45,7 @@ def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
                            twindow=[], space_time=False, cmap='inferno',
                            fluctuation='', plot_type='pcolormesh', yscale='linear',
                            xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
-                           show_title=True):
+                           show_title=True, cmap_period=1):
     if not isinstance(twindow, list): twindow = [twindow]
     if clim: clim = [clim] if not isinstance(clim[0], list) else clim
     cmap0 = cmap
@@ -90,7 +90,8 @@ def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
             fig = fig_tools.plot_2D(
                 fig, ax, x=x, y=t, z=values, xlim=xlim, ylim=ylim, clim=clim_,
                 xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
-                cmap=cmap, vmin=vmin, vmax=vmax, colorscale=cs, plot_type=plot_type
+                cmap=cmap, vmin=vmin, vmax=vmax, colorscale=cs, plot_type=plot_type,
+                cmap_period=cmap_period
             )
             figout.append(fig)
         else:
