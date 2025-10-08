@@ -1,3 +1,4 @@
+import attr
 import h5py
 import numpy as np
 import os
@@ -46,38 +47,44 @@ class GyrazeNumparams:
         self.max_it = 1000
         self.init_grid = 1.0
         self.sys_siz = 25.0
-        self.gridsize_mp = 0.4
-        self.gridsize_ds = 0.15
+        self.gridsize_mp = 0.35
+        self.gridsize_ds = 0.125
         self.maxmu = 8.0
         self.maxvpar = 7.0
         self.maxvpar_i = 5.0
-        self.dmu = 0.3
+        self.dmu = 0.2
         self.dvpar = 0.1
         self.dvpar_i = 0.2
         self.smallgamma = 0.1999
         self.tol_mp0 = 0.001
         self.tol_mp1 = 0.005
-        self.tol_ds0 = 0.005
-        self.tol_ds1 = 0.02
+        self.tol_ds0 = 0.01
+        self.tol_ds1 = 0.03
         self.tol_j = 0.005
         self.weight_mp = 0.3
-        self.weight_ds = 0.3
-        self.weight_j = 0.5
-        self.margin_mp = 0.03
-        self.margin_ds = 0.03
+        self.weight_ds = 1.0
+        self.weight_j = 0.2
+        self.margin_mp = 0.04
+        self.margin_ds = 0.04
         self.zoom_mp = 3
         self.zoom_ds = 1
 
 class GyrazeAttribute:
     '''Class to hold a single Gyraze attribute, providing methods to load and evaluate it.'''
-    def __init__(self, fieldname, label, units, manual=False):
+    def __init__(self, fieldname, label, units, vmin=None, vmax=None, manual=False):
         self.fieldname = fieldname
         self.label = label
         self.units = units
+        self.vmin = vmin
+        self.vmax = vmax
         self.manual = manual
         self.frame = None
         self.v0 = None
         self.tf = None
+        
+        self.check_lims = self.check_lims_disabled
+        self.check_lims_upper = self.check_lims_disabled
+        self.check_lims_lower = self.check_lims_disabled
         
         if fieldname in ['fe', 'fi']:
             self.eval = self.eval5d
@@ -85,6 +92,7 @@ class GyrazeAttribute:
         else:
             self.eval = self.eval3d
             self.filter_negativity = self.filter_negativity_disabled
+            self.check_lims = self.check_lims_active
             
         if manual:
             self.filter_negativity = self.filter_negativity_disabled
@@ -103,18 +111,44 @@ class GyrazeAttribute:
     def eval5d(self, x, y, z):
         self.v0 = self.frame.get_value([x, y, z, 'all', 'all'])
         
+    def set_vlim(self, value, which='min'):
+        self.check_lims = self.check_lims_active
+        if which=='max':
+            self.vmax = value
+            self.check_lims_upper = self.check_lims_upper_active
+        elif which=='min':
+            self.vmin = value
+            self.check_lims_lower = self.check_lims_lower_active
+        
     def check_negativity(self):
         if self.fieldname in ['Te', 'Ti', 'ne', 'ni']:
             if np.any(self.v0 < 0):
                 return True
         return False
     
+    def check_lims_disabled(self):
+        return False
+    
+    def check_lims_active(self):
+        if self.check_lims_upper() or self.check_lims_lower():
+            return True
+        return False
+    
+    def check_lims_upper_active(self):
+        if np.any(self.v0 > self.vmax):
+            return True
+        return False
+
+    def check_lims_lower_active(self):
+        if np.any(self.v0 < self.vmin):
+            return True
+        return False
+
     def filter_negativity_active(self):
         self.v0[self.v0 < 0] = 0.0
         
     def filter_negativity_disabled(self):
         pass
-                
 
 class GyrazeDataset:
     '''Class to hold all required Gyraze data and metadata about a single simulation timestep.'''
@@ -191,9 +225,11 @@ class GyrazeDataset:
         self.attributes['fe_norm'].v0 = self.attributes['fe'].v0 #/ self.attributes['Fe'].v0
         self.attributes['fi_norm'].v0 = self.attributes['fi'].v0 #/ self.attributes['Fi'].v0
 
-    def check_negativity(self):
+    def filter(self):
         for attr in self.attributes.values():
             if attr.check_negativity():
+                return True
+            if attr.check_lims():
                 return True
         return False
     
@@ -280,7 +316,7 @@ class GyrazeInterface:
     def eval_frames(self, x, y, z):
         self.dataset.eval(x, y, z)
 
-        if self.dataset.check_negativity():
+        if self.dataset.filter():
             self.skip_point = True
             return
         
@@ -329,13 +365,15 @@ class GyrazeInterface:
     def generate_input_physparams_content(self):
         content = (
             '#set type_distfunc_entrance (= ADHOC or other string)\n'
-            'GKEYLL\n'
+            'GKEYLL data v0.1\n'
             '#set alphadeg\n'
             f'{self.alphadeg}\n'
-            '#set gamma_ref (keep zero to solve only magnetic presheath)\n'
+            '#set gammaflag\n'
+            '0\n'
+            '#set gamma_ref\n'
             f"{self.dataset.attributes['gamma'].v0}\n"
             '#set nspec\n'
-            f'{self.nspec}\n'
+            f'{self.nspec-1}\n'
             '#set nioverne\n'
             f"{self.dataset.attributes['nioverne'].v0}\n"
             '#set TioverTe\n'
@@ -345,7 +383,7 @@ class GyrazeInterface:
             '#set set_current (flag)\n'
             '0\n'
             '#set target_current or phi_wall\n'
-            f"{self.dataset.attributes['phi_norm'].v0}"
+            f"{self.dataset.attributes['phi_norm'].v0}\n"
         )
         return content
     
@@ -367,7 +405,7 @@ class GyrazeInterface:
             '#set MARGIN_MP MARGIN_DS\n'
             f'{self.numparams.margin_mp} {self.numparams.margin_ds}\n'
             '#set ZOOM_MP ZOOM_DS\n'
-            f'{self.numparams.zoom_mp} {self.numparams.zoom_ds}'
+            f'{self.numparams.zoom_mp} {self.numparams.zoom_ds}\n'
         )
         return content
     
@@ -415,10 +453,15 @@ class GyrazeInterface:
                 grp.attrs[attr_name + ext0] = attr.v0
 
     def generate(self, time_frames: Optional[Union[List[int], int]] = None, 
-                 xmin: Optional[float] = None, xmax: Optional[float] = None, 
-                 Nxsample: Optional[int] = None, Nysample: Optional[int] = None, 
+                 xmin: Optional[float] = None, 
+                 xmax: Optional[float] = None, 
+                 Nxsample: Optional[int] = None, 
+                 Nysample: Optional[int] = None, 
                  alphadeg: Optional[float] = None, 
-                 zplane: Optional[str] = None, verbose: bool = False):
+                 zplane: Optional[str] = None, 
+                 filter_negativity: Optional[bool] = None,
+                 lim_dict: Optional[dict] = None,
+                 verbose: bool = False,):
         '''
         Main interface function to generate Gyraze input data files from Gkeyll simulation data.
         Parameters:
@@ -437,6 +480,12 @@ class GyrazeInterface:
             Angle in degrees between magnetic field and wall normal. If None, use 0.3.
         zplane : str, optional
             Which z-plane to sample. If None, both upper and lower side of the limiter. Options: 'upper', 'lower', 'both'.
+        filter_negativity : bool, optional
+            Filter negative values in the distribution functions and put them to zero.
+            If provided, override the instance's filter_negativity setting.
+        lim_dict : dict, optional
+            Dictionary specifying limits for filtering points.
+            E.g., provided as {'phi': {'min': float, 'max': float}}, skip points where phi0 is outside this range.
         verbose : bool
             If True, print detailed information during processing.
         '''
@@ -448,7 +497,15 @@ class GyrazeInterface:
         Nysample = Nysample if Nysample is not None else self.NySOL
         self.alphadeg = alphadeg if alphadeg is not None else self.alphadeg
         zplane = zplane if zplane is not None else 'both'
+        
+        if filter_negativity is not None:
+            self.filter_negativity = filter_negativity
             
+        if lim_dict is not None:
+            for key in lim_dict.keys():
+                for which, value in lim_dict[key].items():
+                    self.dataset.attributes[key].set_vlim(value, which)
+
         if verbose: 
             print(f'Generating Gyraze input data for alphadeg={self.alphadeg}, time frames={time_frames}, x=[{xmin},{xmax}], Nx={Nxsample}, Ny={Nysample}, zplane={zplane}')
             expected_num = len(time_frames) * Nxsample * Nysample * (2 if zplane=='both' else 1)
