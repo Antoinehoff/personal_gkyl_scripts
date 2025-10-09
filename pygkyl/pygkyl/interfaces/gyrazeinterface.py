@@ -903,7 +903,6 @@ class GyrazeInterface:
             
         if not os.path.exists(self.outfilename):
             print(f"ERROR: Output file {self.outfilename} not found")
-            return False
             
         try:
             with h5py.File(self.outfilename, 'r') as hf:
@@ -911,15 +910,13 @@ class GyrazeInterface:
                 print(f"Description: {hf.attrs.get('description', 'N/A')}")
                 nsample = hf.attrs.get('nsample', 0)
                 print(f"Number of datasets: {nsample}")
-                return True
                 
         except Exception as e:
             print(f"ERROR: Failed to load HDF5 file: {e}")
-            return False
 
     def plot_attribute_histograms(self, attributes: Optional[List[str]] = None, 
                                  bins: int = 25, figsize: tuple = (10, 10), 
-                                 save_fig: Optional[str] = None):
+                                 save_fig: Optional[str] = None, get_data_only = False):
         """
         Plot histograms of specified attributes from all datasets in the HDF5 file.
         
@@ -933,9 +930,11 @@ class GyrazeInterface:
             Figure size (width, height)
         save_fig : str, optional
             If provided, save figure to this filename
+        get_data_only : bool, optional
+            If True, only collect and return the data without plotting
         """
         if attributes is None:
-            attributes = ['B0','phi0','ni0','ne0','Ti0','Te0','gamma0','nioverne','TioverTe']
+            attributes = ['gamma0','nioverne','TioverTe','phi_norm0']
         
         if not os.path.exists(self.outfilename):
             print(f"ERROR: Output file {self.outfilename} not found")
@@ -961,6 +960,9 @@ class GyrazeInterface:
         n_attrs = len(data)
         n_cols = 3
         n_rows = (n_attrs + n_cols - 1) // n_cols
+        
+        if get_data_only:
+            return data
         
         fig, axes = plt.subplots(n_rows, n_cols, figsize=figsize)
         if n_rows == 1:
@@ -1005,7 +1007,7 @@ class GyrazeInterface:
     def plot_attribute_scatter(self, attr_x: str, attr_y: str, 
                               figsize: tuple = (8, 6), save_fig: Optional[str] = None, 
                               color_by: Optional[str] = None, colormap: str = 'viridis', 
-                              fxy: Optional[callable] = None, **kwargs):
+                              fxy: Optional[callable] = None, get_data_only = False, **kwargs):
         """
         Create a scatter plot of two attributes with optional color coding and fit line.
         This method generates a scatter plot comparing two attributes from the collected data.
@@ -1026,6 +1028,8 @@ class GyrazeInterface:
         fxy : callable, optional
             Function y = f(x) to plot as a line overlay. Should accept numpy array
             of x values and return corresponding y values. Default is None.
+        get_data_only : bool, optional
+            If True, only collects and returns the data arrays without plotting.
         **kwargs : dict
             Additional keyword arguments passed to matplotlib's scatter function.
             Common options include 'alpha', 's' (size), 'marker', etc.
@@ -1087,6 +1091,9 @@ class GyrazeInterface:
             print("ERROR: No valid data points found")
             return
         
+        if get_data_only:
+            return x_values, y_values
+        
         # Create scatter plot
         plt.figure(figsize=figsize)
         scatter_kwargs = {'alpha': 0.6, 's': 20}
@@ -1128,6 +1135,98 @@ class GyrazeInterface:
             print(f"Figure saved to {save_fig}")
         
         plt.show()
+        
+    def plot_data(self, **kwargs):
+        """
+        Create a matrix of scatter plots and histograms for key attributes.
+        This method generates a comprehensive matrix plot where the diagonal
+        contains histograms of individual attributes, and the lower triangle contains
+        scatter plots comparing pairs of attributes. The upper triangle is left blank.
+        Parameters
+        ----------
+        **kwargs : dict
+            Additional keyword arguments passed to matplotlib's scatter function
+            for the scatter plots. Common options include 'alpha', 's' (size), 'marker', etc.
+        Returns
+        -------
+        None
+            Displays the matrix plot.
+        Notes
+        -----
+        - Automatically removes NaN values from the data before plotting
+        - Displays statistics (N, mean, std) on histograms
+        - Includes grid lines with reduced opacity for better readability
+        - Uses tight layout for optimal spacing
+        Examples
+        --------
+        >>> interface.plot_data(alpha=0.5, s=15)
+        """
+        scatter_kwargs = {'alpha': 0.1, 's': 20}
+        scatter_kwargs.update(kwargs)   
+        attributes = ['gamma0','nioverne','TioverTe','phi_norm0']
+        nattr = len(attributes)
+        
+        hist_data = self.plot_attribute_histograms(attributes=attributes, get_data_only=True)
+        scatter_data = []
+        for i in range(nattr):
+            scatter_data.append([])
+            for j in range(nattr):
+                x_data, y_data = self.plot_attribute_scatter(attributes[j], attributes[i], get_data_only=True)
+                scatter_data[i].append((attributes[j], attributes[i], x_data, y_data))
+
+        ndiag = nattr
+        fig, axs = plt.subplots(ndiag, ndiag, figsize=(12, 10))
+
+        for k in range(ndiag):
+            for l in range(ndiag):
+                ax = axs[k, l]
+                
+                # Diagonal: histogram
+                if k == l:
+                    ax.hist(hist_data[attributes[k]], bins=25, alpha=0.7, edgecolor='black')
+                    ax.set_xlabel(self._get_attribute_label(attributes[k]))
+                    ax.set_ylabel('Count')
+                    ax.grid(True, alpha=0.3)
+                    # remove box around histogram
+                    for spine in ax.spines.values():
+                        spine.set_visible(False)
+                    ax.set_yticklabels([])
+                    ax.set_ylabel('')
+                    # Add statistics text
+                    values = hist_data[attributes[k]]
+                    stats_text = f'$N = {len(values)}$\n $\mu = {np.mean(values):.3e}$\n $\sigma = {np.std(values):.3e}$'
+                    ax.text(0.98, 0.98, stats_text, transform=ax.transAxes,
+                        verticalalignment='top', horizontalalignment='right', 
+                        bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
+                
+                # Lower triangle: scatter plot
+                elif k > l:
+                    x_attr, y_attr, x_data, y_data = scatter_data[k][l]
+                    sc = ax.scatter(x_data, y_data, **scatter_kwargs)
+                    ax.set_xlabel(self._get_attribute_label(x_attr))
+                    ax.set_ylabel(self._get_attribute_label(y_attr))
+                    ax.grid(True, alpha=0.3)
+                    # remove upper and right box lines
+                    ax.spines['top'].set_visible(False)
+                    ax.spines['right'].set_visible(False)
+                else:
+                    ax.axis('off')
+                    
+                # remove xtick labels for non-bottom plots
+                if k < ndiag - 1:
+                    ax.set_xticklabels([])
+                    ax.set_xlabel('')
+                # remove ytick labels for non-leftmost plots
+                if l > 0:
+                    ax.set_yticklabels([])
+                    ax.set_ylabel('')
+                    
+                # Remove grid lines for clarity
+                ax.grid(False)
+                # remove the little ticks on the axes
+                ax.tick_params(axis='both', which='both', length=0)
+
+        fig.tight_layout()
 
     def _get_attribute_label(self, attr_name):
         labels = {
