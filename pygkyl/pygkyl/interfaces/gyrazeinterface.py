@@ -369,7 +369,7 @@ class GyrazeInterface:
             '#set alphadeg\n'
             f'{self.alphadeg}\n'
             '#set gammaflag\n'
-            '0\n'
+            '1\n'
             '#set gamma_ref\n'
             f"{self.dataset.attributes['gamma'].v0}\n"
             '#set nspec\n'
