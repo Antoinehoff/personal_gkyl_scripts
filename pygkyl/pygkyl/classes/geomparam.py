@@ -34,7 +34,7 @@ class GeomParam:
     """
     def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B_axis=1.4, x_out = 0.08,
                  a_shift=0.0, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile_R='default', 
-                 qfit = []):
+                 qfit = [], cdim = 3):
         self.B_axis     = B_axis
         self.R_axis     = R_axis
         self.Z_axis     = Z_axis
@@ -48,6 +48,7 @@ class GeomParam:
         self.geom_type  = geom_type
         self.qprofile_R = qprofile_R
         self.qfit       = qfit
+        self.cdim       = cdim # configuration space dimension
         self.vol_frac   = None # Volume fraction
         self.tor_num    = None # Toroidal mode number
         
@@ -125,6 +126,10 @@ class GeomParam:
         self.bmag = pgkyl_.get_values(Gdata)
         self.bmag = self.bmag[:,:,:,0]
         
+        if self.bmag.shape[1] <= 2 and self.cdim == 3:
+            print("Warning: it seems that the sim data are 2x2v but the simulation class was initialized with '3x2v'.")
+            print("use simulation = pygkyl.simulation_configs.import_config( ...,  ..., ..., dimensionality='2x2v')")
+        
         #-- load grid
         self.grids = [0.5*(g[1:]+g[:-1]) for g in pgkyl_.get_grid(Gdata) if len(g) > 1]
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
@@ -160,8 +165,10 @@ class GeomParam:
         self.intJac   = np.trapz(J_z,self.z,axis=0)
         
         #-- add a volume fraction and toroidal mode number
-        self.vol_frac = 1.0/(2.*np.pi*self.r0/self.q0/self.Ly)
-        self.tor_num = 2.*np.pi*self.r0/self.q0/self.Ly
+        if self.cdim == 2:
+            self.vol_frac = 1.0/(2.*np.pi*self.R0)
+        elif self.cdim == 3:
+            self.vol_frac = self.q0 * self.Ly/(2.*np.pi*self.r0)
 
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field

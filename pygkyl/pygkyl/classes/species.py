@@ -1,6 +1,16 @@
 import numpy as np
 from ..tools import phys_tools
 
+# define a dictionary of color for different species
+species_colors = {
+    'elc': 'blue',
+    'ion': 'red',
+    'e-': 'blue',
+    'D+': 'green',
+    'T+': 'orange',
+    'W10+': 'brown',
+    'W45+': 'purple',
+}
 
 class Species:
     """Represents a plasma species with its physical properties."""
@@ -24,14 +34,16 @@ class Species:
         self.n0      = n0     # reference density in m^-3
         self.vt      = phys_tools.thermal_vel(T0,m)  # Thermal velocity vth = sqrt(T0/m)
         self.omega_p = phys_tools.plasma_frequency(n0, q, m)  # Plasma frequency
+        self.color   = species_colors.get(self.name, 'black')
         
         
         self.omega_c = None # Cyclotron frequency
         self.rho     = None # Larmor radius
         self.mu0     = None # Magnetic moment
         self.epsilon = None # Plasma permittivity
+        self.gyrate  = False # Flag indicating if gyromotion parameters are set
         
-        if Bref > 0.0:
+        if Bref > 0.0 and self.q != 0.0:
             self.set_gyromotion(Bref)
         
     def set_gyromotion(self, B):
@@ -47,6 +59,7 @@ class Species:
         self.rho = phys_tools.larmor_radius(self.q, self.m, self.T0, B)
         self.mu0 = self.T0 / B
         self.epsilon = phys_tools.plasma_permittivity(self.n0, self.q, self.rho, self.T0)
+        self.gyrate = True
 
     def info(self):
         """Display species information and related parameters"""
@@ -56,3 +69,8 @@ class Species:
         print(f"Initial Temperature (T0): {self.T0/phys_tools.eV:.3e} eV")
         print(f"Initial Density (n0): {self.n0:.3e} m^-3")
         print(f"Thermal Velocity (vth): {self.vt:.3e} m/s")
+        if self.gyrate:
+            print(f"Cyclotron Frequency (omega_c): {self.omega_c:.3e} rad/s")
+            print(f"Larmor Radius (rho): {self.rho:.3e} m")
+            print(f"Magnetic Moment (mu0): {self.mu0:.3e} J/T")
+            print(f"Permittivity (epsilon): {self.epsilon:.3e}")

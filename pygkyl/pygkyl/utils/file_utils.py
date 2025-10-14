@@ -25,6 +25,12 @@ def find_prefix(pattern, path):
                 result.append(prefix)
     return result
 
+def find_species(filename):
+    # retrieve the file prefix by removing from the end to the last hifen
+    prefix = filename[:filename.rfind('-')]
+    # find the species name, which is the three letters after the last hifen
+    species = filename[filename.rfind('-')+1:filename.rfind('-')+4]
+    return species
 
 def find_available_frames(simulation,dataname='field'):
     if simulation.code == 'gyacomo':

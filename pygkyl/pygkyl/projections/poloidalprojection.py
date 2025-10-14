@@ -12,6 +12,8 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes, mark_inset
 from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes, mark_inset
 from matplotlib import ticker
 from matplotlib import colors
+import matplotlib.cm as cm
+import matplotlib.colors as mcolors
 
 from ..classes import Frame, TimeSerie, Simulation
 from ..tools import fig_tools, math_tools
@@ -91,16 +93,17 @@ class PoloidalProjection:
     self.dimsC = [np.size(meshC[i]) for i in range(self.ndim)]
     self.meshC = meshC
     del meshC
-      
+
+    radius = self.geom.R0
     if self.ndim == 3:
       self.LyC = self.meshC[1][-1] - self.meshC[1][0] # length in the y direction
       # Do we need to rescale the y length to fill the integer toroidal mode number ? not sure...
-      Ntor0 = 2*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC
+      Ntor0 = 2*np.pi * (radius / self.geom.q0) / self.LyC
       Ntor = max(1,int(np.round(Ntor0)))
-      self.LyC = 2*np.pi * (self.geom.r0 / self.geom.q0) / Ntor
+      self.LyC = 2*np.pi * (radius / self.geom.q0) / Ntor
       self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
     else:
-      self.LyC = 2.*np.pi*self.geom.r0/self.geom.q0
+      self.LyC = 2.*np.pi*radius/self.geom.q0
       
     # Minimal toroidal mode number (must be used in the toroidal rotation)
     self.n0 = 2*np.pi * self.geom.Cy/ self.LyC
@@ -327,7 +330,7 @@ class PoloidalProjection:
       if self.ixLCFS_C is None: icore_end = self.dimsC[0] # SOL only
       else: icore_end = self.ixLCFS_C
       xGridCore = self.meshC[0][:icore_end] # x grid on in the core region
-      torModNum = 2.*np.pi * (self.geom.r0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
+      torModNum = 2.*np.pi * (self.geom.R0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
       bcPhaseShift = 2.0*np.pi * torModNum*self.geom.qprofile_R(self.geom.R_x(xGridCore))
       n0 = 2*np.pi * self.geom.Cy/ self.LyC
       field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
@@ -384,7 +387,8 @@ class PoloidalProjection:
   
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False):
+           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False,
+           cmap_period = 1):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -482,6 +486,23 @@ class PoloidalProjection:
     pcm1 = ax1a[0].pcolormesh(self.RIntN, self.ZIntN, field_RZ, shading=shading,cmap=colorMap,
                               vmin=fldMin,vmax=fldMax)
     hpl1a.append(pcm1)
+    
+    # Handle periodic colormap
+    if cmap_period > 1:
+        # Create a periodic colormap by repeating the original colormap
+        original_cmap = cm.get_cmap(colorMap)
+        clrs = original_cmap(np.linspace(0, 1, 512))
+        # Create repeated colors with reversed alternate periods for continuity
+        repeated_colors = []
+        for i in range(cmap_period):
+            if i % 2 == 1:
+                repeated_colors.append(clrs[::-1])
+            else:
+                repeated_colors.append(clrs)  # Reverse for continuity
+        repeated_colors = np.vstack(repeated_colors)
+        # Create new colormap from repeated colors
+        periodic_cmap = mcolors.ListedColormap(repeated_colors)
+        pcm1.set_cmap(periodic_cmap)
 
     #fig1a.suptitle
     ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 

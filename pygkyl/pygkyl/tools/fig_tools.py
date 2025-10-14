@@ -64,12 +64,14 @@ def setup_figure(fieldnames):
     return fields,fig,axs
 
 def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
-            xlabel='', ylabel='', clabel='', title='',
+            xlabel='', ylabel='', clabel='', title='', cmap_period=1,
             cmap='viridis', colorscale='linear', plot_type='pcolormesh'):
     z = np.squeeze(z)
     
     if colorscale == 'log':
         norm = mcolors.LogNorm(vmin=vmin, vmax=vmax)
+        # set negative values to nan
+        z[z <= 0] = np.nan
     else:
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
         
@@ -85,6 +87,23 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
         im = ax.imshow(z, cmap=cmap, norm=norm, extent=[x[0], x[-1], y[0], y[-1]], origin='lower', interpolation='quadric')
         # adapt the aspect ratio
         ax.set_aspect('auto')
+    # Handle periodic colormap
+    if cmap_period > 1:
+        # Create a periodic colormap by repeating the original colormap
+        original_cmap = cm.get_cmap(cmap)
+        colors = original_cmap(np.linspace(0, 1, 512))
+        # Create repeated colors with reversed alternate periods for continuity
+        repeated_colors = []
+        for i in range(cmap_period):
+            if i % 2 == 1:
+                repeated_colors.append(colors[::-1])
+            else:
+                repeated_colors.append(colors)  # Reverse for continuity
+        repeated_colors = np.vstack(repeated_colors)
+        # Create new colormap from repeated colors
+        periodic_cmap = mcolors.ListedColormap(repeated_colors)
+        im.set_cmap(periodic_cmap)
+    
     cbar = fig.colorbar(im, ax=ax)
     finalize_plot(ax,fig,xlabel=xlabel,ylabel=ylabel,title=title,xlim=xlim,ylim=ylim,
                   cbar=cbar,clabel=clabel,clim=clim,pcm=im)

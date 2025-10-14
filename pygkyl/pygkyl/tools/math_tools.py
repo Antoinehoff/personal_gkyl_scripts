@@ -9,7 +9,7 @@ Functions:
 - integral_vol: Computes the volume integral over x, y, and z.
 - integral_surf: Computes the surface integral over x and y.
 - custom_meshgrid: Creates a custom meshgrid with natural orientation (x, y, z).
-- create_uniform_array: Creates a 1D array with uniform spacing.
+- adapt_size: Creates a 1D array with an adapted size, trying to keep the spacing.
 - closest_index: Finds the closest index in an array to a given value.
 - gradient: Computes the gradient of an array along a specified axis.
 
@@ -76,20 +76,18 @@ def custom_meshgrid(x,y,z=0):
         Y,X,Z = np.meshgrid(y,x,z)
         return [X,Y,Z]
     
-def create_uniform_array(a, N):
+def adapt_size(a, N):
     """
-    Create a 1D array of size N that goes from a[0] to a[-1] with uniform spacing.
-    
-    Parameters:
-    a (ndarray): Input 1D array.
-    N (int): Desired size of the output array.
-    
-    Returns:
-    b (ndarray): A 1D array of size N with uniform spacing from a[0] to a[-1].
+    Create a 1D array of size N that goes from a[0] to a[-1] trying to keep the spacing.
     """
-    # Generate a uniformly spaced array of size N between a[0] and a[-1]
-    b = np.linspace(a[0], a[-1], N)
-    return b
+    # fit a polynomial to the data
+    if len(a) < 2:
+        return np.array([a[0]]*N)
+    p = np.polyfit(np.arange(len(a)), a, deg=min(3,len(a)-1))
+    # create a new array with the same spacing
+    x_new = np.linspace(0, len(a)-1, N)
+    a_new = np.polyval(p, x_new)
+    return a_new
 
 def zkxky_to_xy_const_z(array, iz):
     # Get shape of the phi array

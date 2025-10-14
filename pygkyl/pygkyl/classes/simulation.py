@@ -56,6 +56,8 @@ class Simulation:
         self.flan = None
         self.flanframes = []
         self.gyac = None  # Gyacomo interface, if applicable
+        self.cdim = int(dimensionality[0])  # Configuration space dimension
+        self.ndim = int(dimensionality[0]) + int(dimensionality[2])  # Total dimension
 
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """
@@ -72,7 +74,8 @@ class Simulation:
             R_axis=R_axis, Z_axis=Z_axis, R_LCFSmid=R_LCFSmid, 
             a_shift=a_shift, kappa=kappa, delta=delta, 
             x_LCFS=x_LCFS, geom_type=geom_type, B_axis=B_axis,
-            x_out = x_out, qprofile_R=qprofile_R, qfit = qfit
+            x_out = x_out, qprofile_R=qprofile_R, qfit = qfit,
+            cdim = self.cdim
         )
 
     def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",

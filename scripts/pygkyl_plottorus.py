@@ -52,8 +52,12 @@ PARAMETERS:
 --cameras         Camera path for movie (sequence of 'global' or 'zoom_lower').
 --device_config   Set the device geometry.
 --off_screen      Use off-screen rendering (for non-GUI environments).
+--background_color Plot background color.
 --movie_type      Movie file type (e.g., mp4, gif).
 --logo_path       Path to the logo image (optional).
+--logo_position   Position of the logo (x y).
+--t0              Time offset for normalization.
+--font_size       Font size for additional text.
 --additional_text Additional text to display on the plot (optional).
 -h, --help        Show this help message and exit.
 
@@ -84,8 +88,12 @@ NOTES:
     parser.add_argument('--cameras', type=str, nargs='+', default=['global', 'global', 'zoom_lower', 'zoom_lower'], help='Camera path for movie')
     parser.add_argument('--device_config', type=str, choices=['tcv_nt','tcv_pt','d3d_nt','d3d_pt','sparc','nstxu'], default='tcv_nt', help='Set the device geometry.')
     parser.add_argument('--off_screen', type=str, default='False', choices=['True','False'], help='Use off-screen rendering (for non-GUI environments)')
+    parser.add_argument('--background_color', type=str, default='white', help='Plot background color.')
     parser.add_argument('--movie_type', type=str, default='gif', help='Movie file type (e.g., mp4, gif)')
     parser.add_argument('--logo_path', type=str, default='', help='Path to the logo image (optional)')
+    parser.add_argument('--logo_position', type=float, nargs=2, default=[0,0], help='Position of the logo (x y)')
+    parser.add_argument('--t0', type=float, default=0, help='Time offset for normalization')
+    parser.add_argument('--font_size', type=int, default=12, help='Font size for additional text')
     parser.add_argument('--additional_text', type=str, default=None, help='Aditional text to display')
     return parser.parse_args()
 
@@ -125,8 +133,10 @@ def main():
           camera_path.append(simulation.geom_param.camera_zoom_lower)
         elif camera == 'zoom_obmp':
           camera_path.append(simulation.geom_param.camera_zoom_obmp)
+        elif camera == 'poloidal':
+            camera_path.append(simulation.geom_param.camera_poloidal)
         else:
-            print(f"Invalid camera movement option: {camera}. Choose from 'global', 'zoom_lower'.")
+            print(f"Invalid camera movement option: {camera}. Choose from 'global', 'zoom_lower', 'poloidal'.")
             sys.exit(1)
             
     torproj = pygkyl.TorusProjection()
@@ -137,12 +147,15 @@ def main():
         torproj.additional_text = {
             'text': txt,
             'position': 'lower_right',
-            'font_size': 12,
+            'font_size': args.font_size,
             'name': 'title_text'
         }
     torproj.logo_path = args.logo_path
+    torproj.logo_position = tuple(args.logo_position)
     torproj.imgSize = tuple(args.img_size)
     torproj.off_screen = args.off_screen
+    torproj.background_color = args.background_color
+    torproj.t0 = args.t0
 
     if args.plot_type == 'snapshot':
         timeFrame = sim_frames[args.frame_idx]

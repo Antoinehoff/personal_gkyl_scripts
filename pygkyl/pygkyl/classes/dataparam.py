@@ -47,6 +47,10 @@ class DataParam:
         self.set_data_file_dict(checkfiles=checkfiles)
         self.default_mom_type = None
         self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
+        self.time_independent_fields = [
+            'b_x', 'b_y', 'b_z', 'Jacobian', 'Bmag', 
+            'g_xx', 'g_xy', 'g_xz', 'g_yy', 'g_yz', 'g_zz',
+            'gxx', 'gxy', 'gxz', 'gyy', 'gyz', 'gzz']
         
     def set_data_file_dict(self, checkfiles=True):
         '''
@@ -101,6 +105,15 @@ class DataParam:
         file_dict['phi'+'comp'] = 0
         file_dict['phi'+'gnames'] = gnames[0:3]
         
+        # add parallel component of the vector potential
+        file_dict['Apar'+'file'] = 'apar'
+        file_dict['Apar'+'comp'] = 0
+        file_dict['Apar'+'gnames'] = gnames[0:3]
+        # and its time derivative
+        file_dict['Apardot'+'file'] = 'apardot'
+        file_dict['Apardot'+'comp'] = 0
+        file_dict['Apardot'+'gnames'] = gnames[0:3]
+
         # flan interface
         file_dict['flan'+'file'] = 'flan'
         file_dict['flan'+'comp'] = 0
@@ -187,7 +200,10 @@ class DataParam:
                     k = 'src_'+keys[i]+shortname if add_source else keys[i]+shortname
                     file_dict[k+'file'] = prefix[i]
                     file_dict[k+'comp'] = comps[i]
-                    file_dict[k+'gnames'] = gnames[0:3]
+                    if keys[i] == 'f':
+                        file_dict[k+'gnames'] = gnames
+                    else:
+                        file_dict[k+'gnames'] = gnames[0:3]
                     
         # Store a list of all the different file names we may look for.
         file_dict['names'] = []
@@ -249,6 +265,8 @@ class DataParam:
             ['mu', r'$\mu$', 'J/T'],
             ['t', r'$t$', 's'],
             ['phi', r'$\phi$', 'V'],
+            ['Apar', r'$A_\parallel$', 'V s/m'],
+            ['Apardot', r'$\partial_t A_\parallel$', 'V/m'],
             ['b_x', r'$b_x$', ''],
             ['b_y', r'$b_y$', ''],
             ['b_z', r'$b_z$', ''],
@@ -270,6 +288,8 @@ class DataParam:
         # add routinely other quantities of interest
         for spec in species.values():
             s_ = spec.nshort
+            default_qttes.append(['vpar%s'%s_, r'$v_{\parallel %s}$'%s_, 'm/s'])
+            default_qttes.append(['mu%s'%s_, r'$\mu_%s$'%s_, 'J/T'])
             for add_source in [False, True]:
                 src_ = 'src_' if add_source else ''
                 S_ = 'S' if add_source else ''
@@ -351,8 +371,8 @@ class DataParam:
                 rotbj = receipe_nabla_b([gdata_list[j],gdata_list[k],gdata_list[-1]],i=j)
                 rotbk = receipe_nabla_b([gdata_list[k],gdata_list[i],gdata_list[-1]],i=k)
                 return -(bj*rotbk - bk*rotbj)
+            default_qttes.append([name,symbol,units,field2load,receipe_curv])
             
-
             # ExB velocity
             name       = 'ExB_v_%s'%(ci_)
             symbol     = r'$u_{E,%s}$'%(ci_)
@@ -584,6 +604,24 @@ class DataParam:
                 ndot = pgkyl_.get_values(gdata_list[2])
                 return 2/3 * Edot / ndot
             default_qttes.append([name,symbol,units,field2load,receipe_src_Ts])
+
+            # Larmor radius
+            name = 'rho%s'%(s_)
+            symbol = r'$\rho_{%s}$'%(s_)
+            units = r'm'
+            field2load = ['Tperp%s'%(s_),'Bmag']
+            def receipe_rhos(gdata_list,q=spec.q,m=spec.m):
+                """
+                Larmor radius: rho = sqrt(m Tperp) / (|q| B)
+                """
+                e = 1.602176634e-19
+                Tperp = pgkyl_.get_values(gdata_list[0]) * phys_tools.kB
+                Bmag = pgkyl_.get_values(gdata_list[1])
+                # remove unphysical values
+                Tperp[Tperp <= 0] = np.nan # avoid sqrt(negative
+                Bmag[Bmag <= 0] = np.nan # avoid div by 0
+                return np.sqrt(m * Tperp) / (np.abs(q) * Bmag)
+            default_qttes.append([name,symbol,units,field2load,receipe_rhos])
             
             for rpec in species.values():
                 r_ = rpec.nshort
@@ -779,6 +817,37 @@ class DataParam:
             return Ti*mi/(Te*me)
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
 
+        #Debye length (lambda_D = sqrt(e0 kB Te / (n_e e^2)))
+        name = 'lambdaD'
+        symbol = r'$\lambda_{D}$'
+        units = r'm'
+        field2load = ['ne','Tpare','Tperpe']
+        def receipe_lambdaD(gdata_list,species=species):
+            e = 1.602176634e-19
+            e0 = 8.854187817e-12
+            me = species['elc'].m
+            ne = pgkyl_.get_values(gdata_list[0])
+            Te = receipe_Ttots(gdata_list[1:3])
+            # remove unphysical values
+            Te[Te <= 0] = np.nan # avoid sqrt(negative
+            ne[ne <= 0] = np.nan # avoid div by 0
+            return np.sqrt(e0 * Te * phys_tools.kB / (ne * e**2))
+        default_qttes.append([name,symbol,units,field2load,receipe_lambdaD])
+        
+        #electron larmor radius to Debye length ratio
+        name = 'rhoe_lambdaD'
+        symbol = r'$\rho_{e}/\lambda_{D}$'
+        units = ''
+        field2load = ['ne','Bmag']
+        def receipe_rhoe_lambdaD(gdata_list,species=species):
+            me = species['elc'].m
+            eps0 = 8.854187817e-12
+            ne = pgkyl_.get_values(gdata_list[0])
+            ne[ne <= 0] = np.nan # avoid div by 0
+            Bmag = pgkyl_.get_values(gdata_list[1])
+            return np.sqrt(me*ne/eps0)/Bmag
+        default_qttes.append([name,symbol,units,field2load,receipe_rhoe_lambdaD])
+        
         #parallel current density
         name       = 'jpar'
         symbol     = r'$\sum_s j_{\parallel s}$'
@@ -1210,7 +1279,7 @@ class DataParam:
             default_units_dict[key+'receipe']  = receipe[key]
 
         # add default colormap for each fields
-        positive_fields = ['Bmag','pow_src',
+        positive_fields = ['Bmag','pow_src','rhoe_lambdaD',
                            'flan_imp_density','flan_imp_counts'] # spec. indep
         
         spec_dep_fields = ['M0','M2','M2par','M2perp',
@@ -1221,7 +1290,7 @@ class DataParam:
                            'src_n','src_T','src_Tpar','src_Tperp','src_p',
                            'src_BM_n','src_BM_Tpar','src_BM_Tperp',
                             'src_MM_n','src_MM_T','src_HM_n','src_HM_H',
-                           'f','src_f']
+                           'f','src_f','rho','lambdaD']
         for sdepfield in spec_dep_fields:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)
