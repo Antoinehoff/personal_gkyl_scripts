@@ -491,14 +491,14 @@ class PoloidalProjection:
     if cmap_period > 1:
         # Create a periodic colormap by repeating the original colormap
         original_cmap = cm.get_cmap(colorMap)
-        colors = original_cmap(np.linspace(0, 1, 512))
+        clrs = original_cmap(np.linspace(0, 1, 512))
         # Create repeated colors with reversed alternate periods for continuity
         repeated_colors = []
         for i in range(cmap_period):
             if i % 2 == 1:
-                repeated_colors.append(colors[::-1])
+                repeated_colors.append(clrs[::-1])
             else:
-                repeated_colors.append(colors)  # Reverse for continuity
+                repeated_colors.append(clrs)  # Reverse for continuity
         repeated_colors = np.vstack(repeated_colors)
         # Create new colormap from repeated colors
         periodic_cmap = mcolors.ListedColormap(repeated_colors)
