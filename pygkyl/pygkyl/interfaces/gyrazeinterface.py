@@ -558,13 +558,11 @@ class GyrazeInterface:
         """
         if not os.path.exists(self.outfilename):
             print(f"ERROR: Output file {self.outfilename} not found")
-            return False
             
         try:
             with h5py.File(self.outfilename, 'r') as hf:
                 if group_name not in hf:
                     print(f"ERROR: Group {group_name} not found in file")
-                    return False
                 
                 grp = hf[group_name]
                 
@@ -581,7 +579,7 @@ class GyrazeInterface:
                         filepath = os.path.join(output_dir, filename)
                         with open(filepath, 'w') as f:
                             f.write(content)
-                        print(f"Extracted {filepath}")
+                        print(f"Extracted {filepath} in ${output_dir}")
                     else:
                         print(f"WARNING: {filename} not found in group {group_name}")
                 
@@ -591,14 +589,10 @@ class GyrazeInterface:
                     f.write(f"Dataset: {group_name}\n")
                     for attr_name in grp.attrs:
                         f.write(f"{attr_name}: {grp.attrs[attr_name]}\n")
-                print(f"Extracted {metadata_file}")
-                
-                return True
-                
+                print(f"Extracted {metadata_file} in ${output_dir}")
+                                
         except Exception as e:
             print(f"ERROR: Failed to extract dataset: {e}")
-            return False
-
 
     def verify_h5_data(self, verbose=False, Nsamp=1):
         """
@@ -1138,11 +1132,7 @@ class GyrazeInterface:
         
     def plot_data(self, **kwargs):
         """
-        Create a matrix of scatter plots and histograms for key attributes.
-        This method generates a comprehensive matrix plot where the diagonal
-        contains histograms of individual attributes, and the lower triangle contains
-        scatter plots comparing pairs of attributes. The upper triangle is left blank.
-        Parameters
+        Create a matrix of scatter plots and histograms for the GYRAZE input attributes.
         ----------
         **kwargs : dict
             Additional keyword arguments passed to matplotlib's scatter function
@@ -1150,13 +1140,10 @@ class GyrazeInterface:
         Returns
         -------
         None
-            Displays the matrix plot.
+            Displays the plot matrix.
         Notes
         -----
         - Automatically removes NaN values from the data before plotting
-        - Displays statistics (N, mean, std) on histograms
-        - Includes grid lines with reduced opacity for better readability
-        - Uses tight layout for optimal spacing
         Examples
         --------
         >>> interface.plot_data(alpha=0.5, s=15)
