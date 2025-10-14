@@ -1135,6 +1135,13 @@ class DataParam:
         field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
+        # Guiding center approximation validity looking at characteristic
+        # time of electric field magnitude
+        name = 'flan_gca_validity_time_E'
+        symbol = r'$\tau_{E}$' + r' / $\tau_{imp}$'
+        units = r''
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
         dirs = ['x','y','z']
         Dirs = ['X','Y','Z']
         for i in range(3):
@@ -1172,10 +1179,17 @@ class DataParam:
             units = r'T/m'
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
-			# Cartesian impurity density gradients
+            # Cartesian impurity density gradients
             name = 'flan_imp_grad'+Dir+"_nz"
             symbol = r'$\nabla nz_{%s}$'%dir
             units = r'$m^{-3}$/m'
+            default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+            # Guiding center approximation validity looking at characteristic
+            # time of electric field
+            name = 'flan_gca_validity_time_E'+Dir
+            symbol = r'$\tau_{E{%s}}$'%dir + r' / $\tau_{imp}$'
+            units = r''
             default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
 
