@@ -105,6 +105,15 @@ class DataParam:
         file_dict['phi'+'comp'] = 0
         file_dict['phi'+'gnames'] = gnames[0:3]
         
+        # add parallel component of the vector potential
+        file_dict['Apar'+'file'] = 'apar'
+        file_dict['Apar'+'comp'] = 0
+        file_dict['Apar'+'gnames'] = gnames[0:3]
+        # and its time derivative
+        file_dict['Apardot'+'file'] = 'apardot'
+        file_dict['Apardot'+'comp'] = 0
+        file_dict['Apardot'+'gnames'] = gnames[0:3]
+
         # flan interface
         file_dict['flan'+'file'] = 'flan'
         file_dict['flan'+'comp'] = 0
@@ -256,6 +265,8 @@ class DataParam:
             ['mu', r'$\mu$', 'J/T'],
             ['t', r'$t$', 's'],
             ['phi', r'$\phi$', 'V'],
+            ['Apar', r'$A_\parallel$', 'V s/m'],
+            ['Apardot', r'$\partial_t A_\parallel$', 'V/m'],
             ['b_x', r'$b_x$', ''],
             ['b_y', r'$b_y$', ''],
             ['b_z', r'$b_z$', ''],
