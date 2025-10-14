@@ -168,7 +168,7 @@ class GeomParam:
         if self.cdim == 2:
             self.vol_frac = 1.0/(2.*np.pi*self.R0)
         elif self.cdim == 3:
-            self.vol_frac = 1.0/(2.*np.pi*self.r0/self.q0/self.Ly)
+            self.vol_frac = self.q0 * self.Ly/(2.*np.pi*self.r0)
 
     def compute_bxgradBoB2(self):
         # The gradient of B (i.e., grad B) is a vector field
