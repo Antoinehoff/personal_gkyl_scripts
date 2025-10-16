@@ -166,7 +166,7 @@ class GeomParam:
         
         #-- add a volume fraction and toroidal mode number
         if self.cdim == 2:
-            self.vol_frac = 1.0/(2.*np.pi*self.R0)
+            self.vol_frac = 1.0
         elif self.cdim == 3:
             self.vol_frac = self.q0 * self.Ly/(2.*np.pi*self.r0)
 
