@@ -587,46 +587,58 @@ def plot_sources_info(simulation,x_const=None,z_const=None,show_LCFS=False,profi
                                 title="Total power src", cbar=cbar, clabel=r"MW/m$^3$", legend=False)
 
 
-def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoord=[0.0,0.0], xlim=[], ylim=[],
+def plot_DG_representation(simulation, fieldname, sim_frame, cutdir, cutcoord, xlim=[], ylim=[],
                            show_cells=True, figout=[], derivative=False):
     """
-    Plot the DG representation of a field at a given time frame.
+    Plot the DG representation of a field along one direction at a given time frame.
     """
-    if derivative in ['x','y','z']:
-        id = 0 * (derivative == 'x') + 1 * (derivative == 'y') + 2 * (derivative == 'z')
-    else :
-        id = None
-
+    
+    # cut the data
     frame = Frame(simulation, fieldname,tf=sim_frame, load=True)
     frame.slice(cutdir, cutcoord)
     
+    # process the coordinates of the cut
+    slice_coord_map = ['x','y','z','vpar','mu']
+    if frame.ndims <= 3: # configuration space frame
+        slice_coord_map.remove('vpar')
+        slice_coord_map.remove('mu')
+    if frame.ndims in [2,4]: # axisymmetric frame
+        slice_coord_map.remove('y')
+        
+    if cutdir not in slice_coord_map:
+        raise Exception("Invalid cut direction, must be one of %s"%slice_coord_map)
+    
+    dir = slice_coord_map.index(cutdir)
+    slice_coord_map.remove(cutdir)
+
+    if derivative in ['x','y','z','vpar','mu']:
+        id = slice_coord_map.index(derivative)
+    else :
+        id = None
+    
     # get the coordinates of the slice
-    slice_coords = [c for c in frame.slicecoords.values()]
+    slice_coords = [frame.slicecoords[key] for key in slice_coord_map]
     field_DG = frame.get_DG_coeff()
-    
-    # get the index of the slice direction
-    dir = 0 * (cutdir == 'x') + 1 * (cutdir == 'y') + 2 * (cutdir == 'z')
-    slice_coord_map = 'xyz'.replace(cutdir,'')
-    
-    if cutdir == 'x':
-        def coord_swap(s,c0,c1): return [s,c0,c1]
-    elif cutdir == 'y':
-        def coord_swap(s,c0,c1): return [c0,s,c1]
-    elif cutdir == 'z':
-        def coord_swap(s,c0,c1): return [c0,c1,s]
-    else:
-        raise Exception("Invalid direction")
+        
+    def coord_swap(s, ccoords, dir=dir):
+        """ insert the coordinate s in position dir in the cut coordinate list """
+        coords = ccoords.copy()
+        coords.insert(dir, s)
+        return coords
+        
+    # add the species identifier to the cutdir if we are in vspace
+    if cutdir in ['vpar','mu']:
+        cutdir += fieldname[-1]
     
     # get the numerical coordinates
     for i, name in enumerate(slice_coord_map):
+        if name in ['vpar','mu']:
+            name += fieldname[-1]
         shift = simulation.normalization.dict[name+'shift']
         scale = simulation.normalization.dict[name+'scale']
         slice_coords[i] = (slice_coords[i] + shift) * scale
-            
+                    
     cells = field_DG.grid[dir]
-    c0 = slice_coords[0]
-    c1 = slice_coords[1]
-    ds = cells[1]-cells[0]
     DG_proj = []
     s_proj  = []
     sscale = simulation.normalization.dict[cutdir+'scale']
@@ -634,14 +646,18 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir='x', cutcoor
     yscale = simulation.normalization.dict[fieldname+'scale']
     dint = 1e-6 # interior of the cell
     for ic in range(len(cells)-1):
+        ds = cells[ic+1]-cells[ic]
         si = cells[ic]+dint*ds
-        fi = simulation.DG_basis.eval_proj(field_DG, coord_swap(si,c0,c1), id=id)
-        sip1 = cells[ic]+(1-dint)*ds
-        fip1 = simulation.DG_basis.eval_proj(field_DG, coord_swap(sip1,c0,c1), id=id)
+        # left value eval
+        fi = frame.DG_basis.eval_proj(field_DG, coord_swap(si,slice_coords), id=id)
         DG_proj.append(fi/yscale)
         s_proj.append(si/sscale - sshift)
+        sip1 = cells[ic]+(1-dint)*ds
+        # right value eval
+        fip1 = frame.DG_basis.eval_proj(field_DG, coord_swap(sip1,slice_coords), id=id)
         DG_proj.append(fip1/yscale)
         s_proj.append(sip1/sscale - sshift)
+        # add a None to break the line
         DG_proj.append(None)
         s_proj.append(cells[ic]/sscale - sshift)
 

@@ -39,6 +39,8 @@ class Simulation:
     """
     def __init__(self,dimensionality='3x2v',porder=1,ptype='ser',code='gkeyll', flandatapath=None):
         self.dimensionality = dimensionality # Dimensionality of the simulation (e.g., 3x2v, 2x2v)
+        self.cdim = int(dimensionality[0])  # Configuration space dimension
+        self.ndim = int(dimensionality[0]) + int(dimensionality[2])  # Total dimension
         self.phys_param = PhysParam()  # Physical parameters (eps0, eV, mp, me)
         self.num_param  = NumParam()  # Numerical parameters (Nx, Ny, Nz, Nvp, Nmu)
         self.data_param = DataParam()  # Data parameters (e.g., file paths)
@@ -47,7 +49,6 @@ class Simulation:
         self.normalization = None # Normalization units for the simulation data
         self.fields_info = {} # Dictionary to store field informations like symbols, units etc.
         self.sources = {}  # Dictionary to store sources
-        self.DG_basis = DG_tools.DG_basis(porder,ptype,dimensionality)  # DG basis functions for projection
         self.polyOrder = porder
         self.basisType = ptype
         self.polprojInsets = None # Custom poloidal projection inset.
@@ -56,8 +57,6 @@ class Simulation:
         self.flan = None
         self.flanframes = []
         self.gyac = None  # Gyacomo interface, if applicable
-        self.cdim = int(dimensionality[0])  # Configuration space dimension
-        self.ndim = int(dimensionality[0]) + int(dimensionality[2])  # Total dimension
 
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """

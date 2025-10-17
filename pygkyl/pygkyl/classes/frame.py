@@ -52,6 +52,8 @@ class Frame:
         self.composition = []
         self.polytype = None
         self.dimensionality = None
+        self.DG_basis = None
+        self.velmap_file = None
         self.process_field_name()  # this initializes the above attributes
 
         self.time = None
@@ -63,6 +65,8 @@ class Frame:
         self.cells = None
         self.grids = None # physical grids (get normalized)
         self.cgrids = None # computational grids
+        self.vpar = None # to store non uniform velocity grids
+        self.mu = None # to store non uniform velocity grids
         self.values = None
         self.Jacobian = simulation.geom_param.Jacobian
         self.vol_int = None
@@ -130,25 +134,43 @@ class Frame:
         self.dimensionality = len(self.gnames)
         if self.dimensionality > 3:
             self.polytype = 'gkhyb'
+            self.DG_basis = DG_tools.DGBasis(self.simulation.ndim)
+            species = 'ion' if self.name[-1] == 'i' else 'elc'
+            self.velmap_file = self.simulation.data_param.fileprefix + '-'+species+'_mapc2p_vel.gkyl'
         else:
             self.polytype = 'ms'
-            
+            self.DG_basis = DG_tools.DGBasis(self.simulation.cdim)
+            self.velmap_file = None
+
     def get_DG_coeff(self):
         """
         Get the DG coefficients.
         """
         Gdata_list = []
         for (f_, c_) in zip(self.filenames, self.comp):
-            gdata_ = copy.deepcopy(pg.data.GData(f_))
-            gdata_.values = gdata_.values[:,:,:,c_*8:(c_+1)*8]
+            _, gdata_ = pgkyl_.get_dg_and_gdata(f_, polyorder=self.polyorder, polytype=self.polytype)
+            # Dynamically determine the number of basis functions from the last dimension
+            n_basis = self.DG_basis.num_basis()
+            start = c_ * n_basis
+            end = (c_ + 1) * n_basis
+            gdata_.values = gdata_.values[..., start:end]
             Gdata_list.append(gdata_)
         values = copy.deepcopy(self.receipe(Gdata_list))
         Gdata_out = copy.deepcopy(Gdata_list[0])
+        # remove the y dimension if 2x or 2x2v  
+        if self.dimensionality > 3:
+            if len(Gdata_out.grid) == 4:
+                values = values[:,0,:,:]
+            Gdata_out.grid[-2] = self.vpar
+            Gdata_out.grid[-1] = self.mu
+        elif self.dimensionality <= 3 and len(Gdata_out.grid) == 2:
+            values = values[:,0,:]
         Gdata_out.values = values
+        
         return Gdata_out
     
     def eval_DG_proj(self, grid=None):
-        DGbasis = DG_tools.DG_basis()
+        DGbasis = DG_tools.DGBasis()
         DGdata = self.get_DG_coeff()
         
         if grid is None:
@@ -201,6 +223,7 @@ class Frame:
         self.refresh()
         if normalize: self.normalize()
         if fourier_y: self.fourier_y()
+        if self.velmap_file: self.load_velmap()
         
     def get_cells_pgkyl(self):
         return pgkyl_.get_cells(self.Gdata[0])
@@ -383,7 +406,7 @@ class Frame:
             if not axs == 'scalar':
                 for i_ in range(len(axs_short)): ax_to_cut = ax_to_cut.replace(axs_short[i_], '')
             # check if the ccoord is consistent with the number of axes to cut
-            if len(ccoord) != len(ax_to_cut):
+            if len(ccoord) < len(ax_to_cut):
                 raise ValueError(f"Number of cut coordinates {len(ccoord)} does not match number of axes to cut {len(ax_to_cut)}")    
             
             for i_ in range(len(ax_to_cut)):
@@ -519,6 +542,17 @@ class Frame:
 
         self.refresh(values=False)
         
+    def load_velmap(self):
+        _, velmap = pgkyl_.get_dg_and_gdata(self.velmap_file)
+        vparc = velmap.values[:,0,0]
+        vpar = np.zeros(len(vparc)+1)
+        vpar = [vparc[0] - (vparc[1]-vparc[0])/2] + list((vparc[1:]+vparc[:-1])/2) + [vparc[-1] + (vparc[-1]-vparc[-2])/2]
+        muc = velmap.values[0,:,2]
+        mu = np.zeros(len(muc)+1)
+        mu = [0] + list((muc[1:]+muc[:-1])/2) + [muc[-1] + (muc[-1]-muc[-2])/2]
+        self.vpar = np.array(vpar)
+        self.mu = np.array(mu)
+
     def copy(self):
         """
         Copy the frame.

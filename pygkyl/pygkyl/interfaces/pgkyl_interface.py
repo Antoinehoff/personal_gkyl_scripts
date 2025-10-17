@@ -15,6 +15,7 @@ Functions:
 import postgkyl as pg
 import numpy as np
 from ..utils import file_utils
+from ..tools import gkhyb_basis as bf
 
 def get_dg_and_gdata(filename:str, polyorder=1, polytype='ms'):
     if polytype == 'gkhyb':
@@ -23,10 +24,12 @@ def get_dg_and_gdata(filename:str, polyorder=1, polytype='ms'):
         # find the species name, which is the three letters after the last hifen
         species = file_utils.find_species(filename)
         mapc2p_vel_name = prefix + '-' + species + '_mapc2p_vel.gkyl'
-        jacobvel_name = prefix + '-' + species + '_jacobvel.gkyl'
         Gdata = pg.data.GData(filename, mapc2p_vel_name=mapc2p_vel_name)
+        Nbasis = Gdata.get_values().shape[-1]
+        
+        jacobvel_name = prefix + '-' + species + '_jacobvel.gkyl'
         Jv_Gdata = pg.data.GData(jacobvel_name, mapc2p_vel_name=mapc2p_vel_name)
-        Gdata._values = Gdata.get_values() / Jv_Gdata.get_values()
+        Gdata._values = Gdata.get_values() / Jv_Gdata.get_values() / np.sqrt(Nbasis)
     else:
         Gdata = pg.data.GData(filename)
     dg = pg.data.GInterpModal(Gdata, poly_order=polyorder, basis_type=polytype)
@@ -48,7 +51,11 @@ def interpolate(Gdata,comp,polyorder=1, polytype='ms'):
     if values.ndim == 2:
         values = np.expand_dims(values, axis=1)
         return np.concatenate((values, values), axis=1)
-    
+
+def get_interpolated_values(filename:str, comp=0, polyorder=1, polytype='ms'):
+    dg, Gdata = get_dg_and_gdata(filename, polyorder=polyorder, polytype=polytype)
+    return interpolate(Gdata, comp, polyorder, polytype)
+
 def get_grid(Gdata):
     values = Gdata.get_grid()        
     if len(values) == 5 :
