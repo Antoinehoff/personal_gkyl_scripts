@@ -45,6 +45,8 @@ class FluxSurfProjection:
     self.rho = rho
   
     self.Nint = Nint
+    self.ntor = Nint
+    self.npol = Nint
     phi_fs = np.linspace(phi[0], phi[1], self.Nint)
     theta_fs = np.linspace(-np.pi, np.pi, self.Nint)
     self.phi_fs, self.theta_fs = np.meshgrid(phi_fs, theta_fs, indexing='ij')
