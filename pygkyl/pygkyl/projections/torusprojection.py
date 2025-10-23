@@ -326,7 +326,7 @@ class TorusProjection:
       #   Rvess = alpha * Rvess + shift
       alpha = (Rplas_max - Rplas_min) / (Rvess_max - Rvess_min)
       beta = Rplas_min - alpha * Rvess_min
-      Rvess = alpha * Rvess + beta
+      Rvess = alpha * Rvess + beta  
       
       phi = self.fsprojs[0].phi_fs + self.vessphishift
       ## Interpolate the phi values on a larger grid to improve the vessel surface quality
@@ -355,9 +355,8 @@ class TorusProjection:
                        pbr=self.vessel_pbr, metallic=self.vessel_metallic, roughness=self.vessel_roughness)
       
       # Draw the limiter
-      RWidth = np.min(self.polprojs[0].Rlcfs) - Rplas_min
-      R0 = Rplas_min
-      R1 = R0 + RWidth + 0.05 * np.min(self.polprojs[0].RIntN)
+      R0 = Rvess.min()
+      R1 = np.min(self.polprojs[0].Rlcfs)
       ZWidth = 0.015
       Z0 = self.polprojs[0].geom.Z_axis - 0.5*ZWidth
       Z1 = Z0 + ZWidth
