@@ -94,18 +94,18 @@ class PoloidalProjection:
     self.meshC = meshC
     del meshC
 
-    radius = self.geom.R0
+    radius = self.geom.r0
     if self.ndim == 3:
       self.LyC = self.meshC[1][-1] - self.meshC[1][0] # length in the y direction
-      # Do we need to rescale the y length to fill the integer toroidal mode number ? not sure...
-      Ntor0 = 2*np.pi * (radius / self.geom.q0) / self.LyC
-      Ntor = max(1,int(np.round(Ntor0)))
-      self.LyC = 2*np.pi * (radius / self.geom.q0) / Ntor
+      # Here we scale y to match the integer fraction condition in the toroidal direction
+      Ntor0 = 2*np.pi * radius / self.geom.q0 / self.LyC # this may not be an integer
+      Ntor = max(1,int(np.ceil(Ntor0)))
+      self.LyC = 2*np.pi * radius / (self.geom.q0 * Ntor)
       self.meshC[1] = self.meshC[1] * (self.LyC / (self.meshC[1][-1] - self.meshC[1][0]))
     else:
       self.LyC = 2.*np.pi*radius/self.geom.q0
       
-    # Minimal toroidal mode number (must be used in the toroidal rotation)
+    # Minimal toroidal mode number (must be used in the toroidal rotation, n_0 in Lapillone thesis 2009)
     self.n0 = 2*np.pi * self.geom.Cy/ self.LyC
     
     #.Precompute grids and arrays needed in transforming/plotting data
@@ -330,9 +330,7 @@ class PoloidalProjection:
       if self.ixLCFS_C is None: icore_end = self.dimsC[0] # SOL only
       else: icore_end = self.ixLCFS_C
       xGridCore = self.meshC[0][:icore_end] # x grid on in the core region
-      torModNum = 2.*np.pi * (self.geom.R0 / self.geom.q0) / self.LyC # torroidal mode number (n_0 in Lapillone thesis 2009)
-      bcPhaseShift = 2.0*np.pi * torModNum*self.geom.qprofile_R(self.geom.R_x(xGridCore))
-      n0 = 2*np.pi * self.geom.Cy/ self.LyC
+      bcPhaseShift = 2.0*np.pi * self.n0 * self.geom.qprofile_R(self.geom.R_x(xGridCore))
       field_kex = np.zeros(self.kyDimsC+np.array([0,0,2]), dtype=np.cdouble)
       field_kex[:,:,1:-1] = field_ky
       lo, up = 0, -1

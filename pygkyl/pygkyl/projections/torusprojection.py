@@ -136,11 +136,12 @@ class TorusProjection:
   tref = 1e-3 # reference time in s (default 1 ms)
   t0 = 0.0 # time offset in units of tref (ms by default)
   time_pos = 'lower_left'
+  time_label = True
   
   def __init__(self):
     self.polprojs = []
     self.fsprojs = []
-    self.pvphishift = np.pi/2 # required to have the right orientation in pyvista
+    self.vessphishift = np.pi/2 # required to have the right orientation in pyvista
     
   def setup(self, simulation : Simulation, timeFrame=0, Nint_polproj=16, Nint_fsproj=32, phiLim=[0, np.pi], rhoLim=[0.8,1.5], t0=0.0,
             intMethod='trapz32', figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, imgSize=(800,600), tref=1e-3, font_size=12):
@@ -252,7 +253,7 @@ class TorusProjection:
       field_fs, field_RZ, time = self.get_data(fieldName, timeFrame, fluctuation)
     
     pvmeshes = []
-    phishift = self.pvphishift # required to have the right orientation
+    phishift = self.vessphishift # required to have the right orientation
     for i in range(len(field_fs)):
       rcut = self.fsprojs[i].r0
       
@@ -301,10 +302,61 @@ class TorusProjection:
     
   def draw_vessel(self, plotter : pv.Plotter):
 
+      # Draw the vessel
+      Rvess = self.sim.geom_param.vessel_data['R']
+      Zvess = self.sim.geom_param.vessel_data['Z']
+      
+      # scale slightly the vessel to avoid intersection with the plasma
+      Rplas_min = self.polprojs[0].RIntN.min() * np.cos(np.pi / self.fsprojs[0].ntor) * 0.98
+      Rplas_max = self.polprojs[0].RIntN.max() * 1.02
+      Rvess_min = Rvess.min()
+      Rvess_max = Rvess.max()
+      vgap_min = Rplas_min - Rvess_min
+      vgap_max = Rvess_max - Rplas_max
+      # check if there is clipping
+      clip_min = vgap_min < 0
+      clip_max = vgap_max < 0
+      # if vgap_min > 0 or vgap_max < 0:
+      #   if vgap_min > -vgap_max:
+      #     Delta = vgap_min * 1.05
+      #   else:
+      #     Delta = -vgap_max * 1.05
+      #   alpha = 1 + 2*Delta / (Rvess_max - Rvess_min)
+      #   shift = (1 - alpha) * Rvess_min - Delta
+      #   Rvess = alpha * Rvess + shift
+      alpha = (Rplas_max - Rplas_min) / (Rvess_max - Rvess_min)
+      beta = Rplas_min - alpha * Rvess_min
+      Rvess = alpha * Rvess + beta  
+      
+      phi = self.fsprojs[0].phi_fs + self.vessphishift
+      ## Interpolate the phi values on a larger grid to improve the vessel surface quality
+      phi = np.linspace(phi[0], phi[-1], self.vessel_ntor)
+      R, PHI = np.meshgrid(Rvess, phi, indexing='ij')
+      Z, PHI = np.meshgrid(Zvess, phi, indexing='ij')
+      # R,Z draw the vessel contour at one angle phi, now define the toroidal surface
+      Xtor = R * np.cos(PHI)
+      Ytor = R * np.sin(PHI)
+      Ztor = Z
+      pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
+      
+      # Set a lower opacity value for the interior parts of the vessel
+      opacity_values = np.ones_like(Xtor) * self.vessel_opacity
+      min_R_vess = np.min(R)
+      opacity_values[R < 1.1*min_R_vess] = self.vessel_opacity_inner # Or whatever lower opacity you want
+      gray_rgb = np.array(self.vessel_rgb)
+      rgba_colors = np.tile(gray_rgb, (pvmesh.n_points, 1))
+      alpha_channel = (opacity_values.ravel() * 255).astype(np.uint8)
+      rgba_colors = np.c_[rgba_colors, alpha_channel]
+      pvmesh['rgba_colors'] = rgba_colors
+
+      plotter.add_mesh(pvmesh, scalars='rgba_colors', rgba=True,
+                       show_scalar_bar=False, 
+                       lighting=self.vessel_lighting, smooth_shading=self.vessel_smooth_shading, split_sharp_edges=self.vessel_split_sharp_edges, 
+                       pbr=self.vessel_pbr, metallic=self.vessel_metallic, roughness=self.vessel_roughness)
+      
       # Draw the limiter
-      RWidth = np.min(self.polprojs[0].Rlcfs) - np.min(self.polprojs[0].RIntN)
-      R0 = np.min(self.polprojs[0].RIntN) * 0.95
-      R1 = R0 + RWidth + 0.05 * np.min(self.polprojs[0].RIntN)
+      R0 = Rvess.min()
+      R1 = np.min(self.polprojs[0].Rlcfs)
       ZWidth = 0.015
       Z0 = self.polprojs[0].geom.Z_axis - 0.5*ZWidth
       Z1 = Z0 + ZWidth
@@ -318,53 +370,6 @@ class TorusProjection:
       pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
       plotter.add_mesh(pvmesh, color='gray', opacity=1.0, show_scalar_bar=False)
    
-      # Draw the vessel
-      Rvess = self.sim.geom_param.vessel_data['R']
-      Zvess = self.sim.geom_param.vessel_data['Z']
-      
-      # scale slightly the vessel to avoid intersection with the plasma
-      Rplas_min = self.polprojs[0].RIntN.min()
-      Rplas_max = self.polprojs[0].RIntN.max()
-      Rvess_min = Rvess.min()
-      Rvess_max = Rvess.max()
-      vpgap_min = Rvess_min - Rplas_min
-      vpgap_max = Rvess_max - Rplas_max
-      # check if there is clipping
-      if vpgap_min > 0 or vpgap_max < 0:
-        if vpgap_min > -vpgap_max:
-          Delta = vpgap_min * 1.05
-        else:
-          Delta = -vpgap_max * 1.05
-        alpha = 1 + 2*Delta / (Rvess_max - Rvess_min)
-        shift = (1 - alpha) * Rvess_min - Delta
-        Rvess = alpha * Rvess + shift
-      
-      phi = self.fsprojs[0].phi_fs + self.pvphishift
-      ## Interpolate the phi values on a larger grid to improve the vessel surface quality
-      phi = np.linspace(phi[0], phi[-1], self.vessel_ntor)
-      R, PHI = np.meshgrid(Rvess, phi, indexing='ij')
-      Z, PHI = np.meshgrid(Zvess, phi, indexing='ij')
-      # R,Z draw the vessel contour at one angle phi, now define the toroidal surface
-      Xtor = R * np.cos(PHI)
-      Ytor = R * np.sin(PHI)
-      Ztor = Z
-      pvmesh = self.data_to_pvmesh(Xtor, Ytor, Ztor, indexing='ij')
-      
-      # Set a lower opacity value for the interior parts of the vessel
-      opacity_values = np.ones_like(Xtor) * self.vessel_opacity
-      min_R = np.min(R)
-      opacity_values[R < 1.05*min_R] = self.vessel_opacity_inner # Or whatever lower opacity you want
-      gray_rgb = np.array(self.vessel_rgb)
-      rgba_colors = np.tile(gray_rgb, (pvmesh.n_points, 1))
-      alpha_channel = (opacity_values.ravel() * 255).astype(np.uint8)
-      rgba_colors = np.c_[rgba_colors, alpha_channel]
-      pvmesh['rgba_colors'] = rgba_colors
-
-      plotter.add_mesh(pvmesh, scalars='rgba_colors', rgba=True,
-                       show_scalar_bar=False, 
-                       lighting=self.vessel_lighting, smooth_shading=self.vessel_smooth_shading, split_sharp_edges=self.vessel_split_sharp_edges, 
-                       pbr=self.vessel_pbr, metallic=self.vessel_metallic, roughness=self.vessel_roughness)
-      
       return plotter
     
   def setup_frame(self, plotter: pv.Plotter, fieldName, timeFrame, fluctuation, logScale, colorMap, clim):
@@ -390,9 +395,12 @@ class TorusProjection:
     plotter.set_background(self.background_color)
 
     # write time and bottom text
+    time_pos = self.time_pos
     if self.additional_text:
       self.add_text(self.additional_text['text'], self.additional_text['position'], 
                     self.font_size, self.additional_text['name'])
+      if self.additional_text['position'] == 'lower_left':
+        time_pos = 'lower_right'
     else:
       self.add_text(self.sim.dischargeID, position='upper_left', 
                     font_size=self.font_size, name="dischargeID")
