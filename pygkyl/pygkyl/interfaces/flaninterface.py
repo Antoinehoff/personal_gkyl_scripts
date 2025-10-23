@@ -17,7 +17,7 @@ class FlanInterface:
             raise FileNotFoundError(f"Flan data file {self.path} not found.") 
         else:      
             flan_nc = netCDF4.Dataset(self.path, 'r')
-            self.avail_frames = [i for i in range(len(flan_nc.variables['time'][:].data))]
+            self.avail_frames = [i for i in range(len(flan_nc["geometry"]['time'][:].data))]
         
 
     def calc_imp_cycl_freq(self, flan_nc, tframe):
@@ -26,11 +26,11 @@ class FlanInterface:
         """
 
         # Pull out required arrays
-        BX = flan_nc["B_X"][tframe].data
-        BY = flan_nc["B_Y"][tframe].data
-        BZ = flan_nc["B_Z"][tframe].data
-        mz_kg = flan_nc["mz"][:].data * amu_to_kg
-        qz = flan_nc["qz"][tframe].data  # Average charge state
+        BX = flan_nc["background"]["B_X"][tframe].data
+        BY = flan_nc["background"]["B_Y"][tframe].data
+        BZ = flan_nc["background"]["B_Z"][tframe].data
+        mz_kg = flan_nc["input"]["mz"][:].data * amu_to_kg
+        qz = flan_nc["output"]["qz"][tframe].data  # Average charge state
 
         # Magnetic field magnitude squared
         Bsq = np.square(BX) + np.square(BY) + np.square(BZ)
@@ -58,15 +58,15 @@ class FlanInterface:
             # Pull out some required arrays
             time = flan_nc["time"][:].data
             if (dname == "gca_validity_time_EX"):
-                Ecomp = flan_nc["E_X"][tframe].data
+                Ecomp = flan_nc["background"]["E_X"][tframe].data
             elif (dname == "gca_validity_time_EY"):
-                Ecomp = flan_nc["E_Y"][tframe].data
+                Ecomp = flan_nc["background"]["E_Y"][tframe].data
             elif (dname == "gca_validity_time_EZ"):
-                Ecomp = flan_nc["E_Z"][tframe].data
+                Ecomp = flan_nc["background"]["E_Z"][tframe].data
             elif (dname == "gca_validity_time_E"):
-                EX = flan_nc["E_X"][tframe].data
-                EY = flan_nc["E_Y"][tframe].data
-                EZ = flan_nc["E_Z"][tframe].data
+                EX = flan_nc["background"]["E_X"][tframe].data
+                EY = flan_nc["background"]["E_Y"][tframe].data
+                EZ = flan_nc["background"]["E_Z"][tframe].data
                 Ecomp = np.sqrt(np.square(EX) + np.square(EY) + np.square(EZ))
 
             # Create return array
@@ -101,13 +101,20 @@ class FlanInterface:
         if dname in derived_dnames:
             values = self.load_derived_values(flan_nc, dname, tframe)
         else:
-            values = flan_nc[dname][tframe].data
+
+        # Could do this cleaner, but just try finding the variable in each
+        # group, returning error if it can't be found
+          for group in ["output", "background", "geometry"]:
+            try:
+              values = flan_nc[group][dname][tframe].data
+            except:
+              print("Flan NetCDF: Not in {}...".format(group))
         
-        time = float(flan_nc.variables['time'][tframe].data)
+        time = float(flan_nc["geometry"]['time'][tframe].data)
         # get x grid and convert to default dtype instead of float32
-        xc = flan_nc.variables['x'][:].data
-        yc = flan_nc.variables['y'][:].data
-        zc = flan_nc.variables['z'][:].data
+        xc = flan_nc["geometry"]['x'][:].data
+        yc = flan_nc["geometry"]['y'][:].data
+        zc = flan_nc["geometry"]['z'][:].data
         # evaluate grid at nodal points (i.e. add a point at the end of the grid)
         x = np.append(xc, xc[-1] + (xc[-1] - xc[-2]))
         y = yc
@@ -115,7 +122,7 @@ class FlanInterface:
         
         grids = [x.astype(float), y.astype(float), z.astype(float)]
         
-        jacobian = flan_nc['J'][:].data.astype(float)
+        jacobian = flan_nc["geometry"]['J'][:].data.astype(float)
         
         jacobian = 0.5* (jacobian[1:,1:,1:] + jacobian[:-1,:-1,:-1])
         

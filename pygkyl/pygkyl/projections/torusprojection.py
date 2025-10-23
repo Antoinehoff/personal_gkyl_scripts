@@ -396,12 +396,13 @@ class TorusProjection:
     else:
       self.add_text(self.sim.dischargeID, position='upper_left', 
                     font_size=self.font_size, name="dischargeID")
-    if self.additional_text['position'] == 'lower_left':
-      time_pos = 'lower_right'
-    else:
-      time_pos = self.time_pos
+    
+    time_pos = self.time_pos
+    if self.additional_text:
+      if self.additional_text['position'] == 'lower_left':
+        time_pos = 'lower_right'
     self.add_text(f"t={(time + self.t0):5.3f} ms", position=time_pos, 
-                  font_size=self.font_size, name="time_label")
+                font_size=self.font_size, name="time_label")
     plotter = self.write_texts(plotter)
     
     if self.logo_path:
