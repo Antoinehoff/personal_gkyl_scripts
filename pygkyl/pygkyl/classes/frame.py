@@ -68,6 +68,8 @@ class Frame:
         self.vpar = None # to store non uniform velocity grids
         self.mu = None # to store non uniform velocity grids
         self.values = None
+        self.DG_data = None
+        self.is_DG_loaded = False
         self.Jacobian = simulation.geom_param.Jacobian
         self.vol_int = None
         self.vol_avg = None
@@ -169,24 +171,34 @@ class Frame:
         
         return Gdata_out
     
-    def eval_DG_proj(self, grid=None):
-        DGbasis = DG_tools.DGBasis()
-        DGdata = self.get_DG_coeff()
-        
-        if grid is None:
-            grid = self.new_grids
+    def load_DG(self):
+        if not self.is_DG_loaded:
+            self.DG_data = self.get_DG_coeff()
+            self.is_DG_loaded = True
 
-        xg = [grid[0]] if isinstance(grid[0], float) else grid[0]
-        yg = [grid[1]] if isinstance(grid[1], float) else grid[1]
-        zg = [grid[2]] if isinstance(grid[2], float) else grid[2]
+    def eval_DG_proj(self, coords):
+        """
+        Evaluate the projection of the DG field according to a list of normalized coordinates.
+        """
+        self.load_DG()
         
-        projection = np.zeros((len(xg), len(yg), len(zg)))
-        for i in range(len(xg)):
-            for j in range(len(yg)):
-                for k in range(len(zg)):
-                    projection[i, j, k] = DGbasis.eval_proj(DGdata, [xg[i], yg[j], zg[k]])
-                    
-        return projection.squeeze()
+        if not isinstance(coords[0], list):
+            coords = [coords]
+            
+        projection = np.zeros(len(coords))
+        for i in range(len(coords)):
+            c_ = self.denormalize_grid_coord(coords[i])
+            projection[i] = self.DG_basis.eval_proj(self.DG_data, c_)
+        return projection
+
+        # xg = [grid[0]] if isinstance(grid[0], float) else grid[0]
+        # yg = [grid[1]] if isinstance(grid[1], float) else grid[1]
+        # zg = [grid[2]] if isinstance(grid[2], float) else grid[2]
+        # projection = np.zeros((len(xg), len(yg), len(zg)))
+        # for i in range(len(xg)):
+        #     for j in range(len(yg)):
+        #         for k in range(len(zg)):
+        #             projection[i, j, k] = DGbasis.eval_proj(DGdata, [xg[i], yg[j], zg[k]])        
     
     def load_gkyl(self,normalize=True, fourier_y=False):
         """
@@ -310,6 +322,20 @@ class Frame:
             self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']
             self.vunits = self.simulation.normalization.dict[self.name + 'units']
 
+    def denormalize_grid_coord(self, coord):
+        """
+        Denormalize a grid coordinate.
+        """
+        c_out = copy.deepcopy(coord)
+        for i in range(len(coord)):
+            if isinstance(coord[i], int):
+                c_out[i] = coord[i]
+            else:
+                s = '' if self.gnames[i] in ['x','y','z'] else file_utils.find_species(self.filenames[0])[0]
+                c_out[i] += self.simulation.normalization.dict[self.gnames[i] + s + 'shift']
+                c_out[i] *= self.simulation.normalization.dict[self.gnames[i] + s + 'scale']
+        return c_out
+
     def refresh_title(self):
         """
         Refresh the slice title and time title.
@@ -369,7 +395,7 @@ class Frame:
             else:
                 cut_index = (np.abs(self.grids[ic] - cut)).argmin()
                 cut_index = np.minimum(cut_index, len(self.grids[ic]) - 2)
-            cut_coord = self.grids[ic][cut_index]
+            cut_coord = self.grids[ic][cut_index] # This will give a coordinate of the interpolated grid.
             values = np.take(np.copy(self.values), cut_index, axis=ic)
             Jacobian = np.take(np.copy(self.Jacobian), cut_index, axis=ic)
 
