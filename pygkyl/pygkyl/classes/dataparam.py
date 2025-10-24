@@ -862,7 +862,7 @@ class DataParam:
             # add species dependent energies
             k = 0
             for spec in species.values():
-                fout += spec.q*gdata_list[0+k].get_values()*gdata_list[1+k].get_values()
+                fout += spec.q*pgkyl_.get_values(gdata_list[0+k])*pgkyl_.get_values(gdata_list[1+k])
                 k    += 2
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_jpar])
