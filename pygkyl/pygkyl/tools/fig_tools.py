@@ -32,7 +32,7 @@ def label_from_simnorm(simulation,name):
 
 def label(label,units):
     if units:
-        label += ' ('+units+')'
+        label += ' [%s]'%units
     return label
 
 def multiply_by_m3_expression(expression):

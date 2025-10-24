@@ -228,13 +228,13 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         elif time_average:
             vsymbol = r'$\langle$'+ vsymbol + r'$\rangle$'
         lbl = fig_tools.label(vsymbol,frame.vunits)
-        
-        xlabel = frame.new_gsymbols[0] + (' (%s)'%frame.new_gunits[0] if frame.new_gunits[0] else '')
-        ylabel = frame.new_gsymbols[1] + (' (%s)'%frame.new_gunits[1] if frame.new_gunits[1] else '')
+
+        xlabel = frame.new_gsymbols[0] + (' [%s]'%frame.new_gunits[0] if frame.new_gunits[0] else '')
+        ylabel = frame.new_gsymbols[1] + (' [%s]'%frame.new_gunits[1] if frame.new_gunits[1] else '')
 
         if "relative" in fluctuation :
-            lbl = re.sub(r'\(.*?\)', '', lbl)
-            lbl = lbl + ' (\%)'
+            lbl = re.sub(r'\[.*?\]', '', lbl)
+            lbl = lbl + ' [\%]'
             
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
                           cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
