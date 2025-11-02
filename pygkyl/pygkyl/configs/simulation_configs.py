@@ -539,13 +539,13 @@ def get_aug_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensio
             xlim=[1.05,1.14], 
             ylim=[-0.30,-0.10],
             markLoc=[2,3],
-            zoom=3.0),
-        Inset(
-            lowerCornerRelPos=[0.21,0.58],
-            xlim=[1.46,1.68], 
-            ylim=[0.82,0.935],
-            markLoc=[1,2],
             zoom=3.0)
+        #Inset(
+        #    lowerCornerRelPos=[0.21,0.58],
+        #    xlim=[1.46,1.68], 
+        #    ylim=[0.82,0.935],
+        #    markLoc=[1,2],
+        #    zoom=3.0)
     ]
     
     # Add discharge ID
