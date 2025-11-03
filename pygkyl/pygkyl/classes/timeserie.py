@@ -165,7 +165,7 @@ class TimeSerie:
             
         if 'relative' in fluctuationType:
             self.vsymbol = r'(' + self.vsymbol + r') $/\langle$'+self.frames[0].vsymbol+r'$\rangle_y$'
-            self.vunits = r'%'
+            self.vunits = r'\%'
           
     def free_values(self):
         '''
