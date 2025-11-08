@@ -40,6 +40,15 @@ def get_values(Gdata):
     if Gdata.get_values().ndim in [3, 5]:
         values = np.expand_dims(Gdata.get_values(), axis=1)
         return np.concatenate((values, values), axis=1)
+    # Extend dimension if we are in 1x
+    elif Gdata.get_values().ndim in [2] and not Gdata.ctx['basis_type'] == None:
+        values = Gdata.get_values()
+        values = [values, values]
+        values = [values, values]
+        values = np.expand_dims(Gdata.get_values(), axis=0)
+        values = np.expand_dims(values, axis=0)
+        values = np.concatenate((values, values), axis=0)
+        return np.concatenate((values, values), axis=1)
     else:
         return Gdata.get_values()
 
@@ -66,6 +75,8 @@ def get_grid(Gdata):
         return values
     elif len(values) == 2 :
         return [values[0], np.array([0, 1/3, 2/3]), values[1]]
+    elif len(values) == 1 :
+        return [np.array([0, 1/3, 2/3]), np.array([0, 1/3, 2/3]), values[0]]
     
 def get_cells(Gdata):
     cells = Gdata.ctx['cells']
@@ -74,8 +85,11 @@ def get_cells(Gdata):
     elif len(cells) == 4:
         return [cells[0], 2, cells[1], cells[2], cells[3]]
     elif len(cells) == 2:
-        cells = [cells[0], 2, cells[1]]
-        return cells
+        return [cells[0], 2, cells[1]]
+    elif len(cells) == 1:
+        return [2, 2, cells[0]]
+    else :
+        raise ValueError("Invalid number of cells")
 
 def integrate(Gdata):
     return Gdata.integrate()

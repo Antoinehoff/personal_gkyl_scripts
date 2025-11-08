@@ -48,9 +48,9 @@ def integral_surf(x,y,integrant_xy):
     return integral
 
 def gradient(array,grid,axis):
-    if(len(array[axis])>1):
+    try:
         return np.gradient(array, grid, axis=axis)
-    else:
+    except ValueError:
         return np.zeros_like(array)
     
 def integrate(function, a, b, args,  method='trapz', Np=16):

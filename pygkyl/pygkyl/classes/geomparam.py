@@ -124,12 +124,12 @@ class GeomParam:
         dg = pg.data.GInterpModal(Gdata,1,'ms')
         dg.interpolate(0,overwrite=True)
         self.bmag = pgkyl_.get_values(Gdata)
-        self.bmag = self.bmag[:,:,:,0]
+        self.bmag = self.bmag[..., 0]
         
-        if self.bmag.shape[1] <= 2 and self.cdim == 3:
-            print("Warning: it seems that the sim data are 2x2v but the simulation class was initialized with '3x2v'.")
-            print("use simulation = pygkyl.simulation_configs.import_config( ...,  ..., ..., dimensionality='2x2v')")
-        
+        data_cdim = len(Gdata.ctx['lower'].shape)
+        if data_cdim != self.cdim:
+            print(f"Warning: the data looks to be in {data_cdim}x, but the configuration space dimension is set to {self.cdim}x.")
+
         #-- load grid
         self.grids = [0.5*(g[1:]+g[:-1]) for g in pgkyl_.get_grid(Gdata) if len(g) > 1]
         self.x = self.grids[0]; self.y = self.grids[1]; self.z = self.grids[2]
