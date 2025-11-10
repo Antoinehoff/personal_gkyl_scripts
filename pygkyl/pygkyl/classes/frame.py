@@ -134,7 +134,7 @@ class Frame:
         self.vsymbol = self.simulation.normalization.dict[self.name + 'symbol']
         self.vunits = self.simulation.normalization.dict[self.name + 'units']
         self.dimensionality = len(self.gnames)
-        if self.dimensionality > 3:
+        if self.dimensionality > 3: # phase space
             self.polytype = 'gkhyb'
             self.DG_basis = DG_tools.DGBasis(self.simulation.ndim)
             species = 'ion' if self.name[-1] == 'i' else 'elc'
@@ -163,10 +163,15 @@ class Frame:
         if self.dimensionality > 3:
             if len(Gdata_out.grid) == 4:
                 values = values[:,0,:,:]
+            elif len(Gdata_out.grid) == 3:
+                values = values[0,0,:,:]
             Gdata_out.grid[-2] = self.vpar
             Gdata_out.grid[-1] = self.mu
-        elif self.dimensionality <= 3 and len(Gdata_out.grid) == 2:
-            values = values[:,0,:]
+        elif self.dimensionality <= 3:
+            if len(Gdata_out.grid) == 2:
+                values = values[:,0,:]
+            elif len(Gdata_out.grid) == 1:
+                values = values[0,0,:]
         Gdata_out.values = values
         
         return Gdata_out

@@ -953,20 +953,32 @@ class DataParam:
         directions = ['x','y','z'] #directions array
         for i_ in range(len(directions)):
             ci_ = directions[i_] # direction of the component
-            # Electric field i-th component
-            name       = 'E%s'%(ci_)
-            symbol     = r'$E_{%s}$'%(ci_)
+            
+            # Electrostatic Electric field i-th component
+            name       = 'E%s_es'%(ci_)
+            symbol     = r'$E_{%s}^{es}$'%(ci_)
             units      = r'V/m'
             field2load = ['phi']
-            # The receipe depends on the direction 
-            # because of the phi derivative
-            def receipe_Ei(gdata_list,i=i_):
+            def receipe_Ei_es(gdata_list,i=i_):
                 phi     = pgkyl_.get_values(gdata_list[0])
                 grids   = pgkyl_.get_grid(gdata_list[0])
                 igrid    = grids[i][:-1]
                 return -np.gradient(phi, igrid, axis=i)
+            default_qttes.append([name,symbol,units,field2load,receipe_Ei_es])
+            
+            # EM Electric field i-th component
+            name       = 'E%s'%(ci_)
+            symbol     = r'$E_{%s}$'%(ci_)
+            units      = r'V/m'
+            field2load = ['phi','Apardot']
+            def receipe_Ei(gdata_list,i=i_,ci=ci_):
+                if ci == 'z':
+                    Apardot = pgkyl_.get_values(gdata_list[1])
+                    return receipe_Ei_es(gdata_list[0:1],i=i) - Apardot
+                else:
+                    return receipe_Ei_es(gdata_list[0:1],i=i)
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
-
+            
         #total source power density
         name       = 'src_P'
         symbol     = r'$P_{src}$'

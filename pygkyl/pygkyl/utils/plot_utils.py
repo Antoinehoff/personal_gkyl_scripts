@@ -599,11 +599,21 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir, cutcoord, x
     
     # process the coordinates of the cut
     slice_coord_map = ['x','y','z','vpar','mu']
-    if frame.ndims <= 3: # configuration space frame
-        slice_coord_map.remove('vpar')
-        slice_coord_map.remove('mu')
-    if frame.ndims in [2,4]: # axisymmetric frame
+    if simulation.ndim == 5: # 3x2v
+        if frame.ndims <= 3: # configuration space frame
+            slice_coord_map.remove('vpar')
+            slice_coord_map.remove('mu')
+    if simulation.ndim == 4: #2x2v
         slice_coord_map.remove('y')
+        if frame.ndims == 2: # configuration space frame
+            slice_coord_map.remove('vpar')
+            slice_coord_map.remove('mu')
+    if simulation.ndim == 3: #1x2v
+        slice_coord_map.remove('x')
+        slice_coord_map.remove('y')
+        if frame.ndims == 1: # configuration space frame
+            slice_coord_map.remove('vpar')
+            slice_coord_map.remove('mu')
         
     if cutdir not in slice_coord_map:
         raise Exception("Invalid cut direction, must be one of %s"%slice_coord_map)
