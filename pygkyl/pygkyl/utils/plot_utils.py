@@ -712,7 +712,7 @@ def flux_surface_proj(simulation, rho, fieldName, timeFrame, Nint=32):
 
     
 def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
-                    figout=[],xlim=[],ylim=[]):
+                    figout=[],xlim=[],ylim=[], ddt = False):
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field, list):
@@ -725,9 +725,24 @@ def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
                                 cut_dir='scalar',cut_coord=cut_coords,load=True)
             f0 = timeserie.frames[0]
             t,v = timeserie.get_values()
-            ax.plot(t,v,label=f0.vsymbol)
-            
-        fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=f0.vunits, figout=figout,
+            label = f0.vsymbol
+            units = f0.vunits
+            if ddt:
+                dt0 = t[1] - t[0]
+                v_ext = np.concatenate(([v[0]], v))
+                t_ext = np.concatenate(([t[0]-dt0], t))
+                dvdt_ext = np.gradient(v_ext, t_ext)/simulation.normalization.dict['tscale']
+                v = dvdt_ext
+                t = t_ext
+                label = r'$\partial_t($' + label + '$)$'
+                if units[-1] == '$':
+                    units = units[:-1] + r'/s$'
+                else:
+                    units = units + r'/s'
+            ax.plot(t,v,label=label)
+        
+        # units = math_utils.simplify_units(units) # this is not robuts...
+        fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=units, figout=figout,
                                 xlim=xlim, ylim=ylim, legend=True, title=f0.slicetitle)
         
 def plot_nodes(simulation):
