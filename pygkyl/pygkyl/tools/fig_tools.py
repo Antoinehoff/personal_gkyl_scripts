@@ -276,18 +276,22 @@ def figdatadict_get_data(filename, fieldname):
     figdatadict = load_figout(filename) if filename else figdatadict
     xdata = []
     ydata = []
+    def delatexify(label):
+        label = label.replace('$','')
+        label = label.replace('{','')
+        label = label.replace('}','')
+        label = label.replace('^','')
+        label = label.replace('_','')
+        label = label.replace('\\','')
+        label = label.replace(',','')
+        label = label.replace(' ','')
+        return label
+    
     for ax in figdatadict:
         for l_ in ax['curves']:
             label = l_['label']
             # remove all latex characters
-            label = label.replace('$','')
-            label = label.replace('{','')
-            label = label.replace('}','')
-            label = label.replace('^','')
-            label = label.replace('_','')
-            label = label.replace('\\','')
-            label = label.replace(',','')
-            label = label.replace(' ','')
+            label = delatexify(label)
             # check if the filename is a substring of label
             if fieldname in label:
                 xdata = l_['xdata']
@@ -301,7 +305,7 @@ def figdatadict_get_data(filename, fieldname):
         available_field = []
         for ax in figdatadict:
             for l_ in ax['curves']:
-                available_field.append(l_['label'])
+                available_field.append(delatexify(l_['label']))
         #print unique fields
         print(list(set(available_field)))
         raise ValueError('Field not found in figure data dictionary')

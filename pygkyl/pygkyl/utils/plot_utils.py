@@ -111,7 +111,7 @@ def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
         
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             time_frames=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
-            figout = [], errorbar = False, show_title = True):
+            figout = [], errorbar = False, show_title = True, show_legend = True):
     
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
 
@@ -145,7 +145,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
                     ax.plot(x+periodicity, values, label=vlabel)
         # Labels and title
         ylabel = vunits if len(subfields)>1 else vlabel
-        show_legend = len(subfields)>1
+        show_legend = len(subfields)>1 or show_legend
         title = slicetitle+tlabel+r'$=%2.2e$'%(t[0]) if t[0] == t[-1] else \
                 slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
         fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title if show_title else '', 
