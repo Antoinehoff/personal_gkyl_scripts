@@ -169,10 +169,10 @@ class DataParam:
                             mtype = moment_type
                             self.default_mom_type = mtype
                             break
-                    if mtype == -1:
-                        print(f"No moments file found for species {spec}. (recall, we do not support Maxwellian moments yet)")
-                        print(f"Check the file name pattern: {self.fileprefix}-{spec}_{moment_type}_*.gkyl")
-                        continue
+                    # if mtype == -1:
+                        # print(f"No moments file found for species {spec}. (recall, we do not support Maxwellian moments yet)")
+                        # print(f"Check the file name pattern: {self.fileprefix}-{spec}_{moment_type}_*.gkyl")
+                        # continue
                 else:
                     mtype = 'BiMaxwellianMoments'
                     self.default_mom_type = mtype
