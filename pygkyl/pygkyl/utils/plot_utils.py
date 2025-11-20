@@ -712,7 +712,7 @@ def flux_surface_proj(simulation, rho, fieldName, timeFrame, Nint=32):
 
     
 def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
-                    figout=[],xlim=[],ylim=[], ddt = False):
+                    figout=[],xlim=[],ylim=[], ddt = False, data=None):
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field, list):
@@ -740,6 +740,8 @@ def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
                 else:
                     units = units + r'/s'
             ax.plot(t,v,label=label)
+            if data is not None:
+                data.append((t,v))
         
         # units = math_utils.simplify_units(units) # this is not robuts...
         fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=units, figout=figout,
