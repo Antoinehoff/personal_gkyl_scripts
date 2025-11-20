@@ -126,7 +126,7 @@ class GeomParam:
         self.bmag = pgkyl_.get_values(Gdata)
         self.bmag = self.bmag[..., 0]
         
-        data_cdim = len(Gdata.ctx['lower'].shape)
+        data_cdim = Gdata.ctx['lower'].shape[0]
         if data_cdim != self.cdim:
             print(f"Warning: the data looks to be in {data_cdim}x, but the configuration space dimension is set to {self.cdim}x.")
 
