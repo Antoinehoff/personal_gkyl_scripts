@@ -157,7 +157,7 @@ class DataParam:
                 # add default moments interface        
                 # Find a file type where we can find the moment data.
                 if checkfiles:
-                    mtype = -1
+                    mtype = 'none'
                     for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0', 'M0M1M2']:
                         pattern = f"{self.fileprefix}-{spec}_{moment_type}_*.gkyl"
                         files = glob.glob(pattern)
@@ -169,10 +169,9 @@ class DataParam:
                             mtype = moment_type
                             self.default_mom_type = mtype
                             break
-                    if mtype == -1:
+                    if mtype == 'none':
                         # print(f"No moments file found for species {spec}. (recall, we do not support Maxwellian moments yet)")
                         # print(f"Check the file name pattern: {self.fileprefix}-{spec}_{moment_type}_*.gkyl")
-                        mtype = 'none'
                         continue
                 else:
                     mtype = 'BiMaxwellianMoments'
