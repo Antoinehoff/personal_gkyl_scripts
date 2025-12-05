@@ -45,7 +45,7 @@ def multiply_by_m3_expression(expression):
         expression_new = expression + r'm$^3$'
     return expression_new
 
-def setup_figure(fieldnames):
+def setup_figure(fieldnames,fig_size=default_figsz):
     if fieldnames == '':
         ncol = 2
         fields = ['ne','upari','Tpari','Tperpi']
@@ -56,7 +56,7 @@ def setup_figure(fieldnames):
         ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
         fields = fieldnames
     nrow = len(fields)//ncol + len(fields)%ncol
-    fig,axs = plt.subplots(nrow,ncol,figsize=(default_figsz[0]*ncol,default_figsz[1]*nrow))
+    fig,axs = plt.subplots(nrow,ncol,figsize=(fig_size[0]*ncol,fig_size[1]*nrow))
     if ncol == 1:
         axs = [axs]
     else:

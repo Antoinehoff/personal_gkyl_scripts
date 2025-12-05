@@ -619,12 +619,13 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir, cutcoord, x
         raise Exception("Invalid cut direction, must be one of %s"%slice_coord_map)
     
     dir = slice_coord_map.index(cutdir)
-    slice_coord_map.remove(cutdir)
-
+    
     if derivative in ['x','y','z','vpar','mu']:
         id = slice_coord_map.index(derivative)
     else :
         id = None
+        
+    slice_coord_map.remove(cutdir)
     
     # get the coordinates of the slice
     slice_coords = [frame.slicecoords[key] for key in slice_coord_map]
@@ -770,66 +771,11 @@ def plot_nodes(simulation):
     plt.axis('equal')
     plt.show()
 
-def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,
-                 volfrac_scaled=True, show_avg=True, show_plot=True):
-    from scipy.ndimage import gaussian_filter1d    
-    def get_int_mom_data(simulation, fieldname):
-        try:
-            intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
-        except KeyError:
-            raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
-        if volfrac_scaled: intmom.values = intmom.values / simulation.geom_param.vol_frac
-        return intmom.values, intmom.time, intmom.vunits, intmom.tunits
-
-    symbol_src = '\Gamma' if balancetype == 'particle' else 'P'
-    symbol_mom = 'N' if balancetype == 'particle' else 'H'
-    
-    fieldname = 'src_ntot' if balancetype == 'particle' else 'src_Htot'
-    source, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
-    
-    fieldname = 'Wtot' if balancetype == 'energy' else 'ntot'
-    intvar, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
-    # smooth the intvar to remove oscillations at restart
-    intvar = gaussian_filter1d(intvar,25)
-    time = gaussian_filter1d(time,25)
-    # scale time to get seconds
-    intvar = np.gradient(intvar, time*simulation.normalization.dict['tscale'])
-    fieldname = 'bflux_total_total_ntot' if balancetype == 'particle' else 'bflux_total_total_Htot'
-    loss, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
-    
-    # Replace J/s to W or particle by 1
-    vunits = vunits.replace('J/s', 'W')
-    vunits = vunits.replace('particles', '1')
-    
-    balance = source - loss - intvar
-    
-    nt = len(time)
-    balance_avg = np.mean(balance[-nt//3:])
-        
-    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
-    if showall:
-        ax.plot(time, source, label=r'$%s_{\text{src}}$'%symbol_src)
-        ax.plot(time, loss, label=r'$%s_{\text{loss}}$'%symbol_src)
-        ax.plot(time, intvar, label=r'$\partial %s / \partial t$'%symbol_mom)
-    ax.plot(time, balance, label='Balance')
-    if show_avg:
-        # Add horizontal line at average balance value
-        ax.plot([time[-nt//3], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, 
-                label='%s %s' % (fig_tools.optimize_str_format(balance_avg), vunits))
-        
-    xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
-    if showall:
-        ylabel = vunits
-    else:
-        ylabel = r'$%s_{\text{src}} - %s_{\text{loss}} - \partial %s / \partial t$'%(symbol_src, symbol_src, symbol_mom)
-        ylabel += ' [%s]' % vunits if vunits else ''
-    title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
-    
-    if show_plot:
-        fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
-                                title=title_, legend=legend, xlim=xlim, ylim=ylim)
-    else:
-        plt.close(fig)
+def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
+                 rm_legend=False, fig_size=(8,6), log_abs=False):
+    from ..ext.gkeyll_gk_balance import plot_balance
+    plot_balance(simulation, balance_type=balance_type, species=species, figout=figout, 
+                 rm_legend=rm_legend, fig_size=fig_size, log_abs=log_abs)
     
 def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, show_avg=True,
               title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,

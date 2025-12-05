@@ -20,6 +20,7 @@ from .configs import simulation_configs
 from .interfaces.pgkyl_interface import get_gkyl_data, get_gkyl_values, get_gkyl_grid
 from .ext import gkeyll_gk_balance
 from .interfaces.gyrazeinterface import GyrazeInterface
+from .configs.simulation_configs import import_config as load_sim_config
 
 __all__ = [
     'Species',
@@ -52,5 +53,6 @@ __all__ = [
     'get_gkyl_values',
     'get_gkyl_grid',
     'gkeyll_gk_balance',
-    'GyrazeInterface'
+    'GyrazeInterface',
+    'load_sim_config'
 ]

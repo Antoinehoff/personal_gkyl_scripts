@@ -6,10 +6,11 @@
 #[
 #[ ........................................................... ]#
 import numpy as np
-import postgkyl as pg
 import matplotlib.pyplot as plt
 import os
 from ..tools import fig_tools
+from ..utils.file_utils import does_file_exist
+from ..interfaces.pgkyl_interface import read_dyn_vector
 
 # Some RGB colors. These are MATLAB-like.
 defaultBlue    = [0, 0.4470, 0.7410]
@@ -38,15 +39,6 @@ def setTickFontSize(axIn,fontSizeIn):
   if offset_txt: offset_txt.set_size(fontSizeIn)
   offset_txt = axIn.xaxis.get_offset_text()
   if offset_txt: offset_txt.set_size(fontSizeIn)
-
-def does_file_exist(fileIn):
-  return os.path.exists(fileIn)
-
-def read_dyn_vector(dataFile):
-  pgData = pg.GData(dataFile)
-  time   = pgData.get_grid()
-  val    = pgData.get_values()
-  return np.squeeze(time), np.squeeze(val)
 
 def get_balance_data(data_path, species_names, moment_idx):
     fdot_total = None
@@ -113,17 +105,19 @@ def get_balance_data(data_path, species_names, moment_idx):
     return (time_fdot, fdot_total, time_distf, distf_total, time_src, src_total, has_source, 
             time_bflux, bflux_total, has_bflux)
 
-def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], rm_legend=False):
+def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
+                 rm_legend=False, fig_size=(8,6), log_abs=False):
     moment_idx = 0 if balance_type == 'particle' else 2
     symbol = 'N' if balance_type == 'particle' else r'\mathcal{E}'
-        
+     
     data_path = f"{simulation.data_param.fileprefix}-"
     (time_fdot, fdot, _, _, time_src, src, has_source, 
      time_bflux, bflux_tot, has_bflux) = get_balance_data(data_path, species, moment_idx)
 
-    field, fig, axs = fig_tools.setup_figure(balance_type)
+    field, fig, axs = fig_tools.setup_figure(balance_type,fig_size=fig_size)
     ax = axs[0]
-
+    def fp(x): return np.abs(x) if log_abs else x
+       
     # Field energy for energy balance
     field_dot = np.zeros_like(fdot)
     has_field = False
@@ -134,40 +128,62 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
             time_field_dot, field_dot_raw = read_dyn_vector(field_file)
             # Ensure field_dot has same shape as fdot
             field_dot = np.interp(time_fdot, time_field_dot, field_dot_raw)
+            
+    # EM energy for energy balance
+    apardot = np.zeros_like(fdot)
+    has_apardot = False
+    if balance_type == 'energy':
+        apardot_file = f"{data_path}apar_energy_dot.gkyl"
+        if does_file_exist(apardot_file):
+            has_apardot = True
+            time_apardot, apardot_raw = read_dyn_vector(apardot_file)
+            apardot = np.interp(time_fdot, time_apardot, apardot_raw)
 
-
-    mom_err = src - bflux_tot - (fdot - field_dot)
+    mom_err = src - bflux_tot - (fdot - field_dot - apardot)
     
     legendStrings = []
     lbl = r'$\dot{f}$'
-    ax.plot(time_fdot, fdot, label=lbl)
+    ax.plot(time_fdot, fp(fdot), label=lbl)
     legendStrings.append(lbl)
 
     if has_source:
         lbl = r'$\mathcal{S}$'
-        ax.plot(time_src, src, label=lbl)
+        ax.plot(time_src, fp(src), label=lbl)
         legendStrings.append(lbl)
 
     if has_bflux:
         lbl = r'$-\int_{\partial \Omega}\mathrm{d}\mathbf{S}\cdot\mathbf{\dot{R}}f$'
-        ax.plot(time_bflux, -bflux_tot, label=lbl)
+        ax.plot(time_bflux, fp(-bflux_tot), label=lbl)
         legendStrings.append(lbl)
 
     if has_field:
         lbl = r'$\dot{\phi}$'
-        ax.plot(time_fdot, field_dot, label=lbl)
+        ax.plot(time_fdot, fp(field_dot), label=lbl)
+        legendStrings.append(lbl)
+        
+    if has_apardot:
+        lbl = r'$\partial_t A_\parallel$'
+        ax.plot(time_fdot, fp(apardot), label=lbl)
         legendStrings.append(lbl)
 
     lbl = r'$E_{\dot{'+symbol+'}}=\mathcal{S}-\int_{\partial \Omega}\mathrm{d}\mathbf{S}\cdot\mathbf{\dot{R}}f'
-    lbl += r'-(\dot{f}-\dot{\phi})$' if balance_type == 'energy' else r'-\dot{f}$'
-    ax.plot(time_fdot, mom_err, label=lbl)
+    lbl += r'-\dot{f}'
+    if balance_type == 'energy':
+        if has_field:
+            lbl += r'+\dot{\phi}' 
+        if has_apardot:
+            lbl += r'-\partial_t A_\parallel'
+    lbl += r'$'
+    
+    ax.plot(time_fdot, fp(mom_err), label=lbl)
     legendStrings.append(lbl)
 
     xlbl = r'Time ($s$)'
     ylbl = ''
     
     # add labels and show legend
-    fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, legend=not rm_legend)
+    fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, 
+                            legend=not rm_legend, yscale='log' if log_abs else 'linear')
 
 def plot_relative_error(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
                         rm_legend=True, data =[], show_plot=True):

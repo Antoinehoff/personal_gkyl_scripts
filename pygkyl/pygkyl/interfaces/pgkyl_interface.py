@@ -140,3 +140,9 @@ def file_exists(file):
             return True
     except FileNotFoundError:
         return False
+
+def read_dyn_vector(dataFile):
+  pgData = pg.GData(dataFile)
+  time   = pgData.get_grid()
+  val    = pgData.get_values()
+  return np.squeeze(time), np.squeeze(val)
