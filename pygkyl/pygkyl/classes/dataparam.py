@@ -641,7 +641,6 @@ class DataParam:
                 """
                 Larmor radius: rho = sqrt(m Tperp) / (|q| B)
                 """
-                e = 1.602176634e-19
                 Tperp = pgkyl_.get_values(gdata_list[0]) * phys_tools.kB
                 Bmag = pgkyl_.get_values(gdata_list[1])
                 # remove unphysical values
@@ -844,35 +843,48 @@ class DataParam:
             return Ti*mi/(Te*me)
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
 
-        #Debye length (lambda_D = sqrt(e0 kB Te / (n_e e^2)))
+        #Debye length (lambda_D = sqrt(e0 kB Te / sum_s(q_s^2 n_s)))
         name = 'lambdaD'
         symbol = r'$\lambda_{D}$'
         units = r'm'
-        field2load = ['ne','Tpare','Tperpe']
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('Tpar%s'%s_)
+            field2load.append('Tperp%s'%s_)
         def receipe_lambdaD(gdata_list,species=species):
             e = 1.602176634e-19
+            denom = 0.0
+            i_s = 0
+            for spec in species.values():
+                n_s = pgkyl_.get_values(gdata_list[0+i_s])
+                T_s = receipe_Ttots([gdata_list[1+i_s],gdata_list[2+i_s]])
+                T_s[T_s <= 0] = np.nan # avoid unphysical values
+                denom += (spec.q/e)**2 * n_s/T_s
+                i_s += 3
             e0 = 8.854187817e-12
-            me = species['elc'].m
-            ne = pgkyl_.get_values(gdata_list[0])
-            Te = receipe_Ttots(gdata_list[1:3])
-            # remove unphysical values
-            Te[Te <= 0] = np.nan # avoid sqrt(negative
-            ne[ne <= 0] = np.nan # avoid div by 0
-            return np.sqrt(e0 * Te * phys_tools.kB / (ne * e**2))
+            num = e0 * phys_tools.kB / e**2
+            denom[denom <= 0] = np.nan # avoid div by 0
+            return np.sqrt(num/denom)
         default_qttes.append([name,symbol,units,field2load,receipe_lambdaD])
         
         #electron larmor radius to Debye length ratio
         name = 'rhoe_lambdaD'
         symbol = r'$\rho_{e}/\lambda_{D}$'
         units = ''
-        field2load = ['ne','Bmag']
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('Tpar%s'%s_)
+            field2load.append('Tperp%s'%s_)
+        field2load.append('Tperpe')
+        field2load.append('Bmag')
         def receipe_rhoe_lambdaD(gdata_list,species=species):
-            me = species['elc'].m
-            eps0 = 8.854187817e-12
-            ne = pgkyl_.get_values(gdata_list[0])
-            ne[ne <= 0] = np.nan # avoid div by 0
-            Bmag = pgkyl_.get_values(gdata_list[1])
-            return np.sqrt(me*ne/eps0)/Bmag
+            lambdaD = receipe_lambdaD(gdata_list,species=species)
+            rho_e = receipe_rhos(gdata_list[-2:],q=species['elc'].q,m=species['elc'].m)
+            return rho_e/lambdaD
         default_qttes.append([name,symbol,units,field2load,receipe_rhoe_lambdaD])
         
         #parallel current density
