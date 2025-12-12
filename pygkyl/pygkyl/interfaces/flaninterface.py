@@ -102,13 +102,10 @@ class FlanInterface:
             values = self.load_derived_values(flan_nc, dname, tframe)
         else:
 
-        # Could do this cleaner, but just try finding the variable in each
-        # group, returning error if it can't be found
+          # Return variable name from whichever group it's in
           for group in ["output", "background", "geometry"]:
-            try:
+            if dname in flan_nc[group].variables.keys():
               values = flan_nc[group][dname][tframe].data
-            except:
-              print("Flan NetCDF: Not in {}...".format(group))
         
         time = float(flan_nc["geometry"]['time'][tframe].data)
         # get x grid and convert to default dtype instead of float32

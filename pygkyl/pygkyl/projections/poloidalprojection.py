@@ -515,7 +515,9 @@ class PoloidalProjection:
 
     #.Plot lcfs
     if show_LCFS:
-      ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
+      # SAZ - Making LCFS line larger
+      #ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=1.5,linestyle='--',color=lcfColor,alpha=.8)
+      ax1a[0].plot(self.Rlcfs,self.Zlcfs,linewidth=3,linestyle='--',color=lcfColor,alpha=1.0)
       LCFSinset = [self.Rlcfs,self.Zlcfs,lcfColor]
     else:
       LCFSinset = []
