@@ -152,9 +152,10 @@ class GyrazeAttribute:
 
 class GyrazeDataset:
     '''Class to hold all required Gyraze data and metadata about a single simulation timestep.'''
-    def __init__(self, me = 9.10938356e-31, mi = 1.6726219e-27):
+    def __init__(self, me = 9.10938356e-31, mi = 1.6726219e-27, no_distf=False):
         self.me = me
         self.mi = mi
+        self.no_distf = no_distf
         self.attributes = {}
         self.attributes['B'] = GyrazeAttribute('Bmag', r'$B$', 'T')
         self.attributes['phi'] = GyrazeAttribute('phi', r'$\phi$', 'V')
@@ -163,10 +164,6 @@ class GyrazeDataset:
         self.attributes['Te'] = GyrazeAttribute('Te', r'$T_e$', 'eV')
         self.attributes['Ti'] = GyrazeAttribute('Ti', r'$T_i$', 'eV')
         self.attributes['gamma'] = GyrazeAttribute('rhoe_lambdaD', r'$\rho_e/\lambda_D$', '')
-        self.attributes['fe'] = GyrazeAttribute('fe', r'$f_e$', 'm$^{-6}$s$^3$')
-        self.attributes['fi'] = GyrazeAttribute('fi', r'$f_i$', 'm$^{-6}$s$^3$')
-        self.attributes['Fe'] = GyrazeAttribute('Fe', r'$F_{e0}$', 'm$^{-6}$s$^3$', manual=True)
-        self.attributes['Fi'] = GyrazeAttribute('Fi', r'$F_{i0}$', 'm$^{-6}$s$^3$', manual=True)
         self.attributes['phi_norm'] = GyrazeAttribute('phi_norm', r'$e\phi/T_e$', '', manual=True)
         self.attributes['nioverne'] = GyrazeAttribute('nioverne', r'$n_i/n_e$', '', manual=True)
         self.attributes['TioverTe'] = GyrazeAttribute('TioverTe', r'$T_i/T_e$', '', manual=True)
@@ -174,9 +171,17 @@ class GyrazeDataset:
         self.attributes['Eperpe_norm'] = GyrazeAttribute('Eperpe_norm', r'$\mu B_0/T_{e0}$', '', manual=True)
         self.attributes['Epari_norm'] = GyrazeAttribute('Epari_norm', r'$1/2 m_i v_\parallel^2/T_{i0}$', '', manual=True)
         self.attributes['Eperpi_norm'] = GyrazeAttribute('Eperpi_norm', r'$\mu B_0/T_{i0}$', '', manual=True)
-        self.attributes['fe_norm'] = GyrazeAttribute('fe_norm', r'$f_e/F_{e0}$', '', manual=True)
-        self.attributes['fi_norm'] = GyrazeAttribute('fi_norm', r'$f_i/F_{i0}$', '', manual=True)
         self.grids = {}
+        if not no_distf:
+            self.attributes['fe'] = GyrazeAttribute('fe', r'$f_e$', 'm$^{-6}$s$^3$')
+            self.attributes['fi'] = GyrazeAttribute('fi', r'$f_i$', 'm$^{-6}$s$^3$')
+            self.attributes['Fe'] = GyrazeAttribute('Fe', r'$F_{e0}$', 'm$^{-6}$s$^3$', manual=True)
+            self.attributes['Fi'] = GyrazeAttribute('Fi', r'$F_{i0}$', 'm$^{-6}$s$^3$', manual=True)
+            self.attributes['fi_norm'] = GyrazeAttribute('fi_norm', r'$f_i/F_{i0}$', '', manual=True)
+            self.attributes['fe_norm'] = GyrazeAttribute('fe_norm', r'$f_e/F_{e0}$', '', manual=True)
+            self.eval_local_maxwellians = self.eval_local_maxwellians_on
+        else:
+            self.eval_local_maxwellians = self.eval_local_maxwellians_off
         self.Fe0 = None
         self.Fi0 = None
         self.Tref = None
@@ -198,7 +203,7 @@ class GyrazeDataset:
         self.grids['vpari'] = self.attributes['fi'].frame.new_grids[3]
         self.grids['mui'] = self.attributes['fi'].frame.new_grids[4]
         
-    def eval_local_maxwellians(self,species):
+    def eval_local_maxwellians_on(self,species):
         s = species[0]
         m = self.attributes['f'+s].frame.simulation.species[species].m
         n0 = self.attributes['n'+s].v0
@@ -207,6 +212,9 @@ class GyrazeDataset:
         B0 = self.attributes['B'].v0
         return get_local_maxwellian(n0, upar0, T0, m, B0, self.grids['vpar'+s], self.grids['mu'+s])
 
+    def eval_local_maxwellians_off(self, species):
+        return 0
+    
     def eval(self, x, y, z):
         for attr in self.attributes.values():
             attr.eval(x, y, z)
@@ -242,6 +250,7 @@ class GyrazeInterface:
         self.simulation = simulation
         self.alphadeg : float = kwargs.get('alphadeg', 5.0)
         self.filter_negativity : bool = kwargs.get('filter_negativity', False)
+        self.no_distf : bool = kwargs.get('no_distf', False)
         self.number_datasets : bool = kwargs.get('number_datasets', False)
         self.outfilename : str = kwargs.get('outfilename', 'data.h5')
 
@@ -251,7 +260,7 @@ class GyrazeInterface:
         self.mi = self.simulation.species['ion'].m
         self.mioverme = self.mi/self.me
         self.e = np.abs(self.simulation.species['elc'].q)
-        self.dataset = GyrazeDataset(self.me, self.mi)
+        self.dataset = GyrazeDataset(self.me, self.mi, self.no_distf)
 
         self.fe_mpe_args_text = None
         self.fe_mpe_text = None
@@ -410,14 +419,20 @@ class GyrazeInterface:
         return content
     
     def generate_input_files(self):
-        self.fe_mpe_args_text, self.fe_mpe_text = self.generate_F_mps_content(
-            self.dataset.attributes['Eperpe_norm'].v0,
-            self.dataset.attributes['Epare_norm'].v0, 
-            self.dataset.attributes['fe'].v0)
-        self.fi_mpe_args_text, self.fi_mpe_text = self.generate_F_mps_content(
-            self.dataset.attributes['Eperpi_norm'].v0, 
-            self.dataset.attributes['Epari_norm'].v0, 
-            self.dataset.attributes['fi'].v0)
+        if self.no_distf:
+            self.fe_mpe_args_text = ''
+            self.fe_mpe_text = ''
+            self.fi_mpe_args_text = ''
+            self.fi_mpe_text = ''
+        else:
+            self.fe_mpe_args_text, self.fe_mpe_text = self.generate_F_mps_content(
+                self.dataset.attributes['Eperpe_norm'].v0,
+                self.dataset.attributes['Epare_norm'].v0, 
+                self.dataset.attributes['fe'].v0)
+            self.fi_mpe_args_text, self.fi_mpe_text = self.generate_F_mps_content(
+                self.dataset.attributes['Eperpi_norm'].v0, 
+                self.dataset.attributes['Epari_norm'].v0, 
+                self.dataset.attributes['fi'].v0)
         self.input_physparams_text = self.generate_input_physparams_content()
         self.input_numparams_text = self.generate_input_numparams_content()
 
@@ -460,6 +475,7 @@ class GyrazeInterface:
                  alphadeg: Optional[float] = None, 
                  zplane: Optional[str] = None, 
                  filter_negativity: Optional[bool] = None,
+                 no_distf: Optional[bool] = None,
                  lim_dict: Optional[dict] = None,
                  verbose: bool = False,):
         '''
@@ -483,6 +499,8 @@ class GyrazeInterface:
         filter_negativity : bool, optional
             Filter negative values in the distribution functions and put them to zero.
             If provided, override the instance's filter_negativity setting.
+        no_distf : bool, optional
+            If True, do not include distribution function data in the output.
         lim_dict : dict, optional
             Dictionary specifying limits for filtering points.
             E.g., provided as {'phi': {'min': float, 'max': float}}, skip points where phi0 is outside this range.
@@ -500,6 +518,9 @@ class GyrazeInterface:
         
         if filter_negativity is not None:
             self.filter_negativity = filter_negativity
+            
+        if no_distf is not None:
+            self.no_distf = no_distf
             
         if lim_dict is not None:
             for key in lim_dict.keys():

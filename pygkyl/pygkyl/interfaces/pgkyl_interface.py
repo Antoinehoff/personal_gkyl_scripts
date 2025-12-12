@@ -36,12 +36,34 @@ def get_dg_and_gdata(filename:str, polyorder=1, polytype='ms'):
     return dg, Gdata
 
 def get_values(Gdata):
-    # Extend dimension for 2D and 4D data. Pygkyl considers everythin as 3D or 5D
-    if Gdata.get_values().ndim in [3, 5]:
-        values = np.expand_dims(Gdata.get_values(), axis=1)
-        return np.concatenate((values, values), axis=1)
-    else:
-        return Gdata.get_values()
+    
+    Gvalues = Gdata.get_values()
+    # In the following we extend the dimensionality to always have
+    # 5 dimensions in phase space and 3 dimensions in configuration space.
+    if Gdata.ctx['basis_type'] == 'gkhybrid': # phase space data
+        if Gvalues.ndim == 6: #3x2v + 1p data
+            return Gvalues
+        if Gvalues.ndim == 5: #2x2v + 1p data
+            values = np.expand_dims(Gvalues, axis=1)
+            return np.concatenate((values, values), axis=1)
+        elif Gvalues.ndim == 4: #1x2v + 1p data
+            values = np.expand_dims(Gvalues, axis=0)
+            values = np.expand_dims(values, axis=0)
+            values = np.concatenate((values, values), axis=0)
+            return np.concatenate((values, values), axis=1)
+    elif Gdata.ctx['basis_type'] == 'serendipity': # configuration space data
+        if Gvalues.ndim == 4: #3x + 1p data
+            return Gvalues
+        if Gvalues.ndim == 3: #2x + 1p data
+            values = np.expand_dims(Gvalues, axis=1)
+            return np.concatenate((values, values), axis=1)
+        elif Gvalues.ndim == 2: #1x + 1p data
+            values = np.expand_dims(Gvalues, axis=0)
+            values = np.expand_dims(values, axis=0)
+            values = np.concatenate((values, values), axis=0)
+            return np.concatenate((values, values), axis=1)
+    else: # This is e.g. integrated data and time traces.
+        return Gvalues
 
 def interpolate(Gdata,comp,polyorder=1, polytype='ms'):
     dg = pg.data.GInterpModal(Gdata, poly_order=polyorder, basis_type=polytype, periodic=False, num_interp=polyorder+1)
@@ -57,25 +79,42 @@ def get_interpolated_values(filename:str, comp=0, polyorder=1, polytype='ms'):
     return interpolate(Gdata, comp, polyorder, polytype)
 
 def get_grid(Gdata):
-    values = Gdata.get_grid()        
-    if len(values) == 5 :
+    values = Gdata.get_grid()   
+    if Gdata.ctx['basis_type'] == 'gkhybrid': # phase space data
+        if len(values) == 5 :
+            return values
+        elif len(values) == 4 :
+            return [values[0], np.array([0, 1/3, 2/3]), values[1], values[2], values[3]]
+        elif len(values) == 3 :
+            return [np.array([0, 1/3, 2/3]), np.array([0, 1/3, 2/3]), values[0], values[1], values[2]]
+    elif Gdata.ctx['basis_type'] == 'serendipity': # configuration space data
+        if len(values) == 3 :
+            return values
+        elif len(values) == 2 :
+            return [values[0], np.array([0, 1/3, 2/3]), values[1]]
+        elif len(values) == 1 :
+            return [np.array([0, 1/3, 2/3]), np.array([0, 1/3, 2/3]), values[0]]
+    else:
         return values
-    elif len(values) == 4 :
-        return [values[0], np.array([0, 1/3, 2/3]), values[1], values[2], values[3]]
-    elif len(values) == 3 :
-        return values
-    elif len(values) == 2 :
-        return [values[0], np.array([0, 1/3, 2/3]), values[1]]
     
 def get_cells(Gdata):
     cells = Gdata.ctx['cells']
-    if len(cells) in [3,5]:
-        return cells
-    elif len(cells) == 4:
-        return [cells[0], 2, cells[1], cells[2], cells[3]]
-    elif len(cells) == 2:
-        cells = [cells[0], 2, cells[1]]
-        return cells
+    if Gdata.ctx['basis_type'] == 'gkhybrid': # phase space data
+        if len(cells) == 5:
+            return cells
+        elif len(cells) == 4:
+            return [cells[0], 2, cells[1], cells[2], cells[3]]
+        elif len(cells) == 3:
+            return [2, 2, cells[0], cells[1], cells[2]]
+    elif Gdata.ctx['basis_type'] == 'serendipity': # configuration space
+        if len(cells) == 3:
+            return cells
+        elif len(cells) == 2:
+            return [cells[0], 2, cells[1]]
+        elif len(cells) == 1:
+            return [2, 2, cells[0]]
+    else:
+        return ValueError("Invalid basis type: %s"%Gdata.ctx['basis_type'])
 
 def integrate(Gdata):
     return Gdata.integrate()
@@ -101,3 +140,9 @@ def file_exists(file):
             return True
     except FileNotFoundError:
         return False
+
+def read_dyn_vector(dataFile):
+  pgData = pg.GData(dataFile)
+  time   = pgData.get_grid()
+  val    = pgData.get_values()
+  return np.squeeze(time), np.squeeze(val)

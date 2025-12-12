@@ -504,9 +504,9 @@ class PoloidalProjection:
 
     #fig1a.suptitle
     ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
-    ax1a[0].set_xlabel(r'$R$ (m)',fontsize=xyLabelFontSize, labelpad=-2)
+    ax1a[0].set_xlabel(r'$R$ [m]',fontsize=xyLabelFontSize, labelpad=-2)
     #setTickFontSize(ax1a[0],tickFontSize)
-    ax1a[0].set_ylabel(r'$Z$ (m)',fontsize=xyLabelFontSize, labelpad=-10)
+    ax1a[0].set_ylabel(r'$Z$ [m]',fontsize=xyLabelFontSize, labelpad=-10)
     cbar = plt.colorbar(hpl1a[0],ax=ax1a,cax=cbar_ax1a)
     cbar.ax.tick_params(labelsize=10)#tickFontSize)
     cbar.set_label(vsymbol+r'$(R,\varphi=0,Z)$'+'['+vunits+']', 

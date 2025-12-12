@@ -157,7 +157,7 @@ class DataParam:
                 # add default moments interface        
                 # Find a file type where we can find the moment data.
                 if checkfiles:
-                    mtype = -1
+                    mtype = 'none'
                     for moment_type in ['BiMaxwellianMoments', 'HamiltonianMoments', 'M0', 'M0M1M2']:
                         pattern = f"{self.fileprefix}-{spec}_{moment_type}_*.gkyl"
                         files = glob.glob(pattern)
@@ -169,9 +169,9 @@ class DataParam:
                             mtype = moment_type
                             self.default_mom_type = mtype
                             break
-                    if mtype == -1:
-                        print(f"No moments file found for species {spec}. (recall, we do not support Maxwellian moments yet)")
-                        print(f"Check the file name pattern: {self.fileprefix}-{spec}_{moment_type}_*.gkyl")
+                    if mtype == 'none':
+                        # print(f"No moments file found for species {spec}. (recall, we do not support Maxwellian moments yet)")
+                        # print(f"Check the file name pattern: {self.fileprefix}-{spec}_{moment_type}_*.gkyl")
                         continue
                 else:
                     mtype = 'BiMaxwellianMoments'
@@ -339,26 +339,26 @@ class DataParam:
             cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
             ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
             
-            # nabla times b
-            name       = 'nabla_x_b_%s'%(ci_)
+            # curl b
+            name       = 'curlb_%s'%(ci_)
             symbol     = r'$(\nabla \times b)_{%s}$'%(ci_)
             units      = r'1/m'
             field2load = ['b_%s'%cj_,'b_%s'%ck_,'Jacobian']
-            def receipe_nabla_b(gdata_list,i=i_):
+            def receipe_curl_b(gdata_list,i=i_):
                 j = np.mod(i+1,3)
                 k = np.mod(i+2,3)
                 bj     = pgkyl_.get_values(gdata_list[0])
                 bk     = pgkyl_.get_values(gdata_list[1])
                 Jacob   = pgkyl_.get_values(gdata_list[2])
-                grids   = gdata_list[0].get_grid()
+                grids   = pgkyl_.get_grid(gdata_list[0])
                 jgrid   = grids[j][:-1]
                 kgrid   = grids[k][:-1]
-                dbjdk = np.gradient(bj, kgrid, axis=i)
-                dbkdj = np.gradient(bk, jgrid, axis=i)
+                dbjdk = np.gradient(bj, kgrid, axis=k)
+                dbkdj = np.gradient(bk, jgrid, axis=j)
                 return (dbjdk - dbkdj)/Jacob
-            default_qttes.append([name,symbol,units,field2load,receipe_nabla_b])
-            
-            # Curvature (- b x ( nabla x b)
+            default_qttes.append([name,symbol,units,field2load,receipe_curl_b])
+
+            # Curvature (- b x ( curl b)
             name       = 'curv_%s'%(ci_)
             symbol     = r'$\kappa_{%s}$'%(ci_)
             units      = r'm$^{-2}$'
@@ -368,9 +368,9 @@ class DataParam:
                 k = np.mod(i+2,3)
                 bj     = pgkyl_.get_values(gdata_list[1])
                 bk     = pgkyl_.get_values(gdata_list[2])
-                rotbj = receipe_nabla_b([gdata_list[j],gdata_list[k],gdata_list[-1]],i=j)
-                rotbk = receipe_nabla_b([gdata_list[k],gdata_list[i],gdata_list[-1]],i=k)
-                return -(bj*rotbk - bk*rotbj)
+                curlb_j = receipe_curl_b([gdata_list[j],gdata_list[k],gdata_list[-1]],i=j)
+                curlb_k = receipe_curl_b([gdata_list[k],gdata_list[i],gdata_list[-1]],i=k)
+                return -(bj*curlb_k - bk*curlb_j)
             default_qttes.append([name,symbol,units,field2load,receipe_curv])
             
             # ExB velocity
@@ -386,7 +386,7 @@ class DataParam:
                 b_k     = pgkyl_.get_values(gdata_list[2])
                 Bmag    = pgkyl_.get_values(gdata_list[3])
                 Jacob   = pgkyl_.get_values(gdata_list[4])
-                grids   = gdata_list[0].get_grid()
+                grids   = pgkyl_.get_grid(gdata_list[0])
                 j       = np.mod(i+1,3)
                 k       = np.mod(i+2,3)
                 jgrid   = grids[j][:-1]
@@ -395,6 +395,33 @@ class DataParam:
                 dphidk  = np.gradient(phi, kgrid, axis=k)
                 return -(dphidj*b_k - dphidk*b_j)/Jacob/Bmag
             default_qttes.append([name,symbol,units,field2load,receipe_vExB])
+            
+            # Perpendicular magnetic field perturbation $\delta B_\perp = \nabla \times (A_\parallel b)$
+            # following curl(Apar * b) = Apar * curl(b) + grad(Apar) x b
+            name = 'dB_perp_%s'%(ci_)
+            symbol = r'$\delta B_{\perp,%s}$'%(ci_)
+            units = r'T'
+            field2load = ['Apar','b_%s'%cj_,'b_%s'%ck_,'Jacobian']
+            def receipe_dB_perp(gdata_list,i=i_):
+                j = np.mod(i+1,3)
+                k = np.mod(i+2,3)
+                Apar   = pgkyl_.get_values(gdata_list[0])
+                bj     = pgkyl_.get_values(gdata_list[1])
+                bk     = pgkyl_.get_values(gdata_list[2])
+                Jacob   = pgkyl_.get_values(gdata_list[3])
+                grids   = pgkyl_.get_grid(gdata_list[0])
+                jgrid   = grids[j][:-1]
+                kgrid   = grids[k][:-1]
+                result = 0.0
+                # add Apar * curl(b)
+                curlb = receipe_curl_b([gdata_list[1],gdata_list[2],gdata_list[3]],i=i_)
+                result += Apar * curlb
+                # add grad(Apar) x b
+                dApardj  = np.gradient(Apar, jgrid, axis=j)
+                dApardk  = np.gradient(Apar, kgrid, axis=k)
+                result += (dApardj*bk - dApardk*bj)/Jacob
+                return result
+            default_qttes.append([name,symbol,units,field2load,receipe_dB_perp])
             
         for i_ in range(len(directions)):
             for j_ in range(len(directions)):
@@ -411,7 +438,7 @@ class DataParam:
                 # because of the phi derivative
                 def receipe_sExB(gdata_list,i=i_,j=j_):
                     vExBj = receipe_vExB(gdata_list,i=j)
-                    grids = gdata_list[0].get_grid()
+                    grids = pgkyl_.get_grid(gdata_list[0])
                     igrid = grids[i][:-1]
                     sExB  = np.gradient(vExBj, igrid, axis=i)
                     return sExB
@@ -451,7 +478,7 @@ class DataParam:
             def receipe_gradn(gdata_list):
                 dens = pgkyl_.get_values(gdata_list[0])
                 dens[dens <= 0] = np.nan # avoid log(0)
-                grids = gdata_list[0].get_grid()
+                grids = pgkyl_.get_grid(gdata_list[0])
                 return -np.gradient(np.log(dens), grids[0][:-1], axis=0)
             default_qttes.append([name,symbol,units,field2load,receipe_gradn])
 
@@ -463,7 +490,7 @@ class DataParam:
             def receipe_gradT(gdata_list):
                 temp = pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1])/3.0
                 temp[temp <= 0] = np.nan # avoid log(0)
-                grids = gdata_list[0].get_grid()
+                grids = pgkyl_.get_grid(gdata_list[0])
                 return -np.gradient(np.log(temp), grids[0][:-1], axis=0)
             default_qttes.append([name,symbol,units,field2load,receipe_gradT])
 
@@ -614,7 +641,6 @@ class DataParam:
                 """
                 Larmor radius: rho = sqrt(m Tperp) / (|q| B)
                 """
-                e = 1.602176634e-19
                 Tperp = pgkyl_.get_values(gdata_list[0]) * phys_tools.kB
                 Bmag = pgkyl_.get_values(gdata_list[1])
                 # remove unphysical values
@@ -671,7 +697,7 @@ class DataParam:
                     b_k     = pgkyl_.get_values(gdata_list[2])
                     Bmag    = pgkyl_.get_values(gdata_list[3])
                     Jacob   = pgkyl_.get_values(gdata_list[4])
-                    grids   = gdata_list[0].get_grid()
+                    grids   = pgkyl_.get_grid(gdata_list[0])
                     j       = np.mod(i+1,3)
                     k       = np.mod(i+2,3)
                     jgrid   = grids[j][:-1]
@@ -817,35 +843,48 @@ class DataParam:
             return Ti*mi/(Te*me)
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
 
-        #Debye length (lambda_D = sqrt(e0 kB Te / (n_e e^2)))
+        #Debye length (lambda_D = sqrt(e0 kB Te / sum_s(q_s^2 n_s)))
         name = 'lambdaD'
         symbol = r'$\lambda_{D}$'
         units = r'm'
-        field2load = ['ne','Tpare','Tperpe']
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('Tpar%s'%s_)
+            field2load.append('Tperp%s'%s_)
         def receipe_lambdaD(gdata_list,species=species):
             e = 1.602176634e-19
+            denom = 0.0
+            i_s = 0
+            for spec in species.values():
+                n_s = pgkyl_.get_values(gdata_list[0+i_s])
+                T_s = receipe_Ttots([gdata_list[1+i_s],gdata_list[2+i_s]])
+                T_s[T_s <= 0] = np.nan # avoid unphysical values
+                denom += (spec.q/e)**2 * n_s/T_s
+                i_s += 3
             e0 = 8.854187817e-12
-            me = species['elc'].m
-            ne = pgkyl_.get_values(gdata_list[0])
-            Te = receipe_Ttots(gdata_list[1:3])
-            # remove unphysical values
-            Te[Te <= 0] = np.nan # avoid sqrt(negative
-            ne[ne <= 0] = np.nan # avoid div by 0
-            return np.sqrt(e0 * Te * phys_tools.kB / (ne * e**2))
+            num = e0 * phys_tools.kB / e**2
+            denom[denom <= 0] = np.nan # avoid div by 0
+            return np.sqrt(num/denom)
         default_qttes.append([name,symbol,units,field2load,receipe_lambdaD])
         
         #electron larmor radius to Debye length ratio
         name = 'rhoe_lambdaD'
         symbol = r'$\rho_{e}/\lambda_{D}$'
         units = ''
-        field2load = ['ne','Bmag']
+        field2load = []
+        for spec in species.values():
+            s_ = spec.nshort
+            field2load.append('n%s'%s_)
+            field2load.append('Tpar%s'%s_)
+            field2load.append('Tperp%s'%s_)
+        field2load.append('Tperpe')
+        field2load.append('Bmag')
         def receipe_rhoe_lambdaD(gdata_list,species=species):
-            me = species['elc'].m
-            eps0 = 8.854187817e-12
-            ne = pgkyl_.get_values(gdata_list[0])
-            ne[ne <= 0] = np.nan # avoid div by 0
-            Bmag = pgkyl_.get_values(gdata_list[1])
-            return np.sqrt(me*ne/eps0)/Bmag
+            lambdaD = receipe_lambdaD(gdata_list,species=species)
+            rho_e = receipe_rhos(gdata_list[-2:],q=species['elc'].q,m=species['elc'].m)
+            return rho_e/lambdaD
         default_qttes.append([name,symbol,units,field2load,receipe_rhoe_lambdaD])
         
         #parallel current density
@@ -862,7 +901,7 @@ class DataParam:
             # add species dependent energies
             k = 0
             for spec in species.values():
-                fout += spec.q*gdata_list[0+k].get_values()*gdata_list[1+k].get_values()
+                fout += spec.q*pgkyl_.get_values(gdata_list[0+k])*pgkyl_.get_values(gdata_list[1+k])
                 k    += 2
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_jpar])
@@ -926,20 +965,32 @@ class DataParam:
         directions = ['x','y','z'] #directions array
         for i_ in range(len(directions)):
             ci_ = directions[i_] # direction of the component
-            # Electric field i-th component
+            
+            # Electrostatic Electric field i-th component
+            name       = 'E%s_es'%(ci_)
+            symbol     = r'$E_{%s}^{es}$'%(ci_)
+            units      = r'V/m'
+            field2load = ['phi']
+            def receipe_Ei_es(gdata_list,i=i_):
+                phi     = pgkyl_.get_values(gdata_list[0])
+                grids   = pgkyl_.get_grid(gdata_list[0])
+                igrid    = grids[i][:-1]
+                return -np.gradient(phi, igrid, axis=i)
+            default_qttes.append([name,symbol,units,field2load,receipe_Ei_es])
+            
+            # EM Electric field i-th component
             name       = 'E%s'%(ci_)
             symbol     = r'$E_{%s}$'%(ci_)
             units      = r'V/m'
-            field2load = ['phi']
-            # The receipe depends on the direction 
-            # because of the phi derivative
-            def receipe_Ei(gdata_list,i=i_):
-                phi     = pgkyl_.get_values(gdata_list[0])
-                grids   = gdata_list[0].get_grid()
-                grid    = grids[i][:-1]
-                return -np.gradient(phi, grid, axis=i)
+            field2load = ['phi','Apardot']
+            def receipe_Ei(gdata_list,i=i_,ci=ci_):
+                if ci == 'z':
+                    Apardot = pgkyl_.get_values(gdata_list[1])
+                    return receipe_Ei_es(gdata_list[0:1],i=i) - Apardot
+                else:
+                    return receipe_Ei_es(gdata_list[0:1],i=i)
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
-
+            
         #total source power density
         name       = 'src_P'
         symbol     = r'$P_{src}$'

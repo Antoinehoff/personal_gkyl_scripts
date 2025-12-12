@@ -13,6 +13,7 @@ Functions:
 import fnmatch
 import os,re,sys
 from ..interfaces.flaninterface import FlanInterface
+import postgkyl as pg
 
 # function to extract filePrefix from lua file(s)
 def find_prefix(pattern, path):
@@ -82,3 +83,6 @@ def check_latex_installed(verbose=False):
         if verbose:
             print("LaTeX is not installed or not found in your system's PATH.")
         return False
+    
+def does_file_exist(fileIn):
+  return os.path.exists(fileIn)

@@ -49,3 +49,37 @@ def custom_meshgrid(x,y,z=0):
     else:
         Y,X,Z = np.meshgrid(y,x,z)
         return [X,Y,Z]
+    
+def simplify_units(units):
+    return simplify_multiplication(simplify_division(units))
+
+def simplify_division(units):
+    # split at the first slash
+    num, denom = units.split('/', 1)
+    
+    # check if there is a slash left somewhere
+    if '/' in denom: denom = simplify_division(denom)
+    if '/' in num: num = simplify_division(num)
+    
+    for n in num:
+        for d in denom:
+            if n == d:
+                num = num.replace(n,'')
+                denom = denom.replace(d,'')
+                return simplify_division(num + '/' + denom)
+            
+    return num + '/' + denom
+
+def simplify_multiplication(units):
+    if '/' in units:
+        num, denom = units.split('/', 1)
+        num = simplify_multiplication(num)
+        denom = simplify_multiplication(denom)
+        return num + '/' + denom
+    else:
+        for n in units:
+            for m in units.replace(n,''):
+                if n == m:
+                    units = units.replace(n,n+'^2')
+                    return simplify_multiplication(units)
+        return units

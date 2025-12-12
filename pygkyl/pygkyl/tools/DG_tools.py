@@ -47,11 +47,11 @@ class DGBasis:
                 
     def eval_proj(self, Gdata, coords, id = None):
         '''
-        Evaluate the projection of the DG field at the point x,y,z
+        Evaluate the projection of the DG field at the point coords
 
         Args:
             Gdata : Gkeyll data object
-            coords (list): list of coordinates [x,y,z]
+            coords (list): list of coordinates
             id (int): index of the component to evaluate the gradient
         '''
         cell_idx, cell_coord, gradc = self.grid_to_cell(Gdata, coords)
@@ -68,6 +68,9 @@ class DGBasis:
         return val
     
     def grid_to_cell(self, Gdata, coords):
+        '''
+        Map global coordinates to cell index and local coordinates in cell
+        '''
         ndim = len(Gdata.grid)
         gradc = np.zeros(ndim)
         cell_idx = np.zeros(ndim,dtype=int)

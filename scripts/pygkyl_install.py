@@ -31,6 +31,7 @@ PARAMETERS:
 -----------
 -p, --path     Base path for repositories (default: ~)
 --no-pull      Skip running 'git pull' for repositories after cloning/updating
+--no-postgkyl-install Skip postgkyl installation
 -h, --help     Show this help message and exit
 
 Logs for pip installations are saved in the respective repository directories.
@@ -39,6 +40,7 @@ Logs for pip installations are saved in the respective repository directories.
 )
 parser.add_argument("-p", "--path", default="~", help="Base path for repositories (default: ~)")
 parser.add_argument("--no-pull", action="store_true", help="Skip pulling (git pull) repositories after cloning/updating")
+parser.add_argument("--no-postgkyl-install", action="store_true", help="Skip installing postgkyl")
 args = parser.parse_args()
 
 base_path = os.path.expanduser(args.path)
@@ -65,9 +67,13 @@ else:
 	print("Skipping git pull for postgkyl (--no-pull)")
 
 print("1.2 Install postgkyl (required for pygkyl)")
-subprocess.run(["touch", os.path.join(postgkyl_path, "postgkyl_install.log")], check=True)
-with open(os.path.join(postgkyl_path, "postgkyl_install.log"), "w") as logf:
-	subprocess.run([sys.executable, "-m", "pip", "install", postgkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
+if not args.no_postgkyl_install:
+	subprocess.run(["touch", os.path.join(postgkyl_path, "postgkyl_install.log")], check=True)
+	with open(os.path.join(postgkyl_path, "postgkyl_install.log"), "w") as logf:
+		subprocess.run([sys.executable, "-m", "pip", "install", postgkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
+else:
+    print("Skipping postgkyl installation (--no_postgkyl_install)")
+
 
 print("2.0 Check if personal_gkyl_scripts repository exists")
 if not os.path.exists(personal_gkyl_scripts_path):

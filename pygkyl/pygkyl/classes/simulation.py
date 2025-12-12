@@ -117,6 +117,10 @@ class Simulation:
         elif len(normgrids) == 2:
             normx, normz = normgrids[0], normgrids[1]
             normy = np.array([0])
+        elif len(normgrids) == 1:
+            normx = np.array([0])
+            normy = np.array([0])
+            normz = normgrids[0]
         
         Nx = (normx.shape[0] - 2) * 2  # Double resolution in x
         Ny = (normy.shape[0] - 2) * 2  # Double resolution in y
