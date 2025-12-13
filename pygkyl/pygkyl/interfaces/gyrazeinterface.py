@@ -1,5 +1,6 @@
 import attr
 import h5py
+from matplotlib.colors import LogNorm
 import numpy as np
 import os
 import matplotlib.pyplot as plt
@@ -7,6 +8,7 @@ import io
 import time
 from typing import List, Union, Optional
 from ..classes import Frame, Simulation
+from scipy.ndimage import gaussian_filter
 
 def get_local_maxwellian(n0, upar0, T0, m, B0, vpar, mu):
     """Compute local Maxwellian distribution function values.
@@ -167,6 +169,7 @@ class GyrazeDataset:
         self.attributes['phi_norm'] = GyrazeAttribute('phi_norm', r'$e\phi/T_e$', '', manual=True)
         self.attributes['nioverne'] = GyrazeAttribute('nioverne', r'$n_i/n_e$', '', manual=True)
         self.attributes['TioverTe'] = GyrazeAttribute('TioverTe', r'$T_i/T_e$', '', manual=True)
+        self.attributes['vpare_norm'] = GyrazeAttribute('vpare_norm', r'$v_\parallel/\sqrt{T_{e0}/m_e}$', '', manual=True)
         self.attributes['Epare_norm'] = GyrazeAttribute('Epare_norm', r'$1/2 m_e v_\parallel^2/T_{e0}$', '', manual=True)
         self.attributes['Eperpe_norm'] = GyrazeAttribute('Eperpe_norm', r'$\mu B_0/T_{e0}$', '', manual=True)
         self.attributes['Epari_norm'] = GyrazeAttribute('Epari_norm', r'$1/2 m_i v_\parallel^2/T_{i0}$', '', manual=True)
@@ -218,16 +221,18 @@ class GyrazeDataset:
     def eval(self, x, y, z):
         for attr in self.attributes.values():
             attr.eval(x, y, z)
-        
-        self.Tref = self.attributes['Te'].v0
-        self.nref = self.attributes['ne'].v0
-        self.attributes['phi_norm'].v0 = self.attributes['phi'].v0 / self.Tref
-        self.attributes['nioverne'].v0 = self.attributes['ni'].v0 / self.nref
-        self.attributes['TioverTe'].v0 = self.attributes['Ti'].v0 / self.Tref
-        self.attributes['Epare_norm'].v0 = 0.5*self.me*(self.grids['vpare'])**2 / (self.Tref * 1.602e-19)
-        self.attributes['Epari_norm'].v0 = 0.5*self.mi*(self.grids['vpari'])**2 / (self.Tref * 1.602e-19)
-        self.attributes['Eperpe_norm'].v0 = self.grids['mue'] * self.attributes['B'].v0 / (self.Tref * 1.602e-19)
-        self.attributes['Eperpi_norm'].v0 = self.grids['mui'] * self.attributes['B'].v0 / (self.Tref * 1.602e-19)
+        ne = self.attributes['ne'].v0
+        ni = self.attributes['ni'].v0
+        Te = self.attributes['Te'].v0
+        Ti = self.attributes['Ti'].v0
+        self.attributes['phi_norm'].v0 = self.attributes['phi'].v0 / Te
+        self.attributes['nioverne'].v0 = ni / ne
+        self.attributes['TioverTe'].v0 = Ti / Te
+        self.attributes['vpare_norm'].v0 = self.grids['vpare'] / np.sqrt((Te * 1.602e-19/self.me))
+        self.attributes['Epare_norm'].v0 = 0.5*self.me*(self.grids['vpare'])**2 / (Te * 1.602e-19)
+        self.attributes['Epari_norm'].v0 = 0.5*self.mi*(self.grids['vpari'])**2 / (Ti * 1.602e-19)
+        self.attributes['Eperpe_norm'].v0 = self.grids['mue'] * self.attributes['B'].v0 / (Te * 1.602e-19)
+        self.attributes['Eperpi_norm'].v0 = self.grids['mui'] * self.attributes['B'].v0 / (Ti * 1.602e-19)
         self.attributes['Fe'].v0 = self.eval_local_maxwellians('elc')
         self.attributes['Fi'].v0 = self.eval_local_maxwellians('ion')
         self.attributes['fe_norm'].v0 = self.attributes['fe'].v0 #/ self.attributes['Fe'].v0
@@ -251,6 +256,14 @@ class GyrazeInterface:
         self.alphadeg : float = kwargs.get('alphadeg', 5.0)
         self.filter_negativity : bool = kwargs.get('filter_negativity', False)
         self.no_distf : bool = kwargs.get('no_distf', False)
+        self.nsmooth_distf : Optional[int] = kwargs.get('nsmooth_distf', 0)
+        self.int_fact_distf : Optional[int] = kwargs.get('int_fact_distf', 1)
+        self.enorm_par_max_e : Optional[float] = kwargs.get('enorm_par_max_e', None)
+        self.enorm_perp_max_e : Optional[float] = kwargs.get('enorm_perp_max_e', None)
+        self.enorm_par_max_i : Optional[float] = kwargs.get('enorm_par_max_i', None)
+        self.enorm_perp_max_i : Optional[float] = kwargs.get('enorm_perp_max_i', None)
+        self.vpos_fe : bool = kwargs.get('vpos_fe', True)
+        self.vpos_fi : bool = kwargs.get('vpos_fi', True)
         self.number_datasets : bool = kwargs.get('number_datasets', False)
         self.outfilename : str = kwargs.get('outfilename', 'data.h5')
 
@@ -353,16 +366,54 @@ class GyrazeInterface:
         yindices = np.unique(yindices)
         return xindices, yindices, izplanes
 
-    def generate_F_mps_content(self, Eperpnorm, Eparnorm, f0):
+    def generate_F_mps_content(self, vparnorm, vperpnorm, f0, zplane='upper', vpos=True):
         # Find the index of positive vpar
         ipos = np.argmin(np.abs(self.dataset.grids['vpare'] - 0.0))
         
-        # select Eparnorm and f0 for positive vpar only
-        Eparnorm = Eparnorm[ipos:]
-        f0 = f0[ipos:,:]
+        # select f0 for vpar going to the magnetic presheath
+        if vpos:
+            if zplane == 'lower':
+                vparnorm = vparnorm[:ipos+1]
+                f0 = f0[:ipos+1,:]
+                # reverse
+                vparnorm = vparnorm[::-1]
+                f0 = f0[::-1,:]
+            elif zplane == 'upper':
+                vparnorm = vparnorm[ipos:]
+                f0 = f0[ipos:,:]
+            vparnorm = np.abs(vparnorm)
+            
+        if self.nsmooth_distf > 0:
+            f0 = gaussian_filter(f0, sigma=self.nsmooth_distf)
+            
+        # Interpolate on a uniform vpar grid
+        Nint = self.int_fact_distf * len(vparnorm)
+        vmin = -self.enorm_par_max_e if self.enorm_par_max_e is not None else vparnorm.min()
+        vmax = self.enorm_par_max_e if self.enorm_par_max_e is not None else vparnorm.max()
+        vparnorm_int = np.linspace(vmin, vmax, Nint)
+        f0_int = np.zeros((len(vparnorm_int), f0.shape[1]))
+        for i in range(f0.shape[1]):
+            f0_int[:, i] = np.interp(vparnorm_int, vparnorm, f0[:, i])
+        f0 = f0_int
+        vparnorm = vparnorm_int
         
+        # Interpolate on a uniform vperp grid
+        Nint = self.int_fact_distf * len(vperpnorm)
+        vmin = 0.0
+        vmax = self.enorm_perp_max_e if self.enorm_perp_max_e is not None else vperpnorm.max()
+        vperpnorm_int = np.linspace(vmin, vmax, Nint)
+        f0_int = np.zeros((f0.shape[0], len(vperpnorm_int)))
+        for i in range(f0.shape[0]):
+            f0_int[i, :] = np.interp(vperpnorm_int, vperpnorm, f0[i, :])
+        f0 = f0_int
+        vperpnorm = vperpnorm_int
+            
+        # Normalize f0 so that integrating over Eperp and Epar gives 1
+        int_f0 = np.trapz(np.trapz(f0, vperpnorm, axis=1), vparnorm, axis=0)
+        f0 = f0 / int_f0
+                    
         # Generate args content
-        args_content = ' '.join(map(str, Eperpnorm)) + '\n' + ' '.join(map(str, Eparnorm))
+        args_content = ' '.join(map(str, vperpnorm)) + '\n' + ' '.join(map(str, vparnorm))
 
         # Generate f0 content using StringIO to mimic savetxt behavior
         f0_buffer = io.StringIO()
@@ -376,23 +427,23 @@ class GyrazeInterface:
             '#set type_distfunc_entrance (= ADHOC or other string)\n'
             'GKEYLL data v0.1\n'
             '#set alphadeg\n'
-            f'{self.alphadeg}\n'
+            f'{self.alphadeg:1.8f}\n'
             '#set gammaflag\n'
             '1\n'
             '#set gamma_ref\n'
-            f"{self.dataset.attributes['gamma'].v0}\n"
+            f"{self.dataset.attributes['gamma'].v0:1.8f}\n"
             '#set nspec\n'
             f'{self.nspec-1}\n'
             '#set nioverne\n'
-            f"{self.dataset.attributes['nioverne'].v0}\n"
+            f"{1.0:1.8f}\n"
             '#set TioverTe\n'
-            f"{self.dataset.attributes['TioverTe'].v0}\n"
+            f"{self.dataset.attributes['TioverTe'].v0:1.8f}\n"
             '#set mioverme\n'
-            f'{self.mioverme}\n'
+            f'{self.mioverme:1.8f}\n'
             '#set set_current (flag)\n'
             '0\n'
             '#set target_current or phi_wall\n'
-            f"{self.dataset.attributes['phi_norm'].v0}\n"
+            f"{self.dataset.attributes['phi_norm'].v0:1.8f}\n"
         )
         return content
     
@@ -418,7 +469,7 @@ class GyrazeInterface:
         )
         return content
     
-    def generate_input_files(self):
+    def generate_input_files(self, zplane='upper'):
         if self.no_distf:
             self.fe_mpe_args_text = ''
             self.fe_mpe_text = ''
@@ -426,13 +477,15 @@ class GyrazeInterface:
             self.fi_mpe_text = ''
         else:
             self.fe_mpe_args_text, self.fe_mpe_text = self.generate_F_mps_content(
+                self.dataset.attributes['vpare_norm'].v0, 
                 self.dataset.attributes['Eperpe_norm'].v0,
-                self.dataset.attributes['Epare_norm'].v0, 
-                self.dataset.attributes['fe'].v0)
+                self.dataset.attributes['fe_norm'].v0,
+                zplane=zplane, vpos=self.vpos_fe)
             self.fi_mpe_args_text, self.fi_mpe_text = self.generate_F_mps_content(
-                self.dataset.attributes['Eperpi_norm'].v0, 
                 self.dataset.attributes['Epari_norm'].v0, 
-                self.dataset.attributes['fi'].v0)
+                self.dataset.attributes['Eperpi_norm'].v0, 
+                self.dataset.attributes['fi_norm'].v0,
+                zplane=zplane, vpos=self.vpos_fi)
         self.input_physparams_text = self.generate_input_physparams_content()
         self.input_numparams_text = self.generate_input_numparams_content()
 
@@ -476,6 +529,14 @@ class GyrazeInterface:
                  zplane: Optional[str] = None, 
                  filter_negativity: Optional[bool] = None,
                  no_distf: Optional[bool] = None,
+                 nsmooth_distf: Optional[int] = 0,
+                 int_fact_distf: Optional[int] = 1,
+                 enorm_par_max_e: Optional[float] = None,
+                 enorm_perp_max_e: Optional[float] = None,
+                 enorm_par_max_i: Optional[float] = None,
+                 enorm_perp_max_i: Optional[float] = None,
+                 vpos_fe: Optional[bool] = True,
+                 vpos_fi: Optional[bool] = True,
                  lim_dict: Optional[dict] = None,
                  verbose: bool = False,):
         '''
@@ -501,6 +562,8 @@ class GyrazeInterface:
             If provided, override the instance's filter_negativity setting.
         no_distf : bool, optional
             If True, do not include distribution function data in the output.
+        nsmooth_distf : int, optional
+            Number of smoothing passes to apply to the distribution functions. If None, no smoothing is applied.
         lim_dict : dict, optional
             Dictionary specifying limits for filtering points.
             E.g., provided as {'phi': {'min': float, 'max': float}}, skip points where phi0 is outside this range.
@@ -521,6 +584,17 @@ class GyrazeInterface:
             
         if no_distf is not None:
             self.no_distf = no_distf
+            
+        if nsmooth_distf>0:
+            self.nsmooth_distf = nsmooth_distf
+            
+        self.vpos_fe = vpos_fe
+        self.vpos_fi = vpos_fi
+        self.int_fact_distf = int_fact_distf
+        self.enorm_par_max_e = enorm_par_max_e
+        self.enorm_perp_max_e = enorm_perp_max_e
+        self.enorm_par_max_i = enorm_par_max_i
+        self.enorm_perp_max_i = enorm_perp_max_i
             
         if lim_dict is not None:
             for key in lim_dict.keys():
@@ -558,7 +632,8 @@ class GyrazeInterface:
                                 self.skip_point = False
                                 self.nskipped += 1
                             else:
-                                self.generate_input_files()
+                                zplane=('upper' if izplane==np.argmax(self.dataset.grids['z']) else 'lower')
+                                self.generate_input_files(zplane=zplane)
                                 self.append_h5file(hf, x0, y0, z0, tf)
                                 self.nsample += 1
                             
@@ -791,7 +866,8 @@ class GyrazeInterface:
                     print(f"    {field_name}: sim={sim_value:.6e}, h5={h5_value:.6e} ✓")
             
             # Compare distribution function data by reconstructing from text
-            self.generate_input_files()
+            zplane = 'upper' if z0 >= 0 else 'lower'
+            self.generate_input_files(zplane=zplane)
             
             # Compare Fe data
             fe_args_h5 = grp['Fe_mpe_args.txt'][()].decode('utf-8')
@@ -867,12 +943,59 @@ class GyrazeInterface:
                         values.append(grp.attrs[attr_name])
                     else:
                         print(f"WARNING: Attribute {attr_name} not found in group {group_name}")
-                        values.append(np.nan)  # Use NaN for missing attributes
+                        print(f"Available attributes: {list(grp.attrs.keys())}")
+                        raise KeyError(f"Attribute {attr_name} not found in group {group_name}")
             
             return np.array(values)
             
         except Exception as e:
             print(f"ERROR: Failed to collect attribute: {e}")
+            return None
+        
+    def collect_distf(self, species: str = 'elc', idx: int = 0):
+        """
+        Collect distribution function data for a specific species from all datasets.
+        
+        Parameters:
+        -----------
+        species : str
+            Species to collect distribution function for ('elc' or 'ion')
+        idx : int
+            Index of the distribution function to collect
+            
+        Returns:
+        --------
+        list of np.ndarray
+            List of distribution function arrays from all datasets
+        """
+        if not os.path.exists(self.outfilename):
+            print(f"ERROR: Output file {self.outfilename} not found")
+            return None
+            
+        f_name = 'Fe_mpe.txt' if species == 'elc' else 'Fi_mpe.txt'
+        grid_name = 'Fe_mpe_args.txt' if species == 'elc' else 'Fi_mpe_args.txt'
+        try:
+            with h5py.File(self.outfilename, 'r') as hf:
+                keys = list(hf.keys())
+                group_name = keys[min(idx, len(keys)-1)]
+                grp = hf[group_name]
+                if f_name in grp:
+                    content = grp[f_name][()].decode('utf-8')
+                    # Parse the distribution function data
+                    lines = [line for line in content.split('\n') if line.strip()]
+                    distf = np.array([list(map(float, line.split())) for line in lines])
+                    # Parse the grid data
+                    grid_content = grp[grid_name][()].decode('utf-8')
+                    lines = [line for line in grid_content.split('\n') if line.strip()]
+                    grid = [list(map(float, line.split())) for line in lines]
+                else:
+                    print(f"WARNING: Distribution function {f_name} not found in group {group_name}")
+                    raise KeyError(f"Distribution function {f_name} not found in group {group_name}")
+            
+            return distf, grid
+            
+        except Exception as e:
+            print(f"ERROR: Failed to collect distribution function: {e}")
             return None
         
     def info(self):
@@ -1235,6 +1358,35 @@ class GyrazeInterface:
                 ax.tick_params(axis='both', which='both', length=0)
 
         fig.tight_layout()
+        
+    def plot_distf(self, idx=0, log_scale=False):
+        """
+        Plot the distribution function for a given species at a specified dataset index.
+        
+        Parameters:
+        -----------
+        species : str
+            'e' for electrons or 'i' for ions
+        idx : int
+            Dataset index to plot
+        """
+        fi, gridi = self.collect_distf(species='ion', idx=idx)
+        Epari, Eperpi = np.meshgrid(gridi[1], gridi[0], indexing='ij')
+
+        fe, gride = self.collect_distf(species='elc', idx=idx)
+        Epare, Eperpe = np.meshgrid(gride[1], gride[0], indexing='ij')
+        fig, axs = plt.subplots(1,2, figsize=(10,4))
+        im = axs[0].pcolormesh(Epare, Eperpe, fe.T, cmap='inferno', norm=LogNorm() if log_scale else None)
+        axs[0].set_xlabel(r'$v_{\parallel}/\sqrt{T_{e0}/m_e}$')
+        axs[0].set_ylabel(r'$m_e v_{\perp}^2 / 2 T_{e0}$')
+        fig.colorbar(im, ax=axs[0], label=r'$f_{e, norm}$')
+
+        im = axs[1].pcolormesh(Epari, Eperpi, fi.T, cmap='inferno', norm=LogNorm() if log_scale else None)
+        axs[1].set_xlabel(r'$m_i v_{\parallel}^2 / 2 T_{i0}$')
+        axs[1].set_ylabel(r'$m_i v_{\perp}^2 / 2 T_{i0}$')
+        fig.colorbar(im, ax=axs[1], label=r'$f_{i, norm}$')
+        plt.tight_layout()
+        plt.show()
 
     def _get_attribute_label(self, attr_name):
         labels = {
