@@ -242,6 +242,7 @@ class PoloidalProjection:
         Y = nodalVals[:, alpha_idx, :, 1]
         Z = nodalVals[:, alpha_idx, :, 2] + self.sim.geom_param.Z_axis
         R = np.sqrt(X**2 + Y**2)  # R = sqrt(x^2 + y^2)
+        Phi = np.arctan2(Y, X)  # phi = arctan2(y, x)
       nodalGridTemp = nodalData.get_grid()   # contains one more element than number of nodes.
       nodalGrid = []
       for d in range(0,len(nodalGridTemp)):
