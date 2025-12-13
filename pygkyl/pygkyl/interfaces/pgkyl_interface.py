@@ -127,6 +127,21 @@ def get_gkyl_values(file,comp=0,polyorder=1,polytype='ms'):
         return get_values(pg.data.GData(file))
     else:
         return interpolate(pg.data.GData(file),comp=comp,polyorder=polyorder, polytype=polytype)
+    
+def get_dimensionality(simdir, fileprefix):
+    file = simdir + fileprefix + '-nodes.gkyl'
+    if not file_exists(file):
+        raise FileNotFoundError("File not found: %s"%file)
+    Gdata = get_gkyl_data(file)
+    if Gdata.ctx['num_comps'] == 3:
+        return '3x2v'
+    elif Gdata.ctx['num_comps'] == 2:
+        return '2x2v'
+    elif Gdata.ctx['num_comps'] == 1:
+        return '1x2v'
+    else:
+        raise ValueError("Invalid number of components: %d"%Gdata.ctx['num_comps'])
+    
 
 def get_gkyl_grid(file):
     return get_grid(pg.data.GData(file))
