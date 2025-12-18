@@ -159,6 +159,7 @@ class IntegratedMoment:
         """
         self.values = 0
         species_list = self.spec_s if isinstance(self.spec_s,list) else [self.spec_s]
+        npoint_min = None # to track minimum number of time points across species
         for s_ in species_list:
             for bf_ in self.bflux_list:
                 f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+self.fdot+'_integrated_'
@@ -174,16 +175,19 @@ class IntegratedMoment:
                     raise FileNotFoundError(f_ + ' does not exist.')
                 
                 Gdata = pgkyl_.get_gkyl_data(f_)
-                self.values += pgkyl_.get_values(Gdata) * self.scale[species_list.index(s_)]
-
+                values_s = pgkyl_.get_values(Gdata)
+                npoint_min = values_s.shape[0] if npoint_min is None else min(npoint_min, values_s.shape[0])
+                values_s = values_s[:npoint_min]
+                self.values += values_s * self.scale[species_list.index(s_)]
         self.time = np.squeeze(Gdata.get_grid()) / self.simulation.normalization.dict['tscale']
+        self.time = self.time[:npoint_min]
         self.values = self.receipe(self.values)
         self.values = np.squeeze(self.values)
         # remove double diagnostic
         self.time, indices = np.unique(self.time, return_index=True)
         self.values = self.values[indices]
         # detect if we are in Hamiltonian or BiMaxwellian diagnostic by getting the number of components
-        self.momtype = 'BiMaxwellian' if Gdata.get_num_comps == 4 else 'Hamiltonian'
+        self.momtype = 'BiMaxwellian' if Gdata.get_num_comps() == 4 else 'Hamiltonian'
 
     def ddt(self):
         """
