@@ -79,7 +79,7 @@ class FluxSurfProjection:
     return field_fs, self.phi_fs, self.theta_fs
   
   def plot(self, fieldName, timeFrame, outFilename='', fluctuation='',
-           figout=[], xlim=[], ylim=[], clim=[], colorMap=None):
+           figout=[], xlim=[], ylim=[], clim=[], colorMap=None, close_fig=False):
 
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(timeFrame, list):
@@ -128,3 +128,6 @@ class FluxSurfProjection:
 
     fig_tools.finalize_plot(ax, fig, pcm=pcm, xlabel=r'$\varphi/\pi$', ylabel=r'$\theta/\pi$', title=timetitle,
                             figout=figout, xlim=xlim, ylim=ylim, clim=clim, clabel=clabel, cbar=cbar, cmap=colorMap)
+    
+    if close_fig:
+      plt.close(fig)

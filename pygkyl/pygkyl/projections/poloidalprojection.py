@@ -387,7 +387,7 @@ class PoloidalProjection:
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
            shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False,
-           cmap_period = 1):
+           cmap_period = 1, figout=[], close_fig=False):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -554,12 +554,15 @@ class PoloidalProjection:
             else colors.SymLogNorm(vmax=fldMax, vmin=fldMin, linscale=1.0, linthresh=logScaleFloor*fldMax)
         pcm1.set_norm(colornorm)
     if clim: pcm1.set_clim(clim)
+    
+    figout.append(fig1a)
 
     if outFilename:
         plt.savefig(outFilename)
         plt.close()
     else:
-        plt.show()
+        if close_fig: plt.close()
+        else : plt.show()
 
   def movie(self, fieldName, timeFrames=[], moviePrefix='', colorMap='',
           xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3,

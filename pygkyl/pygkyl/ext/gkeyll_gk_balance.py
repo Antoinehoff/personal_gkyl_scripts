@@ -44,22 +44,36 @@ def get_balance_data(data_path, species_names, moment_idx):
     fdot_total = None
     src_total = None
     bflux_total = None
-    distf_total = None
+    intmoms_total = None
     time_fdot = None
-    time_distf = None
+    time_intmoms = None
     time_src = None
     time_bflux = None
+    has_fdot = False
+    has_intmoms = False
     has_source = False
     has_bflux = False
     if not isinstance(species_names, list):
         species_names = [species_names]
     for sI, species in enumerate(species_names):
         # fdot
-        time_fdot_s, fdot_s = read_dyn_vector(f"{data_path}{species}_fdot_integrated_moms.gkyl")
+        fdot_file = f"{data_path}{species}_fdot_integrated_moms.gkyl"
+        if does_file_exist(fdot_file):
+            has_fdot = True
+            time_fdot_s, fdot_s = read_dyn_vector(fdot_file)
+        else:
+            fdot_s = np.zeros((1, 1))  # Placeholder for missing data
+            time_fdot_s = np.zeros((1, 1))  # Placeholder for missing time data
         
         # integrated moms
-        time_distf_s, distf_s_all = read_dyn_vector(f"{data_path}{species}_integrated_moms.gkyl")
-        distf_s = distf_s_all[:, moment_idx]
+        intmoms_file = f"{data_path}{species}_integrated_moms.gkyl"
+        if does_file_exist(intmoms_file):
+            has_intmoms = True
+            time_intmoms_s, intmoms_all = read_dyn_vector(intmoms_file)
+            intmoms_s = intmoms_all[:, moment_idx]
+        else:
+            intmoms_s = np.zeros_like(fdot_s[:, moment_idx])
+            time_intmoms_s = np.zeros_like(time_fdot_s)
 
         # source
         source_file = f"{data_path}{species}_source_integrated_moms.gkyl"
@@ -89,20 +103,20 @@ def get_balance_data(data_path, species_names, moment_idx):
 
         if sI == 0:
             fdot_total = fdot_s[:, moment_idx]
-            distf_total = distf_s
+            intmoms_total = intmoms_s
             src_total = src_s
             bflux_total = bflux_tot_s
             time_fdot = time_fdot_s
-            time_distf = time_distf_s
+            time_intmoms = time_intmoms_s
             if has_source: time_src = time_src_s
             if has_bflux: time_bflux = time_bflux_list[0]
         else:
             fdot_total += fdot_s[:, moment_idx]
-            distf_total += distf_s
+            intmoms_total += intmoms_s
             src_total += src_s
             bflux_total += bflux_tot_s
 
-    return (time_fdot, fdot_total, time_distf, distf_total, time_src, src_total, has_source, 
+    return (time_fdot, fdot_total, has_fdot, time_intmoms, intmoms_total, has_intmoms, time_src, src_total, has_source, 
             time_bflux, bflux_total, has_bflux)
 
 def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
@@ -111,7 +125,7 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
     symbol = 'N' if balance_type == 'particle' else r'\mathcal{E}'
      
     data_path = f"{simulation.data_param.fileprefix}-"
-    (time_fdot, fdot, _, _, time_src, src, has_source, 
+    (time_fdot, fdot, has_fdot, _, _, _, time_src, src, has_source, 
      time_bflux, bflux_tot, has_bflux) = get_balance_data(data_path, species, moment_idx)
 
     field, fig, axs = fig_tools.setup_figure(balance_type,fig_size=fig_size)
@@ -139,12 +153,28 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
             time_apardot, apardot_raw = read_dyn_vector(apardot_file)
             apardot = np.interp(time_fdot, time_apardot, apardot_raw)
 
-    mom_err = src - bflux_tot - (fdot - field_dot - apardot)
+    mom_err = 0.0
+    if has_source : 
+        mom_err += src
+        time_err = time_src
+    if has_bflux: 
+        mom_err -= bflux_tot
+        time_err = time_bflux
+    if has_fdot: 
+        mom_err -= fdot
+        time_err = time_fdot
+    if has_field: 
+        mom_err += field_dot
+        time_err = time_field_dot
+    if has_apardot: 
+        mom_err += apardot
+        time_err = time_apardot
     
     legendStrings = []
-    lbl = r'$\dot{f}$'
-    ax.plot(time_fdot, fp(fdot), label=lbl)
-    legendStrings.append(lbl)
+    if has_fdot:
+        lbl = r'$\dot{f}$'
+        ax.plot(time_fdot, fp(fdot), label=lbl)
+        legendStrings.append(lbl)
 
     if has_source:
         lbl = r'$\mathcal{S}$'
@@ -175,7 +205,7 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
             lbl += r'-\partial_t A_\parallel'
     lbl += r'$'
     
-    ax.plot(time_fdot, fp(mom_err), label=lbl)
+    ax.plot(time_err, fp(mom_err), label=lbl)
     legendStrings.append(lbl)
 
     xlbl = r'Time ($s$)'
