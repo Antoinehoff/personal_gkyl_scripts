@@ -528,11 +528,19 @@ def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, sho
     symbol = r'\Gamma' if losstype == 'particle' else 'P'
     
     losses = []
+    times = []
+    npoint_min = None
     for wall in walls:
         fieldname = f'bflux_{wall}' +  ('_ntot' if losstype == 'particle' else '_Htot')
-        loss_, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
+        loss_, time_, vunits, tunits = get_int_mom_data(simulation, fieldname)
         if volfrac_scaled: loss_ = loss_ / simulation.geom_param.vol_frac
+        npoint_min = len(loss_) if npoint_min is None else min(npoint_min, len(loss_))
         losses.append(loss_)
+        times.append(time_)
+    
+    # Truncate all arrays to the minimum length to handle inhomogeneous shapes
+    losses = [loss[:npoint_min] for loss in losses]
+    time = times[0][:npoint_min]
     
     # Replace J/s to W or particle by 1
     vunits = vunits.replace('J/s', 'W')

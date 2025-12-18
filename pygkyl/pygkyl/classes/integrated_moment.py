@@ -157,7 +157,7 @@ class IntegratedMoment:
         """
         Load the integrated moment data from the simulation.
         """
-        self.values = 0
+        values_array = []
         species_list = self.spec_s if isinstance(self.spec_s,list) else [self.spec_s]
         npoint_min = None # to track minimum number of time points across species
         for s_ in species_list:
@@ -177,8 +177,12 @@ class IntegratedMoment:
                 Gdata = pgkyl_.get_gkyl_data(f_)
                 values_s = pgkyl_.get_values(Gdata)
                 npoint_min = values_s.shape[0] if npoint_min is None else min(npoint_min, values_s.shape[0])
-                values_s = values_s[:npoint_min]
-                self.values += values_s * self.scale[species_list.index(s_)]
+                values_s *= self.scale[species_list.index(s_)]
+                values_array.append(values_s)
+        # Now perform the sum
+        self.values = 0.0
+        for v in values_array:
+            self.values += v[:npoint_min]
         self.time = np.squeeze(Gdata.get_grid()) / self.simulation.normalization.dict['tscale']
         self.time = self.time[:npoint_min]
         self.values = self.receipe(self.values)
