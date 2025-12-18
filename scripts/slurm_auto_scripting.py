@@ -155,7 +155,7 @@ class ScanConfig:
         os.chmod(self.output_script, st.st_mode | stat.S_IEXEC)
         
         print(f"Successfully generated {self.output_script}")
-        print(f"To submit: sbatch {self.output_script}")
+        print(f"To submit: sh {self.output_script}")
     
     def _generate_subscan_scripts(self):
         """Generate individual submission scripts for each subscan"""
@@ -517,7 +517,11 @@ exit 0
             log_file = os.path.join(self.work_dir, f"std-{sim_name}.log")
             
             if os.path.exists(log_file):
-                sim_time, dt = self._extract_simulation_time(log_file)
+                try:
+                    sim_time, dt = self._extract_simulation_time(log_file)
+                except:
+                    sim_time = 0.0
+                    dt = 0.0
                 status = "dt={:.6f} mus".format(dt)
             else:
                 sim_time = 0.0

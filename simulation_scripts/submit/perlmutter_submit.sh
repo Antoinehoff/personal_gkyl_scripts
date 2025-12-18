@@ -13,7 +13,7 @@ TIME="06:00:00"  # HH:MM:SS
 EMAIL="ahoffman@pppl.gov"
 #.Module to load.
 MODULES="PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12"
-#.Set the account.
+#.Set the account. CEDA: m4564, Mana: m5053
 ACCOUNT="m4564"
 #.Default value to check a possible restart.
 LAST_FRAME=-1 
@@ -165,7 +165,7 @@ TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 FRAME_SUFFIX="$TIMESTAMP"
 
 # Use timestamp initially, will create frame-specific links at runtime
-INPUT="input_$FRAME_SUFFIX.c"
+INPUT="gkeyll_$FRAME_SUFFIX.c"
 SLURM_INPUT="slurm_script_$FRAME_SUFFIX.sh"
 OUTPUT="output_$FRAME_SUFFIX.out"
 ERROR="error_$FRAME_SUFFIX.out"
@@ -226,10 +226,10 @@ fi
 LAST_FRAME=\$(sh \$UTIL_SCRIPT .)
 
 # Create links to the actual SLURM output files
-ln -sf "../wk/output_$FRAME_SUFFIX.out" "../history/output_sf_\$LAST_FRAME.out"
-ln -sf "../wk/error_$FRAME_SUFFIX.out" "../history/error_sf_\$LAST_FRAME.out"
-ln -sf "../wk/input_$FRAME_SUFFIX.c" "../history/input_sf_\$LAST_FRAME.c"
-ln -sf "../wk/slurm_script_$FRAME_SUFFIX.sh" "../history/slurm_script_sf_\$LAST_FRAME.sh"
+ln -sf "../wk/$OUTPUT" "../history/output_sf_\$LAST_FRAME.out"
+ln -sf "../wk/$ERROR" "../history/error_sf_\$LAST_FRAME.out"
+cp "../wk/$INPUT" "../history/gkeyll_sf_\$LAST_FRAME.c"
+cp "../wk/$SCRIPTNAME" "../history/slurm_script_sf_\$LAST_FRAME.sh"
 
 # Set restart options based on detected frame
 if (( LAST_FRAME > 0 )); then
@@ -275,24 +275,31 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     module load $MODULES
     # make only if there is no job dependency
     if [ -z "$DEPENDENCY_JOB_ID" ]; then
+        echo "Compiling the executable..."
         make
         cp $EXEC_NAME wk/$GKYLEXE
     fi
+    echo "mkdir -p history"
     mkdir -p history
+    echo "mkdir -p wk"
     mkdir -p wk
+    echo "cp $INPUT_FILE wk/gkeyll_$FRAME_SUFFIX.c"
     cp $INPUT_FILE wk/gkeyll_$FRAME_SUFFIX.c
-    mv $SCRIPTNAME wk/.
-    cd wk
+    echo "cp $SCRIPTNAME wk/$SCRIPTNAME"
+    cp $SCRIPTNAME wk/$SCRIPTNAME
+    rm $SCRIPTNAME
     
+    cd wk    
+    echo "Submitting job to Perlmutter..."
     # Submit job and capture the job ID
     SUBMIT_OUTPUT=$(sbatch $SCRIPTNAME)
     JOB_ID=$(echo "$SUBMIT_OUTPUT" | grep -o '[0-9]\+')
-    
+
     echo "$SUBMIT_OUTPUT"
     
     # Save job ID to file for reference
+    echo "Saving job ID to history/job_id_${JOB_ID}.txt"
     echo "$JOB_ID" > "../history/job_id_${JOB_ID}.txt"
-    echo "Job ID saved to: job_id_${JOB_ID}.txt"
 else
     echo "Operation canceled."
 fi
