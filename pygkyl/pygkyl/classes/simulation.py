@@ -160,6 +160,19 @@ class Simulation:
         """
         return Frame(self, fieldName, timeFrame, load=load)
     
+    def get_available_frames(self, fieldName):
+        """
+        Get the available frames for a given field to plot (phi, ne, fe, etc.).
+        """
+        # Get the first Gkeyll output field associated with the requested fieldName
+        source_file = self.data_param.field_info_dict[fieldName+'compo'][0]
+        # Get the filename associated with this Gkeyll output field
+        filename = self.data_param.file_info_dict[source_file+'file']
+        # Get available frames dictionary for the Gkeyll output fields (field, ion, ion_M0 etc.)
+        avail_frame_dict = self.data_param.get_available_frames(self)
+        # Return the available frame list for the requested field
+        return avail_frame_dict[filename]
+    
     def get_GBloss_t(self, spec, twindow, ix=0, losstype='particle', integrate = False):
         """
         Compute the grad-B (GB) particle loss over time for a given species.
