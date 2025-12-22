@@ -6,7 +6,7 @@ from ..interfaces.pgkyl_interface import get_dimensionality
 from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
 def import_config(configName='tcv_pt', simDir ='', filePrefix = '', x_LCFS = None, x_out = None, 
-                  load_metric=True, add_source=True, dimensionality=None, simidx=0):
+                  load_metric=True, dimensionality=None, simidx=0):
     if dimensionality is None:
         dimensionality = get_dimensionality(simDir, filePrefix)
     if configName in ['TCV_PT', 'tcv_pt']:
