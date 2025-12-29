@@ -908,7 +908,7 @@ class Simulation:
     
     def plot_balance(self, balance_type='particle', species=['elc', 'ion'],
                     figout=[], rm_legend=False, fig_size=(8,6), log_abs=False,
-                    close_fig=False):
+                    close_fig=False, data=[], xlim=None, ylim=None):
         """
         Plot particle or energy balance diagnostics.
         
@@ -928,6 +928,12 @@ class Simulation:
             Use log scale for absolute values. Default: False
         close_fig : bool, optional
             Close figure after plotting. Default: False
+        data : list, optional
+            List to get (time, values, label) tuples to. Default: []
+        xlim : list, optional
+            X-axis limits. Default: None
+        ylim : list, optional
+            Y-axis limits. Default: None
             
         Examples
         --------
@@ -937,7 +943,7 @@ class Simulation:
         from ..utils.plot_utils import plot_balance as plot
         return plot(simulation=self, balance_type=balance_type, species=species,
                    figout=figout, rm_legend=rm_legend, fig_size=fig_size,
-                   log_abs=log_abs, close_fig=close_fig)
+                   log_abs=log_abs, close_fig=close_fig, data=data, xlim=xlim, ylim=ylim)
     
     def plot_loss(self, losstype='energy', walls=[], volfrac_scaled=True,
                  show_avg=True, title=True, figout=[], xlim=[], ylim=[],

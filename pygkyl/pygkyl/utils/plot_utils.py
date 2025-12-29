@@ -214,6 +214,12 @@ def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='
         if frame.ndims == 1: # configuration space frame
             slice_coord_map.remove('vpar')
             slice_coord_map.remove('mu')
+    if simulation.ndim == 2: #1x1v
+        slice_coord_map.remove('x')
+        slice_coord_map.remove('y')
+        slice_coord_map.remove('vpar')
+        if frame.ndims == 1: # configuration space frame
+            slice_coord_map.remove('mu')
         
     if cutdir not in slice_coord_map:
         raise Exception("Invalid cut direction, must be one of %s"%slice_coord_map)
@@ -504,10 +510,11 @@ def plot_nodes(simulation, close_fig=False):
     if close_fig: plt.close()
 
 def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
-                 rm_legend=False, fig_size=(8,6), log_abs=False, close_fig=False):
+                 rm_legend=False, fig_size=(8,6), log_abs=False, close_fig=False, data=[], 
+                 xlim=None, ylim=None):
     from ..ext.gkeyll_gk_balance import plot_balance
     plot_balance(simulation, balance_type=balance_type, species=species, figout=figout, 
-                 rm_legend=rm_legend, fig_size=fig_size, log_abs=log_abs)
+                 rm_legend=rm_legend, fig_size=fig_size, log_abs=log_abs, data=data, xlim=xlim, ylim=ylim)
     if close_fig: plt.close()
     
 def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, show_avg=True,

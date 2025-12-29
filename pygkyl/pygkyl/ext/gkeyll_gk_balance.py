@@ -53,8 +53,18 @@ def get_balance_data(data_path, species_names, moment_idx):
     has_intmoms = False
     has_source = False
     has_bflux = False
+    is_static = False
     if not isinstance(species_names, list):
         species_names = [species_names]
+        
+    # Check first if fdot files exist for the species
+    new_species_names = []
+    for sI, species in enumerate(species_names):
+        fdot_file = f"{data_path}{species}_fdot_integrated_moms.gkyl"
+        if does_file_exist(fdot_file):
+            new_species_names.append(species)
+    species_names = new_species_names
+    
     for sI, species in enumerate(species_names):
         # fdot
         fdot_file = f"{data_path}{species}_fdot_integrated_moms.gkyl"
@@ -120,7 +130,7 @@ def get_balance_data(data_path, species_names, moment_idx):
             time_bflux, bflux_total, has_bflux)
 
 def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
-                 rm_legend=False, fig_size=(8,6), log_abs=False):
+                 rm_legend=False, fig_size=(8,6), log_abs=False, data=[], xlim=None, ylim=None):
     moment_idx = 0 if balance_type == 'particle' else 2
     symbol = 'N' if balance_type == 'particle' else r'\mathcal{E}'
      
@@ -130,7 +140,10 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
 
     field, fig, axs = fig_tools.setup_figure(balance_type,fig_size=fig_size)
     ax = axs[0]
-    def fp(x): return np.abs(x) if log_abs else x
+    def plot_(ax, xdata, ydata, label, data): 
+        data.append((xdata, ydata, label))
+        ydata = np.abs(ydata) if log_abs else ydata
+        ax.plot(xdata, ydata, label=label)
        
     # Field energy for energy balance
     field_dot = np.zeros_like(fdot)
@@ -173,27 +186,27 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
     legendStrings = []
     if has_fdot:
         lbl = r'$\dot{f}$'
-        ax.plot(time_fdot, fp(fdot), label=lbl)
+        plot_( ax, time_fdot, fdot, lbl, data )
         legendStrings.append(lbl)
 
     if has_source:
         lbl = r'$\mathcal{S}$'
-        ax.plot(time_src, fp(src), label=lbl)
+        plot_( ax, time_src, src, lbl, data )
         legendStrings.append(lbl)
 
     if has_bflux:
         lbl = r'$-\int_{\partial \Omega}\mathrm{d}\mathbf{S}\cdot\mathbf{\dot{R}}f$'
-        ax.plot(time_bflux, fp(-bflux_tot), label=lbl)
+        plot_( ax, time_bflux, -bflux_tot, lbl, data )
         legendStrings.append(lbl)
 
     if has_field:
         lbl = r'$\dot{\phi}$'
-        ax.plot(time_fdot, fp(field_dot), label=lbl)
+        plot_( ax, time_fdot, field_dot, lbl, data )
         legendStrings.append(lbl)
         
     if has_apardot:
         lbl = r'$\partial_t A_\parallel$'
-        ax.plot(time_fdot, fp(apardot), label=lbl)
+        plot_( ax, time_fdot, apardot, lbl, data )
         legendStrings.append(lbl)
 
     lbl = r'$E_{\dot{'+symbol+'}}=\mathcal{S}-\int_{\partial \Omega}\mathrm{d}\mathbf{S}\cdot\mathbf{\dot{R}}f'
@@ -205,14 +218,14 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
             lbl += r'-\partial_t A_\parallel'
     lbl += r'$'
     
-    ax.plot(time_err, fp(mom_err), label=lbl)
+    plot_( ax, time_err, mom_err, lbl, data )
     legendStrings.append(lbl)
 
     xlbl = r'Time ($s$)'
     ylbl = ''
     
     # add labels and show legend
-    fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, 
+    fig_tools.finalize_plot(ax, fig, xlabel=xlbl, ylabel=ylbl, figout=figout, xlim=xlim, ylim=ylim,
                             legend=not rm_legend, yscale='log' if log_abs else 'linear')
 
 def plot_relative_error(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
