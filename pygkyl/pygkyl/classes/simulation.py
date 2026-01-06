@@ -1168,9 +1168,10 @@ class Simulation:
         sys.stdout.write("\n")
         
         # Generate movie name based on prefix
-        if not movieprefix:
-            movieprefix = 'movie'
-        movieName = f"{movieprefix}_frames_{frame_list[0]}_to_{frame_list[-1]}"
+        if movieprefix:
+            movieprefix += '_'
+        fieldname = kwargs['field_name'][0] if 'field_name' in kwargs else 'movie'
+        movieName = f"{movieprefix}{fieldname}_frames_{frame_list[0]}_to_{frame_list[-1]}"
         
         # Compile the movie
         print(f"Compiling movie: {movieName}")
