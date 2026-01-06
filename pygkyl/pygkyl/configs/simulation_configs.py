@@ -7,6 +7,32 @@ from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, ns
 
 def import_config(configName='tcv_pt', simDir ='', filePrefix = '', x_LCFS = None, x_out = None, 
                   load_metric=True, dimensionality=None, simidx=0):
+    """
+    Load a predefined simulation configuration.
+    
+    Parameters:
+        configName (str):
+            Name of the predefined configuration to load. 
+            Options include 'TCV_PT', 'TCV_NT', 'D3D_PT', 'D3D_NT', 'SPARC', 
+            'NSTXU', 'AUG', 'ASDEX', and 'gyacomo'.
+        simDir (str):
+            Directory where simulation data is stored.
+        filePrefix (str):
+            Prefix for simulation data files. (before the last hyphen)
+        x_LCFS (float, optional):
+            Position of the Last Closed Flux Surface (LCFS). Default is None.
+        x_out (float, optional):
+            Width of the SOL domain. Default is None.
+        load_metric (bool, optional):
+            Whether to load the metric data. Default is True.
+        dimensionality (str, optional):
+            Dimensionality of the simulation (e.g., '3x2v'). Default is None.
+        simidx (int, optional):
+            Index for gyacomo simulations. Default is 0.
+    
+    Note:
+    One can set up a custom configuration by copying and modifying one of the predefined configurations in `pygkyl/pygkyl/configs/simulation_configs.py`.
+    """
     if dimensionality is None:
         dimensionality = get_dimensionality(simDir, filePrefix)
     if configName in ['TCV_PT', 'tcv_pt']:
