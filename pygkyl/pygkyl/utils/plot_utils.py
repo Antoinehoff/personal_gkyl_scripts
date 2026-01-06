@@ -380,7 +380,7 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
             clim_ = clim[kf] if clim else None
             fig = fig_tools.plot_2D(
                 fig, ax, x=x, y=t, z=values, xlim=xlim, ylim=ylim, clim=clim_,
-                xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle,
+                xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle if show_title else '',
                 cmap=cmap, vmin=vmin, vmax=vmax, colorscale=cs, plot_type=plot_type,
                 cmap_period=cmap_period
             )
