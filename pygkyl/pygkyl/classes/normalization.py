@@ -18,6 +18,32 @@ class Normalization:
         self.simulation = simulation
         self.dict = DataParam.get_default_units_dict(simulation.species)
         self.norm_log = []
+        self.default()
+
+    def default(self):
+        self.set('t','mus') # time in micro-seconds
+        self.set('x','minor radius') # radial coordinate normalized by the minor radius (rho=r/a)
+        self.set('y','y/rho_i') # binormal in term of reference sound Larmor radius
+        self.set('ky','ky*rho_i') # binormal wavenumber in term of reference sound Larmor radius
+        self.set('z','pi') # parallel angle devided by pi
+        self.set('fluid velocities','thermal velocity') # fluid velocity moments are normalized by the thermal velocity
+        self.set('temperatures','eV') # temperatures in electron Volt
+        self.set('pressures','Pa') # pressures in Pascal
+        self.set('energies','MJ') # energies in mega Joules
+        self.set('current','kA') # currents in kA
+        self.set('gradients','major radius') # gradients are normalized by the major radius
+        self.set('vpar','vt') # parallel velocity normalized by thermal velocity
+        self.set('mu','mu0') # magnetic moment normalized by ref magnetic moment
+        directions = ['x','y','z']
+        for i_ in range(len(directions)):
+            for j_ in range(len(directions)):
+                ci_ = directions[i_] # direction of the derivative of vExB
+                cj_ = directions[j_] # direction of vExB                
+                self.change(key = 'norm_ExB_s_%s_%s'%(ci_,cj_), 
+                            scale = self.simulation.geom_param.a_mid, 
+                            shift = 0.0,
+                            symbol = r'$\partial_%s v_{E,%s}a/c_s$'%(ci_,cj_),
+                            units = '')
 
     def reset(self,key = None):
         # Get the default dictionary
@@ -37,47 +63,12 @@ class Normalization:
             self.dict[key+add]  = default_dict[key+add]
 
     def change(self,key,scale,shift,symbol,units):
-        """
-        Set the normalization parameters for a given field.
-
-        Parameters:
-        key (str): The field for which the normalization parameters are being set.
-        scale (float): The scale factor for normalization.
-        shift (float): The shift value for normalization.
-        symbol (str): The symbol representing the normalized quantity.
-        units (str): The units of the normalized quantity.
-        """
         self.dict[key+'scale']  = scale
         self.dict[key+'shift']  = shift
         self.dict[key+'symbol'] = symbol
         self.dict[key+'units']  = units
 
     def set(self, key, norm):
-        """
-        Normalize a specified key based on the provided normalization type.
-        Use self.norm_help() for a list of available normalizations.
-
-        Parameters:
-        key (str): The key to be normalized (e.g., 'T', 'p', 'Wkin').
-        norm (str): The type of normalization to apply. Available options include:
-            - 'mus': Microseconds (µs)
-            - 'vti/R': Time normalized by ion thermal velocity over major radius (t v_{ti}/R)
-            - 'rho': Normalized to the minor radius (ρ)
-            - 'x/rho': Normalized to the Larmor radius (ρ_L)
-            - 'R-Rlcfs': Shift relative to the Last Closed Flux Surface (R - R_LCFS)
-            - 'thermal velocity': Parallel velocities normalized by thermal velocity
-            - 'eV': Energy in electron volts (eV)
-            - 'MJ': Energy in megajoules (MJ)
-            - 'beta': Pressure normalized by magnetic pressure (β)
-            - 'Pa': Pressure in pascals (Pa)
-            - 'temperatures': Normalizes all temperature components
-            - 'fluid velocities': Normalizes both parallel electron and ion velocities
-            - 'pressures': Normalizes all pressure components
-            - 'energies': Normalizes all energy components
-            - 'gradients': Normalizes gradients of specified quantities
-
-        This method updates the normalization dictionary and log with the new normalization settings.
-        """
         scale = 0
         ion = self.simulation.species['ion']
 

@@ -443,6 +443,23 @@ class DataParam:
                     sExB  = np.gradient(vExBj, igrid, axis=i)
                     return sExB
                 default_qttes.append([name,symbol,units,field2load,receipe_sExB])
+                
+                # normalized ExB shearing rate
+                name       = 'norm_ExB_s_%s_%s'%(ci_,cj_)
+                symbol     = r'$\partial_%s v_{E,%s}/c_s$'%(ci_,cj_)
+                units      = r'1/m'
+                field2load = ['phi','b_%s'%cl_,'b_%s'%ck_,'Bmag','Jacobian','Tpare','Tperpe']
+                def receipe_normsExB(gdata_list,i=i_,j=j_):
+                    sExB = receipe_sExB(gdata_list[:-2],i,j)
+                    Te   = (pgkyl_.get_values(gdata_list[-2]) + 2.0*pgkyl_.get_values(gdata_list[-1]))/3.0
+                    Te   *= species['elc'].m # convert from J/kg to J
+                    # get the ion species
+                    for spec in species.values():
+                        if spec.nshort == 'i':
+                            mi = spec.m
+                    cs   = np.sqrt(Te/mi)
+                    return sExB/cs
+                default_qttes.append([name,symbol,units,field2load,receipe_normsExB])
 
         #-We define now composed quantities as pressures and fluxes 
         # for each species present in the simulation

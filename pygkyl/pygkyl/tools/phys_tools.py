@@ -18,6 +18,10 @@ eps0 = 8.854e-12 # vacuum permittivity [F/m]
 hbar = 6.62606896e-34/(2.0*np.pi)  # reduced Planck constant [J*s]
 kB = 1.380649e-23  # Boltzmann constant [J/K]
 
+proton_mass = 1.6726219e-27  # proton mass [kg]
+electron_mass = 9.10938356e-31  # electron mass [kg]
+elementary_charge = 1.60217662e-19  # elementary charge [C
+
 def thermal_vel(temperature, mass):
     '''
     Calculate the thermal velocity of a particle.

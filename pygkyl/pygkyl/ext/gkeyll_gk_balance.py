@@ -167,6 +167,7 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
             apardot = np.interp(time_fdot, time_apardot, apardot_raw)
 
     mom_err = 0.0
+    time_err = 0.0
     if has_source : 
         mom_err += src
         time_err = time_src

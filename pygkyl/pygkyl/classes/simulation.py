@@ -483,6 +483,94 @@ class Simulation:
         
         return collision_data
     
+    def normalization_help(self):
+        """
+        Display help information about the normalization parameters.
+        """
+        self.normalization.help()
+        
+    def normalization_set(self, key, norm):
+        """
+        Normalize a specified key based on the provided normalization type.
+        Use self.norm_help() for a list of available normalizations.
+        
+        Parameters
+        ----------
+        key : str
+            The key to be normalized (e.g., 'T', 'p', 'Wkin').
+        norm : str
+            The type of normalization to apply. Available options include:
+        norm : str
+            The type of normalization to apply. Available options include:
+            - 'mus': Microseconds (µs)
+            - 'vti/R': Time normalized by ion thermal velocity over major radius (t v_{ti}/R)
+            - 'rho': Normalized to the minor radius (ρ)
+            - 'x/rho': Normalized to the Larmor radius (ρ_L)
+            - 'R-Rlcfs': Shift relative to the Last Closed Flux Surface (R - R_LCFS)
+            - 'thermal velocity': Parallel velocities normalized by thermal velocity
+            - 'eV': Energy in electron volts (eV)
+            - 'MJ': Energy in megajoules (MJ)
+            - 'beta': Pressure normalized by magnetic pressure (β)
+            - 'Pa': Pressure in pascals (Pa)
+            - 'temperatures': Normalizes all temperature components
+            - 'fluid velocities': Normalizes both parallel electron and ion velocities
+            - 'pressures': Normalizes all pressure components
+            - 'energies': Normalizes all energy components
+            - 'gradients': Normalizes gradients of specified quantities
+
+        This method updates the normalization dictionary and log with the new normalization settings.
+        """
+        self.normalization.set(key=key, norm=norm)
+    
+    def normalization_change(self, key, scale, shift=0.0, symbol='', unit=''):
+        """
+        Set the normalization parameters for a given field.
+
+        Parameters
+        ----------
+        key : str
+            The field for which the normalization parameters are being set.
+        scale : float
+            The scale factor for normalization.
+        shift : float
+            The shift value for normalization.
+        symbol : str
+            The symbol representing the normalized quantity.
+        units : str
+            The units of the normalized quantity.
+        """
+        self.normalization.change(key=key, scale=scale, shift=shift, symbol=symbol, units=unit)
+        
+    def normalization_reset(self, key=None):
+        """
+        Reset all normalization parameters to their default values.
+        
+        Parameters
+        ----------
+        key : str, optional
+            The specific key to reset. If None, resets all keys to default.
+        """
+        self.normalization.reset(key=key)
+        
+    def normalization_default(self):
+        """
+        Set default normalization for common quantities:
+        - time in micro-seconds
+        - radial coordinate normalized by the minor radius (rho=r/a)
+        - binormal in term of reference sound Larmor radius
+        - binormal wavenumber in term of reference sound Larmor radius
+        - parallel angle devided by pi
+        - fluid velocity moments are normalized by the thermal velocity
+        - temperatures in electron Volt
+        - pressures in Pascal
+        - energies in mega Joules
+        - currents in kA
+        - gradients are normalized by the major radius
+        - parallel velocity normalized by thermal velocity
+        - magnetic moment normalized by ref magnetic moment
+        """
+        self.normalization.default()
+    
     # ====== Plotting interfaces ======
     def test_plots(self):
         """
