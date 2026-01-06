@@ -131,7 +131,8 @@ def get_gkyl_values(file,comp=0,polyorder=1,polytype='ms'):
 def get_dimensionality(simdir, fileprefix):
     file = simdir + fileprefix + '-nodes.gkyl'
     if not file_exists(file):
-        raise FileNotFoundError("File not found: %s"%file)
+        print("Warning, could not find file %s to determine dimensionality. Use default value '3x2v'."%file)
+        return '3x2v' # default to 3x2v
     Gdata = get_gkyl_data(file)
     if Gdata.ctx['num_comps'] == 3:
         return '3x2v'
