@@ -388,7 +388,7 @@ class GyrazeInterface:
             
         # Interpolate on a uniform vpar grid
         Nint = self.int_fact_distf * len(vparnorm)
-        vmin = -self.enorm_par_max_e if self.enorm_par_max_e is not None else vparnorm.min()
+        vmin = -self.enorm_par_max_e if self.enorm_par_max_e is not None and not vpos else vparnorm.min()
         vmax = self.enorm_par_max_e if self.enorm_par_max_e is not None else vparnorm.max()
         vparnorm_int = np.linspace(vmin, vmax, Nint)
         f0_int = np.zeros((len(vparnorm_int), f0.shape[1]))
