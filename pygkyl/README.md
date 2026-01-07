@@ -1,6 +1,6 @@
 # PyGkyl
 
-`pygkyl` is a Python library for loading, analyzing, and visualizing simulation data from gyrokinetic and fluid plasma simulations, especially those produced by the Gkeyll code. It provides tools for plasma physicists and computational scientists to efficiently process high-dimensional simulation outputs.
+`pygkyl` is a Python library for loading, analyzing, and visualizing simulation data from gyrokinetic and fluid plasma simulations, especially those produced by the Gkeyll code. It provides tools for plasma physicists and computational scientists to efficiently process high-dimensional simulation outputs. It is mostly made to vizualize results in Jupyter Notebooks.
 
 ## Key Features
 - **Data Loading:** Import simulation data from Gkeyll and related codes, supporting various file formats and directory structures.
@@ -39,7 +39,8 @@ torproj.plot(fieldName='Ti', timeFrame=0)
 - numpy, matplotlib, and other scientific Python libraries
 
 ## Getting Started
-To install and use `pygkyl`, clone this repository and ensure dependencies are installed. You can also use the `pygkyl/scripts/pygkyl_install.py -p PATH` script to have an automatic installation at `PATH`.
+To install and use `pygkyl`, clone this repository. Then open `/notebooks/
+You can also use the `pygkyl/scripts/pygkyl_install.py -p PATH` script to have an automatic installation at `PATH`.
 
 ## License
 This project is licensed under the MIT License.
