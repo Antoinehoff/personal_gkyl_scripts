@@ -702,7 +702,29 @@ class DataParam:
                 ci_ = directions[i_] # direction of the flux component
                 cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
                 ck_ = directions[np.mod(i_+2,3)] # direction coord + 2
-
+                
+                # Diamagnetic drift velocity \mathbf{v}{Ds} = \frac{1}{q n B} \, \mathbf{b} \times \nabla p\perp
+                name       = 'dia_v_%s%s'%(ci_,s_)
+                symbol     = r'$v_{D%s %s}$'%(ci_,s_)
+                units      = r'm/s'
+                field2load = ['n%s'%s_,'Tperp%s'%s_,'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                def receipe_vDia(gdata_list,i=i_,q=spec.q,m=spec.m):
+                    density = pgkyl_.get_values(gdata_list[0])
+                    Tperp   = pgkyl_.get_values(gdata_list[1])*m
+                    b_j     = pgkyl_.get_values(gdata_list[2])
+                    b_k     = pgkyl_.get_values(gdata_list[3])
+                    Bmag    = pgkyl_.get_values(gdata_list[4])
+                    Jacob   = pgkyl_.get_values(gdata_list[5])
+                    grids   = pgkyl_.get_grid(gdata_list[0])
+                    j       = np.mod(i+1,3)
+                    k       = np.mod(i+2,3)
+                    jgrid   = grids[j][:-1]
+                    kgrid   = grids[k][:-1]
+                    dpdj  = np.gradient(density*Tperp, jgrid, axis=j)
+                    dpdk  = np.gradient(density*Tperp, kgrid, axis=k)
+                    return 1.0/(q * density * Bmag) * (b_j*dpdk - b_k*dpdj)/Jacob
+                default_qttes.append([name,symbol,units,field2load,receipe_vDia])
+                
                 # gradB drift velocity \mathbf{v}{\nabla B} = \frac{m v\perp^2}{2 q B^2} \, \mathbf{b} \times \nabla B
                 name       = 'gradB_v_%s%s'%(ci_,s_)
                 symbol     = r'$u_{\nabla B,%s %s}$'%(ci_,s_)
