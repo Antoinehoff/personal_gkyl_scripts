@@ -22,3 +22,4 @@ pygkyl/pygkyl_install.log
 *.pdf
 *.h5
 *.ignore
+tex_out
