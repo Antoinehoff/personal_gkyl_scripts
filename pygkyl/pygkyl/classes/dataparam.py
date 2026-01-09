@@ -474,7 +474,7 @@ class DataParam:
             def receipe_spars(gdata_list):
                 upar = pgkyl_.get_values(gdata_list[0])
                 Tom  = (pgkyl_.get_values(gdata_list[1]) + 2.0*pgkyl_.get_values(gdata_list[2]))/3.0
-                vt   = np.sqrt(2*Tom)
+                vt   = np.sqrt(Tom)
                 return upar/vt
             default_qttes.append([name,symbol,units,field2load,receipe_spars])      
 
