@@ -1,0 +1,491 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{booktabs}
+\usepackage{longtable}
+
+\geometry{margin=2cm}
+
+\title{Gkyl Plottable Fields Reference}
+\author{Generated from dataparam.py}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+This document lists all available fields that can be plotted from Gkyl gyrokinetic simulations. Each field is described by its mathematical definition, where applicable. Fields are organized by category for clarity. Note that $s$ denotes species index (e.g., $e$ for electrons, $i$ for ions), and directional subscripts $(x, y, z)$ or $(\parallel, \perp)$ indicate spatial or velocity-space components.
+
+\textbf{Important Note:} In the Gkyl code, temperatures are internally stored as specific energy in units of [J/kg]. Therefore, when computing physical quantities, the code multiplies temperature by mass $m_s$ to obtain energy in [J]. However, in this document, all formulas show temperature $T$ in its conventional form as energy per particle [J] (or equivalently [eV]), not as specific energy. This makes the formulas more physically transparent and consistent with standard plasma physics notation.
+
+\section{Coordinate and Grid Quantities}
+
+\subsection{Spatial Coordinates}
+\begin{align}
+x &: \quad \text{Radial coordinate} \quad [m] \\
+y &: \quad \text{Binormal coordinate} \quad [m] \\
+z &: \quad \text{Field-aligned coordinate} \quad [\text{dimensionless}]
+\end{align}
+
+\subsection{Wavenumber and Wavelength}
+\begin{align}
+k_y &: \quad \text{Binormal wavenumber} \quad [m^{-1}] \\
+\lambda &: \quad \text{Wavelength} \quad [m]
+\end{align}
+
+\subsection{Velocity-Space Coordinates}
+\begin{align}
+v_\parallel &: \quad \text{Parallel velocity} \quad [m/s] \\
+\mu &: \quad \text{Magnetic moment} \quad [J/T]
+\end{align}
+
+\subsection{Time}
+\begin{align}
+t &: \quad \text{Time} \quad [s]
+\end{align}
+
+\section{Electromagnetic Fields}
+
+\subsection{Electrostatic Potential}
+\begin{align}
+\phi &: \quad \text{Electrostatic potential} \quad [V]
+\end{align}
+
+\subsection{Vector Potential}
+\begin{align}
+A_\parallel &: \quad \text{Parallel component of vector potential} \quad [V \cdot s/m] \\
+\frac{\partial A_\parallel}{\partial t} &: \quad \text{Time derivative of } A_\parallel \quad [V/m]
+\end{align}
+
+\subsection{Electric Field}
+\subsubsection{Electrostatic Components}
+\begin{align}
+E_x^{es} &= -\frac{\partial \phi}{\partial x} \\
+E_y^{es} &= -\frac{\partial \phi}{\partial y} \\
+E_z^{es} &= -\frac{\partial \phi}{\partial z}
+\end{align}
+
+\subsubsection{Full Electromagnetic Components}
+\begin{align}
+E_x &= -\frac{\partial \phi}{\partial x} \\
+E_y &= -\frac{\partial \phi}{\partial y} \\
+E_z &= -\frac{\partial \phi}{\partial z} - \frac{\partial A_\parallel}{\partial t}
+\end{align}
+
+\subsection{Electric Field Energy Density}
+\begin{align}
+W_E = \frac{1}{2}\epsilon_0 |\mathbf{E}|^2 = \frac{1}{2}\epsilon_0 \left(E_x^2 + E_y^2 + E_z^2\right) \quad [J/m^3]
+\end{align}
+
+\section{Magnetic Geometry}
+
+\subsection{Magnetic Field Amplitude}
+\begin{align}
+B &: \quad \text{Magnetic field magnitude} \quad [T]
+\end{align}
+
+\subsection{Normalized Magnetic Field Components}
+\begin{align}
+b_x &: \quad \text{Normalized } \mathbf{B} \text{ component in } x \\
+b_y &: \quad \text{Normalized } \mathbf{B} \text{ component in } y \\
+b_z &: \quad \text{Normalized } \mathbf{B} \text{ component in } z
+\end{align}
+
+\subsection{Jacobian}
+\begin{align}
+J &: \quad \text{Metric Jacobian}
+\end{align}
+
+\subsection{Covariant Metric Tensor Components}
+\begin{align}
+g_{xx}, \quad g_{xy}, \quad g_{xz}, \quad g_{yy}, \quad g_{yz}, \quad g_{zz}
+\end{align}
+
+\subsection{Contravariant Metric Tensor Components}
+\begin{align}
+g^{xx}, \quad g^{xy}, \quad g^{xz}, \quad g^{yy}, \quad g^{yz}, \quad g^{zz}
+\end{align}
+
+\subsection{Curl of Normalized Magnetic Field}
+\begin{align}
+(\nabla \times \mathbf{b})_i = \frac{1}{J}\left(\frac{\partial b_k}{\partial x_j} - \frac{\partial b_j}{\partial x_k}\right)
+\end{align}
+where $(i,j,k)$ are cyclic permutations of $(x,y,z)$.
+
+\subsection{Magnetic Curvature}
+\begin{align}
+\kappa_i = -\left[\mathbf{b} \times (\nabla \times \mathbf{b})\right]_i = -(b_j (\nabla \times \mathbf{b})_k - b_k (\nabla \times \mathbf{b})_j) \quad [m^{-2}]
+\end{align}
+
+\subsection{Perpendicular Magnetic Field Perturbation}
+\begin{align}
+\delta B_{\perp,i} = [\nabla \times (A_\parallel \mathbf{b})]_i = A_\parallel (\nabla \times \mathbf{b})_i + \frac{1}{J}\left(\frac{\partial A_\parallel}{\partial x_j} b_k - \frac{\partial A_\parallel}{\partial x_k} b_j\right) \quad [T]
+\end{align}
+
+\section{Species-Dependent Moments}
+
+For each species $s$, the following moment quantities are available.
+
+\subsection{Distribution Function}
+\begin{align}
+f_s(\mathbf{x}, v_\parallel, \mu, t) \quad [f]
+\end{align}
+
+\subsection{Raw Moments}
+\begin{align}
+M_{0s} &: \quad \text{Zeroth moment (density-like)} \quad [m^{-3}] \\
+M_{1s} &: \quad \text{First moment (momentum-like)} \quad [m^{-2}/s] \\
+M_{2s} &: \quad \text{Second moment (energy-like)} \quad [J/kg/m^3] \\
+M_{2\parallel s} &: \quad \text{Second parallel moment} \quad [J/kg/m^3] \\
+M_{2\perp s} &: \quad \text{Second perpendicular moment} \quad [J/kg/m^3] \\
+M_{3\parallel s} &: \quad \text{Third parallel moment} \quad [J/kg/m^2/s] \\
+M_{3\perp s} &: \quad \text{Third perpendicular moment} \quad [J/kg/m^2/s]
+\end{align}
+
+\subsection{Maxwellian Moments}
+\begin{align}
+n_s^{MM} &: \quad \text{Density} \quad [m^{-3}] \\
+u_{\parallel s}^{MM} &: \quad \text{Parallel flow velocity} \quad [m/s] \\
+T_s^{MM} &: \quad \text{Temperature} \quad [J]
+\end{align}
+
+\subsection{Bi-Maxwellian Moments}
+\begin{align}
+n_s^{BM} &: \quad \text{Density} \quad [m^{-3}] \\
+u_{\parallel s}^{BM} &: \quad \text{Parallel flow velocity} \quad [m/s] \\
+T_{\parallel s}^{BM} &: \quad \text{Parallel temperature} \quad [J] \\
+T_{\perp s}^{BM} &: \quad \text{Perpendicular temperature} \quad [J]
+\end{align}
+
+\subsection{Hamiltonian Moments}
+\begin{align}
+n_s^{HM} &: \quad \text{Density} \quad [m^{-3}] \\
+p_s^{HM} &= m_s v_\parallel n_s \quad \text{Momentum density} \quad [kg \cdot m/s \cdot m^{-3}] \\
+H_s^{HM} &: \quad \text{Hamiltonian density} \quad [J/m^3]
+\end{align}
+
+\subsection{Generic Moments}
+\begin{align}
+n_s &: \quad \text{Number density} \quad [m^{-3}] \\
+u_{\parallel s} &: \quad \text{Parallel flow velocity} \quad [m/s] \\
+T_{\parallel s} &: \quad \text{Parallel temperature} \quad [J] \\
+T_{\perp s} &: \quad \text{Perpendicular temperature} \quad [J]
+\end{align}
+
+\subsection{Derived Temperature Quantities}
+\begin{align}
+T_s = \frac{1}{3}(T_{\parallel s} + 2T_{\perp s}) \quad [J]
+\end{align}
+
+\subsection{Normalized Parallel Velocity}
+\begin{align}
+\frac{u_{\parallel s}}{v_{t,s}} = \frac{u_{\parallel s}}{\sqrt{T_s/m_s}} \quad [\text{dimensionless}]
+\end{align}
+
+\subsection{Gradients}
+\begin{align}
+-\nabla \ln n_s &= -\frac{1}{n_s}\frac{\partial n_s}{\partial x} \quad [m^{-1}] \\
+-\nabla \ln T_s &= -\frac{1}{T_s}\frac{\partial T_s}{\partial x} \quad [m^{-1}]
+\end{align}
+
+\section{Energy Densities}
+
+\subsection{Species-Dependent Energies}
+
+\subsubsection{Kinetic Energy Density}
+\begin{align}
+W_{k,s} = n_s T_s \quad [J/m^3]
+\end{align}
+
+\subsubsection{Fluid Kinetic Energy Density}
+\begin{align}
+W_{f,s} = \frac{1}{2} n_s m_s u_{\parallel s}^2 \quad [J/m^3]
+\end{align}
+
+\subsubsection{Potential Energy Density}
+\begin{align}
+W_{p,s} = n_s q_s \phi \quad [J/m^3]
+\end{align}
+
+\subsubsection{Total Energy Density (Species)}
+\begin{align}
+W_s = n_s \left(\frac{1}{2}m_s u_{\parallel s}^2 + T_s + q_s \phi\right) \quad [J/m^3]
+\end{align}
+
+\subsubsection{Kinetic Energy from M2 Moment}
+\begin{align}
+W_{k,M2,s} = \frac{1}{2} m_s M_{2s} \quad [J/m^3]
+\end{align}
+
+\subsection{Total Energy Densities}
+
+\subsubsection{Total Kinetic Energy}
+\begin{align}
+W_k = \sum_s W_{k,s} = \sum_s n_s T_s \quad [J/m^3]
+\end{align}
+
+\subsubsection{Total Fluid Kinetic Energy}
+\begin{align}
+W_f = \sum_s W_{f,s} = \sum_s \frac{1}{2} n_s m_s u_{\parallel s}^2 \quad [J/m^3]
+\end{align}
+
+\subsubsection{Total Potential Energy}
+\begin{align}
+W_p = \sum_s W_{p,s} = \sum_s n_s q_s \phi \quad [J/m^3]
+\end{align}
+
+\subsubsection{Total M2-Based Kinetic Energy}
+\begin{align}
+W_{k,M2} = \sum_s \frac{1}{2} m_s M_{2s} \quad [J/m^3]
+\end{align}
+
+\subsubsection{System Total Energy}
+\begin{align}
+W_{tot} = \sum_s W_s + W_E = \sum_s n_s \left(\frac{1}{2}m_s u_{\parallel s}^2 + T_s + q_s \phi\right) + \frac{1}{2}\epsilon_0 |\mathbf{E}|^2 \quad [J/m^3]
+\end{align}
+
+\section{Pressures}
+
+\subsection{Species-Dependent Pressures}
+\begin{align}
+p_s &= n_s T_s \quad [J/m^3] \quad \text{or} \quad [Pa] \\
+p_{\parallel,s} &= \frac{1}{3} n_s T_{\parallel s} \quad [J/m^3] \quad \text{or} \quad [Pa] \\
+p_{\perp,s} &= \frac{2}{3} n_s T_{\perp s} \quad [J/m^3] \quad \text{or} \quad [Pa]
+\end{align}
+
+\subsection{Normalized Pressure (Beta)}
+\begin{align}
+\beta_s = 100 \times \frac{2\mu_0 n_s T_s}{B^2} \quad [\%]
+\end{align}
+where $\mu_0 = 4\pi \times 10^{-7}$ H/m.
+
+\section{Drift Velocities}
+
+\subsection{$\mathbf{E} \times \mathbf{B}$ Drift}
+\begin{align}
+\mathbf{v}_E = -\frac{1}{B}\frac{\mathbf{b} \times \nabla \phi}{J}
+\end{align}
+
+Component-wise:
+\begin{align}
+v_{E,i} = -\frac{1}{JB}\left(\frac{\partial \phi}{\partial x_j} b_k - \frac{\partial \phi}{\partial x_k} b_j\right)
+\end{align}
+
+\subsection{Diamagnetic Drift}
+\begin{align}
+v_{D,i,s} = \frac{1}{q_s n_s B J}\left(b_j \frac{\partial (n_s T_{\perp s})}{\partial x_k} - b_k \frac{\partial (n_s T_{\perp s})}{\partial x_j}\right) \quad [m/s]
+\end{align}
+
+\subsection{$\nabla B$ Drift}
+\begin{align}
+v_{\nabla B,i,s} = \frac{T_{\perp s}}{m_s q_s J B^2}\left(b_j \frac{\partial B}{\partial x_k} - b_k \frac{\partial B}{\partial x_j}\right) \quad [m/s]
+\end{align}
+
+\section{Shearing Rates}
+
+\subsection{$\mathbf{E} \times \mathbf{B}$ Shearing Rate}
+\begin{align}
+\frac{\partial v_{E,j}}{\partial x_i} \quad [s^{-1}]
+\end{align}
+
+\subsection{Normalized $\mathbf{E} \times \mathbf{B}$ Shearing Rate}
+\begin{align}
+\frac{1}{c_s}\frac{\partial v_{E,j}}{\partial x_i} \quad [m^{-1}]
+\end{align}
+where $c_s = \sqrt{T_e / m_i}$ is the sound speed.
+
+\section{Particle Fluxes}
+
+\subsection{Species-Dependent Fluxes}
+
+\subsubsection{$\mathbf{E} \times \mathbf{B}$ Particle Flux}
+\begin{align}
+\Gamma_{E,i,s} = n_s v_{E,i} \quad [s^{-1} m^{-2}]
+\end{align}
+
+\subsubsection{$\nabla B$ Particle Flux}
+\begin{align}
+\Gamma_{\nabla B,i,s} = n_s v_{\nabla B,i,s} \quad [s^{-1} m^{-2}]
+\end{align}
+
+\subsubsection{Total Species Particle Flux}
+\begin{align}
+\Gamma_{i,s} = \Gamma_{E,i,s} + \Gamma_{\nabla B,i,s} \quad [s^{-1} m^{-2}]
+\end{align}
+
+\subsection{Total Particle Fluxes}
+
+\subsubsection{Total $\mathbf{E} \times \mathbf{B}$ Particle Flux}
+\begin{align}
+\Gamma_{E,i} = \sum_s \Gamma_{E,i,s} = \sum_s n_s v_{E,i} \quad [s^{-1} m^{-2}]
+\end{align}
+
+\subsubsection{Total $\nabla B$ Particle Flux}
+\begin{align}
+\Gamma_{\nabla B,i} = \sum_s \Gamma_{\nabla B,i,s} \quad [s^{-1} m^{-2}]
+\end{align}
+
+\subsubsection{Total Particle Flux}
+\begin{align}
+\Gamma_i = \sum_s \Gamma_{i,s} \quad [s^{-1} m^{-2}]
+\end{align}
+
+\section{Heat Fluxes}
+
+\subsection{Species-Dependent Heat Fluxes}
+
+\subsubsection{$\mathbf{E} \times \mathbf{B}$ Heat Flux}
+\begin{align}
+Q_{E,i,s} = n_s T_s v_{E,i} \quad [J \cdot s^{-1} m^{-2}] \quad \text{or} \quad [W/m^2]
+\end{align}
+
+\subsubsection{$\nabla B$ Heat Flux}
+\begin{align}
+Q_{\nabla B,i,s} = n_s T_s v_{\nabla B,i,s} \quad [J \cdot s^{-1} m^{-2}] \quad \text{or} \quad [W/m^2]
+\end{align}
+
+\subsubsection{Total Species Heat Flux}
+\begin{align}
+Q_{i,s} = Q_{E,i,s} + Q_{\nabla B,i,s} \quad [J \cdot s^{-1} m^{-2}] \quad \text{or} \quad [W/m^2]
+\end{align}
+
+\subsection{Total Heat Fluxes}
+
+\subsubsection{Total $\mathbf{E} \times \mathbf{B}$ Heat Flux}
+\begin{align}
+Q_{E,i} = \sum_s Q_{E,i,s} = \sum_s n_s T_s v_{E,i} \quad [J \cdot s^{-1} m^{-2}] \quad \text{or} \quad [W/m^2]
+\end{align}
+
+\subsubsection{Total $\nabla B$ Heat Flux}
+\begin{align}
+Q_{\nabla B,i} = \sum_s Q_{\nabla B,i,s} \quad [J \cdot s^{-1} m^{-2}]
+\end{align}
+
+\subsubsection{Total Heat Flux}
+\begin{align}
+Q_i = \sum_s Q_{i,s} \quad [J \cdot s^{-1} m^{-2}] \quad \text{or} \quad [W/m^2]
+\end{align}
+
+\section{Current Densities}
+
+\subsection{Charge Density}
+\begin{align}
+\rho_q = \sum_s q_s n_s \quad [C/m^3]
+\end{align}
+
+\subsection{Parallel Current Density}
+\begin{align}
+j_\parallel = \sum_s q_s n_s u_{\parallel s} \quad [A/m^3]
+\end{align}
+
+\section{Plasma Parameters}
+
+\subsection{Temperature Ratio (Ion to Electron)}
+\begin{align}
+\frac{T_i}{T_e} = \frac{m_i T_i}{m_e T_e}
+\end{align}
+
+\subsection{Debye Length}
+\begin{align}
+\lambda_D = \sqrt{\frac{\epsilon_0 k_B}{e^2} \left(\sum_s \frac{q_s^2 n_s}{e^2 T_s}\right)^{-1}} \quad [m]
+\end{align}
+
+\subsection{Larmor Radius}
+\begin{align}
+\rho_s = \frac{\sqrt{2 m_s T_{\perp s}}}{|q_s| B} \quad [m]
+\end{align}
+where $T_{\perp s}$ is temperature in [J], and the thermal velocity is $v_{th,\perp} = \sqrt{2T_{\perp s}/m_s}$.
+
+\subsection{Ratio of Larmor Radius to Debye Length}
+\begin{align}
+\frac{\rho_e}{\lambda_D}
+\end{align}
+
+\section{Collision Frequencies}
+
+\subsection{Collision Frequency Between Species}
+\begin{align}
+\nu_{sr}(n_s, q_s, m_s, T_s, n_r, q_r, m_r, T_r, B) \quad [s^{-1}]
+\end{align}
+
+\subsection{Collision Time}
+\begin{align}
+\tau_{sr}^{coll} = \frac{1}{\nu_{sr}} \quad [s]
+\end{align}
+
+\section{Source Terms}
+
+For each species $s$, source terms are available:
+
+\subsection{Source Density}
+\begin{align}
+n_{S,s} \quad [m^{-3}/s]
+\end{align}
+
+\subsection{Source Power Density}
+\begin{align}
+P_{S,s} = \frac{\partial H_s}{\partial t} - q_s \phi \frac{\partial n_s}{\partial t} \quad [W/m^3]
+\end{align}
+
+\subsection{Source Temperature}
+\begin{align}
+T_{S,s} = \frac{2}{3} \frac{P_{S,s}}{n_{S,s}} \quad [eV]
+\end{align}
+
+\subsection{Total Source Power}
+\begin{align}
+P_{src} = \sum_s P_{S,s} \quad [W/m^3]
+\end{align}
+
+\section{FLAN Interface Fields}
+
+The FLAN interface provides additional impurity and plasma diagnostics:
+
+\subsection{Impurity Diagnostics}
+\begin{align}
+n_Z &: \quad \text{Impurity density} \quad [m^{-3}] \\
+N_Z &: \quad \text{Impurity particle counts} \\
+\rho_W &: \quad \text{Impurity gyroradius} \quad [m] \\
+v_{Z,x}, v_{Z,y}, v_{Z,z} &: \quad \text{Impurity velocity components} \quad [m/s]
+\end{align}
+
+\subsection{Background Plasma}
+\begin{align}
+n_e &: \quad \text{Electron density} \quad [m^{-3}] \\
+T_e &: \quad \text{Electron temperature} \quad [eV] \\
+T_i &: \quad \text{Ion temperature} \quad [eV] \\
+V_p &: \quad \text{Plasma potential} \quad [V] \\
+u_x, u_y, u_z &: \quad \text{Ion flow velocity components} \quad [m/s]
+\end{align}
+
+\subsection{Electromagnetic Fields (FLAN)}
+\begin{align}
+B_R &: \quad \text{Magnetic field at major radius R} \quad [T] \\
+B_x, B_y, B_z &: \quad \text{Magnetic field components} \quad [T] \\
+E_x, E_y, E_z &: \quad \text{Electric field components} \quad [V/m] \\
+\nabla B_x, \nabla B_y, \nabla B_z &: \quad \text{Magnetic field gradient components} \quad [T/m]
+\end{align}
+
+\section{Summary}
+
+This document has catalogued all available plottable fields in the Gkyl gyrokinetic framework. The fields span:
+\begin{itemize}
+    \item Fundamental electromagnetic quantities ($\phi$, $A_\parallel$, $\mathbf{E}$, $\mathbf{B}$)
+    \item Geometric quantities (metric tensors, Jacobian, curvature)
+    \item Moments of distribution functions (density, flow, temperature, pressure)
+    \item Energy densities (kinetic, potential, electromagnetic)
+    \item Transport quantities (particle and heat fluxes via ExB and grad-B drifts)
+    \item Plasma parameters (Debye length, Larmor radius, beta, collision frequencies)
+    \item Source terms
+    \item FLAN interface fields for impurity tracking
+\end{itemize}
+
+All quantities are computed from either direct output files or combinations thereof using the recipes defined in the DataParam class.
+
+\end{document}
