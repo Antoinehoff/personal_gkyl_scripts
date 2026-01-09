@@ -382,7 +382,7 @@ class PoloidalProjection:
     else:
       evalDGfunc = None
     field_RZ = self.project_field(field_frame.values, evalDGfunc=evalDGfunc)
-    return field_RZ, self.RIntN, self.ZIntN
+    return field_RZ, self.RIntN, self.ZIntN, field_frame.time
   
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
