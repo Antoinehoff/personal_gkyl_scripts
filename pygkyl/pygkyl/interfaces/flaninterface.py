@@ -106,12 +106,15 @@ class FlanInterface:
           for group in ["output", "background", "geometry"]:
             if dname in flan_nc[group].variables.keys():
               values = flan_nc[group][dname][tframe].data
+              print("{}: {} (group) {} (tframe) loaded".format(dname, group, tframe))
         
         time = float(flan_nc["geometry"]['time'][tframe].data)
+
         # get x grid and convert to default dtype instead of float32
         xc = flan_nc["geometry"]['x'][:].data
         yc = flan_nc["geometry"]['y'][:].data
         zc = flan_nc["geometry"]['z'][:].data
+
         # evaluate grid at nodal points (i.e. add a point at the end of the grid)
         x = np.append(xc, xc[-1] + (xc[-1] - xc[-2]))
         y = yc
