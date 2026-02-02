@@ -32,7 +32,7 @@ def label_from_simnorm(simulation,name):
 
 def label(label,units):
     if units:
-        label += ' ('+units+')'
+        label += ' [%s]'%units
     return label
 
 def multiply_by_m3_expression(expression):
@@ -45,7 +45,7 @@ def multiply_by_m3_expression(expression):
         expression_new = expression + r'm$^3$'
     return expression_new
 
-def setup_figure(fieldnames):
+def setup_figure(fieldnames,fig_size=default_figsz):
     if fieldnames == '':
         ncol = 2
         fields = ['ne','upari','Tpari','Tperpi']
@@ -56,7 +56,7 @@ def setup_figure(fieldnames):
         ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
         fields = fieldnames
     nrow = len(fields)//ncol + len(fields)%ncol
-    fig,axs = plt.subplots(nrow,ncol,figsize=(default_figsz[0]*ncol,default_figsz[1]*nrow))
+    fig,axs = plt.subplots(nrow,ncol,figsize=(fig_size[0]*ncol,fig_size[1]*nrow))
     if ncol == 1:
         axs = [axs]
     else:
@@ -276,18 +276,22 @@ def figdatadict_get_data(filename, fieldname):
     figdatadict = load_figout(filename) if filename else figdatadict
     xdata = []
     ydata = []
+    def delatexify(label):
+        label = label.replace('$','')
+        label = label.replace('{','')
+        label = label.replace('}','')
+        label = label.replace('^','')
+        label = label.replace('_','')
+        label = label.replace('\\','')
+        label = label.replace(',','')
+        label = label.replace(' ','')
+        return label
+    
     for ax in figdatadict:
         for l_ in ax['curves']:
             label = l_['label']
             # remove all latex characters
-            label = label.replace('$','')
-            label = label.replace('{','')
-            label = label.replace('}','')
-            label = label.replace('^','')
-            label = label.replace('_','')
-            label = label.replace('\\','')
-            label = label.replace(',','')
-            label = label.replace(' ','')
+            label = delatexify(label)
             # check if the filename is a substring of label
             if fieldname in label:
                 xdata = l_['xdata']
@@ -301,7 +305,7 @@ def figdatadict_get_data(filename, fieldname):
         available_field = []
         for ax in figdatadict:
             for l_ in ax['curves']:
-                available_field.append(l_['label'])
+                available_field.append(delatexify(l_['label']))
         #print unique fields
         print(list(set(available_field)))
         raise ValueError('Field not found in figure data dictionary')

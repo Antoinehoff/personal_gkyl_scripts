@@ -111,7 +111,7 @@ def plot_1D_time_evolution(simulation, cdirection, ccoords, fieldnames='',
         
 def plot_1D(simulation,cdirection,ccoords,fieldnames='',
             time_frames=[], xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
-            figout = [], errorbar = False, show_title = True):
+            figout = [], errorbar = False, show_title = True, show_legend = True):
     
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
 
@@ -145,7 +145,7 @@ def plot_1D(simulation,cdirection,ccoords,fieldnames='',
                     ax.plot(x+periodicity, values, label=vlabel)
         # Labels and title
         ylabel = vunits if len(subfields)>1 else vlabel
-        show_legend = len(subfields)>1
+        show_legend = len(subfields)>1 or show_legend
         title = slicetitle+tlabel+r'$=%2.2e$'%(t[0]) if t[0] == t[-1] else \
                 slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
         fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title if show_title else '', 
@@ -228,13 +228,13 @@ def plot_2D_cut(simulation, cut_dir, cut_coord, time_frame,
         elif time_average:
             vsymbol = r'$\langle$'+ vsymbol + r'$\rangle$'
         lbl = fig_tools.label(vsymbol,frame.vunits)
-        
-        xlabel = frame.new_gsymbols[0] + (' (%s)'%frame.new_gunits[0] if frame.new_gunits[0] else '')
-        ylabel = frame.new_gsymbols[1] + (' (%s)'%frame.new_gunits[1] if frame.new_gunits[1] else '')
+
+        xlabel = frame.new_gsymbols[0] + (' [%s]'%frame.new_gunits[0] if frame.new_gunits[0] else '')
+        ylabel = frame.new_gsymbols[1] + (' [%s]'%frame.new_gunits[1] if frame.new_gunits[1] else '')
 
         if "relative" in fluctuation :
-            lbl = re.sub(r'\(.*?\)', '', lbl)
-            lbl = lbl + ' (\%)'
+            lbl = re.sub(r'\[.*?\]', '', lbl)
+            lbl = lbl + ' [\%]'
             
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
                           cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
@@ -599,22 +599,33 @@ def plot_DG_representation(simulation, fieldname, sim_frame, cutdir, cutcoord, x
     
     # process the coordinates of the cut
     slice_coord_map = ['x','y','z','vpar','mu']
-    if frame.ndims <= 3: # configuration space frame
-        slice_coord_map.remove('vpar')
-        slice_coord_map.remove('mu')
-    if frame.ndims in [2,4]: # axisymmetric frame
+    if simulation.ndim == 5: # 3x2v
+        if frame.ndims <= 3: # configuration space frame
+            slice_coord_map.remove('vpar')
+            slice_coord_map.remove('mu')
+    if simulation.ndim == 4: #2x2v
         slice_coord_map.remove('y')
+        if frame.ndims == 2: # configuration space frame
+            slice_coord_map.remove('vpar')
+            slice_coord_map.remove('mu')
+    if simulation.ndim == 3: #1x2v
+        slice_coord_map.remove('x')
+        slice_coord_map.remove('y')
+        if frame.ndims == 1: # configuration space frame
+            slice_coord_map.remove('vpar')
+            slice_coord_map.remove('mu')
         
     if cutdir not in slice_coord_map:
         raise Exception("Invalid cut direction, must be one of %s"%slice_coord_map)
     
     dir = slice_coord_map.index(cutdir)
-    slice_coord_map.remove(cutdir)
-
+    
     if derivative in ['x','y','z','vpar','mu']:
         id = slice_coord_map.index(derivative)
     else :
         id = None
+        
+    slice_coord_map.remove(cutdir)
     
     # get the coordinates of the slice
     slice_coords = [frame.slicecoords[key] for key in slice_coord_map]
@@ -702,7 +713,7 @@ def flux_surface_proj(simulation, rho, fieldName, timeFrame, Nint=32):
 
     
 def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
-                    figout=[],xlim=[],ylim=[]):
+                    figout=[],xlim=[],ylim=[], ddt = False, data=None):
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
         if not isinstance(field, list):
@@ -715,9 +726,26 @@ def plot_time_serie(simulation,fieldnames,cut_coords, time_frames=[],
                                 cut_dir='scalar',cut_coord=cut_coords,load=True)
             f0 = timeserie.frames[0]
             t,v = timeserie.get_values()
-            ax.plot(t,v,label=f0.vsymbol)
-            
-        fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=f0.vunits, figout=figout,
+            label = f0.vsymbol
+            units = f0.vunits
+            if ddt:
+                dt0 = t[1] - t[0]
+                v_ext = np.concatenate(([v[0]], v))
+                t_ext = np.concatenate(([t[0]-dt0], t))
+                dvdt_ext = np.gradient(v_ext, t_ext)/simulation.normalization.dict['tscale']
+                v = dvdt_ext
+                t = t_ext
+                label = r'$\partial_t($' + label + '$)$'
+                if units[-1] == '$':
+                    units = units[:-1] + r'/s$'
+                else:
+                    units = units + r'/s'
+            ax.plot(t,v,label=label)
+            if data is not None:
+                data.append((t,v))
+        
+        # units = math_utils.simplify_units(units) # this is not robuts...
+        fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=units, figout=figout,
                                 xlim=xlim, ylim=ylim, legend=True, title=f0.slicetitle)
         
 def plot_nodes(simulation):
@@ -743,66 +771,11 @@ def plot_nodes(simulation):
     plt.axis('equal')
     plt.show()
 
-def plot_balance(simulation, balancetype='particle', title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,
-                 volfrac_scaled=True, show_avg=True, show_plot=True):
-    from scipy.ndimage import gaussian_filter1d    
-    def get_int_mom_data(simulation, fieldname):
-        try:
-            intmom = IntegratedMoment(simulation=simulation, name=fieldname, load=True, ddt=False)
-        except KeyError:
-            raise ValueError(f"Cannot find field '{fieldname}' in the simulation data. ")
-        if volfrac_scaled: intmom.values = intmom.values / simulation.geom_param.vol_frac
-        return intmom.values, intmom.time, intmom.vunits, intmom.tunits
-
-    symbol_src = '\Gamma' if balancetype == 'particle' else 'P'
-    symbol_mom = 'N' if balancetype == 'particle' else 'H'
-    
-    fieldname = 'src_ntot' if balancetype == 'particle' else 'src_Htot'
-    source, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
-    
-    fieldname = 'Wtot' if balancetype == 'energy' else 'ntot'
-    intvar, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
-    # smooth the intvar to remove oscillations at restart
-    intvar = gaussian_filter1d(intvar,25)
-    time = gaussian_filter1d(time,25)
-    # scale time to get seconds
-    intvar = np.gradient(intvar, time*simulation.normalization.dict['tscale'])
-    fieldname = 'bflux_total_total_ntot' if balancetype == 'particle' else 'bflux_total_total_Htot'
-    loss, time, vunits, tunits = get_int_mom_data(simulation, fieldname)
-    
-    # Replace J/s to W or particle by 1
-    vunits = vunits.replace('J/s', 'W')
-    vunits = vunits.replace('particles', '1')
-    
-    balance = source - loss - intvar
-    
-    nt = len(time)
-    balance_avg = np.mean(balance[-nt//3:])
-        
-    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
-    if showall:
-        ax.plot(time, source, label=r'$%s_{\text{src}}$'%symbol_src)
-        ax.plot(time, loss, label=r'$%s_{\text{loss}}$'%symbol_src)
-        ax.plot(time, intvar, label=r'$\partial %s / \partial t$'%symbol_mom)
-    ax.plot(time, balance, label='Balance')
-    if show_avg:
-        # Add horizontal line at average balance value
-        ax.plot([time[-nt//3], time[-1]], [balance_avg, balance_avg],'--k', alpha=0.5, 
-                label='%s %s' % (fig_tools.optimize_str_format(balance_avg), vunits))
-        
-    xlabel = r'$t$ [%s]' % tunits if  tunits else r'$t$'
-    if showall:
-        ylabel = vunits
-    else:
-        ylabel = r'$%s_{\text{src}} - %s_{\text{loss}} - \partial %s / \partial t$'%(symbol_src, symbol_src, symbol_mom)
-        ylabel += ' [%s]' % vunits if vunits else ''
-    title_ = f'%s Balance' % balancetype.capitalize() if  title else ''
-    
-    if show_plot:
-        fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, figout=figout,
-                                title=title_, legend=legend, xlim=xlim, ylim=ylim)
-    else:
-        plt.close(fig)
+def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
+                 rm_legend=False, fig_size=(8,6), log_abs=False):
+    from ..ext.gkeyll_gk_balance import plot_balance
+    plot_balance(simulation, balance_type=balance_type, species=species, figout=figout, 
+                 rm_legend=rm_legend, fig_size=fig_size, log_abs=log_abs)
     
 def plot_loss(simulation, losstype='energy', walls =[], volfrac_scaled=True, show_avg=True,
               title=True, figout=[], xlim=[], ylim=[], showall=False, legend=True,

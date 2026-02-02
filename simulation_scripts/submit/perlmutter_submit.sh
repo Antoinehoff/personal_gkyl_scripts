@@ -20,7 +20,7 @@ LAST_FRAME=-1
 #.Get the job name from the directory name
 JOB_NAME=$(basename $(pwd))
 #.Executable name
-INPUT_FILE="input.c"
+INPUT_FILE="gkeyll.c"
 
 # help function
 show_help() {
@@ -36,7 +36,7 @@ show_help() {
     echo "  -p          Print script and exit (do not submit)"
     echo "  -h          Display this help and exit"
     echo "  -a ACCOUNT  Account to use (default: $ACCOUNT)"
-    echo "  -i INPUTC   C Input file name (default: input.c)"
+    echo "  -i INPUTC   C Input file name (default: gkeyll.c)"
 }
 # check the following options : -q -n -t -h -N -r -d -a -j -p
 while getopts ":q:n:t:r:N:d:a:i:jph" opt; do
@@ -103,6 +103,12 @@ while getopts ":q:n:t:r:N:d:a:i:jph" opt; do
     esac
 done
 
+#.Check if the input file exists
+if [ ! -f "$INPUT_FILE" ]; then
+    echo "Error: Input file '$INPUT_FILE' not found!"
+    exit 1
+fi
+
 #.Get the executable name from the input file (strip .c)
 EXEC_NAME=$(basename "$INPUT_FILE" .c)
 GKYLEXE="gkeyll"
@@ -114,14 +120,14 @@ NTASKS_PER_NODE=$GPU_PER_NODE
 TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
 
 #.------- DETECT 2D vs 3D RUN
-# Check input.c file for cdim value to determine run type
-if [[ -f "input.c" ]]; then
-    # Extract cdim value from input.c
-    CDIM=$(grep -E 'int\s+cdim\s*=\s*[0-9]+' input.c | sed -E 's/.*int\s+cdim\s*=\s*([0-9]+).*/\1/' | head -1)
+# Check C input file for cdim value to determine run type
+if [[ -f $INPUT_FILE ]]; then
+    # Extract cdim value
+    CDIM=$(grep -E 'int\s+cdim\s*=\s*[0-9]+' $INPUT_FILE | sed -E 's/.*int\s+cdim\s*=\s*([0-9]+).*/\1/' | head -1)
     
     if [[ -z "$CDIM" ]]; then
         # Try alternative patterns for cdim declaration
-        CDIM=$(grep -E '\.cdim\s*=\s*[0-9]+' input.c | sed -E 's/.*\.cdim\s*=\s*([0-9]+).*/\1/' | head -1)
+        CDIM=$(grep -E '\.cdim\s*=\s*[0-9]+' $INPUT_FILE | sed -E 's/.*\.cdim\s*=\s*([0-9]+).*/\1/' | head -1)
     fi
     
     if [[ "$CDIM" == "2" ]]; then
@@ -133,12 +139,12 @@ if [[ -f "input.c" ]]; then
         RUN_TYPE="3D"
         GPU_OPTS="-c 1 -d 1 -e $TOTAL_GPUS"
     else
-        echo "Warning: Could not determine cdim from input.c, defaulting to 3D"
+        echo "Warning: Could not determine cdim from $INPUT_FILE, defaulting to 3D"
         RUN_TYPE="3D"
         GPU_OPTS="-c 1 -d 1 -e $TOTAL_GPUS"
     fi
 else
-    echo "Warning: input.c not found, defaulting to 3D"
+    echo "Warning: $INPUT_FILE not found, defaulting to 3D"
     RUN_TYPE="3D"
     GPU_OPTS="-c 1 -d 1 -e $TOTAL_GPUS"
 fi
@@ -270,12 +276,12 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     # make only if there is no job dependency
     if [ -z "$DEPENDENCY_JOB_ID" ]; then
         make
+        cp $EXEC_NAME wk/$GKYLEXE
     fi
     mkdir -p history
     mkdir -p wk
-    cp $INPUT_FILE wk/input_$FRAME_SUFFIX.c
+    cp $INPUT_FILE wk/gkeyll_$FRAME_SUFFIX.c
     mv $SCRIPTNAME wk/.
-    cp $EXEC_NAME wk/$GKYLEXE
     cd wk
     
     # Submit job and capture the job ID

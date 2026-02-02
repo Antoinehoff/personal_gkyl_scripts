@@ -71,8 +71,8 @@ def get_1xt_diagram(simulation, fieldname, cutdirection, ccoords,
     x = frame.new_grids[0]
     tsymb = simulation.normalization.dict['tsymbol'] 
     tunit = simulation.normalization.dict['tunits']
-    tlabel = tsymb+(' ('+tunit+')')*(1-(tunit==''))
-    xlabel = frame.new_gsymbols[0]+(' ('+frame.new_gunits[0]+')')*(1-(frame.new_gunits[0]==''))
-    vlabel = frame.vsymbol+(' ('+frame.vunits+')')*(1-(frame.vunits==''))
+    tlabel = tsymb+(' ['+tunit+']')*(1-(tunit==''))
+    xlabel = frame.new_gsymbols[0]+(' ['+frame.new_gunits[0]+']')*(1-(frame.new_gunits[0]==''))
+    vlabel = frame.vsymbol+(' ['+frame.vunits+']')*(1-(frame.vunits==''))
     slicetitle = frame.slicetitle
     return x,t,values,xlabel,tlabel,vlabel,frame.vunits,slicetitle, fourier_y
