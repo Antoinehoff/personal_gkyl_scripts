@@ -477,7 +477,7 @@ class GyrazeInterface:
             self.fi_mpe_text = ''
         else:
             self.fe_mpe_args_text, self.fe_mpe_text = self.generate_F_mps_content(
-                self.dataset.attributes['vpare_norm'].v0, 
+                self.dataset.attributes['Epare_norm'].v0, 
                 self.dataset.attributes['Eperpe_norm'].v0,
                 self.dataset.attributes['fe_norm'].v0,
                 zplane=zplane, vpos=self.vpos_fe)
@@ -1359,7 +1359,7 @@ class GyrazeInterface:
 
         fig.tight_layout()
         
-    def plot_distf(self, idx=0, log_scale=False):
+    def plot_distf(self, idx=0, log_scale=False, xlim=None, ylim=None):
         """
         Plot the distribution function for a given species at a specified dataset index.
         
@@ -1377,14 +1377,21 @@ class GyrazeInterface:
         Epare, Eperpe = np.meshgrid(gride[1], gride[0], indexing='ij')
         fig, axs = plt.subplots(1,2, figsize=(10,4))
         im = axs[0].pcolormesh(Epare, Eperpe, fe.T, cmap='inferno', norm=LogNorm() if log_scale else None)
-        axs[0].set_xlabel(r'$v_{\parallel}/\sqrt{T_{e0}/m_e}$')
+        axs[0].set_xlabel(r'$m_e v_{\parallel}^2 / 2 T_{e0}$')
         axs[0].set_ylabel(r'$m_e v_{\perp}^2 / 2 T_{e0}$')
         fig.colorbar(im, ax=axs[0], label=r'$f_{e, norm}$')
-
+        if xlim is not None:    
+            axs[0].set_xlim(xlim)
+        if ylim is not None:
+            axs[0].set_ylim(ylim)
         im = axs[1].pcolormesh(Epari, Eperpi, fi.T, cmap='inferno', norm=LogNorm() if log_scale else None)
         axs[1].set_xlabel(r'$m_i v_{\parallel}^2 / 2 T_{i0}$')
         axs[1].set_ylabel(r'$m_i v_{\perp}^2 / 2 T_{i0}$')
         fig.colorbar(im, ax=axs[1], label=r'$f_{i, norm}$')
+        if xlim is not None:    
+            axs[1].set_xlim(xlim)
+        if ylim is not None:
+            axs[1].set_ylim(ylim)
         plt.tight_layout()
         plt.show()
 
