@@ -235,8 +235,8 @@ class GyrazeDataset:
         self.attributes['Eperpi_norm'].v0 = self.grids['mui'] * self.attributes['B'].v0 / (Ti * 1.602e-19)
         self.attributes['Fe'].v0 = self.eval_local_maxwellians('elc')
         self.attributes['Fi'].v0 = self.eval_local_maxwellians('ion')
-        self.attributes['fe_norm'].v0 = self.attributes['fe'].v0 #/ self.attributes['Fe'].v0
-        self.attributes['fi_norm'].v0 = self.attributes['fi'].v0 #/ self.attributes['Fi'].v0
+        self.attributes['fe_norm'].v0 = self.attributes['fe'].v0 / self.attributes['Fe'].v0
+        self.attributes['fi_norm'].v0 = self.attributes['fi'].v0 / self.attributes['Fi'].v0
 
     def filter(self):
         for attr in self.attributes.values():
@@ -258,10 +258,10 @@ class GyrazeInterface:
         self.no_distf : bool = kwargs.get('no_distf', False)
         self.nsmooth_distf : Optional[int] = kwargs.get('nsmooth_distf', 0)
         self.int_fact_distf : Optional[int] = kwargs.get('int_fact_distf', 1)
-        self.enorm_par_max_e : Optional[float] = kwargs.get('enorm_par_max_e', None)
-        self.enorm_perp_max_e : Optional[float] = kwargs.get('enorm_perp_max_e', None)
-        self.enorm_par_max_i : Optional[float] = kwargs.get('enorm_par_max_i', None)
-        self.enorm_perp_max_i : Optional[float] = kwargs.get('enorm_perp_max_i', None)
+        self.spar_max_e : Optional[float] = kwargs.get('spar_max_e', None)
+        self.sperp_max_e : Optional[float] = kwargs.get('sperp_max_e', None)
+        self.spar_max_i : Optional[float] = kwargs.get('spar_max_i', None)
+        self.sperp_max_i : Optional[float] = kwargs.get('sperp_max_i', None)
         self.vpos_fe : bool = kwargs.get('vpos_fe', True)
         self.vpos_fi : bool = kwargs.get('vpos_fi', True)
         self.number_datasets : bool = kwargs.get('number_datasets', False)
@@ -275,6 +275,11 @@ class GyrazeInterface:
         self.e = np.abs(self.simulation.species['elc'].q)
         self.dataset = GyrazeDataset(self.me, self.mi, self.no_distf)
 
+        self.spar_e = None # parallel velocity coordinate for electrons
+        self.spar_i = None # parallel velocity coordinate for ions
+        self.sperp_e = None # perpendicular velocity coordinate for electrons
+        self.sperp_i = None # perpendicular velocity coordinate for ions
+        self.norm_distf = False # whether to normalize the distribution functions
         self.fe_mpe_args_text = None
         self.fe_mpe_text = None
         self.fi_mpe_args_text = None
@@ -323,17 +328,6 @@ class GyrazeInterface:
         
     def load_frames(self, timeframe):
         self.dataset.load(self.simulation, timeframe)
-        
-    def update_numparams(self):
-        ## TODO: check if we need to provide smart numerical params something like:
-        # self.numparams.maxmu = self.dataset.attributes['Eperpe_norm'].v0.max()
-        # self.numparams.maxvpar = self.dataset.attributes['Epare_norm'].v0.max()
-        # self.numparams.maxvpar_i = self.dataset.attributes['Epari_norm'].v0.max()
-        # self.numparams.dmu = np.abs(self.dataset.attributes['Eperpe_norm'].v0[1] - self.dataset.attributes['Eperpe_norm'].v0[0])
-        # self.numparams.dvpar = np.abs(self.dataset.attributes['Epare_norm'].v0[1] - self.dataset.attributes['Epare_norm'].v0[0])
-        # self.numparams.dvpar_i = np.abs(self.dataset.attributes['Epari_norm'].v0[1] - self.dataset.attributes['Epari_norm'].v0[0])
-        # self.numparams.smallgamma = self.dataset.attributes['gamma'].v0 # TODO not convinced here
-        pass
 
     def eval_frames(self, x, y, z):
         self.dataset.eval(x, y, z)
@@ -344,8 +338,6 @@ class GyrazeInterface:
         
         if self.filter_negativity:
             self.dataset.filter_negativity()
-            
-        self.update_numparams()
 
     def get_ranges(self, xmin, xmax, Nx, Ny, zplane):
         ixmin = np.argmin(np.abs(self.dataset.grids['x'] - xmin))
@@ -366,54 +358,57 @@ class GyrazeInterface:
         yindices = np.unique(yindices)
         return xindices, yindices, izplanes
 
-    def generate_F_mps_content(self, vparnorm, vperpnorm, f0, zplane='upper', vpos=True):
+    def generate_F_mps_content(self, spar, sperp, f0, zplane, vpos):
+        # Here spar and sperp can be any kind of coordinates (vpar, Epar, Eperp, etc) depending on the normalization and what Gyraze expects.
+        
         # Find the index of positive vpar
         ipos = np.argmin(np.abs(self.dataset.grids['vpare'] - 0.0))
         
         # select f0 for vpar going to the magnetic presheath
         if vpos:
             if zplane == 'lower':
-                vparnorm = vparnorm[:ipos+1]
+                spar = spar[:ipos+1]
                 f0 = f0[:ipos+1,:]
                 # reverse
-                vparnorm = vparnorm[::-1]
+                spar = spar[::-1]
                 f0 = f0[::-1,:]
             elif zplane == 'upper':
-                vparnorm = vparnorm[ipos:]
+                spar = spar[ipos:]
                 f0 = f0[ipos:,:]
-            vparnorm = np.abs(vparnorm)
+            spar = np.abs(spar)
             
         if self.nsmooth_distf > 0:
             f0 = gaussian_filter(f0, sigma=self.nsmooth_distf)
             
         # Interpolate on a uniform vpar grid
-        Nint = self.int_fact_distf * len(vparnorm)
-        vmin = -self.enorm_par_max_e if self.enorm_par_max_e is not None and not vpos else vparnorm.min()
-        vmax = self.enorm_par_max_e if self.enorm_par_max_e is not None else vparnorm.max()
-        vparnorm_int = np.linspace(vmin, vmax, Nint)
-        f0_int = np.zeros((len(vparnorm_int), f0.shape[1]))
+        Nint = self.int_fact_distf * len(spar)
+        vmin = -self.spar_max_e if self.spar_max_e is not None and not vpos else spar.min()
+        vmax = self.spar_max_e if self.spar_max_e is not None else spar.max()
+        v_int = np.linspace(vmin, vmax, Nint)
+        f0_int = np.zeros((len(v_int), f0.shape[1]))
         for i in range(f0.shape[1]):
-            f0_int[:, i] = np.interp(vparnorm_int, vparnorm, f0[:, i])
+            f0_int[:, i] = np.interp(v_int, spar, f0[:, i])
         f0 = f0_int
-        vparnorm = vparnorm_int
+        spar = v_int
         
         # Interpolate on a uniform vperp grid
-        Nint = self.int_fact_distf * len(vperpnorm)
+        Nint = self.int_fact_distf * len(sperp)
         vmin = 0.0
-        vmax = self.enorm_perp_max_e if self.enorm_perp_max_e is not None else vperpnorm.max()
-        vperpnorm_int = np.linspace(vmin, vmax, Nint)
-        f0_int = np.zeros((f0.shape[0], len(vperpnorm_int)))
+        vmax = self.sperp_max_e if self.sperp_max_e is not None else sperp.max()
+        v_int = np.linspace(vmin, vmax, Nint)
+        f0_int = np.zeros((f0.shape[0], len(v_int)))
         for i in range(f0.shape[0]):
-            f0_int[i, :] = np.interp(vperpnorm_int, vperpnorm, f0[i, :])
+            f0_int[i, :] = np.interp(v_int, sperp, f0[i, :])
         f0 = f0_int
-        vperpnorm = vperpnorm_int
+        sperp = v_int
             
         # Normalize f0 so that integrating over Eperp and Epar gives 1
-        int_f0 = np.trapz(np.trapz(f0, vperpnorm, axis=1), vparnorm, axis=0)
-        f0 = f0 / int_f0
+        if not self.phase_space_norm == 'unnormalized':
+            int_f0 = np.trapz(np.trapz(f0, sperp, axis=1), spar, axis=0)
+            f0 = f0 / int_f0
                     
         # Generate args content
-        args_content = ' '.join(map(str, vperpnorm)) + '\n' + ' '.join(map(str, vparnorm))
+        args_content = ' '.join(map(str, sperp)) + '\n' + ' '.join(map(str, spar))
 
         # Generate f0 content using StringIO to mimic savetxt behavior
         f0_buffer = io.StringIO()
@@ -476,15 +471,29 @@ class GyrazeInterface:
             self.fi_mpe_args_text = ''
             self.fi_mpe_text = ''
         else:
+            # Here we decide which velocity coordinates will be used to treat the dist f.
+            if self.phase_space_norm == 'energy':
+                self.spar_e = self.dataset.attributes['Epare_norm'].v0
+                self.sperp_e = self.dataset.attributes['Eperpe_norm'].v0
+                self.spar_i = self.dataset.attributes['Epari_norm'].v0
+                self.sperp_i = self.dataset.attributes['Eperpi_norm'].v0
+                self.norm_distf = True
+            elif self.phase_space_norm == 'unnormalized':
+                self.spar_e = self.dataset.grids['vpare']
+                self.sperp_e = self.dataset.grids['mue']
+                self.spar_i = self.dataset.grids['vpari']
+                self.sperp_i = self.dataset.grids['mui']
+                self.norm_distf = False
+            else:
+                raise ValueError(f"Unknown phase_space_norm: {self.phase_space_norm}. Supported: 'energy', 'unnormalized'")
+                
             self.fe_mpe_args_text, self.fe_mpe_text = self.generate_F_mps_content(
-                self.dataset.attributes['Epare_norm'].v0, 
-                self.dataset.attributes['Eperpe_norm'].v0,
-                self.dataset.attributes['fe_norm'].v0,
+                self.spar_e, self.sperp_e,
+                self.dataset.attributes['fe'].v0,
                 zplane=zplane, vpos=self.vpos_fe)
             self.fi_mpe_args_text, self.fi_mpe_text = self.generate_F_mps_content(
-                self.dataset.attributes['Epari_norm'].v0, 
-                self.dataset.attributes['Eperpi_norm'].v0, 
-                self.dataset.attributes['fi_norm'].v0,
+                self.spar_i, self.sperp_i, 
+                self.dataset.attributes['fi'].v0,
                 zplane=zplane, vpos=self.vpos_fi)
         self.input_physparams_text = self.generate_input_physparams_content()
         self.input_numparams_text = self.generate_input_numparams_content()
@@ -531,10 +540,11 @@ class GyrazeInterface:
                  no_distf: Optional[bool] = None,
                  nsmooth_distf: Optional[int] = 0,
                  int_fact_distf: Optional[int] = 1,
-                 enorm_par_max_e: Optional[float] = None,
-                 enorm_perp_max_e: Optional[float] = None,
-                 enorm_par_max_i: Optional[float] = None,
-                 enorm_perp_max_i: Optional[float] = None,
+                 phase_space_norm: Optional[str] = 'energy',
+                 spar_max_e: Optional[float] = None,
+                 sperp_max_e: Optional[float] = None,
+                 spar_max_i: Optional[float] = None,
+                 sperp_max_i: Optional[float] = None,
                  vpos_fe: Optional[bool] = True,
                  vpos_fi: Optional[bool] = True,
                  lim_dict: Optional[dict] = None,
@@ -564,6 +574,20 @@ class GyrazeInterface:
             If True, do not include distribution function data in the output.
         nsmooth_distf : int, optional
             Number of smoothing passes to apply to the distribution functions. If None, no smoothing is applied.
+        int_fact_distf : int, optional
+            Interpolation factor for distribution functions in velocity space.
+        spar_max_e : float, optional
+            Maximum parallel speed for electrons in Gyraze possibly normalized units.
+        sperp_max_e : float, optional
+            Maximum perpendicular energy for electrons in Gyraze possibly normalized units.
+        spar_max_i : float, optional
+            Maximum parallel speed for ions in Gyraze possibly normalized units.
+        sperp_max_i : float, optional
+            Maximum perpendicular energy for ions in Gyraze possibly normalized units.
+        vpos_fe : bool
+            If True, only consider electrons with positive parallel velocity towards the wall.
+        vpos_fi : bool
+            If True, only consider ions with positive parallel velocity towards the wall.
         lim_dict : dict, optional
             Dictionary specifying limits for filtering points.
             E.g., provided as {'phi': {'min': float, 'max': float}}, skip points where phi0 is outside this range.
@@ -591,11 +615,12 @@ class GyrazeInterface:
         self.vpos_fe = vpos_fe
         self.vpos_fi = vpos_fi
         self.int_fact_distf = int_fact_distf
-        self.enorm_par_max_e = enorm_par_max_e
-        self.enorm_perp_max_e = enorm_perp_max_e
-        self.enorm_par_max_i = enorm_par_max_i
-        self.enorm_perp_max_i = enorm_perp_max_i
-            
+        self.phase_space_norm = phase_space_norm
+        self.spar_max_e = spar_max_e
+        self.sperp_max_e = sperp_max_e
+        self.spar_max_i = spar_max_i
+        self.sperp_max_i = sperp_max_i
+        
         if lim_dict is not None:
             for key in lim_dict.keys():
                 for which, value in lim_dict[key].items():
@@ -1371,23 +1396,40 @@ class GyrazeInterface:
             Dataset index to plot
         """
         fi, gridi = self.collect_distf(species='ion', idx=idx)
-        Epari, Eperpi = np.meshgrid(gridi[1], gridi[0], indexing='ij')
+        spar_i, sperp_i = np.meshgrid(gridi[1], gridi[0], indexing='ij')
 
         fe, gride = self.collect_distf(species='elc', idx=idx)
-        Epare, Eperpe = np.meshgrid(gride[1], gride[0], indexing='ij')
+        spar_e, sperp_e = np.meshgrid(gride[1], gride[0], indexing='ij')
+        
+        if self.phase_space_norm == 'energy':
+            xlabel_e = r'$m_e v_{\parallel}^2 / 2 T_{e0}$'
+            ylabel_e = r'$m_e v_{\perp}^2 / 2 T_{e0}$'
+            xlabel_i = r'$m_i v_{\parallel}^2 / 2 T_{i0}$'
+            ylabel_i = r'$m_i v_{\perp}^2 / 2 T_{i0}$'
+        elif self.phase_space_norm == 'unnormalized': 
+            xlabel_e = r'$v_{\parallel}$'
+            ylabel_e = r'$\mu$'
+            xlabel_i = r'$v_{\parallel}$'
+            ylabel_i = r'$\mu$'
+        else:
+            raise ValueError(f"Invalid phase_space_norm: {self.phase_space_norm}")
+        
+        flabel_e = r'$f_{e,norm}$' if self.norm_distf else r'$f_e$'
+        flabel_i = r'$f_{i,norm}$' if self.norm_distf else r'$f_i$'
+        
         fig, axs = plt.subplots(1,2, figsize=(10,4))
-        im = axs[0].pcolormesh(Epare, Eperpe, fe.T, cmap='inferno', norm=LogNorm() if log_scale else None)
-        axs[0].set_xlabel(r'$m_e v_{\parallel}^2 / 2 T_{e0}$')
-        axs[0].set_ylabel(r'$m_e v_{\perp}^2 / 2 T_{e0}$')
-        fig.colorbar(im, ax=axs[0], label=r'$f_{e, norm}$')
+        im = axs[0].pcolormesh(spar_e, sperp_e, fe.T, cmap='inferno', norm=LogNorm() if log_scale else None)
+        axs[0].set_xlabel(xlabel_e)
+        axs[0].set_ylabel(ylabel_e)
+        fig.colorbar(im, ax=axs[0], label=flabel_e)
         if xlim is not None:    
             axs[0].set_xlim(xlim)
         if ylim is not None:
             axs[0].set_ylim(ylim)
-        im = axs[1].pcolormesh(Epari, Eperpi, fi.T, cmap='inferno', norm=LogNorm() if log_scale else None)
-        axs[1].set_xlabel(r'$m_i v_{\parallel}^2 / 2 T_{i0}$')
-        axs[1].set_ylabel(r'$m_i v_{\perp}^2 / 2 T_{i0}$')
-        fig.colorbar(im, ax=axs[1], label=r'$f_{i, norm}$')
+        im = axs[1].pcolormesh(spar_i, sperp_i, fi.T, cmap='inferno', norm=LogNorm() if log_scale else None)
+        axs[1].set_xlabel(xlabel_i)
+        axs[1].set_ylabel(ylabel_i)
+        fig.colorbar(im, ax=axs[1], label=flabel_i)
         if xlim is not None:    
             axs[1].set_xlim(xlim)
         if ylim is not None:
