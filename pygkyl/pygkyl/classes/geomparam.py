@@ -34,7 +34,7 @@ class GeomParam:
     """
     def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B_axis=1.4, x_out = 0.08,
                  a_shift=0.0, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile_R='default', 
-                 qfit = [], cdim = 3):
+                 qaxis = None, qlcfs = None, qfit = [], cdim = 3):
         self.B_axis     = B_axis
         self.R_axis     = R_axis
         self.Z_axis     = Z_axis
@@ -47,6 +47,8 @@ class GeomParam:
         self.R_LCFSmid  = R_LCFSmid
         self.geom_type  = geom_type
         self.qprofile_R = qprofile_R
+        self.qaxis      = qaxis
+        self.qlcfs      = qlcfs
         self.qfit       = qfit
         self.cdim       = cdim # configuration space dimension
         self.vol_frac   = None # Volume fraction
@@ -107,6 +109,8 @@ class GeomParam:
 
         if callable(self.qprofile_R):
             self.qprofile_R = self.qprofile_R
+        elif self.qprofile_R == 'quadratic':
+            self.qprofile_R = lambda R: self.qaxis + (self.qlcfs-self.qaxis)*(R-self.R_axis)*(R-self.R_axis)/(self.a_mid*self.a_mid)
         else:
             if self.qfit is None:
                 self.qfit = [497.3420166252413,-1408.736172826569,1331.4134861681464,-419.00692601227627]
