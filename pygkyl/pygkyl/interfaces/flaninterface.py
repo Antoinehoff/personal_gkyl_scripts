@@ -91,40 +91,41 @@ class FlanInterface:
 
         # Create actual data name string and load netCDF file
         dname = fieldname.replace('flan_', '')
-        flan_nc = netCDF4.Dataset(self.path, 'r')
 
-        # If the data is considered a derived value, then call 
-        # load_derived_values to perform the calculations, otherwise just load
-        # the data straight up.
-        derived_dnames = ["gca_validity_time_EX", "gca_validity_time_EY", 
-            "gca_validity_time_EZ", "gca_validity_time_E"]
-        if dname in derived_dnames:
-            values = self.load_derived_values(flan_nc, dname, tframe)
-        else:
+        #flan_nc = netCDF4.Dataset(self.path, 'r')
+        with netCDF4.Dataset(self.path, "r") as flan_nc:
 
-          # Return variable name from whichever group it's in
-          for group in ["output", "background", "geometry"]:
-            if dname in flan_nc[group].variables.keys():
-              values = flan_nc[group][dname][tframe].data
-              print("{}: {} (group) {} (tframe) loaded".format(dname, group, tframe))
-        
-        time = float(flan_nc["geometry"]['time'][tframe].data)
+            # If the data is considered a derived value, then call 
+            # load_derived_values to perform the calculations, otherwise just load
+            # the data straight up.
+            derived_dnames = ["gca_validity_time_EX", "gca_validity_time_EY", 
+                "gca_validity_time_EZ", "gca_validity_time_E"]
+            if dname in derived_dnames:
+                values = self.load_derived_values(flan_nc, dname, tframe)
+            else:
 
-        # get x grid and convert to default dtype instead of float32
-        xc = flan_nc["geometry"]['x'][:].data
-        yc = flan_nc["geometry"]['y'][:].data
-        zc = flan_nc["geometry"]['z'][:].data
+              # Return variable name from whichever group it's in
+              for group in ["output", "background", "geometry"]:
+                if dname in flan_nc[group].variables.keys():
+                  values = flan_nc[group][dname][tframe].data
+            
+            time = float(flan_nc["geometry"]['time'][tframe].data)
 
-        # evaluate grid at nodal points (i.e. add a point at the end of the grid)
-        x = np.append(xc, xc[-1] + (xc[-1] - xc[-2]))
-        y = yc
-        z = zc
-        
-        grids = [x.astype(float), y.astype(float), z.astype(float)]
-        
-        jacobian = flan_nc["geometry"]['J'][:].data.astype(float)
-        
-        jacobian = 0.5* (jacobian[1:,1:,1:] + jacobian[:-1,:-1,:-1])
-        
+            # get x grid and convert to default dtype instead of float32
+            xc = flan_nc["geometry"]['x'][:].data
+            yc = flan_nc["geometry"]['y'][:].data
+            zc = flan_nc["geometry"]['z'][:].data
+
+            # evaluate grid at nodal points (i.e. add a point at the end of the grid)
+            x = np.append(xc, xc[-1] + (xc[-1] - xc[-2]))
+            y = yc
+            z = zc
+            
+            grids = [x.astype(float), y.astype(float), z.astype(float)]
+            
+            jacobian = flan_nc["geometry"]['J'][:].data.astype(float)
+            
+            jacobian = 0.5* (jacobian[1:,1:,1:] + jacobian[:-1,:-1,:-1])
+            
         return time, grids, jacobian, values
     
