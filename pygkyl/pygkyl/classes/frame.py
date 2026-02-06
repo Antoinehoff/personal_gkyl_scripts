@@ -467,12 +467,30 @@ class Frame:
         
         return self.values[tuple(idx)]
         
-    def compute_volume_integral(self, jacob_squared=False, average=False):
+    def compute_volume_integral(self, jacob_squared=False, average=False,
+                                integral_bounds =[None, None, None]):
         """
         Compute the volume integral of the data.
         """
         [x, y, z] = self.simulation.geom_param.grids
         Jac = self.simulation.geom_param.Jacobian**2 if jacob_squared else self.simulation.geom_param.Jacobian
+        # Allow for bounds specification
+        for i, b in enumerate(integral_bounds):
+            if b is not None:
+                il = np.argmin(np.abs(self.simulation.geom_param.grids[i] - b[0]))
+                iu = np.argmin(np.abs(self.simulation.geom_param.grids[i] - b[1]))
+                if i == 0:
+                    x = x[il:iu+1]
+                    Jac = Jac[il:iu+1,:,:]
+                    self.values = self.values[il:iu+1,:,:]
+                elif i == 1:
+                    y = y[il:iu+1]
+                    Jac = Jac[:,il:iu+1,:]
+                    self.values = self.values[:,il:iu+1,:]
+                elif i == 2:
+                    z = z[il:iu+1]
+                    Jac = Jac[:,:,il:iu+1]
+                    self.values = self.values[:,:,il:iu+1]
         self.vol_int = mt.integral_vol(x, y, z, self.values * Jac)
         if average:
             self.vol_int /= self.simulation.geom_param.intJac

@@ -160,6 +160,15 @@ class Simulation:
         """
         return Frame(self, fieldName, timeFrame, load=load)
     
+    def get_volume_integral(self, fieldName, timeFrame, jacob_squared=False, average=False,
+                            integral_bounds =[None, None, None]):
+        """
+        Compute the volume integral of a given field at a specific time frame.
+        """
+        frame = self.get_frame(fieldName, timeFrame, load=True)
+        return frame.compute_volume_integral(jacob_squared=jacob_squared, average=average,
+                                             integral_bounds=integral_bounds)
+    
     def get_available_frames(self, fieldName):
         """
         Get the available frames for a given field to plot (phi, ne, fe, etc.).
