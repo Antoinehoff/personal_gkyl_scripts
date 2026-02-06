@@ -289,6 +289,12 @@ class Normalization:
                       " is not recognized. Please check the inputs or refer"+
                       " to the documentation for valid options:")
                 self.help()
+                
+    def get_units(self, key):
+        return self.dict.get(key+'units', '')
+    
+    def get_symbol(self, key):
+        return self.dict.get(key+'symbol', key)
     
     def help(self):
         help_message = """

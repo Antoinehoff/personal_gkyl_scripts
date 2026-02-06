@@ -574,7 +574,7 @@ class DataParam:
             field2load = ['n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_ptots(gdata_list):
                 Ttot = receipe_Ttots(gdata_list[1:3])
-                return pgkyl_.get_values(gdata_list[0])*Ttot
+                return 1.5*pgkyl_.get_values(gdata_list[0])*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_ptots])
 
             #parallel pressures
@@ -583,7 +583,7 @@ class DataParam:
             units      = 'J/kg/m$^{3}$'
             field2load = ['n%s'%(s_),'Tpar%s'%(s_)]
             def receipe_ppars(gdata_list):
-                return pgkyl_.get_values(gdata_list[0])*pgkyl_.get_values(gdata_list[1])/3.0
+                return 1.5*pgkyl_.get_values(gdata_list[0])*pgkyl_.get_values(gdata_list[1])/3.0
             default_qttes.append([name,symbol,units,field2load,receipe_ppars])
 
             #perpendicular pressures
@@ -592,7 +592,7 @@ class DataParam:
             units      = 'J/kg/m$^{3}$'
             field2load = ['n%s'%(s_),'Tperp%s'%(s_)]
             def receipe_pperps(gdata_list):
-                return pgkyl_.get_values(gdata_list[0])*pgkyl_.get_values(gdata_list[1])*2.0/3.0     
+                return 1.5*pgkyl_.get_values(gdata_list[0])*pgkyl_.get_values(gdata_list[1])*2.0/3.0     
             default_qttes.append([name,symbol,units,field2load,receipe_pperps])
 
             #normalized pressure beta
@@ -1382,6 +1382,22 @@ class DataParam:
         # Return a copy of the units dictionary
         return copy.copy(default_units_dict)
 
+    def get_default_symbol(self, field):
+        default_dict = DataParam.get_default_units_dict(self.species)
+        return default_dict.get(f'{field}symbol', 'N/A')
+    
+    def get_default_units(self, field):
+        default_dict = DataParam.get_default_units_dict(self.species)
+        return default_dict.get(f'{field}units', 'N/A')
+    
+    def get_compo(self, field):
+        default_dict = DataParam.get_default_units_dict(self.species)
+        return default_dict.get(f'{field}compo', 'N/A')
+    
+    def get_receipe(self, field):
+        default_dict = DataParam.get_default_units_dict(self.species)
+        return default_dict.get(f'{field}receipe', 'N/A')
+    
     def info(self):
         default_dict = DataParam.get_default_units_dict(self.species)
         # Create a table to display the data
