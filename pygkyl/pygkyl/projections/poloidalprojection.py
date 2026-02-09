@@ -387,7 +387,7 @@ class PoloidalProjection:
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
            shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False,
-           cmap_period = 1, figout=[], close_fig=False):
+           show_axis=True, cutout_limiter=False, cmap_period = 1, figout=[], close_fig=False, fig_dpi=300, limiter_color='gray'):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -401,7 +401,11 @@ class PoloidalProjection:
         timeFrame: Time frame to plot.
         outFilename: If not empty, save the figure to this file.
         colorMap: Colormap to use. (optional)
-        doInset: If True, plot an inset of the SOL region. (default: True)
+        show_Inset: If True, plot an inset of the SOL region. (default: True)
+        show_LCFS: If True, plot the LCFS. (default: True)
+        show_limiter: If True, plot the limiter. (default: True)
+        show_vessel: If True, plot the vessel. (default: False)
+        show_axis: If True, show the axis. (default: True)
         scaleFac: Scale factor for the field. (default: 1.)
         xlim: x-axis limits. (optional)
         ylim: y-axis limits. (optional)
@@ -479,7 +483,8 @@ class PoloidalProjection:
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))
-    cbar_ax1a = fig1a.add_axes(cax1aPos)
+    if show_axis:
+      cbar_ax1a = fig1a.add_axes(cax1aPos)
     
     hpl1a = list()
     pcm1 = ax1a[0].pcolormesh(self.RIntN, self.ZIntN, field_RZ, shading=shading,cmap=colorMap,
@@ -504,15 +509,16 @@ class PoloidalProjection:
         pcm1.set_cmap(periodic_cmap)
 
     #fig1a.suptitle
-    ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
-    ax1a[0].set_xlabel(r'$R$ [m]',fontsize=xyLabelFontSize, labelpad=-2)
-    #setTickFontSize(ax1a[0],tickFontSize)
-    ax1a[0].set_ylabel(r'$Z$ [m]',fontsize=xyLabelFontSize, labelpad=-10)
-    cbar = plt.colorbar(hpl1a[0],ax=ax1a,cax=cbar_ax1a)
-    cbar.ax.tick_params(labelsize=10)#tickFontSize)
-    cbar.set_label(vsymbol+r'$(R,\varphi=0,Z)$'+'['+vunits+']', 
-                    rotation=270, labelpad=18, fontsize=colorBarLabelFontSize)
-    hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
+    if show_axis:
+      ax1a[0].set_title('t = %.2f'%(time)+' '+self.sim.normalization.dict['tunits'],fontsize=titleFontSize) 
+      ax1a[0].set_xlabel(r'$R$ [m]',fontsize=xyLabelFontSize, labelpad=-2)
+      #setTickFontSize(ax1a[0],tickFontSize)
+      ax1a[0].set_ylabel(r'$Z$ [m]',fontsize=xyLabelFontSize, labelpad=-10)
+      cbar = plt.colorbar(hpl1a[0],ax=ax1a,cax=cbar_ax1a)
+      cbar.ax.tick_params(labelsize=10)#tickFontSize)
+      cbar.set_label(vsymbol+r'$(R,\varphi=0,Z)$'+'['+vunits+']', 
+                      rotation=270, labelpad=18, fontsize=colorBarLabelFontSize)
+      hmag = cbar.ax.yaxis.get_offset_text().set_size(tickFontSize)
 
     #.Plot lcfs
     if show_LCFS:
@@ -523,12 +529,20 @@ class PoloidalProjection:
       
     #.Plot the limiter
     if show_limiter:
-      xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
-      xCorner = np.min(self.RIntN)
-      yWidth = 0.01
-      yCorner = self.geom.Z_axis - 0.5*yWidth
-      ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='gray'))
-      limiter = [yWidth]
+      if cutout_limiter:
+        xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
+        xCorner = np.min(self.RIntN)
+        yWidth = self.ZIntN.max() - self.ZIntN.min()
+        yCorner = self.geom.Z_axis - 0.5*yWidth
+        ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color='white'))
+        limiter = [yWidth]
+      else:
+        xWidth = np.min(self.Rlcfs) - np.min(self.RIntN)
+        xCorner = np.min(self.RIntN)
+        yWidth = 0.01
+        yCorner = self.geom.Z_axis - 0.5*yWidth
+        ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,yWidth,color=limiter_color))
+        limiter = [yWidth]
     else:
       limiter = []
       
@@ -537,6 +551,14 @@ class PoloidalProjection:
       if self.sim.geom_param.vessel_data is not None:
         Rvess = self.sim.geom_param.vessel_data['R']
         Zvess = self.sim.geom_param.vessel_data['Z']
+        # Add two patches to cover the regions outside the vessel
+        xWidth = 0.05 * self.sim.geom_param.R_axis
+        xCorner = np.min(self.Rlcfs) - xWidth
+        yCorner = np.min(Zvess)
+        ywidth = np.max(Zvess) - np.min(Zvess)
+        ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,ywidth,color='white'))
+        xCorner = np.max(Rvess)
+        ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,ywidth,color='white'))
         ax1a[0].plot(Rvess,Zvess,linewidth=1.0,linestyle='-',color='black',alpha=.8)
 
     if show_inset:
@@ -546,7 +568,7 @@ class PoloidalProjection:
                         LCFS=LCFSinset, limiter=limiter)      
 
     ax1a[0].set_aspect('equal',adjustable='datalim')
-
+  
     if xlim: ax1a[0].set_xlim(xlim)
     if ylim: ax1a[0].set_ylim(ylim)
     if colorScale == 'log':
@@ -555,10 +577,13 @@ class PoloidalProjection:
         pcm1.set_norm(colornorm)
     if clim: pcm1.set_clim(clim)
     
+    if not show_axis:
+        ax1a[0].axis('off')
+    
     figout.append(fig1a)
 
     if outFilename:
-        plt.savefig(outFilename)
+        plt.savefig(outFilename, dpi = fig_dpi)
         plt.close()
     else:
         if close_fig: plt.close()

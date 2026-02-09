@@ -304,8 +304,9 @@ def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='
     
     if close_fig: plt.close(fig)
 
-def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32,
-                             colorMap = 'inferno', colorScale = 'lin', doInset=True, polproj=None,
+def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32, polproj=None,
+                             colorMap = 'inferno', colorScale = 'lin', fig_dpi=300, limiterColor='gray', cutoutLimiter=False,
+                             showInset=True, showLCFS=True, showVessel=False, showLimiter=True, showAxis=True,
                              xlim=[], ylim=[],clim=[], logScaleFloor=1e-3, figout=[], close_fig=False):
     if timeFrame is None:
         timeFrame = simulation.data_param.get_available_frames(simulation)['field'][-1]
@@ -314,9 +315,10 @@ def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInt
         polproj.setup(simulation, timeFrame=timeFrame, nzInterp=nzInterp)
 
     polproj.plot(fieldName=fieldName, timeFrame=timeFrame, colorScale=colorScale,
-                 outFilename=outFilename, colorMap=colorMap, show_inset=doInset,
+                 outFilename=outFilename, colorMap=colorMap, show_inset=showInset,
                  xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor, 
-                 figout=figout, close_fig=close_fig)
+                 show_LCFS=showLCFS, show_vessel=showVessel, show_limiter=showLimiter, show_axis=showAxis,
+                 figout=figout, close_fig=close_fig, cutout_limiter=cutoutLimiter, limiter_color=limiterColor, fig_dpi=fig_dpi)
 
 def flux_surface_proj(simulation, rho=0.9, fieldName='phi', timeFrame=None, Nint=32, figout=[], close_fig=False,
                       clim=[]):

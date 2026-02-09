@@ -938,8 +938,9 @@ class Simulation:
     
     def plot_poloidal_projection(self, field_name='phi', frame_idx=None, out_file_name='',
                                  nzInterp=32, colorMap='inferno', colorScale='lin',
-                                 doInset=True, xlim=[], ylim=[], clim=[],
-                                 logScaleFloor=1e-3, figout=[], close_fig=False):
+                                 showInset=True, showLimiter=True, showLCFS=True, showAxis=True,
+                                 showVessel=False, limiterColor='gray', cutoutLimiter=False, xlim=[], ylim=[], clim=[],
+                                 logScaleFloor=1e-3, figout=[], close_fig=False, fig_dpi=300):
         """
         Create poloidal projection plot of the simulation domain.
         
@@ -957,8 +958,20 @@ class Simulation:
             Colormap name. Default: 'inferno'
         colorScale : str, optional
             Color scale ('lin', 'log'). Default: 'lin'
-        doInset : bool, optional
+        showInset : bool, optional
             Show inset plot. Default: True
+        showLimiter : bool, optional
+            Show limiter in plot. Default: True
+        showLCFS : bool, optional
+            Show Last Closed Flux Surface. Default: True
+        showAxis : bool, optional
+            Show axis lines. Default: True
+        showVessel : bool, optional
+            Show vessel outline. Default: False
+        limiterColor : str, optional
+            Color of the limiter. Default: 'gray'
+        cutoutLimiter : bool, optional
+            Whether to cut out the limiter region. Default: False
         xlim : list, optional
             X-axis limits. Default: []
         ylim : list, optional
@@ -971,18 +984,22 @@ class Simulation:
             List to append figure to. Default: []
         close_fig : bool, optional
             Close figure after plotting. Default: False
+        fig_dpi : int, optional
+            Figure DPI (dots per inch). Default: 300
             
         Examples
         --------
         >>> sim.plot_poloidal_projection('phi', timeFrame=50)
-        >>> sim.plot_poloidal_projection('ne', colorScale='log', doInset=False)
+        >>> sim.plot_poloidal_projection('ne', colorScale='log', showInset=False)
         """
         from ..utils.plot_utils import poloidal_proj as plot
         return plot(simulation=self, fieldName=field_name, timeFrame=frame_idx,
                    outFilename=out_file_name, nzInterp=nzInterp, colorMap=colorMap,
-                   colorScale=colorScale, doInset=doInset, xlim=xlim, ylim=ylim,
+                   showInset=showInset, showLimiter=showLimiter, showLCFS=showLCFS, 
+                   showAxis=showAxis,showVessel=showVessel,limiterColor=limiterColor, 
+                   cutoutLimiter=cutoutLimiter, colorScale=colorScale, xlim=xlim, ylim=ylim,
                    clim=clim, logScaleFloor=logScaleFloor, figout=figout,
-                   close_fig=close_fig)
+                   close_fig=close_fig, fig_dpi=fig_dpi)
     
     def plot_flux_surface_projection(self, rho=0.9, field_name='phi', frame_idx=None, Nint=32,
                                      figout=[], close_fig=False, clim=[]):
