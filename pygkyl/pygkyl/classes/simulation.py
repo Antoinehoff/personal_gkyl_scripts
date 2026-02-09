@@ -98,8 +98,6 @@ class Simulation:
             self.set_num_param()  # Automatically set numerical parameters based on data
         if get_available_frames:
             self.available_frames = copy.deepcopy(self.data_param.get_available_frames(self)) # Get available frames for the simulation
-            print("Available frames found for the simulation:")
-            print(self.available_frames)
             if 'field' in self.available_frames.keys():
                 self.frame_list = self.available_frames['field'] # Store available configuration space frames
             if 'elc' in self.available_frames.keys():
