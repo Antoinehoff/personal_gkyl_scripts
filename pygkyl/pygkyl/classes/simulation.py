@@ -57,6 +57,11 @@ class Simulation:
         self.flan = None
         self.flanframes = []
         self.gyac = None  # Gyacomo interface, if applicable
+        self.available_frames = {} # Dictionary to store the available frames for each field in the simulation
+        self.frame_list = None # Array to store the available configuration space frames for the simulation
+        self.frame_list_ps = None # Array to store the available phase space frames for the simulation
+        self.datadir = None # Directory where the simulation data is stored
+        self.prefix = None # Prefix for the simulation data files (the part before '-' in the .gkyl filename)
 
     def set_phys_param(self, eps0 = 8.854e-12, eV = 1.602e-19, mp = 1.673e-27, me = 9.109e-31):
         """
@@ -87,10 +92,18 @@ class Simulation:
             expdatadir=expdatadir, g0simdir=g0simdir, simname=simname, simdir=simdir, 
             prefix=fileprefix, wkdir=wkdir, species=species
         )
+        self.datadir = self.data_param.datadir
+        self.prefix = fileprefix
         if set_num_param:
             self.set_num_param()  # Automatically set numerical parameters based on data
         if get_available_frames:
-            self.available_frames = self.data_param.get_available_frames(self) # Get available frames for the simulation
+            self.available_frames = copy.deepcopy(self.data_param.get_available_frames(self)) # Get available frames for the simulation
+            print("Available frames found for the simulation:")
+            print(self.available_frames)
+            if 'field' in self.available_frames.keys():
+                self.frame_list = self.available_frames['field'] # Store available configuration space frames
+            if 'elc' in self.available_frames.keys():
+                self.frame_list_ps = self.available_frames['elc'] # Store available phase space frames
 
     def set_num_param(self):
         """
@@ -108,7 +121,8 @@ class Simulation:
             filename = file2
         # If neither file is found, print a message
         else:
-            print("Neither 'xyz.gkyl' nor 'PREFIX-nodes.gkyl' was found with prefix: "+ self.data_param.fileprefix)
+            raise FileNotFoundError("Neither 'xyz.gkyl' nor '%s' was found in directory: %s"%(file2, self.data_param.datadir))
+            
         # Load
         data = pg.data.GData(filename)
         normgrids = data.get_grid()
