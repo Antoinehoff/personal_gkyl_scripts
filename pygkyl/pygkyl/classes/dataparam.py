@@ -217,8 +217,8 @@ class DataParam:
                         if other_spec.is_neutral:
                             other_s_ = other_spec.name
                             other_shortname = other_spec.nshort
-                            keys   += ['iz_react','cx_react']
-                            comps  += [0,0]
+                            keys   += ['iz_react','recomb_react','cx_react']
+                            comps  += [0,0,0]
                             prefix += [f'{spec}_elc_react_iz_{other_s_}',f'{spec}_elc_react_recomb_{other_s_}',
                                        f'{spec}_cx_{other_s_}']
                     
