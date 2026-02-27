@@ -45,12 +45,14 @@ class DataParam:
         self.species = species
         self.file_info_dict = {}
         self.set_data_file_dict(checkfiles=checkfiles)
+        self.set_data_file_dict_fluid_species(checkfiles=checkfiles)
         self.default_mom_type = None
         self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
         self.time_independent_fields = [
             'b_x', 'b_y', 'b_z', 'Jacobian', 'Bmag', 
             'g_xx', 'g_xy', 'g_xz', 'g_yy', 'g_yz', 'g_zz',
             'gxx', 'gxy', 'gxz', 'gyy', 'gyz', 'gzz']
+        
         
     def set_data_file_dict(self, checkfiles=True):
         '''
@@ -120,6 +122,10 @@ class DataParam:
         file_dict['flan'+'gnames'] = gnames[0:3]   
              
         for spec in self.species.values():
+            if spec.is_neutral:
+                # exit the loop if we are looking at a neutral species, as we do not support moments for neutrals yet
+                print("Species %s is neutral. We do not support moments for neutral species yet, so we will skip adding moments for this species."%spec.name)
+                break   
             s_        = spec.name
             shortname = spec.nshort
             
@@ -204,6 +210,17 @@ class DataParam:
                         file_dict[k+'gnames'] = gnames
                     else:
                         file_dict[k+'gnames'] = gnames[0:3]
+
+                # if species is ion and fluid species exist, look for reaction rates
+                if spec == 'ion' and any([s.is_neutral for s in self.species.values()]):
+                    for other_spec in self.species.values():
+                        if other_spec.is_neutral:
+                            other_s_ = other_spec.name
+                            other_shortname = other_spec.nshort
+                            keys   += ['iz_react','cx_react']
+                            comps  += [0,0]
+                            prefix += [f'{spec}_elc_react_iz_{other_s_}',f'{spec}_elc_react_recomb_{other_s_}',
+                                       f'{spec}_cx_{other_s_}']
                     
         # Store a list of all the different file names we may look for.
         file_dict['names'] = []
@@ -217,7 +234,19 @@ class DataParam:
         file_dict = dict(sorted(file_dict.items()))
         
         self.file_info_dict = file_dict
-        
+
+    def set_data_file_dict_fluid_species(self, checkfiles=True):
+        # loop over fluid species
+        # loop over charged species inside to get neutral reaction rates
+        for spec in self.species.values():
+            s_        = spec.name
+            shortname = spec.nshort
+
+            keys, comps, prefix   = [], [], []
+            keys  += ['nfluid','ufluid', 'Tfluid'] 
+            comps  += [0,1,2]
+            prefix += 3*[spec]
+
     @staticmethod
     def get_available_frames(simulation):
         """
@@ -287,10 +316,13 @@ class DataParam:
             ]
         # add routinely other quantities of interest
         for spec in species.values():
+            print(spec.name)
             s_ = spec.nshort
             default_qttes.append(['vpar%s'%s_, r'$v_{\parallel %s}$'%s_, 'm/s'])
             default_qttes.append(['mu%s'%s_, r'$\mu_%s$'%s_, 'J/T'])
             for add_source in [False, True]:
+                if spec.is_neutral:
+                    break
                 src_ = 'src_' if add_source else ''
                 S_ = 'S' if add_source else ''
                 # distribution functions
@@ -322,6 +354,22 @@ class DataParam:
                 default_qttes.append(['%sHM_mv%s'%(src_,s_), r'%s$p_%s$'%(S_,s_), r'kg m/s m$^{-3}$'])            
                 default_qttes.append(['%sHM_H%s'%(src_,s_), r'%s$H_%s$'%(S_,s_), r'J m$^{-3}$'])            
             
+            # add fluid moments if fluid species (no source moments)
+            if spec.is_neutral:
+                default_qttes.append(['nfluid%s'%s_, r'$n_{%s}$'%s_, r'kg m$^{-3}$'])
+                default_qttes.append(['ufluid%s'%s_, r'$u_{%s}$'%s_, 'kg m/s'])
+                default_qttes.append(['Tfluid%s'%s_, r'$T_{%s}$'%s_, 'J/kg'])
+
+            # add reaction rates if ion species and neutral species exist
+            if spec.name == 'ion' and any([s.is_neutral for s in species.values()]):
+                for other_spec in species.values():
+                    if other_spec.is_neutral:
+                        print("Adding reaction rates for ionization, recombination, and charge exchange between ion species %s and neutral species %s"%(spec.name, other_spec.name))
+                        other_s_ = other_spec.nshort
+                        default_qttes.append(['iz_react_%s'%other_s_, r'$\nu_{iz,%s}$'%other_s_, r'm$^{3}/s$'])
+                        default_qttes.append(['recomb_react_%s'%other_s_, r'$\nu_{rec,%s}$'%other_s_, r'm$^{3}/s$'])
+                        default_qttes.append(['cx_react_%s'%other_s_, r'$\nu_{cx,%s}$'%other_s_,  r'm$^{3}/s$'])
+
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
         def identity(gdata_list):
@@ -464,6 +512,8 @@ class DataParam:
         #-We define now composed quantities as pressures and fluxes 
         # for each species present in the simulation
         for spec in species.values():
+            if spec.is_neutral:
+                break
             s_ = spec.nshort
 
             #locally normalized parallel velocity   
@@ -667,6 +717,8 @@ class DataParam:
             default_qttes.append([name,symbol,units,field2load,receipe_rhos])
             
             for rpec in species.values():
+                if rpec.is_neutral:
+                    break
                 r_ = rpec.nshort
                 
                 # Collision frequency
