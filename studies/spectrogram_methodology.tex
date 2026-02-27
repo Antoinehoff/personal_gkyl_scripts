@@ -1,0 +1,191 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{geometry}
+\usepackage{hyperref}
+
+\geometry{margin=2.5cm}
+
+\title{Numerical Methodology for Computing Poloidal Spectrograms}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\section{Overview}
+
+This document describes the numerical procedure for computing frequency-wavenumber spectrograms of the electrostatic potential $\phi$ in the poloidal direction. The spectrogram reveals the dispersion relation $\omega(k_\theta)$ of fluctuations at a fixed radial location.
+
+\section{Data Extraction}
+
+\subsection{Poloidal Cut at Fixed Radius}
+
+At each time frame $t_i$ (with $i = 1, \ldots, N_t$), the electrostatic potential is extracted along a poloidal cut at radial position $x_0$:
+\begin{equation}
+\phi(\theta, t_i) \quad \text{at} \quad x = x_0
+\end{equation}
+
+The poloidal coordinate $\theta$ is discretized with $N_\theta$ points, and the arclength along the poloidal direction is computed as:
+\begin{equation}
+\ell_j = \sum_{k=1}^{j} \sqrt{(\Delta R_k)^2 + (\Delta Z_k)^2}
+\end{equation}
+where $(R, Z)$ are the cylindrical coordinates in the poloidal plane and $\Delta R_k$, $\Delta Z_k$ are the differences between adjacent $k$-th grid points.
+
+\subsection{Poloidal ExB Velocity}
+
+\subsubsection{Magnetic Field Decomposition}
+
+In flux coordinates, the magnetic field is decomposed into toroidal and poloidal components:
+\begin{equation}
+\mathbf{B} = B_\phi \, \mathbf{e}_\phi + B_\theta \, \mathbf{e}_\theta
+\end{equation}
+
+We introduce the pitch angle factor $\alpha$ to characterize the relative strength of these components:
+\begin{equation}
+\alpha = \frac{1}{1 + \frac{r}{Rq}}
+\end{equation}
+where $r$ is the minor radius, $R$ is the major radius, and $q$ is the safety factor. This allows us to approximate:
+\begin{equation}
+\mathbf{B} \approx |\mathbf{B}| \left( \alpha \, \mathbf{e}_\phi + (1 - \alpha) \, \mathbf{e}_\theta \right)
+\end{equation}
+
+\subsubsection{ExB Velocity Derivation}
+
+The $\mathbf{E} \times \mathbf{B}$ drift velocity is given by:
+\begin{equation}
+\mathbf{v}_E = \frac{\mathbf{E} \times \mathbf{B}}{B^2} = -\frac{\nabla \phi \times \mathbf{B}}{B^2} = -\frac{1}{|\mathbf{B}|} \nabla \phi \times \frac{\mathbf{B}}{|\mathbf{B}|}
+\end{equation}
+
+Substituting the magnetic field decomposition:
+\begin{equation}
+\mathbf{v}_E = -\frac{1}{|\mathbf{B}|} \nabla \phi \times \left( \alpha \, \mathbf{e}_\phi + (1 - \alpha) \, \mathbf{e}_\theta \right)
+\end{equation}
+
+Expanding the gradient in local flux coordinates $(r, \theta, \phi)$:
+\begin{equation}
+\nabla \phi = \frac{\partial \phi}{\partial r} \mathbf{e}_r + \frac{1}{r} \frac{\partial \phi}{\partial \theta} \mathbf{e}_\theta + \frac{1}{R} \frac{\partial \phi}{\partial \phi} \mathbf{e}_\phi
+\end{equation}
+
+For axisymmetric fluctuations ($\partial/\partial \phi = 0$), the cross products yield:
+\begin{align}
+\mathbf{v}_E &= -\frac{1}{|\mathbf{B}|} \left[ \alpha \left( \frac{\partial \phi}{\partial r} \mathbf{e}_r \times \mathbf{e}_\phi + \frac{1}{r} \frac{\partial \phi}{\partial \theta} \mathbf{e}_\theta \times \mathbf{e}_\phi \right) \right. \nonumber \\
+&\quad \left. + (1 - \alpha) \left( \frac{\partial \phi}{\partial r} \mathbf{e}_r \times \mathbf{e}_\theta + \frac{1}{r} \frac{\partial \phi}{\partial \theta} \mathbf{e}_\theta \times \mathbf{e}_\theta \right) \right]
+\end{align}
+
+Using the relations $\mathbf{e}_r \times \mathbf{e}_\phi = -\mathbf{e}_\theta$, $\mathbf{e}_\theta \times \mathbf{e}_\phi = \mathbf{e}_r$, $\mathbf{e}_r \times \mathbf{e}_\theta = \mathbf{e}_\phi$, and $\mathbf{e}_\theta \times \mathbf{e}_\theta = 0$:
+\begin{equation}
+\mathbf{v}_E = -\frac{1}{|\mathbf{B}|} \left[ \alpha \left( \frac{\partial \phi}{\partial r} (-\mathbf{e}_\theta) + \frac{1}{r} \frac{\partial \phi}{\partial \theta} \mathbf{e}_r \right) + (1 - \alpha) \frac{\partial \phi}{\partial r} \mathbf{e}_\phi \right]
+\end{equation}
+
+Collecting components:
+\begin{align}
+v_{E,r} &= -\frac{\alpha}{|\mathbf{B}|} \frac{1}{r} \frac{\partial \phi}{\partial \theta} \\
+v_{E,\theta} &= \frac{\alpha}{|\mathbf{B}|} \frac{\partial \phi}{\partial r} \\
+v_{E,\phi} &= -\frac{(1 - \alpha)}{|\mathbf{B}|} \frac{\partial \phi}{\partial r}
+\end{align}
+
+\subsubsection{Numerical Implementation}
+
+The poloidal component is computed at each point $(r, \theta, t)$ using centered finite differences for the radial derivative:
+\begin{equation}
+v_{E,\theta}(r, \theta, t) = \frac{\alpha}{B(r,\theta)} \frac{\phi(r + \Delta r, \theta, t) - \phi(r - \Delta r, \theta, t)}{2 \Delta r}
+\end{equation}
+
+The time- and poloidal-averaged poloidal rotation velocity is then:
+\begin{equation}
+\langle v_{E,\theta} \rangle_{t,\theta} = \frac{1}{N_t N_\theta} \sum_{i=1}^{N_t} \sum_{j=1}^{N_\theta} v_{E,\theta}(\theta_j, t_i)
+\end{equation}
+
+\section{Spectral Analysis}
+
+\subsection{Windowing in Time}
+
+To enforce periodicity in time and reduce spectral leakage, a Kaiser window with parameter $\beta = 8$ is applied:
+\begin{equation}
+\tilde{\phi}(\theta, t_i) = \phi(\theta, t_i) \cdot w_{\text{Kaiser}}(t_i)
+\end{equation}
+
+\subsection{Poloidal Fourier Transform}
+
+For each time frame, the real FFT is computed in the poloidal direction:
+\begin{equation}
+\hat{\phi}(k_\theta, t_i) = \text{FFT}_\theta[\tilde{\phi}(\theta, t_i)]
+\end{equation}
+
+The poloidal wavenumber range is:
+\begin{equation}
+k_\theta \in \left[\frac{2\pi}{L}, \frac{N_\theta \pi}{L}\right]
+\end{equation}
+where $L = \ell_{N_\theta}$ is the total poloidal circumference.
+
+\subsection{Doppler Shift Correction}
+
+To account for the poloidal rotation due to $\mathbf{E} \times \mathbf{B}$ drift, a phase correction is applied in the laboratory frame:
+\begin{equation}
+\hat{\phi}_{\text{shift}}(k_\theta, t_i) = \hat{\phi}(k_\theta, t_i) \cdot \exp\left(-i k_\theta \langle v_{E,\theta} \rangle_{t,\theta} t_i\right)
+\end{equation}
+
+This transformation moves to a frame rotating with the mean poloidal ExB velocity, removing the Doppler shift:
+\begin{equation}
+\omega_{\text{lab}} = \omega_{\text{plasma}} + k_\theta \langle v_{E,\theta} \rangle_{t,\theta}
+\end{equation}
+
+\subsection{Temporal Fourier Transform}
+
+The frequency spectrum is obtained by Fourier transforming in time:
+\begin{equation}
+\hat{\phi}(k_\theta, \omega) = \text{FFT}_t[\hat{\phi}_{\text{shift}}(k_\theta, t)]
+\end{equation}
+
+The result is shifted to center zero frequency:
+\begin{equation}
+\hat{\phi}(k_\theta, \omega) = \text{fftshift}\left[\text{FFT}_t[\hat{\phi}_{\text{shift}}(k_\theta, t)]\right]
+\end{equation}
+
+The frequency range is:
+\begin{equation}
+\omega \in \left[-\frac{N_t \pi}{T}, \frac{N_t \pi}{T}\right]
+\end{equation}
+where $T = t_{N_t} - t_1$ is the total simulation time analyzed.
+
+\section{Normalization and Visualization}
+
+\subsection{Normalized Units}
+
+The spectrogram is presented in gyrokinetic normalized units:
+\begin{align}
+k_\theta^* &= k_\theta \rho_s \\
+\omega^* &= \frac{\omega R}{c_s}
+\end{align}
+where:
+\begin{itemize}
+    \item $\rho_s = c_s / \Omega_i$ is the ion sound Larmor radius
+    \item $c_s = \sqrt{T_e / m_i}$ is the ion sound speed
+    \item $\Omega_i = eB / m_i$ is the ion cyclotron frequency
+    \item $R$ is the major radius
+\end{itemize}
+
+\subsection{Power Spectral Density}
+
+The spectrogram displays the power spectral density:
+\begin{equation}
+S(k_\theta, \omega) = |\hat{\phi}(k_\theta, \omega)|^2
+\end{equation}
+
+This is visualized using a logarithmic color scale to capture the wide dynamic range of fluctuation amplitudes.
+
+\section{Physical Interpretation}
+
+The spectrogram $S(k_\theta, \omega)$ reveals:
+\begin{itemize}
+    \item The dispersion relation $\omega(k_\theta)$ of dominant modes
+    \item The spectral width indicating coherence and damping
+    \item The propagation direction from the sign of $\omega/k_\theta$
+    \item Mode identification (ITG, TEM, ETG) from characteristic slopes
+\end{itemize}
+
+After Doppler shift correction, positive frequencies indicate propagation in the electron diamagnetic direction, while negative frequencies indicate ion diamagnetic direction, both in the plasma frame.
+
+\end{document}
