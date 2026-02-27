@@ -5,8 +5,8 @@ from ..interfaces.gyacomointerface import get_gyacomo_sim_config
 from ..interfaces.pgkyl_interface import get_dimensionality
 from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
 
-def import_config(configName='tcv_pt', simDir ='', filePrefix = '', x_LCFS = None, x_out = None, 
-                  load_metric=True, dimensionality=None, simidx=0):
+def import_config(configName='tcv_pt', simDir ='', filePrefix = '',
+                  load_metric=True, simidx=0, **kwargs):
     """
     Load a predefined simulation configuration.
     
@@ -33,24 +33,24 @@ def import_config(configName='tcv_pt', simDir ='', filePrefix = '', x_LCFS = Non
     Note:
     One can set up a custom configuration by copying and modifying one of the predefined configurations in `pygkyl/pygkyl/configs/simulation_configs.py`.
     """
-    if dimensionality is None:
-        dimensionality = get_dimensionality(simDir, filePrefix)
+    if 'dimensionality' not in kwargs or kwargs['dimensionality'] is None:
+        kwargs['dimensionality'] = get_dimensionality(simDir, filePrefix)
     if configName in ['TCV_PT', 'tcv_pt']:
-        sim = get_tcv_pt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+        sim = get_tcv_pt_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['TCV_NT', 'tcv_nt']:
-        sim = get_tcv_nt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+        sim = get_tcv_nt_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['D3D_PT', 'd3d_pt']:
-        sim = get_d3d_pt_sim_config(simDir, filePrefix, x_LCFS, x_out)
+        sim = get_d3d_pt_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['D3D_NT', 'd3d_nt']:
-        sim = get_d3d_nt_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+        sim = get_d3d_nt_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['SPARC', 'sparc']:
-        sim = get_sparc_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+        sim = get_sparc_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['NSTXU', 'nstxu']:
-        sim = get_nstxu_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+        sim = get_nstxu_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['AUG', 'aug', 'ASDEX', 'asdex']:
-        sim = get_aug_sim_config(simDir, filePrefix, x_LCFS, x_out, dimensionality)
+        sim = get_aug_sim_config(simDir, filePrefix, **kwargs)
     elif configName[:7] in ['gyacomo', 'GYACOMO', 'Gyacomo']:
-        sim = get_gyacomo_sim_config(configName,simDir,simidx)
+        sim = get_gyacomo_sim_config(configName,simDir,simidx,**kwargs)
         load_metric = False
         add_source = False
     else:
@@ -65,13 +65,14 @@ def import_config(configName='tcv_pt', simDir ='', filePrefix = '', x_LCFS = Non
 def display_available_configs():
     print("Available configurations: TCV_PT, TCV_NT")
 
-def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+def get_tcv_pt_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
     R_axis = 0.8727
-    if x_LCFS is None : x_LCFS = 0.04
-    if x_out is None : x_out = 0.08
+    x_LCFS = kwargs.get('x_LCFS', 0.04)
+    x_out = kwargs.get('x_out', 0.08)
+    dimensionality = kwargs.get('dimensionality', '3x2v')
     simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param()
 
@@ -153,14 +154,15 @@ def get_tcv_pt_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimen
     }
     return simulation
 
-def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+def get_tcv_nt_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     Discharge #65130
     '''
     R_axis = 0.8868
-    if x_LCFS is None : x_LCFS = 0.04
-    if x_out is None : x_out = 0.08
+    x_LCFS = kwargs.get('x_LCFS', 0.04)
+    x_out = kwargs.get('x_out', 0.08)
+    dimensionality = kwargs.get('dimensionality', '3x2v')
     
     simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param()
@@ -243,15 +245,16 @@ def get_tcv_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     }
     return simulation
 
-def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
+def get_d3d_pt_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
     R_axis = 1.6486461
-    if x_LCFS is None : x_LCFS = 0.10
-    if x_out is None : x_out = 0.05
+    x_LCFS = kwargs.get('x_LCFS', 0.10)
+    x_out = kwargs.get('x_out', 0.05)
+    dimensionality = kwargs.get('dimensionality', '3x2v')
     
-    simulation = Simulation(dimensionality='3x2v')
+    simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param()
 
     simulation.set_geom_param(
@@ -326,13 +329,14 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
     }
     return simulation
 
-def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+def get_d3d_nt_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''
     R_axis = 1.7074685
-    if x_LCFS is None : x_LCFS = 0.10
-    if x_out is None : x_out = 0.05
+    x_LCFS = kwargs.get('x_LCFS', 0.10)
+    x_out = kwargs.get('x_out', 0.05)
+    dimensionality = kwargs.get('dimensionality', '3x2v')
     
     simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param()
@@ -415,13 +419,14 @@ def get_d3d_nt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None, dimens
     return simulation
 
 
-def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+def get_nstxu_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
     R_axis = 1.0
-    if x_LCFS is None : x_LCFS = 0.04
-    if x_out is None : x_out = 0.08
+    x_LCFS = kwargs.get('x_LCFS', 0.04)
+    x_out = kwargs.get('x_out', 0.08)
+    dimensionality = kwargs.get('dimensionality', '3x2v')
     simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param()
     
@@ -489,13 +494,14 @@ def get_nstxu_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     return simulation
 
 
-def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+def get_sparc_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for a TCV PT clopen 3x2v simulation.
     '''
     R_axis = 1.8885793871866297
-    if x_LCFS is None : x_LCFS = 0.04
-    if x_out is None : x_out = 0.08
+    x_LCFS = kwargs.get('x_LCFS', 0.04)
+    x_out = kwargs.get('x_out', 0.08)
+    dimensionality = kwargs.get('dimensionality', '3x2v')
     simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param()
 
@@ -555,12 +561,13 @@ def get_sparc_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimens
     
     return simulation
 
-def get_aug_sim_config(simdir, fileprefix, x_LCFS = None, x_out = None, dimensionality='3x2v'):
+def get_aug_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for the ASDEX-U SOL efit geom case. (D. Liu)
     '''
-    if x_LCFS is None : x_LCFS = -1.0 # position of the LCFS in term of the simulation domain coordinate.
-    if x_out is None : x_out = 1.0 # SOL width in term of the simulation domain coordinate.
+    x_LCFS = kwargs.get('x_LCFS', -1.0)  # position of the LCFS in term of the simulation domain coordinate.
+    x_out = kwargs.get('x_out', 1.0)  # SOL width in term of the simulation domain coordinate.
+    dimensionality = kwargs.get('dimensionality', '3x2v')
     simulation = Simulation(dimensionality=dimensionality)
     simulation.set_phys_param()
 
