@@ -304,7 +304,7 @@ def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='
     
     if close_fig: plt.close(fig)
 
-def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32, polproj=None,
+def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32, polproj=None, cmap_period=1,
                              colorMap = 'inferno', colorScale = 'lin', fig_dpi=300, limiterColor='gray', cutoutLimiter=False,
                              showInset=True, showLCFS=True, showVessel=False, showLimiter=True, showAxis=True,
                              xlim=[], ylim=[],clim=[], logScaleFloor=1e-3, figout=[], close_fig=False):
@@ -316,7 +316,7 @@ def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInt
 
     polproj.plot(fieldName=fieldName, timeFrame=timeFrame, colorScale=colorScale,
                  outFilename=outFilename, colorMap=colorMap, show_inset=showInset,
-                 xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor, 
+                 xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor, cmap_period=cmap_period,
                  show_LCFS=showLCFS, show_vessel=showVessel, show_limiter=showLimiter, show_axis=showAxis,
                  figout=figout, close_fig=close_fig, cutout_limiter=cutoutLimiter, limiter_color=limiterColor, fig_dpi=fig_dpi)
 
