@@ -210,17 +210,6 @@ class DataParam:
                         file_dict[k+'gnames'] = gnames
                     else:
                         file_dict[k+'gnames'] = gnames[0:3]
-
-                # if species is ion and fluid species exist, look for reaction rates
-                if spec == 'ion' and any([s.is_neutral for s in self.species.values()]):
-                    for other_spec in self.species.values():
-                        if other_spec.is_neutral:
-                            other_s_ = other_spec.name
-                            other_shortname = other_spec.nshort
-                            keys   += ['iz_react','recomb_react','cx_react']
-                            comps  += [0,0,0]
-                            prefix += [f'{spec}_elc_react_iz_{other_s_}',f'{spec}_elc_react_recomb_{other_s_}',
-                                       f'{spec}_cx_{other_s_}']
                     
         # Store a list of all the different file names we may look for.
         file_dict['names'] = []
@@ -246,6 +235,11 @@ class DataParam:
             keys  += ['nfluid','ufluid', 'Tfluid'] 
             comps  += [0,1,2]
             prefix += 3*[spec]
+
+            keys   += ['iz_react','recomb_react','cx_react']
+            comps  += [0,0,0]
+            prefix += [f'ion_elc_react_iz_{s_}',f'ion_elc_react_recomb_{s_}',
+                       f'ion_cx_{s_}']
 
     @staticmethod
     def get_available_frames(simulation):
@@ -359,16 +353,9 @@ class DataParam:
                 default_qttes.append(['nfluid%s'%s_, r'$n_{%s}$'%s_, r'kg m$^{-3}$'])
                 default_qttes.append(['ufluid%s'%s_, r'$u_{%s}$'%s_, 'kg m/s'])
                 default_qttes.append(['Tfluid%s'%s_, r'$T_{%s}$'%s_, 'J/kg'])
-
-            # add reaction rates if ion species and neutral species exist
-            if spec.name == 'ion' and any([s.is_neutral for s in species.values()]):
-                for other_spec in species.values():
-                    if other_spec.is_neutral:
-                        print("Adding reaction rates for ionization, recombination, and charge exchange between ion species %s and neutral species %s"%(spec.name, other_spec.name))
-                        other_s_ = other_spec.nshort
-                        default_qttes.append(['iz_react_%s'%other_s_, r'$\nu_{iz,%s}$'%other_s_, r'm$^{3}/s$'])
-                        default_qttes.append(['recomb_react_%s'%other_s_, r'$\nu_{rec,%s}$'%other_s_, r'm$^{3}/s$'])
-                        default_qttes.append(['cx_react_%s'%other_s_, r'$\nu_{cx,%s}$'%other_s_,  r'm$^{3}/s$'])
+                default_qttes.append(['iz_react_%s's_, r'$\nu_{iz,%s}$'%s_, r'm$^{3}/s$'])
+                default_qttes.append(['recomb_react_%s'%s_, r'$\nu_{rec,%s}$'%s_, r'm$^{3}/s$'])
+                default_qttes.append(['cx_react_%s'%s_, r'$\nu_{cx,%s}$'%s_,  r'm$^{3}/s$'])
 
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
