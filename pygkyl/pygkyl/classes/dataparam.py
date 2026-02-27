@@ -353,7 +353,7 @@ class DataParam:
                 default_qttes.append(['nfluid%s'%s_, r'$n_{%s}$'%s_, r'kg m$^{-3}$'])
                 default_qttes.append(['ufluid%s'%s_, r'$u_{%s}$'%s_, 'kg m/s'])
                 default_qttes.append(['Tfluid%s'%s_, r'$T_{%s}$'%s_, 'J/kg'])
-                default_qttes.append(['iz_react_%s's_, r'$\nu_{iz,%s}$'%s_, r'm$^{3}/s$'])
+                default_qttes.append(['iz_react_%s'%s_, r'$\nu_{iz,%s}$'%s_, r'm$^{3}/s$'])
                 default_qttes.append(['recomb_react_%s'%s_, r'$\nu_{rec,%s}$'%s_, r'm$^{3}/s$'])
                 default_qttes.append(['cx_react_%s'%s_, r'$\nu_{cx,%s}$'%s_,  r'm$^{3}/s$'])
 
