@@ -48,6 +48,7 @@ PARAMETERS:
 --movie_frame_idx Frame index to start the movie from ('all' or integer index).
 --img_size        Image size in pixels (width height).
 --clim            Colorbar limits (min max).
+--cmap            Colormap to use for plotting (e.g., viridis, plasma, twilight).
 --log_scale       Use logarithmic color scale.
 --cameras         Camera path for movie (sequence of 'global' or 'zoom_lower').
 --device_config   Set the device geometry.
@@ -87,6 +88,7 @@ NOTES:
     parser.add_argument('--log_scale', action='store_true', help='Use log scale for color bar')
     parser.add_argument('--cameras', type=str, nargs='+', default=['global', 'global', 'zoom_lower', 'zoom_lower'], help='Camera path for movie')
     parser.add_argument('--device_config', type=str, choices=['tcv_nt','tcv_pt','d3d_nt','d3d_pt','sparc','nstxu'], default='tcv_nt', help='Set the device geometry.')
+    parser.add_argument('--cmap', type=str, default='viridis', help='Colormap to use for plotting (e.g., viridis, plasma)')
     parser.add_argument('--off_screen', type=str, default='False', choices=['True','False'], help='Use off-screen rendering (for non-GUI environments)')
     parser.add_argument('--background_color', type=str, default='white', help='Plot background color.')
     parser.add_argument('--movie_type', type=str, default='gif', help='Movie file type (e.g., mp4, gif)')
@@ -160,7 +162,8 @@ def main():
     if args.plot_type == 'snapshot':
         timeFrame = sim_frames[args.frame_idx]
         torproj.plot(fieldName=args.field_name, timeFrame=timeFrame, fluctuation=args.fluctuation, 
-                     clim=args.clim, logScale=args.log_scale, filePrefix=args.file_prefix, cameraSettings=camera_path[0])
+                     clim=args.clim, logScale=args.log_scale, filePrefix=args.file_prefix, cameraSettings=camera_path[0],
+                     colorMap=args.cmap)
     elif args.plot_type == 'movie':
         if args.movie_frame_idx == 'all':
             timeFrames = sim_frames
@@ -176,7 +179,7 @@ def main():
 
         torproj.movie(fieldName=args.field_name, timeFrames=timeFrames, fluctuation=args.fluctuation, 
                       filePrefix=args.file_prefix, cameraPath=camera_path, logScale=args.log_scale, clim=args.clim,
-                      movie_type=args.movie_type)
+                      movie_type=args.movie_type, colorMap=args.cmap)
 
 if __name__ == "__main__":
     main()
