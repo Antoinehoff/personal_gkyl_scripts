@@ -44,7 +44,9 @@ class DataParam:
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
         self.species = species
         self.file_info_dict = {}
+        print("Setting up data field dictionary...")
         self.set_data_file_dict(checkfiles=checkfiles)
+        print("Setting up data field dictionary for fluid species...")
         self.set_data_file_dict_fluid_species(checkfiles=checkfiles)
         self.default_mom_type = None
         self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
@@ -121,11 +123,11 @@ class DataParam:
         file_dict['flan'+'comp'] = 0
         file_dict['flan'+'gnames'] = gnames[0:3]   
              
-        for spec in self.species.values():
-            if spec.is_neutral:
-                break   
-            s_        = spec.name
-            shortname = spec.nshort
+        for species in self.species.values():
+            if species.is_neutral:
+                continue   
+            s_        = species.name
+            shortname = species.nshort
             
             for add_source in [False,True]:
                 keys   = []
@@ -225,12 +227,12 @@ class DataParam:
     def set_data_file_dict_fluid_species(self, checkfiles=True):
         # loop over fluid species
         # loop over charged species inside to get neutral reaction rates
-        file_dict = {}
-        for spec in self.species.values():
-            if not spec.is_neutral:
-                break
-            s_        = spec.name
-            shortname = spec.nshort
+        file_dict = copy.deepcopy(self.file_info_dict)
+        for species in self.species.values():
+            if not species.is_neutral:
+                continue
+            s_        = species.name
+            shortname = species.nshort
 
             keys, comps, prefix   = [], [], []
             keys  += ['nfluid','ufluid', 'Tfluid'] 
@@ -240,15 +242,16 @@ class DataParam:
             keys   += ['iz_react','recomb_react','cx_react']
             comps  += [0,0,0]
             prefix += [f'ion_elc_react_iz_{s_}',f'ion_elc_react_recomb_{s_}',
-                       f'ion_cx_{s_}']
+                       f'ion_react_cx_{s_}']
             
+            print(f"keys: {keys}")
             for i in range(len(keys)):
                 k = keys[i]+shortname
+                print(f"Looking for file {prefix[i]} for fluid species {species.name} with key {k}...")
                 file_dict[k+'file'] = prefix[i]
                 file_dict[k+'comp'] = comps[i]
                 file_dict[k+'gnames'] = ['x','y','z']
 
-        file_dict['names'] = []
         for key in file_dict.keys():
             if 'file' in key:
                 file_dict['names'].append(file_dict[key])
@@ -258,11 +261,9 @@ class DataParam:
         # Sort the file keys alphabetically
         file_dict = dict(sorted(file_dict.items()))
         
-        self.file_info_dict = file_dict   
-
-        # print the file dict to check
+        # Add the new entries to the existing file_info_dict
         for key in file_dict.keys():
-            print(key, file_dict[key])         
+            self.file_info_dict[key] = file_dict[key]    
 
     @staticmethod
     def get_available_frames(simulation):
@@ -375,9 +376,9 @@ class DataParam:
                 default_qttes.append(['nfluid%s'%s_, r'$n_{%s}$'%s_, r'kg m$^{-3}$'])
                 default_qttes.append(['ufluid%s'%s_, r'$u_{%s}$'%s_, 'kg m/s'])
                 default_qttes.append(['Tfluid%s'%s_, r'$T_{%s}$'%s_, 'J/kg'])
-                default_qttes.append(['iz_react_%s'%s_, r'$\langle v \sigma \rangle_{iz,%s}$'%s_, r'm$^{3}/s$'])
-                default_qttes.append(['recomb_react_%s'%s_, r'$\langle v \sigma \rangle_{rec,%s}$'%s_, r'm$^{3}/s$'])
-                default_qttes.append(['cx_react_%s'%s_, r'$\langle v \sigma \rangle_{cx,%s}$'%s_,  r'm$^{3}/s$'])
+                default_qttes.append(['iz_react%s'%s_, r'$\langle v \sigma \rangle_{iz,%s}$'%s_, r'm$^{3}/s$'])
+                default_qttes.append(['recomb_react%s'%s_, r'$\langle v \sigma \rangle_{rec,%s}$'%s_, r'm$^{3}/s$'])
+                default_qttes.append(['cx_react%s'%s_, r'$\langle v \sigma \rangle_{cx,%s}$'%s_,  r'm$^{3}/s$'])
 
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
@@ -522,7 +523,7 @@ class DataParam:
         # for each species present in the simulation
         for spec in species.values():
             if spec.is_neutral:
-                break
+                continue
             s_ = spec.nshort
 
             #locally normalized parallel velocity   
@@ -727,7 +728,7 @@ class DataParam:
             
             for rpec in species.values():
                 if rpec.is_neutral:
-                    break
+                    continue
                 r_ = rpec.nshort
                 
                 # Collision frequency
@@ -894,6 +895,66 @@ class DataParam:
                     QgB   = receipe_gradB_hflux_s(QgBlist,i=i,q=q,m=m)
                     return QExB + QgB
                 default_qttes.append([name,symbol,units,field2load,receipe_hflux_s])
+                
+        # Neutral fluid quantities
+        for spec in species.values():
+            if not spec.is_neutral:
+                continue
+            s_ = spec.nshort
+
+            # neutral fluid density
+            name      = 'nfluid%s'%(s_)
+            symbol    = r'$n_{%s}$'%(s_)
+            units     = r'kg m$^{-3}$'
+            field2load = ['nfluid%s'%(s_)]
+            def receipe_nfluids(gdata_list):
+                return pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_nfluids])
+
+             # neutral fluid velocity
+            name      = 'ufluid%s'%(s_)
+            symbol    = r'$u_{%s}$'%(s_)
+            units     = r'm/s'
+            field2load = ['ufluid%s'%(s_)]
+            def receipe_ufluids(gdata_list):
+                return pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_ufluids])
+
+             # neutral fluid temperature
+            name      = 'Tfluid%s'%(s_)
+            symbol    = r'$T_{%s}$'%(s_)
+            units     = r'J/kg'
+            field2load = ['Tfluid%s'%(s_)]
+            def receipe_Tfluids(gdata_list):
+                return pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_Tfluids])
+
+             # neutral fluid ionization reaction rate
+            name      = 'iz_react%s'%(s_)
+            symbol    = r'$\langle v \sigma \rangle_{iz,%s}$'%(s_)
+            units     = r'm$^{3}/s$'
+            field2load = ['iz_react%s'%(s_)]
+            def receipe_iz_reacts(gdata_list):
+                return pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_iz_reacts])
+
+             # neutral fluid recombination reaction rate
+            name      = 'recomb_react%s'%(s_)
+            symbol    = r'$\langle v \sigma \rangle_{rec,%s}$'%(s_)
+            units     = r'm$^{3}/s$'
+            field2load = ['recomb_react%s'%(s_)]
+            def receipe_recomb_reacts(gdata_list):  
+                return pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_recomb_reacts])
+
+             # neutral fluid charge exchange reaction rate
+            name      = 'cx_react%s'%(s_)
+            symbol    = r'$\langle v \sigma \rangle_{cx,%s}$'%(s_)
+            units     = r'm$^{3}/s$'
+            field2load = ['cx_react%s'%(s_)]
+            def receipe_cx_reacts(gdata_list):
+                return pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_cx_reacts])
 
         # Species independent quantities
 
@@ -1420,7 +1481,7 @@ class DataParam:
                            'src_n','src_T','src_Tpar','src_Tperp','src_p',
                            'src_BM_n','src_BM_Tpar','src_BM_Tperp',
                             'src_MM_n','src_MM_T','src_HM_n','src_HM_H',
-                           'f','src_f','rho','lambdaD']
+                           'f','src_f','rho','lambdaD','iz_react','recomb_react','cx_react'] # spec. dep
         for sdepfield in spec_dep_fields:
             for spec in species.values():
                 positive_fields.append(sdepfield+spec.nshort)
