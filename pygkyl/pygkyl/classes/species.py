@@ -14,7 +14,7 @@ species_colors = {
 
 class Species:
     """Represents a plasma species with its physical properties."""
-    def __init__(self, name, m, q, T0, n0, Bref = 0.0):
+    def __init__(self, name, m, q, T0, n0, Bref = 0.0, is_fluid : bool = False):
         """
         Initializes a Species object.
 
@@ -25,6 +25,7 @@ class Species:
             T0 (float): Reference temperature in J.
             n0 (float): Reference density in m^-3.
             Bref (float, optional): Reference magnetic field in Tesla. If > 0, gyromotion parameters are calculated. Defaults to 0.0.
+            is_fluid (bool, optional): Whether the species is a fluid. Defaults to False.
         """
         self.name    = name   # Name of the species
         self.nshort  = name[0] # Short name (first letter of the name)
@@ -32,11 +33,12 @@ class Species:
         self.q       = q      # Charge in C
         self.T0      = T0     # reference temperature in J
         self.n0      = n0     # reference density in m^-3
+        self.is_neutral = (q == 0.0)
+        self.is_fluid = is_fluid
         self.vt      = phys_tools.thermal_vel(T0,m)  # Thermal velocity vth = sqrt(T0/m)
         self.omega_p = phys_tools.plasma_frequency(n0, q, m)  # Plasma frequency
         self.color   = species_colors.get(self.name, 'black')
-        
-        
+
         self.omega_c = None # Cyclotron frequency
         self.rho     = None # Larmor radius
         self.mu0     = None # Magnetic moment

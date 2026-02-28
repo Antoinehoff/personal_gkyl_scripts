@@ -854,6 +854,9 @@ class Simulation:
         >>> sim.plot_1D_time_evolution('z', [0.5, 0.0, 0.0], 'ne', space_time=True)
         """
         from ..utils.plot_utils import plot_1D_time_evolution as plot
+        if space_time and len(frame_indices) == 1:
+            print("Warning: Only one time frame provided. Space-time diagram will not be meaningful.")
+            frame_indices = [frame_indices[0], frame_indices[0]]
         return plot(simulation=self, cdirection=cut_dir, ccoords=cut_coords,
                    fieldnames=field_name, twindow=frame_indices, space_time=space_time,
                    cmap=cmap, fluctuation=fluctuation, plot_type=plot_type,
