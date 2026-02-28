@@ -44,9 +44,7 @@ class DataParam:
         self.fileprefix = self.datadir + prefix # prefix for the data files + full path
         self.species = species
         self.file_info_dict = {}
-        print("Setting up data field dictionary...")
         self.set_data_file_dict(checkfiles=checkfiles)
-        print("Setting up data field dictionary for fluid species...")
         self.set_data_file_dict_fluid_species(checkfiles=checkfiles)
         self.default_mom_type = None
         self.field_info_dict = self.get_default_units_dict(species) # dictionary of the default parameters for all fields
@@ -244,10 +242,8 @@ class DataParam:
             prefix += [f'ion_elc_react_iz_{s_}',f'ion_elc_react_recomb_{s_}',
                        f'ion_react_cx_{s_}']
             
-            print(f"keys: {keys}")
             for i in range(len(keys)):
                 k = keys[i]+shortname
-                print(f"Looking for file {prefix[i]} for fluid species {species.name} with key {k}...")
                 file_dict[k+'file'] = prefix[i]
                 file_dict[k+'comp'] = comps[i]
                 file_dict[k+'gnames'] = ['x','y','z']
