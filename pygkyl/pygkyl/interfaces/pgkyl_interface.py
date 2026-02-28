@@ -40,7 +40,8 @@ def get_values(Gdata):
     Gvalues = Gdata.get_values()
     # In the following we extend the dimensionality to always have
     # 5 dimensions in phase space and 3 dimensions in configuration space.
-    if Gdata.ctx['basis_type'] == 'gkhybrid': # phase space data
+    basis_type = Gdata.ctx.get('basis_type', None)
+    if basis_type == 'gkhybrid': # phase space data
         if Gvalues.ndim == 6: #3x2v + 1p data
             return Gvalues
         if Gvalues.ndim == 5: #2x2v + 1p data
@@ -51,7 +52,7 @@ def get_values(Gdata):
             values = np.expand_dims(values, axis=0)
             values = np.concatenate((values, values), axis=0)
             return np.concatenate((values, values), axis=1)
-    elif Gdata.ctx['basis_type'] == 'serendipity': # configuration space data
+    elif basis_type == 'serendipity': # configuration space data
         if Gvalues.ndim == 4: #3x + 1p data
             return Gvalues
         if Gvalues.ndim == 3: #2x + 1p data
@@ -80,14 +81,15 @@ def get_interpolated_values(filename:str, comp=0, polyorder=1, polytype='ms'):
 
 def get_grid(Gdata):
     values = Gdata.get_grid()   
-    if Gdata.ctx['basis_type'] == 'gkhybrid': # phase space data
+    basis_type = Gdata.ctx.get('basis_type', None)
+    if basis_type == 'gkhybrid': # phase space data
         if len(values) == 5 :
             return values
         elif len(values) == 4 :
             return [values[0], np.array([0, 1/3, 2/3]), values[1], values[2], values[3]]
         elif len(values) == 3 :
             return [np.array([0, 1/3, 2/3]), np.array([0, 1/3, 2/3]), values[0], values[1], values[2]]
-    elif Gdata.ctx['basis_type'] == 'serendipity': # configuration space data
+    elif basis_type == 'serendipity': # configuration space data
         if len(values) == 3 :
             return values
         elif len(values) == 2 :
