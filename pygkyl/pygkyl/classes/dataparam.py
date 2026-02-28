@@ -123,8 +123,6 @@ class DataParam:
              
         for spec in self.species.values():
             if spec.is_neutral:
-                # exit the loop if we are looking at a neutral species, as we do not support moments for neutrals yet
-                print("Species %s is neutral. We do not support moments for neutral species yet, so we will skip adding moments for this species."%spec.name)
                 break   
             s_        = spec.name
             shortname = spec.nshort
@@ -227,19 +225,44 @@ class DataParam:
     def set_data_file_dict_fluid_species(self, checkfiles=True):
         # loop over fluid species
         # loop over charged species inside to get neutral reaction rates
+        file_dict = {}
         for spec in self.species.values():
+            if not spec.is_neutral:
+                break
             s_        = spec.name
             shortname = spec.nshort
 
             keys, comps, prefix   = [], [], []
             keys  += ['nfluid','ufluid', 'Tfluid'] 
             comps  += [0,1,2]
-            prefix += 3*[spec]
+            prefix += 3*[s_]
 
             keys   += ['iz_react','recomb_react','cx_react']
             comps  += [0,0,0]
             prefix += [f'ion_elc_react_iz_{s_}',f'ion_elc_react_recomb_{s_}',
                        f'ion_cx_{s_}']
+            
+            for i in range(len(keys)):
+                k = keys[i]+shortname
+                file_dict[k+'file'] = prefix[i]
+                file_dict[k+'comp'] = comps[i]
+                file_dict[k+'gnames'] = ['x','y','z']
+
+        file_dict['names'] = []
+        for key in file_dict.keys():
+            if 'file' in key:
+                file_dict['names'].append(file_dict[key])
+        # Remove duplicates from the file list
+        file_dict['names'] = list(set(file_dict['names']))
+        
+        # Sort the file keys alphabetically
+        file_dict = dict(sorted(file_dict.items()))
+        
+        self.file_info_dict = file_dict   
+
+        # print the file dict to check
+        for key in file_dict.keys():
+            print(key, file_dict[key])         
 
     @staticmethod
     def get_available_frames(simulation):
@@ -310,7 +333,6 @@ class DataParam:
             ]
         # add routinely other quantities of interest
         for spec in species.values():
-            print(spec.name)
             s_ = spec.nshort
             default_qttes.append(['vpar%s'%s_, r'$v_{\parallel %s}$'%s_, 'm/s'])
             default_qttes.append(['mu%s'%s_, r'$\mu_%s$'%s_, 'J/T'])
@@ -353,9 +375,9 @@ class DataParam:
                 default_qttes.append(['nfluid%s'%s_, r'$n_{%s}$'%s_, r'kg m$^{-3}$'])
                 default_qttes.append(['ufluid%s'%s_, r'$u_{%s}$'%s_, 'kg m/s'])
                 default_qttes.append(['Tfluid%s'%s_, r'$T_{%s}$'%s_, 'J/kg'])
-                default_qttes.append(['iz_react_%s'%s_, r'$\nu_{iz,%s}$'%s_, r'm$^{3}/s$'])
-                default_qttes.append(['recomb_react_%s'%s_, r'$\nu_{rec,%s}$'%s_, r'm$^{3}/s$'])
-                default_qttes.append(['cx_react_%s'%s_, r'$\nu_{cx,%s}$'%s_,  r'm$^{3}/s$'])
+                default_qttes.append(['iz_react_%s'%s_, r'$\langle v \sigma \rangle_{iz,%s}$'%s_, r'm$^{3}/s$'])
+                default_qttes.append(['recomb_react_%s'%s_, r'$\langle v \sigma \rangle_{rec,%s}$'%s_, r'm$^{3}/s$'])
+                default_qttes.append(['cx_react_%s'%s_, r'$\langle v \sigma \rangle_{cx,%s}$'%s_,  r'm$^{3}/s$'])
 
         #-The above defined fields are all simple quantities in the sense that 
         # composition=[identification] and so receipe = composition[0]
