@@ -14,7 +14,7 @@ species_colors = {
 
 class Species:
     """Represents a plasma species with its physical properties."""
-    def __init__(self, name, m, q, T0, n0, Bref = 0.0):
+    def __init__(self, name, m, q, T0, n0, Bref = 0.0, is_fluid : bool = False):
         """
         Initializes a Species object.
 
@@ -25,6 +25,7 @@ class Species:
             T0 (float): Reference temperature in J.
             n0 (float): Reference density in m^-3.
             Bref (float, optional): Reference magnetic field in Tesla. If > 0, gyromotion parameters are calculated. Defaults to 0.0.
+            is_fluid (bool, optional): Whether the species is a fluid. Defaults to False.
         """
         self.name    = name   # Name of the species
         self.nshort  = name[0] # Short name (first letter of the name)
@@ -32,10 +33,11 @@ class Species:
         self.q       = q      # Charge in C
         self.T0      = T0     # reference temperature in J
         self.n0      = n0     # reference density in m^-3
+        self.is_neutral = (q == 0.0)
+        self.is_fluid = is_fluid
         self.vt      = phys_tools.thermal_vel(T0,m)  # Thermal velocity vth = sqrt(T0/m)
         self.omega_p = phys_tools.plasma_frequency(n0, q, m)  # Plasma frequency
         self.color   = species_colors.get(self.name, 'black')
-        self.is_neutral = (q == 0.0)
 
         self.omega_c = None # Cyclotron frequency
         self.rho     = None # Larmor radius
@@ -74,39 +76,3 @@ class Species:
             print(f"Larmor Radius (rho): {self.rho:.3e} m")
             print(f"Magnetic Moment (mu0): {self.mu0:.3e} J/T")
             print(f"Permittivity (epsilon): {self.epsilon:.3e}")
-
-class FluidSpecies(Species):
-    """
-    Represents a fluid species. Includes both plasma fluids (electrons/ions)
-    and neutral fluids.
-    """
-    def __init__(self, name, m, q, T0, n0, Bref=0.0):
-        super().__init__(name, m, q, T0, n0)
-        
-        # EM parameters (only relevant if q != 0)
-        self.omega_p = phys_tools.plasma_frequency(n0, q, m) if q != 0 else 0.0
-        self.omega_c = None
-        self.rho     = None
-        self.mu0     = None
-        self.gyrate  = False
-
-        if Bref > 0.0 and q != 0.0:
-            self.set_gyromotion(Bref)
-
-    def set_gyromotion(self, B):
-        """Calculate gyromotion for charged fluid species."""
-        if self.q == 0:
-            print(f"Species {self.name} is neutral. Gyromotion ignored.")
-            return
-        self.omega_c = phys_tools.gyrofrequency(self.q, self.m, B)
-        self.rho = phys_tools.larmor_radius(self.q, self.m, self.T0, B)
-        self.mu0 = self.T0 / B
-        self.gyrate = True
-
-    def info(self):
-        """Display fluid species information."""
-        type_str = "Neutral Fluid" if self.is_neutral else "Charged Fluid"
-        print(f"Type: {type_str} | Species: {self.name}")
-        print(f"Mass (m): {self.m:.3e} kg")
-        print(f"Initial Temperature (T0): {self.T0/phys_tools.eV:.3e} eV")
-        print(f"Initial Density (n0): {self.n0:.3e} m^-3")

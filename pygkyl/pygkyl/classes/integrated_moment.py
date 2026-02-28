@@ -184,9 +184,13 @@ class IntegratedMoment:
         for v in values_array:
             self.values += v[:npoint_min]
         self.time = np.squeeze(Gdata.get_grid()) / self.simulation.normalization.dict['tscale']
+        if self.time.shape == ():
+            self.time = np.array([self.time])
         self.time = self.time[:npoint_min]
         self.values = self.receipe(self.values)
         self.values = np.squeeze(self.values)
+        if self.values.shape == ():
+            self.values = np.array([self.values])
         # remove double diagnostic
         self.time, indices = np.unique(self.time, return_index=True)
         self.values = self.values[indices]

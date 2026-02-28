@@ -440,7 +440,8 @@ def plot_integrated_moment(simulation,fieldnames='ne',xlim=[],ylim=[],ddt=False,
                 int_mom.time = int_mom.time[it0:it1]
                 int_mom.values = int_mom.values[it0:it1]
             # Plot
-            ax.plot(int_mom.time,int_mom.values,label=int_mom.symbol)
+            marker = 'o' if len(int_mom.time) == 1 else None
+            ax.plot(int_mom.time,int_mom.values,label=int_mom.symbol,marker=marker)
             data.append((int_mom.time,int_mom.values))
         # add labels and show legend
         fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, 

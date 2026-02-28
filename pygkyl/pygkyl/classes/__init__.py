@@ -1,6 +1,5 @@
 # pygkyl/classes/__init__.py
 from .species    import Species
-from .species    import FluidSpecies
 from .simulation import Simulation
 from .numparam   import NumParam
 from .physparam  import PhysParam
@@ -12,7 +11,6 @@ from .integrated_moment import IntegratedMoment
 from .timeserie import TimeSerie
 __all__ = [
     'Species',
-    'FluidSpecies', 
     'Simulation',
     'NumParam',
     'PhysParam',

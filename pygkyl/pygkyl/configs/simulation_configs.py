@@ -1,5 +1,5 @@
 import numpy as np
-from ..classes import Simulation, Species, FluidSpecies
+from ..classes import Simulation, Species#, FluidSpecies
 from ..projections.poloidalprojection import Inset
 from ..interfaces.gyacomointerface import get_gyacomo_sim_config
 from ..interfaces.pgkyl_interface import get_dimensionality
@@ -278,11 +278,12 @@ def get_d3d_pt_sim_config(simdir,fileprefix, x_LCFS = None, x_out = None):
                 q=-simulation.phys_param.eV, # Electron charge [C]
                 T0=300*simulation.phys_param.eV, 
                 n0=2.0e19))
-    simulation.add_species(FluidSpecies(name='D0',
+    simulation.add_species(Species(name='D0',
                 m=2.01410177811*simulation.phys_param.mp,    # Usually same mass as the ion
                 q=0.0,                         # Neutral charge is 0
                 T0=1.0*simulation.phys_param.eV,
-                n0=1.0e19))
+                n0=1.0e19,
+                is_fluid=True))
 
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 

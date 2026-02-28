@@ -59,6 +59,8 @@ def larmor_radius(charge, mass, temperature, Bfield):
     rho_L (float): Larmor radius of the particle [m].
     '''
     omega = gyrofrequency(charge, mass, Bfield)
+    if omega == 0.0:
+        return np.inf  # Infinite Larmor radius for uncharged particles or zero magnetic field
     velocity = thermal_vel(temperature, mass)
     rho_L = velocity / omega
     return np.abs(rho_L)
