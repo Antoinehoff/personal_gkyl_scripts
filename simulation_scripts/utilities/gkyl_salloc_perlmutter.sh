@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Default values
-ACCOUNT="m4564"
+ACCOUNT="m2116"
 NODES=1
 GPUS=4
 TASKS_PER_NODE=4
