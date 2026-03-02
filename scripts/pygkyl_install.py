@@ -36,9 +36,10 @@ PARAMETERS:
 
 Logs for pip installations are saved in the respective repository directories.
 
-NOTE: Packages are installed in editable mode (-e flag), so changes to source code
-are immediately reflected without reinstalling. Use %autoreload 2 in Jupyter notebooks
-for automatic module reloading.
+NOTE: Packages are installed in editable mode (-e flag) with compat mode, so changes
+to source code are immediately reflected without reinstalling, and VS Code IntelliSense
+(Pylance) can still resolve function definitions and documentation.
+Use %autoreload 2 in Jupyter notebooks for automatic module reloading.
 """,
     formatter_class=argparse.RawDescriptionHelpFormatter
 )
@@ -74,7 +75,8 @@ print("1.2 Install postgkyl in editable mode (required for pygkyl)")
 if not args.no_postgkyl_install:
     subprocess.run(["touch", os.path.join(postgkyl_path, "postgkyl_install.log")], check=True)
     with open(os.path.join(postgkyl_path, "postgkyl_install.log"), "w") as logf:
-        subprocess.run([sys.executable, "-m", "pip", "install", "-e", postgkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
+        subprocess.run([sys.executable, "-m", "pip", "install", "-e", postgkyl_path,
+                         "--config-settings", "editable_mode=compat"], stdout=logf, stderr=subprocess.STDOUT, check=True)
 else:
     print("Skipping postgkyl installation (--no_postgkyl_install)")
 
@@ -97,7 +99,8 @@ subprocess.run(["rm", "-rf", os.path.join(pygkyl_path, "build")], check=True)
 print("2.4 Install pygkyl in editable mode (personal gkyl scripts)")
 subprocess.run(["touch", os.path.join(pygkyl_path, "pygkyl_install.log")], check=True)
 with open(os.path.join(pygkyl_path, "pygkyl_install.log"), "w") as logf:
-    subprocess.run([sys.executable, "-m", "pip", "install", "-e", pygkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-e", pygkyl_path,
+                     "--config-settings", "editable_mode=compat"], stdout=logf, stderr=subprocess.STDOUT, check=True)
 
 # Import the pygkyl package to test the installation
 try:
