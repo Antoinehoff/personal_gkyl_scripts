@@ -234,10 +234,16 @@ class GyrazeDataset:
         self.attributes['Epari_norm'].v0 = 0.5*self.mi*(self.grids['vpari'])**2 / (Ti * 1.602e-19)
         self.attributes['Eperpe_norm'].v0 = self.grids['mue'] * self.attributes['B'].v0 / (Te * 1.602e-19)
         self.attributes['Eperpi_norm'].v0 = self.grids['mui'] * self.attributes['B'].v0 / (Ti * 1.602e-19)
-        self.attributes['Fe'].v0 = self.eval_local_maxwellians('elc')
-        self.attributes['Fi'].v0 = self.eval_local_maxwellians('ion')
-        self.attributes['fe_norm'].v0 = self.attributes['fe'].v0 / self.attributes['Fe'].v0
-        self.attributes['fi_norm'].v0 = self.attributes['fi'].v0 / self.attributes['Fi'].v0
+        # if Ti > 0 and Te > 0:
+        #     self.attributes['Fe'].v0 = self.eval_local_maxwellians('elc')
+        #     self.attributes['Fi'].v0 = self.eval_local_maxwellians('ion')
+        #     self.attributes['fe_norm'].v0 = self.attributes['fe'].v0 / self.attributes['Fe'].v0
+        #     self.attributes['fi_norm'].v0 = self.attributes['fi'].v0 / self.attributes['Fi'].v0
+        # else:
+        #     self.attributes['Fe'].v0 = None
+        #     self.attributes['Fi'].v0 = None
+        #     self.attributes['fe_norm'].v0 = None
+        #     self.attributes['fi_norm'].v0 = None
 
     def filter(self):
         for attr in self.attributes.values():
@@ -1149,7 +1155,11 @@ class GyrazeInterface:
             ax.grid(True, alpha=0.3)
             
             # Add statistics text
-            stats_text = r'$N = {len(values)}$\n $\mu = {np.mean(values):.3e}$\n $\sigma = {np.std(values):.3e}$'
+            stats_text = (
+                f'$N = {len(values)}$\n'
+                f'$\\mu = {np.mean(values):.3e}$\n'
+                f'$\\sigma = {np.std(values):.3e}$'
+            )
             ax.text(0.98, 0.98, stats_text, transform=ax.transAxes,
                    verticalalignment='top', horizontalalignment='right', 
                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
@@ -1351,7 +1361,11 @@ class GyrazeInterface:
                     ax.set_ylabel('')
                     # Add statistics text
                     values = hist_data[attributes[k]]
-                    stats_text = r'$N = {len(values)}$\n $\mu = {np.mean(values):.3e}$\n $\sigma = {np.std(values):.3e}$'
+                    stats_text = (
+                        f'$N = {len(values)}$\n'
+                        f'$\\mu = {np.mean(values):.3e}$\n'
+                        f'$\\sigma = {np.std(values):.3e}$'
+                    )
                     ax.text(0.98, 0.98, stats_text, transform=ax.transAxes,
                         verticalalignment='top', horizontalalignment='right', 
                         bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
