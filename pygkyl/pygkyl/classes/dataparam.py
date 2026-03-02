@@ -1038,9 +1038,22 @@ class DataParam:
         field2load.append('Bmag')
         def receipe_rhoe_lambdaD(gdata_list,species_list=species_kinetic_list):
             lambdaD = receipe_lambdaD(gdata_list,species_list=species_list)
-            rho_e = receipe_rhos(gdata_list[-2:],q=species_list['elc'].q,m=species_list['elc'].m)
+            rho_e = receipe_rhos(gdata_list[-2:],q=species['elc'].q,m=species['elc'].m)
             return rho_e/lambdaD
         default_qttes.append([name,symbol,units,field2load,receipe_rhoe_lambdaD])
+        
+        # GYRAZE gamma factor, gamma = 1/B sqrt(m_e n_e/eps0), eq. 9 of https://arxiv.org/2508.09067
+        name = 'gamma_gyraze'
+        symbol = r'$\gamma_{GYRAZE}$'
+        units = r''
+        field2load = ['Bmag','ne']
+        def receipe_gamma_gyraze(gdata_list):
+            me = species['elc'].m
+            ne = pgkyl_.get_values(gdata_list[1])
+            Bmag = pgkyl_.get_values(gdata_list[0])
+            eps0 = phys_tools.eps0
+            return 1/Bmag * np.sqrt(me*ne/eps0)
+        default_qttes.append([name,symbol,units,field2load,receipe_gamma_gyraze])
         
         #parallel current density
         name       = 'jpar'

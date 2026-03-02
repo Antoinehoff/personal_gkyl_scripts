@@ -166,6 +166,7 @@ class GyrazeDataset:
         self.attributes['Te'] = GyrazeAttribute('Te', r'$T_e$', 'eV')
         self.attributes['Ti'] = GyrazeAttribute('Ti', r'$T_i$', 'eV')
         self.attributes['gamma'] = GyrazeAttribute('rhoe_lambdaD', r'$\rho_e/\lambda_D$', '')
+        self.attributes['gamma_gyraze'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$ (Gyraze definition)', '', manual=True)
         self.attributes['phi_norm'] = GyrazeAttribute('phi_norm', r'$e\phi/T_e$', '', manual=True)
         self.attributes['nioverne'] = GyrazeAttribute('nioverne', r'$n_i/n_e$', '', manual=True)
         self.attributes['TioverTe'] = GyrazeAttribute('TioverTe', r'$T_i/T_e$', '', manual=True)
@@ -1148,7 +1149,7 @@ class GyrazeInterface:
             ax.grid(True, alpha=0.3)
             
             # Add statistics text
-            stats_text = f'$N = {len(values)}$\n $\mu = {np.mean(values):.3e}$\n $\sigma = {np.std(values):.3e}$'
+            stats_text = r'$N = {len(values)}$\n $\mu = {np.mean(values):.3e}$\n $\sigma = {np.std(values):.3e}$'
             ax.text(0.98, 0.98, stats_text, transform=ax.transAxes,
                    verticalalignment='top', horizontalalignment='right', 
                    bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
@@ -1350,7 +1351,7 @@ class GyrazeInterface:
                     ax.set_ylabel('')
                     # Add statistics text
                     values = hist_data[attributes[k]]
-                    stats_text = f'$N = {len(values)}$\n $\mu = {np.mean(values):.3e}$\n $\sigma = {np.std(values):.3e}$'
+                    stats_text = r'$N = {len(values)}$\n $\mu = {np.mean(values):.3e}$\n $\sigma = {np.std(values):.3e}$'
                     ax.text(0.98, 0.98, stats_text, transform=ax.transAxes,
                         verticalalignment='top', horizontalalignment='right', 
                         bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
