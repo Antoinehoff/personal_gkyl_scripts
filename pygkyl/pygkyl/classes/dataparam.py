@@ -231,9 +231,9 @@ class DataParam:
             shortname = species.nshort
 
             keys, comps, prefix   = [], [], []
-            keys  += ['nfluid','ufluid', 'Tfluid'] 
-            comps  += [0,1,2]
-            prefix += 3*[s_]
+            keys  += ['fluidrho','fluidM1x', 'fluidM1y', 'fluidM1z', 'fluidE'] 
+            comps  += [0,1,2,3,4]
+            prefix += 5*[s_]
 
             keys   += ['iz_react','recomb_react','cx_react']
             comps  += [0,0,0]
@@ -368,9 +368,11 @@ class DataParam:
         # add fluid species quantities
         for spec in species_fluid_list:
             s_ = spec.nshort
-            default_qttes.append(['nfluid%s'%s_, r'$n_{%s}$'%s_, r'kg m$^{-3}$'])
-            default_qttes.append(['ufluid%s'%s_, r'$u_{%s}$'%s_, 'kg m/s'])
-            default_qttes.append(['Tfluid%s'%s_, r'$T_{%s}$'%s_, 'J/kg'])
+            default_qttes.append(['fluidrho%s'%s_, r'$\rho_{%s}$'%s_, r'kg m$^{-3}$'])
+            default_qttes.append(['fluidM1x%s'%s_, r'$\rho M1_{x,%s}$ '%s_, r'kg m$^{-3}$ s$^{-1}$'])
+            default_qttes.append(['fluidM1y%s'%s_, r'$\rho M1_{x,%s}$ '%s_, r'kg m$^{-3}$ s$^{-1}$'])
+            default_qttes.append(['fluidM1z%s'%s_, r'$\rho M1_{x,%s}$ '%s_, r'kg m$^{-3}$ s$^{-1}$'])
+            default_qttes.append(['fluidE%s'%s_, r'$\E_{%s}$'%s_, r'J m$^{-3}$'])
             default_qttes.append(['iz_react%s'%s_, r'$\langle v \sigma \rangle_{iz,%s}$'%s_, r'm$^{3}/s$'])
             default_qttes.append(['recomb_react%s'%s_, r'$\langle v \sigma \rangle_{rec,%s}$'%s_, r'm$^{3}/s$'])
             default_qttes.append(['cx_react%s'%s_, r'$\langle v \sigma \rangle_{cx,%s}$'%s_,  r'm$^{3}/s$'])
@@ -897,30 +899,44 @@ class DataParam:
             s_ = spec.nshort
 
             # neutral fluid density
-            name      = 'nfluid%s'%(s_)
+            name      = 'n%s'%(s_)
             symbol    = r'$n_{%s}$'%(s_)
-            units     = r'kg m$^{-3}$'
-            field2load = ['nfluid%s'%(s_)]
+            units     = r'm$^{-3}$'
+            field2load = ['fluidrho%s'%(s_)]
             def receipe_nfluids(gdata_list):
-                return pgkyl_.get_values(gdata_list[0])
+                mass = spec.m
+                mass_density = pgkyl_.get_values(gdata_list[0])
+                return mass_density/mass
             default_qttes.append([name,symbol,units,field2load,receipe_nfluids])
 
-             # neutral fluid velocity
-            name      = 'ufluid%s'%(s_)
-            symbol    = r'$u_{%s}$'%(s_)
-            units     = r'm/s'
-            field2load = ['ufluid%s'%(s_)]
-            def receipe_ufluids(gdata_list):
-                return pgkyl_.get_values(gdata_list[0])
-            default_qttes.append([name,symbol,units,field2load,receipe_ufluids])
+            # loop over the directions to define the fluid velocity components
+            directions = ['x','y','z'] #directions array
+            for i_ in range(len(directions)):
+                ci_ = directions[i_] # direction of the fluid velocity component
+                # neutral fluid velocity
+                name      = 'u%s%s'%(ci_,s_)
+                symbol    = r'$u_{%s,%s}$'%(ci_,s_)
+                units     = r'm/s'
+                field2load = ['fluidrho%s'%(s_),'fluidM1%s%s'%(ci_,s_)]
+                def receipe_ufluids(gdata_list):
+                    mass_density = pgkyl_.get_values(gdata_list[0])
+                    momentum_density = pgkyl_.get_values(gdata_list[1])
+                    return momentum_density/mass_density
+                default_qttes.append([name,symbol,units,field2load,receipe_ufluids])
 
              # neutral fluid temperature
-            name      = 'Tfluid%s'%(s_)
+            name      = 'T%s'%(s_)
             symbol    = r'$T_{%s}$'%(s_)
-            units     = r'J/kg'
-            field2load = ['Tfluid%s'%(s_)]
+            units     = r'J/kg' # T is stored as T/m in gkeyll
+            field2load = ['fluidrho%s'%(s_), 'fluidM1x%s'%(s_), 'fluidM1y%s'%(s_),  'fluidM1z%s'%(s_),  'fluidE%s'%(s_)]
             def receipe_Tfluids(gdata_list):
-                return pgkyl_.get_values(gdata_list[0])
+                # T = (E - 1/2 m n u^2) / (3/2 n) = 2/3 (E/n - 1/2 m u^2)
+                mass = spec.m
+                uSq = 0.0
+                for i in range(3):
+                    uSq += np.power(pgkyl_.get_values(gdata_list[1+i]),2)/np.power(pgkyl_.get_values(gdata_list[0]),2)
+                T = 2/3 * (pgkyl_.get_values(gdata_list[4])/pgkyl_.get_values(gdata_list[0]) - 0.5*uSq)
+                return T/mass
             default_qttes.append([name,symbol,units,field2load,receipe_Tfluids])
 
              # neutral fluid ionization reaction rate
@@ -949,6 +965,24 @@ class DataParam:
             def receipe_cx_reacts(gdata_list):
                 return pgkyl_.get_values(gdata_list[0])
             default_qttes.append([name,symbol,units,field2load,receipe_cx_reacts])
+
+            # neutral ionization density source rate
+            name      = 'src_iz_n%s'%(s_)
+            symbol    = r'$S_{n,iz,%s}$'%(s_)
+            units     = r'm$^{-3}$/s'
+            field2load = ['iz_react%s'%(s_), 'fluidrho%s'%(s_), 'ne']
+            def receipe_src_izn(gdata_list):
+                mass = spec.m
+                iz_react = pgkyl_.get_values(gdata_list[0])
+                n_fluid = pgkyl_.get_values(gdata_list[1])/mass
+                ne = pgkyl_.get_values(gdata_list[2])
+                return iz_react * n_fluid * ne
+            default_qttes.append([name,symbol,units,field2load,receipe_src_izn])
+
+            # neutral ionization momentum source rate
+            # name      = 'iz_usrc%s'%(s_)
+            # symbol    = r'$Su_{iz,%s}$'%(s_)
+            # units     = r'm/s$^2$'
 
         # Species independent quantities
 
