@@ -11,8 +11,8 @@ parser = argparse.ArgumentParser(
 Install pygkyl and its dependencies (postgkyl and personal_gkyl_scripts).
 
 This script will:
-  1. Clone or update the postgkyl repository and install it via pip.
-  2. Clone or update the personal_gkyl_scripts repository and install pygkyl from it.
+  1. Clone or update the postgkyl repository and install it via pip in editable mode.
+  2. Clone or update the personal_gkyl_scripts repository and install pygkyl from it in editable mode.
   3. Remove old build artifacts before installation.
   4. Test the installation by importing pygkyl.
 
@@ -35,6 +35,10 @@ PARAMETERS:
 -h, --help     Show this help message and exit
 
 Logs for pip installations are saved in the respective repository directories.
+
+NOTE: Packages are installed in editable mode (-e flag), so changes to source code
+are immediately reflected without reinstalling. Use %autoreload 2 in Jupyter notebooks
+for automatic module reloading.
 """,
     formatter_class=argparse.RawDescriptionHelpFormatter
 )
@@ -57,48 +61,49 @@ print("\n")
 
 print("1.0 Check if postgkyl repository exists")
 if not os.path.exists(postgkyl_path):
-	print("Cloning postgkyl repository...")
-	subprocess.run(["git", "clone", postgkyl_repo, postgkyl_path], check=True)
-	
+    print("Cloning postgkyl repository...")
+    subprocess.run(["git", "clone", postgkyl_repo, postgkyl_path], check=True)
+    
 print("1.1 Pull postgkyl repository")
 if not args.no_pull:
-	subprocess.run(["git", "-C", postgkyl_path, "pull"], check=True)
+    subprocess.run(["git", "-C", postgkyl_path, "pull"], check=True)
 else:
-	print("Skipping git pull for postgkyl (--no-pull)")
+    print("Skipping git pull for postgkyl (--no-pull)")
 
-print("1.2 Install postgkyl (required for pygkyl)")
+print("1.2 Install postgkyl in editable mode (required for pygkyl)")
 if not args.no_postgkyl_install:
-	subprocess.run(["touch", os.path.join(postgkyl_path, "postgkyl_install.log")], check=True)
-	with open(os.path.join(postgkyl_path, "postgkyl_install.log"), "w") as logf:
-		subprocess.run([sys.executable, "-m", "pip", "install", postgkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
+    subprocess.run(["touch", os.path.join(postgkyl_path, "postgkyl_install.log")], check=True)
+    with open(os.path.join(postgkyl_path, "postgkyl_install.log"), "w") as logf:
+        subprocess.run([sys.executable, "-m", "pip", "install", "-e", postgkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
 else:
     print("Skipping postgkyl installation (--no_postgkyl_install)")
 
 
 print("2.0 Check if personal_gkyl_scripts repository exists")
 if not os.path.exists(personal_gkyl_scripts_path):
-	print("Cloning personal_gkyl_scripts repository...")
-	subprocess.run(["git", "clone", personal_gkyl_scripts_repo, personal_gkyl_scripts_path], check=True)
+    print("Cloning personal_gkyl_scripts repository...")
+    subprocess.run(["git", "clone", personal_gkyl_scripts_repo, personal_gkyl_scripts_path], check=True)
 
 print("2.2 Pull personal_gkyl_scripts repository")
 if not args.no_pull:
-	subprocess.run(["git", "-C", personal_gkyl_scripts_path, "pull"], check=True)
+    subprocess.run(["git", "-C", personal_gkyl_scripts_path, "pull"], check=True)
 else:
-	print("Skipping git pull for personal_gkyl_scripts (--no-pull)")
+    print("Skipping git pull for personal_gkyl_scripts (--no-pull)")
 
 print("2.3 Remove old pygkyl egg-info and build directories")
 subprocess.run(["rm", "-rf", os.path.join(pygkyl_path, "pygkyl.egg-info")], check=True)
 subprocess.run(["rm", "-rf", os.path.join(pygkyl_path, "build")], check=True)
 
-print("2.4 Install pygkyl (personal gkyl scripts)")
+print("2.4 Install pygkyl in editable mode (personal gkyl scripts)")
 subprocess.run(["touch", os.path.join(pygkyl_path, "pygkyl_install.log")], check=True)
 with open(os.path.join(pygkyl_path, "pygkyl_install.log"), "w") as logf:
-	subprocess.run([sys.executable, "-m", "pip", "install", pygkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
+    subprocess.run([sys.executable, "-m", "pip", "install", "-e", pygkyl_path], stdout=logf, stderr=subprocess.STDOUT, check=True)
 
 # Import the pygkyl package to test the installation
 try:
-	import pygkyl
-	print("->pygkyl installed successfully")
+    import pygkyl
+    print("->pygkyl installed successfully in editable mode")
+    print("->Changes to source code will be reflected immediately without reinstalling")
 except ImportError:
-	print("->pygkyl installation failed")
-	print(f"Please check the installation log at {os.path.join(pygkyl_path, 'pygkyl_install.log')} for details.")
+    print("->pygkyl installation failed")
+    print(f"Please check the installation log at {os.path.join(pygkyl_path, 'pygkyl_install.log')} for details.")
