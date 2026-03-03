@@ -1,9 +1,10 @@
 import numpy as np
-from ..classes import Simulation, Species#, FluidSpecies
+from ..classes import Simulation, Species
 from ..projections.poloidalprojection import Inset
 from ..interfaces.gyacomointerface import get_gyacomo_sim_config
 from ..interfaces.pgkyl_interface import get_dimensionality
-from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
+from .vessel_data import tcv_vessel_data, d3d_vessel_data, \
+    sparc_vessel_data, nstxu_vessel_data, west_vessel_data
 
 def import_config(configName='tcv_pt', simDir ='', filePrefix = '',
                   load_metric=True, simidx=0, **kwargs):
@@ -49,6 +50,8 @@ def import_config(configName='tcv_pt', simDir ='', filePrefix = '',
         sim = get_nstxu_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['AUG', 'aug', 'ASDEX', 'asdex']:
         sim = get_aug_sim_config(simDir, filePrefix, **kwargs)
+    elif configName in ['WEST', 'west']:
+        sim = get_west_sim_config(simDir, filePrefix, **kwargs)
     elif configName[:7] in ['gyacomo', 'GYACOMO', 'Gyacomo']:
         sim = get_gyacomo_sim_config(configName,simDir,simidx,**kwargs)
         load_metric = False
@@ -371,11 +374,12 @@ def get_d3d_nt_sim_config(simdir, fileprefix, **kwargs):
                 q=-simulation.phys_param.eV, # Electron charge [C]
                 T0=300*simulation.phys_param.eV, 
                 n0=2.0e19))
-    simulation.add_species(FluidSpecies(name='D0',
+    simulation.add_species(Species(name='D0',
                 m=2.01410177811*simulation.phys_param.mp,    # Usually same mass as the ion
                 q=0.0,                         # Neutral charge is 0
                 T0=1.0*simulation.phys_param.eV,
-                n0=1.0e19))
+                n0=1.0e19,
+                is_fluid=True))
 
     simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
 
@@ -637,6 +641,86 @@ def get_aug_sim_config(simdir, fileprefix, **kwargs):
     
     # Add vessel data filename
     simulation.geom_param.vessel_data = sparc_vessel_data # To be replaced with ASDEX-U vessel data when available
+
+    # Add view points for the toroidal projection (to be adjusted)
+    simulation.geom_param.camera_global = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {
+        'position':(0.75, 0.75, 0.1),
+        'looking_at':(0., 0.8, -0.03),
+            'zoom': 1.0
+    }
+    
+    return simulation
+
+def get_west_sim_config(simdir, fileprefix, **kwargs):
+    '''
+    This function returns a simulation object for the WEST SOL efit geom case. (T. Bernard)
+    '''
+    x_LCFS = kwargs.get('x_LCFS', -1.0)  # position of the LCFS in term of the simulation domain coordinate.
+    x_out = kwargs.get('x_out', 0.0)  # SOL width in term of the simulation domain coordinate.
+    dimensionality = kwargs.get('dimensionality', '3x2v')
+    simulation = Simulation(dimensionality=dimensionality)
+    simulation.set_phys_param()
+
+    simulation.set_geom_param(
+        B_axis      = 1.0, # Magnetic field at magnetic axis [T]
+        R_axis      = 1.0, # Magnetic axis major radius
+        Z_axis      = 1.0, # Magnetic axis height
+        R_LCFSmid   = 1.0, # Major radius of LCFS at the midplane
+        a_shift     = 1.0, # Parameter in Shafranov shift
+        kappa       = 1.0, # Elongation factor
+        delta       = 1.0, # Triangularity factor
+        qfit        = [1.0],
+        x_LCFS      = x_LCFS, # position of the LCFS (= core domain width)
+        x_out       = x_out, # SOL domain width
+        geom_type   = 'efit'
+    )
+
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=100*simulation.phys_param.eV, 
+                n0=2.0e19))
+
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.15,0.2], 
+            xlim=[2.1,2.2], 
+            ylim=[-.6,-0.5], 
+            zoom=2.0, 
+            markLoc=[3,4]),
+        Inset(
+            lowerCornerRelPos=[0.5,0.3],
+            xlim=[2.4,2.6], 
+            ylim=[-.6,-0.5],
+            markLoc=[3,4],
+            zoom=3.0),
+        Inset(
+           lowerCornerRelPos=[0.6,0.6],
+           xlim=[2.2,2.5], 
+           ylim=[0.55,0.67],
+           markLoc=[1,2],
+           zoom=3.0)
+    ]
+    
+    # Add discharge ID
+    simulation.dischargeID = 'WEST'
+    
+    # Add vessel data filename
+    simulation.geom_param.vessel_data = west_vessel_data
 
     # Add view points for the toroidal projection (to be adjusted)
     simulation.geom_param.camera_global = {
