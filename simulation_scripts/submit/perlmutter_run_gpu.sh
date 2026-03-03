@@ -28,8 +28,8 @@ ngpu=4  # Default value
 gpus_per_node=4
 nnodes=$(( (ngpu + gpus_per_node - 1) / gpus_per_node ))
 
-# Default decomposition option
-decomp="-e $ngpu"
+# Default decomposition direction
+decomp_dir="-e"
 
 # Default executable name
 executable="gkeyll"
@@ -46,9 +46,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         -d|--dim)
             if [[ "$2" == "2d" || "$2" == "2D" || "$2" == "2" ]]; then
-                decomp="-d $ngpu"
+                decomp="-d"
             elif [[ "$2" == "3d" || "$2" == "3D" || "$2" == "3" ]]; then
-                decomp="-e $ngpu"
+                decomp="-e"
             else
                 echo "Error: Invalid dimension '$2'. Use '2d' or '3d'."
                 exit 1
@@ -75,6 +75,6 @@ done
 
 # Use -N to specify the calculated number of nodes.
 # --ntasks is set to the number of GPUs, assuming one task per GPU.
-CMD="srun -N $nnodes --ntasks=$ngpu --gpus-per-task=1 --gpu-bind=closest -u ./$executable -g -M $decomp $* | tee $logname"
+CMD="srun -N $nnodes --ntasks=$ngpu --gpus-per-task=1 --gpu-bind=closest -u ./$executable -g -M $decomp_dir $ngpu $* | tee $logname"
 echo "Executing command: $CMD"
 eval $CMD
