@@ -813,7 +813,7 @@ class DataParam:
                 # because of the phi derivative
                 def receipe_ExB_pflux_s(gdata_list,i=i_):
                     density = pgkyl_.get_values(gdata_list[0])
-                    vE      = receipe_vExB(gdata_list[1:],i=i)
+                    vE      = receipe_vExB(gdata_list=gdata_list[1:],i=i)
                     return density*vE
                 
                 default_qttes.append([name,symbol,units,field2load,receipe_ExB_pflux_s])
@@ -829,8 +829,8 @@ class DataParam:
                 # (temperature from J/kg to J)
                 def receipe_ExB_hflux_s(gdata_list,i=i_,m=spec.m):
                     density = pgkyl_.get_values(gdata_list[0])
-                    Ttot    = receipe_Ttots(gdata_list[1:3])
-                    vE      = receipe_vExB(gdata_list[3:],i=i)
+                    Ttot    = receipe_Ttots(gdata_list=gdata_list[1:3])
+                    vE      = receipe_vExB(gdata_list=gdata_list[3:],i=i)
                     return density * m*Ttot * vE
                 default_qttes.append([name,symbol,units,field2load,receipe_ExB_hflux_s])
 
@@ -843,7 +843,7 @@ class DataParam:
                 # because of the phi derivative
                 def receipe_gradB_pflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
                     density = pgkyl_.get_values(gdata_list[0])
-                    vgB     = receipe_vgB(gdata_list[1:],i=i,q=q,m=m)
+                    vgB     = receipe_vgB(gdata_list=gdata_list[1:],i=i,q=q,m=m)
                     return density*vgB
                 default_qttes.append([name,symbol,units,field2load,receipe_gradB_pflux_s])
                 
@@ -857,8 +857,8 @@ class DataParam:
                 # because of the phi derivative
                 def receipe_gradB_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
                     density = pgkyl_.get_values(gdata_list[0])
-                    Ttot    = receipe_Ttots(gdata_list[1:3])
-                    vgB     = receipe_vgB(gdata_list[2:],i=i,q=q,m=m)
+                    Ttot    = receipe_Ttots(gdata_list=gdata_list[1:3])
+                    vgB     = receipe_vgB(gdata_list=gdata_list[2:],i=i,q=q,m=m)
                     return density * m*Ttot * vgB
                 default_qttes.append([name,symbol,units,field2load,receipe_gradB_hflux_s])
                 
@@ -869,12 +869,12 @@ class DataParam:
                 field2load = ['n%s'%s_,'Tperp%s'%(s_),'phi',
                               'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 def receipe_pflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
-                    pExBlist = gdata_list.copy()
+                    pExBlist = copy.deepcopy(gdata_list)
                     pExBlist.pop(1) # remove Tperp
-                    pExB = receipe_ExB_pflux_s(pExBlist,i=i)
-                    pgBlist = gdata_list.copy()
+                    pExB = receipe_ExB_pflux_s(gdata_list=pExBlist,i=i)
+                    pgBlist = copy.deepcopy(gdata_list)
                     pgBlist.pop(2) # remove phi
-                    pgB   = receipe_gradB_pflux_s(pgBlist,i=i,q=q,m=m)
+                    pgB   = receipe_gradB_pflux_s(gdata_list=pgBlist,i=i,q=q,m=m)
                     return pExB + pgB
                 default_qttes.append([name,symbol,units,field2load,receipe_pflux_s])
                 
@@ -885,10 +885,10 @@ class DataParam:
                 field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_),'phi',
                               'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 def receipe_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
-                    QExB = receipe_ExB_hflux_s(gdata_list,i=i)
-                    QgBlist = gdata_list.copy()
+                    QExB = receipe_ExB_hflux_s(gdata_list=gdata_list,i=i,m=m)
+                    QgBlist = copy.deepcopy(gdata_list)
                     QgBlist.pop(3) # remove phi
-                    QgB   = receipe_gradB_hflux_s(QgBlist,i=i,q=q,m=m)
+                    QgB   = receipe_gradB_hflux_s(gdata_list=QgBlist,i=i,q=q,m=m)
                     return QExB + QgB
                 default_qttes.append([name,symbol,units,field2load,receipe_hflux_s])
                 
@@ -963,7 +963,7 @@ class DataParam:
         def receipe_WkinM2(gdata_list,species_list=species_kinetic_list):
             fout = 0.0
             for spec in species_list:
-                fout += receipe_WkinM2s(gdata_list, m=spec.m)
+                fout += receipe_WkinM2s(gdata_list=gdata_list, m=spec.m)
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_WkinM2])
         
@@ -1037,8 +1037,8 @@ class DataParam:
         field2load.append('Tperpe')
         field2load.append('Bmag')
         def receipe_rhoe_lambdaD(gdata_list,species_list=species_kinetic_list):
-            lambdaD = receipe_lambdaD(gdata_list,species_list=species_list)
-            rho_e = receipe_rhos(gdata_list[-2:],q=species['elc'].q,m=species['elc'].m)
+            lambdaD = receipe_lambdaD(gdata_list=gdata_list,species_list=species_list)
+            rho_e = receipe_rhos(gdata_list=gdata_list[-2:],q=species['elc'].q,m=species['elc'].m)
             return rho_e/lambdaD
         default_qttes.append([name,symbol,units,field2load,receipe_rhoe_lambdaD])
         
@@ -1088,7 +1088,7 @@ class DataParam:
             fout = 0.0
             k    = 0
             for spec in species_list:
-                fout += receipe_Wkins(gdata_list[0+k:3+k],m=spec.m)
+                fout += receipe_Wkins(gdata_list=gdata_list[0+k:3+k],m=spec.m)
                 k += 3
             return fout 
         default_qttes.append([name,symbol,units,field2load,receipe_Wkin])
@@ -1106,7 +1106,7 @@ class DataParam:
             fout = 0.0
             k    = 0
             for spec in species_list:
-                fout += receipe_Wflus(gdata_list[0+k:2+k],m=spec.m)
+                fout += receipe_Wflus(gdata_list=gdata_list[0+k:2+k],m=spec.m)
                 k += 2
             return fout 
         default_qttes.append([name,symbol,units,field2load,receipe_Wflu])
@@ -1124,7 +1124,7 @@ class DataParam:
             fout = 0.0
             k    = 0
             for spec in species_list:
-                fout += receipe_Wpots(gdata_list[0+k:2+k],q=spec.q)
+                fout += receipe_Wpots(gdata_list=gdata_list[0+k:2+k],q=spec.q)
                 k += 2
             return fout 
         default_qttes.append([name,symbol,units,field2load,receipe_Wpot])
@@ -1154,9 +1154,9 @@ class DataParam:
             def receipe_Ei(gdata_list,i=i_,ci=ci_):
                 if ci == 'z':
                     Apardot = pgkyl_.get_values(gdata_list[1])
-                    return receipe_Ei_es(gdata_list[0:1],i=i) - Apardot
+                    return receipe_Ei_es(gdata_list=gdata_list[0:1],i=i) - Apardot
                 else:
-                    return receipe_Ei_es(gdata_list[0:1],i=i)
+                    return receipe_Ei_es(gdata_list=gdata_list[0:1],i=i)
             default_qttes.append([name,symbol,units,field2load,receipe_Ei])
             
         #total source power density
@@ -1218,7 +1218,7 @@ class DataParam:
                 k += 5
 
             # add the EM energy
-            fout += receipe_Welf(gdata_list[0:1])
+            fout += receipe_Welf(gdata_list=gdata_list[0:1])
 
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_Wtot])
@@ -1227,8 +1227,8 @@ class DataParam:
         for i_ in range(len(directions)):
             ci_ = directions[i_] # direction of the flux component
             cj_ = directions[np.mod(i_+1,3)] # direction coord + 1
-            ck_ = directions[np.mod(i+2,3)] # direction coord + 2  
-                      
+            ck_ = directions[np.mod(i_+2,3)] # direction coord + 2  
+
             # total ExB particle flux: \Gamma_ExB = \sum_s \Gamma_ExB_s
             name      = 'ExB_pflux_%s'%(ci_)
             symbol    = r'$\Gamma_{%s}$'%(ci_)
@@ -1242,14 +1242,15 @@ class DataParam:
                 field2load.append('b_%s'%ck_)
                 field2load.append('Bmag')
                 field2load.append('Jacobian')
-                n_attribute_per_spec = 6
             def receipe_ExB_pflux(gdata_list,i=i_,species_list=species_kinetic_list):
+                na_s = 6 # number of attributes per species for this quantity
                 fout = 0.0
                 # add species dependent energies
                 k = 0
                 for spec in species_list:
-                    fout += receipe_ExB_pflux_s(gdata_list[0+k:n_attribute_per_spec+k], i=i)
-                    k+= n_attribute_per_spec
+                    sub_list = copy.deepcopy(gdata_list[0+k:na_s+k])
+                    fout += receipe_ExB_pflux_s(gdata_list=sub_list, i=i)
+                    k+= na_s
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_ExB_pflux])
             
@@ -1268,21 +1269,22 @@ class DataParam:
                 field2load.append('b_%s'%ck_)
                 field2load.append('Bmag')
                 field2load.append('Jacobian')
-                n_attribute_per_spec = 8
             def receipe_ExB_hflux(gdata_list,i=i_,species_list=species_kinetic_list):
+                na_s = 8 # number of attributes per species for this quantity
                 fout = 0.0
                 # add species dependent energies
                 k = 0
                 for spec in species_list:
-                    fout += receipe_ExB_hflux_s(gdata_list[0+k:n_attribute_per_spec+k], i=i, m=spec.m)
-                    k+= n_attribute_per_spec
+                    sub_list = gdata_list[0+k:na_s+k]
+                    fout += receipe_ExB_hflux_s(gdata_list=sub_list, i=i, m=spec.m)
+                    k+= na_s
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_ExB_hflux]) 
             
-            #total gradB particle flux: \Gamma_gradB = \sum_s \Gamma_gradB_s
-            name       = 'gradB_pflux_%s'%(ci_)
-            symbol     = r'$\Gamma_{\nabla B%s}$'%(ci_)
-            units      = r's$^{-1}$m$^{-2}$'
+            # total gradB particle flux: \Gamma_gradB = \sum_s \Gamma_gradB_s
+            name      = 'gradB_pflux_%s'%(ci_)
+            symbol    = r'$\Gamma_{\nabla B%s}$'%(ci_)
+            units     = r's$^{-1}$m$^{-2}$'
             field2load = []
             for spec in species_kinetic_list:
                 s_ = spec.nshort
@@ -1292,17 +1294,18 @@ class DataParam:
                 field2load.append('b_%s'%ck_)
                 field2load.append('Bmag')
                 field2load.append('Jacobian')
-                n_attribute_per_spec = 6
             def receipe_gradB_pflux(gdata_list,i=i_,species_list=species_kinetic_list):
+                na_s = 6 # number of attributes per species for this quantity
                 fout = 0.0
                 # add species dependent energies
                 k = 0
                 for spec in species_list:
-                    fout += receipe_gradB_pflux_s(gdata_list[0+k:n_attribute_per_spec+k], i=i, q=spec.q, m=spec.m)
-                    k+= n_attribute_per_spec
+                    sub_list = gdata_list[0+k:na_s+k]
+                    fout += receipe_gradB_pflux_s(gdata_list=sub_list, i=i, q=spec.q, m=spec.m)
+                    k+= na_s
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_gradB_pflux])
-            
+                      
             #total gradB heat flux: Q_gradB = \sum_s Q_gradB_s
             name       = 'gradB_hflux_%s'%(ci_)
             symbol     = r'$Q_{\nabla B%s}$'%(ci_)
@@ -1317,14 +1320,15 @@ class DataParam:
                 field2load.append('b_%s'%ck_)
                 field2load.append('Bmag')
                 field2load.append('Jacobian')
-                n_attribute_per_spec = 7
             def receipe_gradB_hflux(gdata_list,i=i_,species_list=species_kinetic_list):
+                na_s = 7 # number of attributes per species for this quantity
                 fout = 0.0
                 # add species dependent energies
                 k = 0
                 for spec in species_list:
-                    fout += receipe_gradB_hflux_s(gdata_list[0+k:n_attribute_per_spec+k], i=i, q=spec.q, m=spec.m)
-                    k+= n_attribute_per_spec
+                    sub_list = gdata_list[0+k:na_s+k]
+                    fout += receipe_gradB_hflux_s(gdata_list=sub_list, i=i, q=spec.q, m=spec.m)
+                    k+= na_s
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_gradB_hflux])
             
@@ -1342,14 +1346,15 @@ class DataParam:
                 field2load.append('b_%s'%ck_)
                 field2load.append('Bmag')
                 field2load.append('Jacobian')
-                n_attribute_per_spec = 7
             def receipe_pflux(gdata_list,i=i_,species_list=species_kinetic_list):
+                na_s = 7 # number of attributes per species for this quantity
                 fout = 0.0
                 # add species dependent energies
                 k = 0
                 for spec in species_list:
-                    fout += receipe_pflux_s(gdata_list[0+k:n_attribute_per_spec+k], i=i, q=spec.q, m=spec.m)
-                    k+= n_attribute_per_spec
+                    sub_list = gdata_list[0+k:na_s+k]
+                    fout += receipe_pflux_s(gdata_list=sub_list, i=i, q=spec.q, m=spec.m)
+                    k+= na_s
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_pflux])
             
@@ -1368,14 +1373,15 @@ class DataParam:
                 field2load.append('b_%s'%ck_)
                 field2load.append('Bmag')
                 field2load.append('Jacobian')
-                n_attribute_per_spec = 8
             def receipe_hflux(gdata_list,i=i_,species_list=species_kinetic_list):
+                na_s = 8 # number of attributes per species for this quantity
                 fout = 0.0
                 # add species dependent energies
                 k = 0
                 for spec in species_list:
-                    fout += receipe_hflux_s(gdata_list[0+k:n_attribute_per_spec+k], i=i, q=spec.q, m=spec.m)
-                    k+= n_attribute_per_spec
+                    sub_list = gdata_list[0+k:na_s+k]
+                    fout += receipe_hflux_s(gdata_list=sub_list, i=i, q=spec.q, m=spec.m)
+                    k+= na_s
                 return fout
             default_qttes.append([name,symbol,units,field2load,receipe_hflux])
                     
