@@ -141,11 +141,11 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
             plot_data[plot_data <= 0] = np.nan  # Set negative values to nan for log scale
             
         if (fluctuation) :
-            cmap = 'bwr' if not cmap else cmap
+            cmap_ = cmap if cmap else 'bwr'
             vmax = np.nanmax(np.abs(plot_data)) if not clim[kf] else clim[kf][1]
             vmin = -vmax if not clim[kf] else clim[kf][0]
         else:
-            cmap = simulation.data_param.field_info_dict[field+'colormap'] if not cmap else cmap
+            cmap_ = cmap if cmap else simulation.data_param.field_info_dict[field+'colormap']
             vmax = np.nanmax(plot_data) if not clim[kf] else clim[kf][1]
             vmin = np.nanmin(plot_data) if not clim[kf] else clim[kf][0]
 
@@ -172,7 +172,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
             lbl = lbl + ' [\%]'
             
         fig_tools.plot_2D(fig,ax,x=frame.new_grids[0],y=frame.new_grids[1],z=plot_data, 
-                          cmap=cmap, xlim=xlim, ylim=ylim, clim=clim[kf],
+                          cmap=cmap_, xlim=xlim, ylim=ylim, clim=clim[kf],
                           xlabel=xlabel, ylabel=ylabel, cmap_period=cmap_period,
                           colorscale=colorscale, clabel=lbl, title=frame.fulltitle if show_title else '', 
                           vmin=vmin, vmax=vmax, plot_type=plot_type)
@@ -305,7 +305,7 @@ def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='
     if close_fig: plt.close(fig)
 
 def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32, polproj=None, cmap_period=1,
-                             colorMap = 'inferno', colorScale = 'lin', fig_dpi=300, limiterColor='gray', cutoutLimiter=False,
+                             colorMap = None, colorScale = 'lin', fig_dpi=300, limiterColor='gray', cutoutLimiter=False,
                              showInset=True, showLCFS=True, showVessel=False, showLimiter=True, showAxis=True,
                              xlim=[], ylim=[],clim=[], logScaleFloor=1e-3, figout=[], close_fig=False):
     if timeFrame is None:
@@ -332,7 +332,7 @@ def flux_surface_proj(simulation, rho=0.9, fieldName='phi', timeFrame=None, Nint
 #--- Time independent or time series plot routines
   
 def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fieldnames='phi',
-                           twindow=None, space_time=False, cmap='inferno',
+                           twindow=None, space_time=False, cmap=None,
                            fluctuation='', plot_type='pcolormesh', yscale='linear',
                            xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
                            show_title=True, cmap_period=1, close_fig=False):
@@ -341,7 +341,7 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
         twindow = [twindow[0], twindow[-1]]
     if not isinstance(twindow, list): twindow = [twindow]
     if clim: clim = [clim] if not isinstance(clim[0], list) else clim
-    cmap0 = cmap
+    cmap0 = cmap if cmap else simulation.data_param.field_info_dict[fieldnames[0]+'colormap']
     fields, fig, axs = fig_tools.setup_figure(fieldnames)
     kf = 0  # field counter
     for ax, field in zip(axs, fields):
