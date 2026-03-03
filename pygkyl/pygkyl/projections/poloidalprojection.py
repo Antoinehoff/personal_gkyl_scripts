@@ -386,7 +386,7 @@ class PoloidalProjection:
   
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
-           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False,
+           shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False, vessel_var = None,
            show_axis=True, cutout_limiter=False, cmap_period = 1, figout=[], close_fig=False, fig_dpi=300, limiter_color='gray'):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
@@ -548,9 +548,11 @@ class PoloidalProjection:
       
     #.Plot the vessel contours
     if show_vessel:
+      if vessel_var is None:
+        vessel_var = self.sim.geom_param.vessel_data
       if self.sim.geom_param.vessel_data is not None:
-        Rvess = self.sim.geom_param.vessel_data['R']
-        Zvess = self.sim.geom_param.vessel_data['Z']
+        Rvess = vessel_var['R']
+        Zvess = vessel_var['Z']
         # Add two patches to cover the regions outside the vessel
         xWidth = 0.05 * self.sim.geom_param.R_axis
         xCorner = np.min(self.Rlcfs) - xWidth
