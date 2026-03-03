@@ -554,10 +554,10 @@ class PoloidalProjection:
         Rvess = vessel_var['R']
         Zvess = vessel_var['Z']
         # Add two patches to cover the regions outside the vessel
-        xWidth = 0.05 * self.sim.geom_param.R_axis
-        xCorner = np.min(self.Rlcfs) - xWidth
-        yCorner = np.min(Zvess)
-        ywidth = np.max(Zvess) - np.min(Zvess)
+        xWidth = self.Rlcfs.min() - self.RIntN.min()
+        xCorner = self.RIntN.min()
+        yCorner = self.ZIntN.min()
+        ywidth = self.ZIntN.max() - self.ZIntN.min()
         ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,ywidth,color='white'))
         xCorner = np.max(Rvess)
         ax1a[0].add_patch(Rectangle((xCorner,yCorner),xWidth,ywidth,color='white'))
