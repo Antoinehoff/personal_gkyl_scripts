@@ -3,7 +3,8 @@ from ..classes import Simulation, Species
 from ..projections.poloidalprojection import Inset
 from ..interfaces.gyacomointerface import get_gyacomo_sim_config
 from ..interfaces.pgkyl_interface import get_dimensionality
-from .vessel_data import tcv_vessel_data, d3d_vessel_data, sparc_vessel_data, nstxu_vessel_data
+from .vessel_data import tcv_vessel_data, d3d_vessel_data, \
+    sparc_vessel_data, nstxu_vessel_data, west_vessel_data
 
 def import_config(configName='tcv_pt', simDir ='', filePrefix = '',
                   load_metric=True, simidx=0, **kwargs):
@@ -719,7 +720,7 @@ def get_west_sim_config(simdir, fileprefix, **kwargs):
     simulation.dischargeID = 'WEST'
     
     # Add vessel data filename
-    simulation.geom_param.vessel_data = sparc_vessel_data # To be replaced with ASDEX-U vessel data when available
+    simulation.geom_param.vessel_data = west_vessel_data
 
     # Add view points for the toroidal projection (to be adjusted)
     simulation.geom_param.camera_global = {
