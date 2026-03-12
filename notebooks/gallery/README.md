@@ -1,0 +1,1 @@
+This is just a small directory where ../tutorial.ipynb will save some figures.
