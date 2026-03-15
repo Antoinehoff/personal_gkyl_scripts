@@ -334,7 +334,7 @@ def flux_surface_proj(simulation, rho=0.9, fieldName='phi', timeFrame=None, Nint
 #--- Time independent or time series plot routines
   
 def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fieldnames='phi',
-                           twindow=None, space_time=False, cmap=None,
+                           twindow=None, space_time=False, cmap=None, data_dict={},
                            fluctuation='', plot_type='pcolormesh', yscale='linear',
                            xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
                            show_title=True, cmap_period=1, close_fig=False):
@@ -388,6 +388,7 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
                 cmap=cmap, vmin=vmin, vmax=vmax, colorscale=cs, plot_type=plot_type,
                 cmap_period=cmap_period
             )
+            data_dict[field] = (x, t, values, xlabel, tlabel, vlabel, vunits)
             figout.append(fig)
         else:
             norm = plt.Normalize(min(t), max(t))
@@ -425,7 +426,7 @@ def plot_domain(simulation,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.
     fig_tools.finalize_plot(ax, fig, xlabel='R (m)', ylabel='Z (m)', aspect='equal')
     if close_fig: plt.close(fig)
 
-def plot_integrated_moment(simulation,fieldnames='ne',xlim=[],ylim=[],ddt=False,figout=[],twindow=[],data=[],
+def plot_integrated_moment(simulation,fieldnames='ne',xlim=[],ylim=[],ddt=False,figout=[],twindow=[],data_dict={},
                            close_fig=False):
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     for ax,field in zip(axs,fields):
@@ -444,7 +445,8 @@ def plot_integrated_moment(simulation,fieldnames='ne',xlim=[],ylim=[],ddt=False,
             # Plot
             marker = 'o' if len(int_mom.time) == 1 else None
             ax.plot(int_mom.time,int_mom.values,label=int_mom.symbol,marker=marker)
-            data.append((int_mom.time,int_mom.values))
+            data_dict[subfield] = (int_mom.time, int_mom.values, int_mom.tunits, int_mom.vunits, int_mom.symbol)
+            
         # add labels and show legend
         fig_tools.finalize_plot(ax, fig, xlabel=int_mom.tunits, ylabel=int_mom.vunits, figout=figout, 
                                 xlim=xlim, ylim=ylim, legend=True)
@@ -452,7 +454,7 @@ def plot_integrated_moment(simulation,fieldnames='ne',xlim=[],ylim=[],ddt=False,
     return int_mom.time
     
 def plot_time_serie(simulation,fieldnames='phi',cut_coords=[0.0,0.0,0.0], time_frames=None,
-                    figout=[],xlim=[],ylim=[], ddt = False, data=None, close_fig=False):
+                    figout=[],xlim=[],ylim=[], ddt = False, data_dict={}, close_fig=False):
     if time_frames is None:
         time_frames = simulation.data_param.get_available_frames(simulation)['field'][-1]
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
@@ -482,9 +484,9 @@ def plot_time_serie(simulation,fieldnames='phi',cut_coords=[0.0,0.0,0.0], time_f
                 else:
                     units = units + r'/s'
             ax.plot(t,v,label=label)
-            if data is not None:
-                data.append((t,v))
-        
+            if data_dict is not None:
+                data_dict[subfield] = (t, v, f0.tunits, f0.vunits, f0.symbol)
+
         # units = math_utils.simplify_units(units) # this is not robuts...
         fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=units, figout=figout,
                                 xlim=xlim, ylim=ylim, legend=True, title=f0.slicetitle)
