@@ -39,7 +39,8 @@ import os, re
     
 def plot_1D(simulation,cdirection='x',ccoords=[0.0,0.0,0.0],fieldnames='phi',
             time_frames=None, xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
-            figout = [], errorbar = False, show_title = True, show_legend = True, close_fig = False):
+            figout = [], errorbar = False, show_title = True, show_legend = True, close_fig = False,
+            plot_data = []):
     
     fields,fig,axs = fig_tools.setup_figure(fieldnames)
     
@@ -57,26 +58,27 @@ def plot_1D(simulation,cdirection='x',ccoords=[0.0,0.0,0.0],fieldnames='phi',
         else:
             subfields = field # field is a combined plot
         for subfield in subfields:
-            x,t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourier_y =\
+            x_plot, t,values,xlabel,tlabel,vlabel,vunits,slicetitle,fourier_y =\
                 data_utils.get_1xt_diagram(simulation,subfield,cdirection,ccoords,tfs=time_frames)
-            # Compute the average of data over the t-axis (axis=1)
-            average_data = np.mean(values, axis=1)
-            # Compute the standard deviation of data over the t-axis (axis=1)
-            std_dev_data = np.std(values, axis=1)
-            if time_avg :
-                if errorbar:
-                    ax.errorbar(x, average_data, yerr=std_dev_data, 
+            
+            y_plot = np.mean(values, axis=1) if time_avg else values
+            
+            if time_avg and  errorbar:
+                    # Compute the standard deviation of data over the t-axis (axis=1)
+                    std_dev_data = np.std(values, axis=1)
+                    ax.errorbar(x_plot, y_plot, yerr=std_dev_data, 
                                 fmt='o', capsize=5, label=vlabel)
-                else:
-                    ax.plot(x, average_data, label=vlabel)
             else:
                 # Classic plot
-                ax.plot(x, values, label=vlabel)
-                if periodicity > 0:
-                    ax.plot(x+periodicity, values, label=vlabel)
+                ax.plot(x_plot, y_plot, label=vlabel)
+            if periodicity > 0:
+                ax.plot(x_plot+periodicity, y_plot, label=vlabel)
+            
+            plot_data.append((x_plot, y_plot, [xlabel, vlabel, vunits]))
+
         # Labels and title
         ylabel = vunits if len(subfields)>1 else vlabel
-        show_legend = len(subfields)>1 or show_legend
+        show_legend = len(subfields)>1 and show_legend
         title = slicetitle+tlabel+r'$=%2.2e$'%(t[0]) if t[0] == t[-1] else \
                 slicetitle+tlabel+r'$\in[%2.2e,%2.2e]$'%(t[0],t[-1])
         fig_tools.finalize_plot(ax, fig, xlabel=xlabel, ylabel=ylabel, title=title if show_title else '', 

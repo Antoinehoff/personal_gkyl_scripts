@@ -633,7 +633,7 @@ class Simulation:
 
     def plot_1D(self, cut_dir='x', cut_coords=[0.0,0.0,0.0], field_name='phi',
                 frame_idx=None, xlim=[], ylim=[], xscale='', yscale='', 
-                periodicity=0, grid=False, figout=[], errorbar=False, 
+                periodicity=0, grid=False, figout=[], plot_data=[], errorbar=False, 
                 show_title=True, show_legend=True, close_fig=False):
         """
         Plot 1D data for given field(s) and time frames.
@@ -685,7 +685,7 @@ class Simulation:
         return plot(simulation=self, cdirection=cut_dir, ccoords=cut_coords, 
                    fieldnames=field_name, time_frames=frame_idx, xlim=xlim, 
                    ylim=ylim, xscale=xscale, yscale=yscale, periodicity=periodicity,
-                   grid=grid, figout=figout, errorbar=errorbar, 
+                   grid=grid, figout=figout, errorbar=errorbar, plot_data=plot_data,
                    show_title=show_title, show_legend=show_legend, close_fig=close_fig)
     
     def plot_DG_1D(self, field_name='phi', frame_idx=None, cut_dir='x', cut_coords=[0.0,0.0,0.0], xlim=[], ylim=[],
