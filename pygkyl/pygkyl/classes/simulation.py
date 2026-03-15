@@ -1,5 +1,7 @@
 import os
 import numpy as np
+# NumPy >= 2.0 renamed trapz to trapezoid; support both
+_trapz = getattr(np, 'trapezoid', np.trapz)
 import scipy as scp
 import postgkyl as pg
 from .numparam import NumParam
@@ -258,8 +260,8 @@ class Simulation:
         # the simulation cannot gain particle, so we consider only losses
         integrand[integrand > 0.0] = 0.0
         # Calculate GB loss for this time frame
-        GBloss_z = np.trapz(integrand, x=self.geom_param.y, axis=0)
-        GBloss   = np.trapz(GBloss_z, x=self.geom_param.z, axis=0)
+        GBloss_z = _trapz(integrand, x=self.geom_param.y, axis=0)
+        GBloss   = _trapz(GBloss_z, x=self.geom_param.z, axis=0)
         return GBloss, time, GBloss_z
 
     def add_source(self, name, source):

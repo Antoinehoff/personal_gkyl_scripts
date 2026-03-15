@@ -1,5 +1,7 @@
 import postgkyl as pg
 import numpy as np
+# NumPy >= 2.0 renamed trapz to trapezoid; support both
+_trapz = getattr(np, 'trapezoid', np.trapz)
 from ..tools import math_tools as mt
 import copy
 from ..interfaces import pgkyl_interface as pgkyl_
@@ -382,8 +384,8 @@ class Frame:
         if cut in ['avg', 'int']:
             cut_coord = direction + '-' + cut
             grid = self.cgrids[ic][:]
-            values = np.trapz(self.values * self.Jacobian, grid, axis=ic)
-            Jacobian = np.trapz(self.Jacobian, grid, axis=ic)
+            values = _trapz(self.values * self.Jacobian, grid, axis=ic)
+            Jacobian = _trapz(self.Jacobian, grid, axis=ic)
             if cut == 'avg':
                 values /= Jacobian
         elif cut == 'max':
@@ -546,9 +548,9 @@ class Frame:
         elif integrant_filter == "neg":
             integrant[integrant > 0.0] = 0.0
 
-        surf_int_z = np.trapz(integrant, x=grid1, axis=dir1)
+        surf_int_z = _trapz(integrant, x=grid1, axis=dir1)
         surf_int_z = np.expand_dims(surf_int_z, axis=dir1)
-        surf_int = np.trapz(surf_int_z, x=grid2, axis=dir2)
+        surf_int = _trapz(surf_int_z, x=grid2, axis=dir2)
         self.surf_int = surf_int.squeeze()
 
         return self.surf_int

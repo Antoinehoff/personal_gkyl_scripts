@@ -17,6 +17,8 @@ Functions:
 
 import numpy as np
 import scipy.integrate as scpy_int
+# NumPy >= 2.0 renamed trapz to trapezoid; support both
+_trapz = getattr(np, 'trapezoid', np.trapz)
 from scipy.interpolate import griddata as sp_interp
 from scipy.ndimage import uniform_filter
 
@@ -36,15 +38,15 @@ def func_calc_norm_fluc(data2d, dataAve, dataNorm, Nt, Ny, Nx):
 
 def integral_vol(x,y,z,integrant_xyz):
     # Compute the volume integral (jacobian included in the integrand)
-    integrant_xz  = np.trapz(integrant_xyz, x=x, axis=0)
-    integrant_z   = np.trapz(integrant_xz,  x=y, axis=0)
-    integral      = np.trapz(integrant_z,   x=z, axis=0)
+    integrant_xz  = _trapz(integrant_xyz, x=x, axis=0)
+    integrant_z   = _trapz(integrant_xz,  x=y, axis=0)
+    integral      = _trapz(integrant_z,   x=z, axis=0)
     return integral
 
 def integral_surf(x,y,integrant_xy):
     # Compute the line integral (jacobian included in the integrand)
-    integral_y   = np.trapz(integrant_xy, x=x, axis=0)
-    integral     = np.trapz(integral_y,   x=y, axis=0)
+    integral_y   = _trapz(integrant_xy, x=x, axis=0)
+    integral     = _trapz(integral_y,   x=y, axis=0)
     return integral
 
 def gradient(array,grid,axis):
@@ -61,7 +63,7 @@ def integrate(function, a, b, args,  method='trapz', Np=16):
         Np = int(Np) if Np else 32
         x = np.linspace(a, b, Np)
         integrant = function(x,args)
-        return np.trapz(integrant,x,axis=0), 0
+        return _trapz(integrant,x,axis=0), 0
 
 def custom_meshgrid(x,y,z=0):
     # custom meshgrid function to have natural orientation (x,y,z)
