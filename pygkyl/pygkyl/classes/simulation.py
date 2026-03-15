@@ -906,7 +906,7 @@ class Simulation:
         from ..utils.plot_utils import plot_integrated_moment as plot
         return plot(simulation=self, fieldnames=field_name, xlim=xlim,
                    ylim=ylim, ddt=ddt, figout=figout, twindow=twindow, 
-                   data=data, close_fig=close_fig, data_dict=data_dict)
+                   close_fig=close_fig, data_dict=data_dict)
     
     def plot_time_serie(self, field_name='phi', cut_coords=[0.0,0.0,0.0], time_frames=None,
                        figout=[], xlim=[], ylim=[], ddt=False, data_dict={}, close_fig=False):

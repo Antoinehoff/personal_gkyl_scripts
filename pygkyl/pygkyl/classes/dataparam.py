@@ -541,22 +541,33 @@ class DataParam:
             default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
             
             # Parallel heat flux moment
-            name      = 'qpar%s'%(s_)
-            symbol    = r'$q_{\parallel %s}$'%(s_)
+            name      = 'qparpar%s'%(s_)
+            symbol    = r'$q_{\parallel %s}^\parallel$'%(s_)
             units     = r'W/m$^2$'
             field2load = ['M3par%s'%(s_)]
-            def receipe_qpars(gdata_list, m=spec.m):
+            def receipe_qparpars(gdata_list, m=spec.m):
                 return m * pgkyl_.get_values(gdata_list[0])
-            default_qttes.append([name,symbol,units,field2load,receipe_qpars])
+            default_qttes.append([name,symbol,units,field2load,receipe_qparpars])
             
             # Perpendicular heat flux moment
-            name      = 'qperp%s'%(s_)
-            symbol    = r'$q_{\perp %s}$'%(s_)
+            name      = 'qparperp%s'%(s_)
+            symbol    = r'$q_{\parallel %s}^\perp$'%(s_)
             units     = r'W/m$^2$'
             field2load = ['M3perp%s'%(s_)]
-            def receipe_qperps(gdata_list, m=spec.m):
+            def receipe_qparperps(gdata_list, m=spec.m):
                 return m * pgkyl_.get_values(gdata_list[0])
-            default_qttes.append([name,symbol,units,field2load,receipe_qperps])
+            default_qttes.append([name,symbol,units,field2load,receipe_qparperps])
+            
+            # Total parallel heat flux
+            name     = 'qpar%s'%(s_)
+            symbol   = r'$q_{\parallel,%s}$'%(s_)
+            units    = r'W/m$^2$'
+            field2load = ['M3par%s'%(s_),'M3perp%s'%(s_)]
+            def receipe_qpars(gdata_list, m=spec.m):
+                qparpar = pgkyl_.get_values(gdata_list[0])
+                qparperp = pgkyl_.get_values(gdata_list[1])
+                return m/3 * (qparpar + 2*qparperp)
+            default_qttes.append([name,symbol,units,field2load,receipe_qpars])
             
             #normalized radial density gradient
             name       = 'gradlogn%s'%(s_)
@@ -1015,44 +1026,30 @@ class DataParam:
             field2load.append('M2%s'%s_)
         def receipe_WkinM2(gdata_list,species_list=species_kinetic_list):
             fout = 0.0
+            k = 0
             for spec in species_list:
-                fout += receipe_WkinM2s(gdata_list=gdata_list, m=spec.m)
+                fout += receipe_WkinM2s(gdata_list=gdata_list[0+k], m=spec.m)
+                k += 1
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_WkinM2])
         
-        # total parallel heat flux 
-        name       = 'qpar'
-        symbol     = r'$q_{\parallel}$'
-        units      = r'W/m$^2$'
+        # Total parallel heat flux
+        name     = 'qpar'
+        symbol   = r'$q_{\parallel}$'
+        units    = r'W/m$^2$'
         field2load = []
         for spec in species_kinetic_list:
             s_ = spec.nshort
-            field2load.append('M3par%s'%s_)
-        def receipe_qpar(gdata_list,species_list=species_kinetic_list):
+            field2load.append('M3par%s'%(s_))
+            field2load.append('M3perp%s'%(s_))
+        def receipe_qpar(gdata_list, species_list=species_kinetic_list):
             fout = 0.0
             k = 0
             for spec in species_list:
-                fout += receipe_qpars(gdata_list=gdata_list[0+k], m=spec.m)
-                k += 1
-            return fout    
+                fout += receipe_qpars(gdata_list=[gdata_list[0+k], gdata_list[1+k]], m=spec.m)
+                k += 2
+            return fout
         default_qttes.append([name,symbol,units,field2load,receipe_qpar])
-        
-        # total perpendicular heat flux
-        name       = 'qperp'
-        symbol     = r'$q_{\perp}$'
-        units      = r'W/m$^2$'
-        field2load = []
-        for spec in species_kinetic_list:
-            s_ = spec.nshort
-            field2load.append('M3perp%s'%s_)
-        def receipe_qperp(gdata_list,species_list=species_kinetic_list):
-            fout = 0.0
-            k = 0
-            for spec in species_list:
-                fout += receipe_qperps(gdata_list=gdata_list[0+k], m=spec.m)
-                k += 1
-            return fout    
-        default_qttes.append([name,symbol,units,field2load,receipe_qperp])
         
         #charge density
         name       = 'qdens'
