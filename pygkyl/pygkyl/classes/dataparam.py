@@ -892,6 +892,41 @@ class DataParam:
                     return QExB + QgB
                 default_qttes.append([name,symbol,units,field2load,receipe_hflux_s])
                 
+                # Particle diffusivity speciewise: D = \Gamma / \nabla n
+                name       = 'D%s%s'%(ci_,s_)
+                symbol     = r'$D_{%s,%s}$'%(ci_,s_)
+                units      = r'm$^2$/s'
+                field2load = ['n%s'%s_,'Tperp%s'%(s_),'phi',
+                              'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                def receipe_D(gdata_list,i=i_,q=spec.q,m=spec.m):
+                    pflux = receipe_pflux_s(gdata_list=gdata_list,i=i,q=q,m=m)
+                    dens = pgkyl_.get_values(gdata_list[0])
+                    grids = pgkyl_.get_grid(gdata_list[0])
+                    gradn = np.gradient(dens, grids[i][:-1], axis=i)
+                    gradn[gradn == 0] = np.nan # avoid div by 0
+                    D = pflux/gradn/dens
+                    return D
+                default_qttes.append([name,symbol,units,field2load,receipe_D])
+                
+                # Heat diffusivity speciewise: chi = Q / \nabla T
+                name       = 'chi%s%s'%(ci_,s_)
+                symbol     = r'$\chi_{%s,%s}$'%(ci_,s_)
+                units      = r'm$^2$/s'
+                field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_),'phi',
+                              'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                def receipe_chi(gdata_list,i=i_,q=spec.q,m=spec.m):
+                    hflux = receipe_hflux_s(gdata_list=gdata_list,i=i,q=q,m=m)
+                    temp = receipe_Ttots(gdata_list=gdata_list[1:3]) * m # convert from J/kg to J
+                    dens = pgkyl_.get_values(gdata_list[0])
+                    temp[temp <= 0] = np.nan # avoid log(0)
+                    grids = pgkyl_.get_grid(gdata_list[0])
+                    gradT = np.gradient(temp, grids[i][:-1], axis=i)
+                    # gradT[np.abs(gradT/temp) <= 1e-3] = np.nan # avoid div by 0 and unphysical values
+                    chi = hflux/(gradT*dens)
+                    chi[gradT*dens == 0] = np.nan # avoid div by 0
+                    return chi
+                default_qttes.append([name,symbol,units,field2load,receipe_chi])
+                
         # Fluid species diagnostics
         for spec in species_fluid_list:
             s_ = spec.nshort
@@ -1054,6 +1089,19 @@ class DataParam:
             eps0 = phys_tools.eps0
             return 1/Bmag * np.sqrt(me*ne/eps0)
         default_qttes.append([name,symbol,units,field2load,receipe_gamma_gyraze])
+        
+        # GYRAZE alpha angle, impact angle of the magnetic field line on the sheath entrance.
+        name = 'alpha_gyraze'
+        symbol = r'$\alpha_{GYRAZE}$'
+        units = r'$^{\circ}$'
+        field2load = ['Jacobian','gxx','gyy']
+        def receipe_alpha_gyraze(gdata_list):
+            jacobian = pgkyl_.get_values(gdata_list[0])
+            gxx = pgkyl_.get_values(gdata_list[1])
+            gyy = pgkyl_.get_values(gdata_list[2])
+            alpha = np.arcsin(1/(jacobian * np.sqrt(gxx*gyy)))
+            return alpha * 180/np.pi # convert to degrees
+        default_qttes.append([name,symbol,units,field2load,receipe_alpha_gyraze])
         
         #parallel current density
         name       = 'jpar'
