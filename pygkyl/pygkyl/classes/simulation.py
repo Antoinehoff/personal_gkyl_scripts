@@ -812,7 +812,7 @@ class Simulation:
                                frame_indices=None, space_time=False, cmap='inferno',
                                fluctuation='', plot_type='pcolormesh', yscale='linear',
                                xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
-                               show_title=True, cmap_period=1, close_fig=False):
+                               show_title=True, cmap_period=1, close_fig=False, data_dict={}):
         """
         Plot 1D time evolution (space-time diagram) for given field(s).
         
@@ -867,10 +867,10 @@ class Simulation:
                    cmap=cmap, fluctuation=fluctuation, plot_type=plot_type,
                    yscale=yscale, xlim=xlim, ylim=ylim, clim=clim,
                    figout=figout, colorscale=colorscale, show_title=show_title,
-                   cmap_period=cmap_period, close_fig=close_fig)
+                   cmap_period=cmap_period, close_fig=close_fig, data_dict=data_dict)
     
     def plot_integrated_moment(self, field_name='ne', xlim=[], ylim=[], ddt=False,
-                              figout=[], twindow=[], data=[], close_fig=False):
+                              figout=[], twindow=[], data_dict={}, close_fig=False):
         """
         Plot integrated moments over time for different species.
         
@@ -888,8 +888,8 @@ class Simulation:
             List to append figure to. Default: []
         twindow : list, optional
             Time window [t_start, t_end]. Default: []
-        data : list, optional
-            List to append (time, values) tuples to. Default: []
+        data_dict : dict, optional
+            Dictionary to store (time, values) tuples. Default: {}
         close_fig : bool, optional
             Close figure after plotting. Default: False
             
@@ -906,10 +906,10 @@ class Simulation:
         from ..utils.plot_utils import plot_integrated_moment as plot
         return plot(simulation=self, fieldnames=field_name, xlim=xlim,
                    ylim=ylim, ddt=ddt, figout=figout, twindow=twindow, 
-                   data=data, close_fig=close_fig)
+                   data=data, close_fig=close_fig, data_dict=data_dict)
     
     def plot_time_serie(self, field_name='phi', cut_coords=[0.0,0.0,0.0], time_frames=None,
-                       figout=[], xlim=[], ylim=[], ddt=False, data=None, close_fig=False):
+                       figout=[], xlim=[], ylim=[], ddt=False, data_dict={}, close_fig=False):
         """
         Plot time series of field values at specific coordinates.
         
@@ -929,8 +929,8 @@ class Simulation:
             Y-axis limits. Default: []
         ddt : bool, optional
             Plot time derivative. Default: False
-        data : list or None, optional
-            List to append (time, values) tuples to. Default: None
+        data_dict : dict, optional
+            Dictionary to store (time, values) tuples. Default: {}
         close_fig : bool, optional
             Close figure after plotting. Default: False
             
@@ -942,7 +942,7 @@ class Simulation:
         from ..utils.plot_utils import plot_time_serie as plot
         return plot(simulation=self, fieldnames=field_name, cut_coords=cut_coords,
                    time_frames=time_frames, figout=figout, xlim=xlim, ylim=ylim,
-                   ddt=ddt, data=data, close_fig=close_fig)
+                   ddt=ddt, data_dict=data_dict, close_fig=close_fig)
     
     def plot_poloidal_projection(self, field_name='phi', frame_idx=None, out_file_name='',
                                  nzInterp=32, colorMap='inferno', colorScale='lin',

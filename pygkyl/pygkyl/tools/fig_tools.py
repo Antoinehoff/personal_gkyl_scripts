@@ -187,6 +187,9 @@ def plot_figdatadict(figdatadict):
         n_ = n_ + 1
 
 def save_figout(figout,fname):
+    '''
+    Save figure data to a pickle file. 
+    '''
     figdatadict = get_figdatadict(figout[0])
     if not fname[-4:] == '.pkl':
         fname+='.pkl'
