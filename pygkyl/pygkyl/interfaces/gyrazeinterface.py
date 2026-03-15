@@ -3,7 +3,10 @@ import h5py
 from matplotlib.colors import LogNorm
 import numpy as np
 # NumPy >= 2.0 renamed trapz to trapezoid; support both
-_trapz = getattr(np, 'trapezoid', np.trapz)
+if hasattr(np, 'trapezoid'):
+    _trapz = np.trapezoid
+else:
+    _trapz = np.trapz
 import os
 import matplotlib.pyplot as plt
 import io

@@ -18,7 +18,10 @@ Functions:
 import numpy as np
 import scipy.integrate as scpy_int
 # NumPy >= 2.0 renamed trapz to trapezoid; support both
-_trapz = getattr(np, 'trapezoid', np.trapz)
+if hasattr(np, 'trapezoid'):
+    _trapz = np.trapezoid
+else:
+    _trapz = np.trapz
 from scipy.interpolate import griddata as sp_interp
 from scipy.ndimage import uniform_filter
 

@@ -1,7 +1,10 @@
 import postgkyl as pg
 import numpy as np
 # NumPy >= 2.0 renamed trapz to trapezoid; support both
-_trapz = getattr(np, 'trapezoid', np.trapz)
+if hasattr(np, 'trapezoid'):
+    _trapz = np.trapezoid
+else:
+    _trapz = np.trapz
 from ..tools import math_tools as mt
 import copy
 from ..interfaces import pgkyl_interface as pgkyl_
