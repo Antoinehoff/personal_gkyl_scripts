@@ -540,6 +540,24 @@ class DataParam:
                 return (pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0
             default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
             
+            # Parallel heat flux moment
+            name      = 'qpar%s'%(s_)
+            symbol    = r'$q_{\parallel %s}$'%(s_)
+            units     = r'W/m$^2$'
+            field2load = ['M3par%s'%(s_)]
+            def receipe_qpars(gdata_list, m=spec.m):
+                return m * pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_qpars])
+            
+            # Perpendicular heat flux moment
+            name      = 'qperp%s'%(s_)
+            symbol    = r'$q_{\perp %s}$'%(s_)
+            units     = r'W/m$^2$'
+            field2load = ['M3perp%s'%(s_)]
+            def receipe_qperps(gdata_list, m=spec.m):
+                return m * pgkyl_.get_values(gdata_list[0])
+            default_qttes.append([name,symbol,units,field2load,receipe_qperps])
+            
             #normalized radial density gradient
             name       = 'gradlogn%s'%(s_)
             symbol     = r'$-\nabla \ln n_{%s}$'%(s_)
@@ -1001,6 +1019,36 @@ class DataParam:
                 fout += receipe_WkinM2s(gdata_list=gdata_list, m=spec.m)
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_WkinM2])
+        
+        # total parallel heat flux 
+        name       = 'qpar'
+        symbol     = r'$q_{\parallel}$'
+        units      = r'W/m$^2$'
+        field2load = []
+        for spec in species_kinetic_list:
+            s_ = spec.nshort
+            field2load.append('M3par%s'%s_)
+        def receipe_qpar(gdata_list,species_list=species_kinetic_list):
+            fout = 0.0
+            for spec in species_list:
+                fout += receipe_qpars(gdata_list=gdata_list, m=spec.m)
+            return fout    
+        default_qttes.append([name,symbol,units,field2load,receipe_qpar])
+        
+        # total perpendicular heat flux
+        name       = 'qperp'
+        symbol     = r'$q_{\perp}$'
+        units      = r'W/m$^2$'
+        field2load = []
+        for spec in species_kinetic_list:
+            s_ = spec.nshort
+            field2load.append('M3perp%s'%s_)
+        def receipe_qperp(gdata_list,species_list=species_kinetic_list):
+            fout = 0.0
+            for spec in species_list:
+                fout += receipe_qperps(gdata_list=gdata_list, m=spec.m)
+            return fout    
+        default_qttes.append([name,symbol,units,field2load,receipe_qperp])
         
         #charge density
         name       = 'qdens'
