@@ -1,5 +1,7 @@
 import postgkyl as pg
 import numpy as np
+# NumPy >= 2.0 renamed trapz to trapezoid; support both
+_trapz = getattr(np, 'trapezoid', np.trapz)
 from ..interfaces import pgkyl_interface as pgkyl_
 from ..tools import math_tools as mt
 import os
@@ -164,9 +166,9 @@ class GeomParam:
         dg.interpolate(0,overwrite=True)
         self.Jacobian = pgkyl_.get_values(Gdata)
         self.Jacobian = self.Jacobian[:,:,:,0]
-        J_yz          = np.trapz(self.Jacobian,self.x,axis=0)
-        J_z           = np.trapz(J_yz,self.y,axis=0)
-        self.intJac   = np.trapz(J_z,self.z,axis=0)
+        J_yz          = _trapz(self.Jacobian,self.x,axis=0)
+        J_z           = _trapz(J_yz,self.y,axis=0)
+        self.intJac   = _trapz(J_z,self.z,axis=0)
         
         #-- add a volume fraction and toroidal mode number
         if self.cdim == 2:

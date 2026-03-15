@@ -2,6 +2,8 @@ import attr
 import h5py
 from matplotlib.colors import LogNorm
 import numpy as np
+# NumPy >= 2.0 renamed trapz to trapezoid; support both
+_trapz = getattr(np, 'trapezoid', np.trapz)
 import os
 import matplotlib.pyplot as plt
 import io
@@ -411,7 +413,7 @@ class GyrazeInterface:
             
         # Normalize f0 so that integrating over Eperp and Epar gives 1
         if not self.phase_space_norm == 'unnormalized':
-            int_f0 = np.trapz(np.trapz(f0, sperp, axis=1), spar, axis=0)
+            int_f0 = _trapz(_trapz(f0, sperp, axis=1), spar, axis=0)
             f0 = f0 / int_f0
                     
         # Generate args content
