@@ -1030,8 +1030,10 @@ class DataParam:
             field2load.append('M3par%s'%s_)
         def receipe_qpar(gdata_list,species_list=species_kinetic_list):
             fout = 0.0
+            k = 0
             for spec in species_list:
-                fout += receipe_qpars(gdata_list=gdata_list, m=spec.m)
+                fout += receipe_qpars(gdata_list=gdata_list[0+k], m=spec.m)
+                k += 1
             return fout    
         default_qttes.append([name,symbol,units,field2load,receipe_qpar])
         
@@ -1045,8 +1047,10 @@ class DataParam:
             field2load.append('M3perp%s'%s_)
         def receipe_qperp(gdata_list,species_list=species_kinetic_list):
             fout = 0.0
+            k = 0
             for spec in species_list:
-                fout += receipe_qperps(gdata_list=gdata_list, m=spec.m)
+                fout += receipe_qperps(gdata_list=gdata_list[0+k], m=spec.m)
+                k += 1
             return fout    
         default_qttes.append([name,symbol,units,field2load,receipe_qperp])
         
