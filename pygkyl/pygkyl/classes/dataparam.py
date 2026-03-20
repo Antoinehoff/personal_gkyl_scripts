@@ -566,7 +566,7 @@ class DataParam:
             def receipe_qpars(gdata_list, m=spec.m):
                 qparpar = pgkyl_.get_values(gdata_list[0])
                 qparperp = pgkyl_.get_values(gdata_list[1])
-                return m/3 * (qparpar + 2*qparperp)
+                return m * (qparpar + qparperp)
             default_qttes.append([name,symbol,units,field2load,receipe_qpars])
             
             #normalized radial density gradient
