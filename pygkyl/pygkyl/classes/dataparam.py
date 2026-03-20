@@ -537,7 +537,7 @@ class DataParam:
             units      = 'J/kg' # T is stored as T/m in gkeyll
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Ttots(gdata_list):
-                return (pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0
+                return 0.5*pgkyl_.get_values(gdata_list[0]) + pgkyl_.get_values(gdata_list[1])
             default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
             
             # Parallel heat flux moment
