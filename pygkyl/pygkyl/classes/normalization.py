@@ -54,7 +54,7 @@ class Normalization:
                 if k in default_dict.keys():
                     self.dict[k] = default_dict[k]
             return
-        if key not in default_dict.keys():
+        if key not in default_dict['names']:
             print(f"Warning: The key '{key}' is not recognized. No reset performed.")
             return
         # Reset the normalization of key to the default value

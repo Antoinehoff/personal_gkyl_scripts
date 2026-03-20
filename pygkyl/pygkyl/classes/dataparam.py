@@ -1584,6 +1584,9 @@ class DataParam:
             default_units_dict[key+'units']    = units[key]
             default_units_dict[key+'compo']    = compo[key]
             default_units_dict[key+'receipe']  = receipe[key]
+            
+        # add the name of each quantities to the default_units_dict for easy access
+        default_units_dict['names'] = names
 
         # add default colormap for each fields
         positive_fields = ['Bmag','pow_src','rhoe_lambdaD',
