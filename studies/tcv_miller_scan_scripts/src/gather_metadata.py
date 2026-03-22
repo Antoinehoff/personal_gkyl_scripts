@@ -8,14 +8,15 @@ import copy
 import time
 import numpy as np
 import h5py
+from scipy.optimize import curve_fit
 
 filename_ext = None # Add to the end of the filename.
-
-scan_arrays={
+scan_arrays = {
     "kappa": [1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8],
     "delta": [-0.6, -0.45, -0.3, -0.15, 0.15, 0.3, 0.45, 0.6],
     "energy_srcCORE": [0.1e6, 0.5e6, 1.0e6, 5.0e6],
 }
+# scan_arrays = {"kappa": [1.1],"delta": [-0.6], "energy_srcCORE": [0.1e6]}
 scandir = 'tcv_miller_scan_big'
 # scandir = 'tcv_miller_scan_18x12x12x10x6'
 scanname = scandir
@@ -85,8 +86,8 @@ def get_field_values(simulation, frame_array, locations, fields):
                     
     return results, frames[fields[0]].time
 
-def get_integrated_bflux(simulation, flux_names):
-    bflux_dict = {}
+def get_integrated_mom(simulation, flux_names):
+    mom_dict = {}
     for flux in flux_names:
         intmom = pygkyl.IntegratedMoment(simulation=simulation, name=flux, load=True, ddt=False)
         # take a subset of the time points to reduce data size, 2 point per mus
@@ -94,11 +95,10 @@ def get_integrated_bflux(simulation, flux_names):
         dt_samp = 2.0  # microseconds
         time_subsampled = np.arange(0, tmax+dt_samp, dt_samp)
         values_subsampled = np.interp(time_subsampled, intmom.time, intmom.values)
-        bflux_dict[flux] = {'time': time_subsampled, 'values': values_subsampled, 
+        mom_dict[flux] = {'time': time_subsampled, 'values': values_subsampled, 
                             'tunits': intmom.tunits, 'vunits': intmom.vunits,
-                            'fluxname': intmom.fluxname}
-    return bflux_dict
-
+                            'name': intmom.fluxname}
+    return mom_dict
 
 def get_average_dt(logfile):
     """Calculate average dt from log file."""
@@ -114,6 +114,31 @@ def get_average_dt(logfile):
     except FileNotFoundError:
         print(f"Log file {logfile} not found. Returning dt=0.0")
         return 0.0
+    
+def get_heatflux_width(simulation):
+
+    simulation.normalization.reset('x')
+
+    qframe = simulation.get_frame(fieldName='qpar', timeFrame=simulation.frame_list[-1], load=True)
+
+    qframe.slice(axs='x', ccoord=['avg', -1])
+
+    x = np.squeeze(qframe.new_grids[0])
+    q = np.abs(np.squeeze(qframe.values))
+    lcfs_idx = np.argmin(np.abs(x - 0.04))
+    xsol = x[lcfs_idx:] - 0.04
+    qsol = q[lcfs_idx:]
+
+    # Fit an exponential decay to compute the heat flux length scale
+    n = len(xsol)
+    def exp_decay(x, A, lambda_):
+        return A * np.exp(-x / lambda_)
+    popt, _ = curve_fit(exp_decay, xsol[:n//4], qsol[:n//4], p0=(qsol[0], 0.005))
+    heat_flux_length_scale = popt[1]
+    
+    print(f"Estimated heat flux length scale (lambda_q) = {heat_flux_length_scale:.4f} m")
+
+    return heat_flux_length_scale
 
 filename = f'{scandir}_metadata'
 if frame_idx >= 0:
@@ -166,15 +191,19 @@ def process_scan(args_tuple):
         field_values, tend = get_field_values(simulation, frame_array, locations, fields)
         
         # Get integrated bflux moments
-        bflux_dict = get_integrated_bflux(simulation, 
+        intmom_dict = get_integrated_mom(simulation, 
             ['bflux_x_l_ne', 'bflux_x_l_ni', 'bflux_x_l_He', 'bflux_x_l_Hi',
              'bflux_x_u_ne', 'bflux_x_u_ni', 'bflux_x_u_He', 'bflux_x_u_Hi',
              'bflux_z_l_ne', 'bflux_z_l_ni', 'bflux_z_l_He', 'bflux_z_l_Hi',
-             'bflux_z_u_ne', 'bflux_z_u_ni', 'bflux_z_u_He', 'bflux_z_u_Hi'])
+             'bflux_z_u_ne', 'bflux_z_u_ni', 'bflux_z_u_He', 'bflux_z_u_Hi',
+             'ne', 'ni', 'We', 'Wi'])
         
         # Get simulation average dt from log file
         avg_dt = get_average_dt(f'{scandir}/logs/std-{scanname}_{scanidx:05d}.log')
         
+        # Get heat flux width
+        lambda_q = get_heatflux_width(simulation)
+
         # Gather data
         data = {
             'simdir': simdir,
@@ -184,7 +213,9 @@ def process_scan(args_tuple):
             'energy_srcCORE': combinations[scanidx][-1],
             'tend': tend,
             'avg_dt': avg_dt,
-            'bflux': bflux_dict,
+            'vol_frac': simulation.geom_param.vol_frac,
+            'intmom': intmom_dict,
+            'lambda_q': lambda_q,
             **field_values,  # Unpack all field values
         }
         
@@ -238,19 +269,19 @@ if __name__ == '__main__':
             
             # Save scalar params and field values as attributes
             for key, val in m.items():
-                if key == 'bflux':
+                if key == 'intmom':
                     continue
                 grp.attrs[key] = val
             
-            # Save bflux time series as datasets
-            bflux_grp = grp.create_group('bflux')
-            for flux_name, flux_data in m['bflux'].items():
-                flux_grp = bflux_grp.create_group(flux_name)
-                flux_grp.create_dataset('time', data=np.asarray(flux_data['time']))
-                flux_grp.create_dataset('values', data=np.asarray(flux_data['values']))
-                flux_grp.attrs['tunits'] = flux_data['tunits']
-                flux_grp.attrs['vunits'] = flux_data['vunits']
-                flux_grp.attrs['fluxname'] = flux_data['fluxname']
+            # Save integrated moment time series as datasets
+            intmom_grp = grp.create_group('intmom')
+            for mom_name, mom_data in m['intmom'].items():
+                mom_grp = intmom_grp.create_group(mom_name)
+                mom_grp.create_dataset('time', data=np.asarray(mom_data['time']))
+                mom_grp.create_dataset('values', data=np.asarray(mom_data['values']))
+                mom_grp.attrs['tunits'] = mom_data['tunits']
+                mom_grp.attrs['vunits'] = mom_data['vunits']
+                mom_grp.attrs['name'] = mom_data['name']
     
     elapsed_time = time.time() - start_time
     print(f"\nMetadata saved to {filename+'.h5'}")

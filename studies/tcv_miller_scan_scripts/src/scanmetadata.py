@@ -80,7 +80,7 @@ class ScanMetadata:
         'hflux_xi' : r'Q_{xi}', 'hflux_xe' : r'Q_{xe}',
         'pflux_xi' : r'\Gamma_{xi}', 'pflux_xe' : r'\Gamma_{xe}',
         'kn': r'k_n', 'kTi': r'k_{T_i}', 'kTe': r'k_{T_e}',
-        'avg_dt' : r'\Delta t',
+        'avg_dt' : r'\Delta t', 'lambda_q' : r'\lambda_q',
     }
     
     # Default field units
@@ -92,14 +92,14 @@ class ScanMetadata:
         'T': r'[eV]', 'n': r'[$m^{-3}$]', 'p': r'[V]', 'P': r'[kPa]',
         'Dxi': r'[m$^2$/s]', 'Dxe': r'[m$^2$/s]', 'chixi': r'[m$^2$/s]', 'chixe': r'[m$^2$/s]',
         'kn': r'', 'kTi': r'', 'kTe': r'',
-        'avg_dt': r'[ns]',
+        'avg_dt': r'[ns]', 'lambda_q': r'[mm]',
     }
     
     # Default field scaling factors
     DEFAULT_FIELD_SCALING = {
         'hflux_xi': 1e-6, 'hflux_xe': 1e-6,
         'pflux_xi': 1e-6, 'pflux_xe': 1e-6,
-        'avg_dt' : 1e9,
+        'avg_dt' : 1e9, 'lambda_q': 1e3,
     }
     
     # Default location symbols (r/a values)
@@ -107,15 +107,17 @@ class ScanMetadata:
         'core': 0.85, 'edge': 0.9, 'lcfs': 1.0, 'sol': 1.2, 'limlo': 1.2, 'limup': 1.2
     }
     DEFAULT_LOCATION_SYMBOLS = {
-        # key : f'{val:.2f}' for key, val in DEFAULT_LOCATION_VALUES.items()
-        key : r'\text{' + key + '}' for key in DEFAULT_LOCATION_VALUES.keys()
+        'core': r'\text{core}', 'edge': r'\text{edge}', 'lcfs': r'\text{sep}', 'sol': r'\text{SOL}',
+        'limlo': r'\text{lo}', 'limup': r'\text{lu}',
     }
     
     # Known scan parameters to look for
-    KNOWN_SCAN_PARAMS = ['kappa', 'delta', 'energy_srcCORE', 'nu', 'beta']
+    KNOWN_SCAN_PARAMS = ['kappa', 'delta', 'energy_srcCORE']
+    KNOWN_SCAN_PARAM_SYMBOLS = { 'kappa': r'\kappa', 'delta': r'\delta', 'energy_srcCORE': r'P_{\text{in}}' }
     
     # Metadata keys (not scan parameters or fields)
-    METADATA_KEYS = {'simdir', 'scanidx', 'tend', 'avg_dt', 'frame', 'navg', 'bflux'}
+    METADATA_KEYS = {'simdir', 'scanidx', 'tend', 'avg_dt', 'frame', 'navg', 
+                     'intmom', 'vol_frac', 'lambda_q'}
     
     def __init__(self, metadata_file: Union[str, Path], bflux_tavg: float = 25.0):
         """
@@ -201,10 +203,10 @@ class ScanMetadata:
                         entry[key] = val.item()
                     else:
                         entry[key] = val
-                # Read bflux time-series datasets if present
-                if 'bflux' in grp:
-                    bflux_dict = {}
-                    for flux_name, flux_grp in grp['bflux'].items():
+                # Read intmom time-series datasets if present
+                if 'intmom' in grp:
+                    intmom_dict = {}
+                    for intmom_name, flux_grp in grp['intmom'].items():
                         # Decode string attrs that h5py may return as bytes
                         def _attr_str(v):
                             if isinstance(v, (bytes, np.bytes_)):
@@ -213,16 +215,16 @@ class ScanMetadata:
                                 v = v.item()
                             return str(v) if not isinstance(v, str) else v
                         try:
-                            bflux_dict[flux_name] = {
+                            intmom_dict[intmom_name] = {
                                 'time':     np.asarray(flux_grp['time'][:], dtype=float),
                                 'values':   np.asarray(flux_grp['values'][:], dtype=float),
                                 'tunits':   _attr_str(flux_grp.attrs.get('tunits', 'mus')),
                                 'vunits':   _attr_str(flux_grp.attrs.get('vunits', '')),
-                                'fluxname': _attr_str(flux_grp.attrs.get('fluxname', flux_name)),
+                                'name': _attr_str(flux_grp.attrs.get('name', intmom_name)),
                             }
                         except Exception as exc:
-                            print(f'Warning: could not load bflux dataset {flux_name}: {exc}')
-                    entry['bflux'] = bflux_dict
+                            print(f'Warning: could not load intmom dataset {intmom_name}: {exc}')
+                    entry['intmom'] = intmom_dict
                 self.metadata.append(entry)
 
     # ------------------------------------------------------------------
@@ -254,6 +256,8 @@ class ScanMetadata:
         
         # Add simulation metadata
         self.available_field_keys.append('avg_dt')
+        self.available_field_keys.append('lambda_q')
+        self.available_field_keys.append('vol_frac')
     
     def _extract_scan_parameters(self):
         """Extract scan parameter arrays from metadata."""
@@ -329,6 +333,9 @@ class ScanMetadata:
         # Add avg dt
         self.all_fields.append('avg_dt')
         
+        # Add lambda_q
+        self.all_fields.append('lambda_q')
+        
         # Build all_field_symbols dict
         self.all_field_symbols = {}
         
@@ -355,7 +362,7 @@ class ScanMetadata:
                 fs = self.field_symbols.get(field, field)
                 ls1 = self.location_symbols.get(loc1, loc1)
                 self.all_field_symbols[key] = (
-                    r'${' + fs + r'}^{' + ls1 + r'} / {' + fs + r'}^{\text{LCFS}}$'
+                    r'${' + fs + r'}^{' + ls1 + r'} / {' + fs + r'}^{\text{sep}}$'
                 )                
                 for j, loc2 in enumerate(self.locations):
                     if i >= j:
@@ -439,6 +446,13 @@ class ScanMetadata:
                         1.5 * entry[f'Te_{loc}'] * entry[f'ne_{loc}'] * 1.602e-19 * 1e-3
                     )
         
+        # Add also the parameters as fields for easy access
+        for param in self.scan_keys:
+            self.data[param] = np.zeros(param_shapes)
+            for entry in self.metadata:
+                indices = tuple(self.scan_params[k].index(entry[k]) for k in self.scan_keys)
+                self.data[param][indices] = entry[param]
+        
         # Compute all composite fields (differences between locations and LCFS normalized)
         all_base_fields = list(set(self.fields + ['Pi', 'Pe']))
         for field in all_base_fields:
@@ -473,14 +487,13 @@ class ScanMetadata:
         # Compute the diffusivity coefficients based on core and lcfs values
         for flux in ['pflux_xi', 'pflux_xe']:
             s_ = flux[-1]  # Extract the last character (e.g., 'i' or 'e')
-            plux_lcfs = self.data[f'{flux}_lcfs']
+            pflux_lcfs = self.data[f'{flux}_lcfs']
             delta_n = self.data[f'ne_edge'] - self.data[f'ne_lcfs']
-            Gammalcfs = self.data[f'pflux_x{s_}_lcfs']
             delta_x = self.DEFAULT_LOCATION_VALUES['edge'] - self.DEFAULT_LOCATION_VALUES['lcfs']
             gradn = delta_n / (self.AMID*delta_x)
-            Dx = -plux_lcfs / gradn
+            Dx = -pflux_lcfs / gradn
             self.data[f'Dx{flux[-1]}'] = Dx
-            self.all_field_symbols[f'Dx{flux[-1]}'] = r'$D_{x' + flux[-1] + r'}$'
+            self.all_field_symbols[f'Dx{flux[-1]}'] = r'$D_{x' + flux[-1] + r'}^{\text{sep}}$'
             
         for flux in ['hflux_xi', 'hflux_xe']:
             s_ = flux[-1]  # Extract the last character (e.g., 'i' or 'e')
@@ -497,13 +510,13 @@ class ScanMetadata:
             chix = -(hflux_lcfs - 1.5 * Tlcfs * pflux_lcfs) / (gradT *  delta_n)
             
             self.data[f'chix{flux[-1]}'] = chix
-            self.all_field_symbols[f'chix{flux[-1]}'] = r'$\chi_{' + flux[-1] + r'}$'
+            self.all_field_symbols[f'chix{flux[-1]}'] = r'$\chi_{' + flux[-1] + r'}^{\text{sep}}$'
             
         self.data[f'chixe_over_chixi'] = self.data['chixe'] / self.data['chixi']
-        self.all_field_symbols[f'chixe_over_chixi'] = r'$\chi_{e} / \chi_{i}$'
+        self.all_field_symbols[f'chixe_over_chixi'] = r'$\chi_{e}^{\text{sep}} / \chi_{i}^{\text{sep}}$'
         
         self.data[f'De_over_chitot'] = self.data['Dxe'] / (self.data['chixe'] + self.data['chixi'])
-        self.all_field_symbols[f'De_over_chitot'] = r'$D_{e} / (\chi_{e} + \chi_{i})$'
+        self.all_field_symbols[f'De_over_chitot'] = r'$D_{e}^{\text{sep}} / (\chi_{e}^{\text{sep}} + \chi_{i}^{\text{sep}})$'
         
         self.data[f'dne_rel'] = (self.data['ne_edge'] - self.data['ne_lcfs']) / self.data['ne_edge'] * 100
         self.all_field_symbols[f'dne_rel'] = r'$\Delta n_e / n_{e}$ [%]'
@@ -522,32 +535,41 @@ class ScanMetadata:
         
         self.data[f'Edens_i'] = 1.5 * self.data['Ti_core'] * self.data['ne_core'] * 1.602e-19
         self.all_field_symbols[f'Edens_i'] = r'$E_{dens,i}$ [J/m$^3$]'
-
-        # Pre-load boundary flux time-averaged data
-        self._preload_bflux_data()
+        
+        # Pre-load integrated moment time-averaged data
+        self._preload_avg_intmom_data()
+        
+        # Confinement time estimate: \tau_E ~ W / P_sol
+        p, w = 0, 0
+        for s_ in ['i', 'e']:
+            w += self.data[f'W{s_}']
+            for l_ in ['x_u', 'z_u', 'z_l']:
+                p += self.data[f'bflux_{l_}_H{s_}']
+        self.data[f'tau_E'] = w/p
+        self.all_field_symbols[f'tau_E'] = r'$\tau_E$ [s]'            
             
-    def _preload_bflux_data(self):
-        """Average boundary flux time series over the last bflux_tavg microseconds.
+    def _preload_avg_intmom_data(self):
+        """Average integrated moment time series over the last bflux_tavg microseconds.
 
-        For each bflux name (e.g. 'bflux_x_l_ne'), the mean of values in the
+        For each int moment name (e.g. 'bflux_x_l_ne'), the mean of values in the
         time window [t_end - bflux_tavg, t_end] is stored in self.data under
         the same key.  Field symbols are built from the bflux name components.
 
         This is a no-op when no metadata entry contains bflux data.
         """
-        # Find first entry that has bflux data to get the flux names
-        bflux_names = None
+        # Find first entry that has integrated moment data to get the flux names
+        intmom_names = None
         for entry in self.metadata:
-            if 'bflux' in entry and entry['bflux']:
-                bflux_names = list(entry['bflux'].keys())
+            if 'intmom' in entry and entry['intmom']:
+                intmom_names = [name for name in entry['intmom'].keys()]
                 break
-        if bflux_names is None:
-            return  # No bflux data available
+        if intmom_names is None:
+            return  # No integrated moment data available
 
         param_shapes = [len(self.scan_params[k]) for k in self.scan_keys]
 
         # Pre-allocate
-        for name in bflux_names:
+        for name in intmom_names:
             self.data[name] = np.full(param_shapes, np.nan)
 
         def _find_idx(param, value):
@@ -565,22 +587,22 @@ class ScanMetadata:
 
         # Fill from metadata
         for entry in self.metadata:
-            if 'bflux' not in entry or not entry['bflux']:
+            if 'intmom' not in entry or not entry['intmom']:
                 continue
             try:
                 indices = tuple(_find_idx(k, entry[k]) for k in self.scan_keys)
             except (ValueError, KeyError) as exc:
                 continue
-            for name in bflux_names:
-                if name not in entry['bflux']:
+            for name in intmom_names:
+                if name not in entry['intmom']:
                     continue
-                t = np.asarray(entry['bflux'][name]['time'], dtype=float)
-                v = np.asarray(entry['bflux'][name]['values'], dtype=float)
+                t = np.asarray(entry['intmom'][name]['time'], dtype=float)
+                v = np.asarray(entry['intmom'][name]['values'], dtype=float)
                 if len(t) == 0:
                     continue
                 t_end = t[-1]
                 mask = t >= (t_end - self.bflux_tavg)
-                self.data[name][indices] = np.nanmean(v[mask]) if mask.any() else np.nan
+                self.data[name][indices] = np.nanmean(v[mask]) if mask.any() else np.nan     
 
         # Build human-readable symbols:
         #   bflux_x_l_ne -> $\Gamma_{x,\ell}^{n_e}$  (particle flux)
@@ -589,7 +611,7 @@ class ScanMetadata:
         _species_base = {'ne': r'\Gamma', 'ni': r'\Gamma', 'He': r'Q', 'Hi': r'Q'}
         _dir_sym  = {'x': 'x', 'z': 'z'}
         _side_sym = {'l': r'\ell', 'u': 'u'}
-        for name in bflux_names:
+        for name in intmom_names:
             parts = name.split('_')  # ['bflux', dir, side, species]
             if len(parts) == 4:
                 _, d, s, sp = parts
@@ -606,6 +628,7 @@ class ScanMetadata:
 
         # --- Per-(dir,side) species totals: bflux_{dir}_{side}_tot ---
         # Group flux names by their (dir, side) pair and sum over all species.
+        bflux_names = [n for n in intmom_names if 'flux' in n]
         by_dirside = {}
         for name in bflux_names:
             parts = name.split('_')
