@@ -6,7 +6,7 @@ from ..classes.simulation import Simulation
 from ..classes.species import Species
 from ..projections.poloidalprojection import Inset
 from ..classes.normalization import Normalization
-from ..configs.vessel_data import d3d_vessel_data
+from ..configs.vessel_data import d3d_vessel_data, tcv_vessel_data
 import os
 import matplotlib.pyplot as plt
 
@@ -393,10 +393,105 @@ def get_gyacomo_sim_config(configName,simdir,simidx):
         return get_gyacomo_multiscale_config(simdir,simidx,params)
     if 'cbc' in configName:
         return get_gyacomo_cbc_config(simdir,simidx,params)
+    if 'tcv' in configName:
+        return get_gyacomo_tcv_config(simdir,simidx,params)
     else:
         print("Use default Gyacomo CBC configuration.")
         return get_gyacomo_cbc_config(simdir,simidx,params)
         
+def get_gyacomo_tcv_config(simdir,simidx,params):
+    '''
+    This function returns a simulation object for analyzing a Gyacomo simulation.
+    '''
+    R_axis = 0.88 # TCV
+    B_axis = 1.43
+    amid = 0.25
+    R_LCFSmid = R_axis + amid
+    r0 = 0.5*amid
+    simulation = Simulation(dimensionality='3x2v', code='gyacomo')
+
+    simulation.set_phys_param(
+        eps0 = 8.854e-12,       # Vacuum permittivity [F/m]
+        eV = 1.602e-19,         # Elementary charge [C]
+        mp = 1.673e-27,         # Proton mass [kg]
+        me = 9.109e-31,         # Electron mass [kg]
+    )
+    def qprofile(R):
+        r = R - R_axis
+        q0 = params['GEOMETRY']['q0']
+        s0 = params['GEOMETRY']['shear']
+        return q0 * (1 + s0 * (r - r0) / r0)
+
+    simulation.set_geom_param(
+        B_axis      = B_axis, # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis, # Magnetic axis major radius
+        Z_axis      = 0.0, # Magnetic axis height (assumed zero)
+        R_LCFSmid   = R_LCFSmid, # Major radius of LCFS at the midplane
+        a_shift     = 0.0, # Parameter in Shafranov shift
+        kappa       = params['GEOMETRY']['kappa'],
+        delta       = params['GEOMETRY']['delta'],
+        qprofile_R  = qprofile, # Safety factor
+        x_LCFS      = 1.0, # position of the LCFS (dummy, will be updated later)
+        x_out       = 0.0 # SOL domain width (gyacomo does not simulate SOL)
+    )
+    
+    # Define the species
+    # Temperature and density are approx. taken from Hoffmann et al. 2026, TCV gkeyll.
+    simulation.add_species(Species(name='ion',
+                m=simulation.phys_param.mp, # Ion mass (proton), Deutrerium is 2.01410177811
+                q=simulation.phys_param.eV,
+                T0=250*simulation.phys_param.eV, 
+                n0=2e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV,
+                T0=250*simulation.phys_param.eV, 
+                n0=2e19))
+    
+    Lx = params['GRID']['Lx'] * simulation.get_rho_s()
+    Rcenter = R_axis + r0
+    x_LCFS = R_LCFSmid - Rcenter
+    x_in = R_LCFSmid - r0 - Lx / 2.0
+    x_out = R_LCFSmid - r0 + Lx / 2.0
+    simulation.geom_param.change(x_LCFS= x_LCFS, x_in=x_in, x_out=x_out)
+    
+    simulation.gyac = GyacomoInterface(simulation,simdir,simidx)
+    
+    simulation.available_frames = simulation.gyac.available_frames
+    simulation.data_param = simulation.gyac.adapt_data_param(simulation=simulation)
+    simulation.normalization = simulation.gyac.adapt_normalization(simulation=simulation)
+    
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.4,0.3],
+            xlim = [0.9,1.0],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
+    
+    # Add discharge ID    
+    simulation.dischargeID = 'GYACOMO, TCV Gkeyll case'
+    
+    # Add vessel data filename
+    simulation.geom_param.vessel_data = tcv_vessel_data
+    
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(1.0, 1.0, 0.5),
+        'looking_at':(0, 0, 0),
+            'zoom': 1.0
+    }
+    # Cameras for 1:2 formats
+    simulation.geom_param.camera_zoom_1by2 = {   
+        'position':(0.5, 0.5, 0.3),
+        'looking_at':(0., 0.75, 0.1),
+        'zoom': 1.0
+    }
+    
+    return simulation
+    
+    
 def get_gyacomo_cbc_config(simdir,simidx,params):
     '''
     This function returns a simulation object for analyzing a Gyacomo simulation.
@@ -530,12 +625,12 @@ def get_gyacomo_multiscale_config(simdir,simidx,params):
     simulation.add_species(Species(name='ion',
                 m=simulation.phys_param.mp, # Ion mass (proton), Deutrerium is 2.01410177811
                 q=simulation.phys_param.eV,
-                T0=1500*simulation.phys_param.eV, 
+                T0=500*simulation.phys_param.eV, 
                 n0=4e19))
     simulation.add_species(Species(name='elc',
                 m=simulation.phys_param.me, 
                 q=-simulation.phys_param.eV,
-                T0=1500*simulation.phys_param.eV, 
+                T0=500*simulation.phys_param.eV, 
                 n0=4e19))
 
     Lx = params['GRID']['Lx'] * simulation.get_rho_s()
