@@ -31,7 +31,8 @@ from typing import Dict, List, Tuple, Optional, Union, Any
 
 from . import config
 from . import fields as fmod
-from .loaders import load_metadata, save_linear_gk_data as _save_linear_gk
+from .loaders import load_metadata, save_linear_gk_data as _save_linear_gk, \
+    clear_linear_gk_data as _clear_linear_gk
 from .extraction import extract_field_data as _extract, \
     get_sim_index as _get_idx, get_power_slices, \
     get_multi_dim_index as _get_multi_dim_index
@@ -66,39 +67,38 @@ class ScanMetadata:
     def __init__(self, metadata_file: Union[str, Path], bflux_tavg: float = 25.0):
         self.metadata_file = Path(metadata_file)
         self.bflux_tavg = bflux_tavg
-        self.gk_linear_scan_data = {}
 
         if not self.metadata_file.exists():
             raise FileNotFoundError(f"Metadata file not found: {self.metadata_file}")
 
-        # 1. Load raw metadata
+        #  Load raw metadata
         self.metadata = load_metadata(self.metadata_file)
         if not self.metadata:
             raise ValueError("Metadata file is empty")
 
-        # 2. Detect fields, locations
+        # Detect fields, locations
         self.fields, self.locations, self.available_field_keys = (
             fmod.detect_fields_and_locations(self.metadata)
         )
 
-        # 3. Scan parameters
+        # Scan parameters
         self._extract_scan_parameters()
 
-        # 4. Field properties
+        # Field properties
         self.field_symbols, self.field_units, self.field_scaling, self.location_symbols = (
             fmod.build_field_properties(self.fields, self.locations)
         )
         self.field_refvals = dict(fmod.FIELD_REFVALS)
 
-        # 5. All-field symbols (including composites)
+        # All-field symbols (including composites)
         self.all_fields, self.all_field_symbols = fmod.build_all_field_symbols(
             self.fields, self.locations, self.field_symbols, self.location_symbols
         )
 
-        # 6. Sim directory pattern
+        # Sim directory pattern
         self._detect_sim_pattern()
 
-        # 7. Pre-load & compute composite fields
+        # Pre-load & compute composite fields
         self._preload_all_data()
 
     # ------------------------------------------------------------------
@@ -149,7 +149,7 @@ class ScanMetadata:
         for entry in self.metadata:
             indices = tuple(self.scan_params[k].index(entry[k]) for k in self.scan_keys)
             for key in self.available_field_keys:
-                if key in entry:
+                if key in entry and not isinstance(entry[key], (dict, list)):
                     self.data[key][indices] = entry[key]
 
         # Store scan parameters as data arrays too
@@ -386,7 +386,7 @@ class ScanMetadata:
 
     def add_gk_linear_data(self, delta, kappa, energy_srcCORE, ky, omega, params_in=''):
         """
-        Store linear GK data for a given parameter set.
+        Merge linear GK data for a specific parameter combination into the internal dictionary.
 
         Parameters
         ----------
@@ -403,14 +403,48 @@ class ScanMetadata:
         params_in : str, optional
             Input parameters string
         """
-        key = (delta, kappa, energy_srcCORE)
-        self.gk_linear_scan_data[key] = {}
-        self.gk_linear_scan_data[key]['ky'] = ky
-        self.gk_linear_scan_data[key]['omega'] = omega
-        self.gk_linear_scan_data[key]['params_in'] = params_in
+        new_entry = {
+            'ky': np.atleast_1d(np.asarray(ky, dtype=np.float64)),
+            'omega': np.atleast_1d(np.asarray(omega, dtype=np.complex128)),
+            'params_in': params_in
+        }
+        sim_idx = self.get_sim_index({'delta': delta, 'kappa': kappa, 'energy_srcCORE': energy_srcCORE})
+        current_entry = self.metadata[sim_idx].get('linear_gk', {})
+        # Check if we already have this ky
+        if current_entry == {}:
+            self.metadata[sim_idx]['linear_gk'] = new_entry
+        else:
+            existing_ky = self.metadata[sim_idx]['linear_gk']['ky']
+            existing_omega = self.metadata[sim_idx]['linear_gk']['omega']
+
+            # Split new entries into duplicates (overwrite) and truly new (append)
+            is_duplicate = np.isin(new_entry['ky'], existing_ky)
+            new_ky    = new_entry['ky'][~is_duplicate]
+            new_omega = new_entry['omega'][~is_duplicate]
+
+            # Overwrite omega for duplicate ky values
+            for ky_val, om_val in zip(new_entry['ky'][is_duplicate], new_entry['omega'][is_duplicate]):
+                mask = existing_ky == ky_val
+                existing_omega[mask] = om_val
+
+            # Append genuinely new ky values and sort
+            if len(new_ky) > 0:
+                merged_ky    = np.concatenate((existing_ky, new_ky))
+                merged_omega = np.concatenate((existing_omega, new_omega))
+                sort_indices = np.argsort(merged_ky)
+                self.metadata[sim_idx]['linear_gk']['ky']    = merged_ky[sort_indices]
+                self.metadata[sim_idx]['linear_gk']['omega'] = merged_omega[sort_indices]
+            else:
+                self.metadata[sim_idx]['linear_gk']['omega'] = existing_omega
 
     def save_gk_linear_data(self):
         """
         Save the GK linear data into the original HDF5 metadata file.
         """
-        _save_linear_gk(self.metadata_file, self.gk_linear_scan_data, self.get_sim_index)
+        _save_linear_gk(self.metadata_file, self.metadata)
+
+    def clear_gk_linear_data(self):
+        """
+        Clear all GK linear data from the metadata and save the cleaned metadata back to the file.
+        """
+        _clear_linear_gk(self.metadata_file)
