@@ -40,7 +40,7 @@ class GyacomoSimulation:
         Path to gyacomo executable
     """
     
-    def __init__(self, run_dir, jobnum=0, executable=None):
+    def __init__(self, run_dir, jobnum=0, executable=None, mpi_cmd='mpirun'):
         """
         Initialize a Gyacomo simulation instance.
         
@@ -58,6 +58,7 @@ class GyacomoSimulation:
         self.params_file = self.run_dir / "params.in"
         self.output_file = self.run_dir / f"outputs_{jobnum:02d}.h5"
         self.stdout_file = self.run_dir / f"std_{jobnum:02d}.out"
+        self.mpi_cmd = mpi_cmd
         
         # Auto-detect executable if not provided
         if executable is None:
@@ -487,8 +488,9 @@ class GyacomoSimulation:
         self.setup_directory()
         
         # Run command
+        cmd_opt = '-np' if 'mpirun' in self.mpi_cmd else '-n'
         cmd = [
-            'mpirun', '-np', str(nproc),
+            self.mpi_cmd, cmd_opt, str(nproc),
             str(self.executable),
             str(proc_distr[0]), str(proc_distr[1]), str(proc_distr[2])
         ]
