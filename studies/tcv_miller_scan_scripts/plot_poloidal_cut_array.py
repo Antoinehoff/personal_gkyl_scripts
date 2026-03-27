@@ -1,6 +1,6 @@
 import os
 import matplotlib.pyplot as plt
-from scanmetadata import ScanMetadata
+from scan_analysis import ScanMetadata
 h5file = 'tcv_miller_scan_big_metadata_frame_500_navg_25.h5'
 miller_scan = ScanMetadata(h5file)
 

@@ -31,8 +31,10 @@ from typing import Dict, List, Tuple, Optional, Union, Any
 
 from . import config
 from . import fields as fmod
-from .loaders import load_metadata
-from .extraction import extract_field_data as _extract, get_sim_index as _get_idx, get_power_slices
+from .loaders import load_metadata, save_linear_gk_data as _save_linear_gk
+from .extraction import extract_field_data as _extract, \
+    get_sim_index as _get_idx, get_power_slices, \
+    get_multi_dim_index as _get_multi_dim_index
 from .plotting import style as _style  # auto-applies style on import
 from .plotting.contour import plot_contour_grid as _plot_contour
 from .plotting.scatter import plot_field_vs_field as _plot_scatter
@@ -64,6 +66,7 @@ class ScanMetadata:
     def __init__(self, metadata_file: Union[str, Path], bflux_tavg: float = 25.0):
         self.metadata_file = Path(metadata_file)
         self.bflux_tavg = bflux_tavg
+        self.gk_linear_scan_data = {}
 
         if not self.metadata_file.exists():
             raise FileNotFoundError(f"Metadata file not found: {self.metadata_file}")
@@ -252,11 +255,27 @@ class ScanMetadata:
     def get_sim_index(self, params: Dict[str, Any]) -> int:
         return _get_idx(params, self.scan_keys, self.combinations)
 
+    def get_multi_dim_index(self, params: Dict[str, Any]) -> Tuple:
+        return _get_multi_dim_index(params, self.scan_params, self.scan_keys)
+    
     def extract_field_data(self, field_names: List[str],
                            fixed_params: Optional[Dict[str, Any]] = None,
                            vary_params: Optional[List[str]] = None) -> Dict[str, np.ndarray]:
         return _extract(self.data, field_names, self.scan_params, self.scan_keys,
                         fixed_params=fixed_params, vary_params=vary_params)
+        
+    # ------------------------------------------------------------------
+    # Public API: get a value of a field at a specific index or parameter combination
+    # ------------------------------------------------------------------
+    
+    def get_field_value(self, field_name: str, params: Dict[str, Any] = None, scan_idx: int = None) -> float:
+        if field_name not in self.data:
+            raise ValueError(f"Field '{field_name}' not found in data")
+        if scan_idx is not None:
+            return self.data[field_name][scan_idx]
+        else:
+            idx = self.get_multi_dim_index(params)
+            return self.data[field_name][idx]
 
     # ------------------------------------------------------------------
     # Public API: plotting
@@ -360,3 +379,38 @@ class ScanMetadata:
         ydata = lines[0].get_ydata()
         label = ", ".join(f"{k}={v}" for k, v in params.items())
         return xdata, ydata, label, scanidx
+
+    # ------------------------------------------------------------------
+    # Public API: linear GK data
+    # ------------------------------------------------------------------
+
+    def add_gk_linear_data(self, delta, kappa, energy_srcCORE, ky, omega, params_in=''):
+        """
+        Store linear GK data for a given parameter set.
+
+        Parameters
+        ----------
+        delta : float
+            Triangularity
+        kappa : float
+            Elongation
+        energy_srcCORE : float
+            Core power
+        ky : array-like
+            Binormal wave numbers
+        omega : array-like
+            Complex frequencies from linear GK calculation
+        params_in : str, optional
+            Input parameters string
+        """
+        key = (delta, kappa, energy_srcCORE)
+        self.gk_linear_scan_data[key] = {}
+        self.gk_linear_scan_data[key]['ky'] = ky
+        self.gk_linear_scan_data[key]['omega'] = omega
+        self.gk_linear_scan_data[key]['params_in'] = params_in
+
+    def save_gk_linear_data(self):
+        """
+        Save the GK linear data into the original HDF5 metadata file.
+        """
+        _save_linear_gk(self.metadata_file, self.gk_linear_scan_data, self.get_sim_index)

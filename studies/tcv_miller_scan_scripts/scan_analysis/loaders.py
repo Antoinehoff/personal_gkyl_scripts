@@ -107,3 +107,33 @@ def save_metadata_h5(filepath, metadata):
                     mg.attrs['tunits'] = mom_data['tunits']
                     mg.attrs['vunits'] = mom_data['vunits']
                     mg.attrs['name'] = mom_data['name']
+
+def save_linear_gk_data(filepath, linear_gk_data, get_sim_index_fn):
+    """Save linear GK data into an existing HDF5 metadata file.
+
+    Parameters
+    ----------
+    filepath : str or Path
+        Path to the HDF5 metadata file (opened in append mode).
+    linear_gk_data : dict
+        Mapping of ``(delta, kappa, energy_srcCORE)`` tuples to dicts with
+        keys ``'ky'``, ``'omega'``, and ``'params_in'``.
+    get_sim_index_fn : callable
+        Function that takes a param dict and returns the integer scan index.
+    """
+    with h5py.File(filepath, 'a') as f:
+        for (delta, kappa, energy_srcCORE), entry in linear_gk_data.items():
+            print(f"Saving linear GK data for delta={delta}, kappa={kappa}, energy_srcCORE={energy_srcCORE}")
+            scanidx = get_sim_index_fn(
+                {'delta': delta, 'kappa': kappa, 'energy_srcCORE': energy_srcCORE}
+            )
+            group_name = f"scan_{scanidx:05d}/linear_gk"
+            if group_name in f:
+                del f[group_name]
+            grp = f.create_group(group_name)
+            grp.attrs['delta'] = delta
+            grp.attrs['kappa'] = kappa
+            grp.attrs['energy_srcCORE'] = energy_srcCORE
+            grp.create_dataset('omega', data=np.array(entry['omega'], dtype=np.complex128))
+            grp.create_dataset('ky', data=np.array(entry['ky'], dtype=np.float64))
+            grp.create_dataset('params_in', data=np.bytes_(entry.get('params_in', '')))

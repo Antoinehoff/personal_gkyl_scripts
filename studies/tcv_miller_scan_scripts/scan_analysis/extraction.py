@@ -36,6 +36,36 @@ def get_sim_index(params, scan_keys, combinations):
             f"Available scan keys: {scan_keys}"
         )
 
+def get_multi_dim_index(params, scan_params, scan_keys):
+    """Get the multi-dimensional index tuple for the given parameter combination.
+
+    Parameters
+    ----------
+    params : dict
+        e.g. ``{'kappa': 1.5, 'delta': 0.3, 'energy_srcCORE': 1e6}``
+    scan_params : dict[str, list]
+        e.g. ``{'kappa': [1.4, 1.5, 1.6], 'delta': [0.3, 0.45], 'energy_srcCORE': [1e5, 1e6]}``
+    scan_keys : list[str]
+        e.g. ``['kappa', 'delta', 'energy_srcCORE']``
+
+    Returns
+    -------
+    tuple of ints
+
+    Raises
+    ------
+    ValueError
+        If any parameter value is not found in its corresponding scan axis.
+    """
+    try:
+        return tuple(scan_params[k].index(params[k]) for k in scan_keys)
+    except ValueError as e:
+        raise ValueError(
+            f"Parameter value not found: {e}\n"
+            f"Parameters: {params}\n"
+            f"Scan keys: {scan_keys}\n"
+            f"Scan params: {scan_params}"
+        ) from e
 
 def extract_field_data(data, field_names, scan_params, scan_keys,
                        fixed_params=None, vary_params=None):
