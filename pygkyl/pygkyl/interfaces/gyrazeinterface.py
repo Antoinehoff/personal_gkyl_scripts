@@ -207,11 +207,17 @@ class GyrazeDataset:
         self.grids['x'] = self.attributes['B'].frame.new_grids[0]
         self.grids['y'] = self.attributes['B'].frame.new_grids[1]
         self.grids['z'] = self.attributes['B'].frame.new_grids[2]
-        self.grids['vpare'] = self.attributes['fe'].frame.new_grids[3]
-        self.grids['mue'] = self.attributes['fe'].frame.new_grids[4]
-        self.grids['vpari'] = self.attributes['fi'].frame.new_grids[3]
-        self.grids['mui'] = self.attributes['fi'].frame.new_grids[4]
-        
+        if not self.no_distf:
+            self.grids['vpare'] = self.attributes['fe'].frame.new_grids[3]
+            self.grids['mue'] = self.attributes['fe'].frame.new_grids[4]
+            self.grids['vpari'] = self.attributes['fi'].frame.new_grids[3]
+            self.grids['mui'] = self.attributes['fi'].frame.new_grids[4]
+        else:
+            self.grids['vpare'] = np.linspace(-1,1,4) # dummy grid
+            self.grids['mue'] = np.linspace(0,1,4) # dummy grid
+            self.grids['vpari'] = np.linspace(-1,1,4) # dummy grid
+            self.grids['mui'] = np.linspace(0,1,4) # dummy grid
+
     def eval_local_maxwellians_on(self,species):
         s = species[0]
         m = self.attributes['f'+s].frame.simulation.species[species].m
@@ -1315,10 +1321,12 @@ class GyrazeInterface:
         
         plt.show()
         
-    def plot_data(self, **kwargs):
+    def plot_data(self, figname=None, **kwargs):
         """
         Create a matrix of scatter plots and histograms for the GYRAZE input attributes.
         ----------
+        figname : str, optional
+            If provided, saves the figure to this filename. Default is None.
         **kwargs : dict
             Additional keyword arguments passed to matplotlib's scatter function
             for the scatter plots. Common options include 'alpha', 's' (size), 'marker', etc.
@@ -1403,6 +1411,10 @@ class GyrazeInterface:
                 ax.tick_params(axis='both', which='both', length=0)
 
         fig.tight_layout()
+        
+        if figname:
+            plt.savefig(figname, dpi=300, bbox_inches='tight')
+            print(f"Figure saved to {figname}")
         
     def plot_distf(self, idx=0, log_scale=False, xlim=None, ylim=None):
         """
