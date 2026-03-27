@@ -1146,11 +1146,11 @@ class DataParam:
         name = 'gamma_gyraze'
         symbol = r'$\gamma_{GYRAZE}$'
         units = r''
-        field2load = ['Bmag','ne']
+        field2load = ['ne','Bmag']
         def receipe_gamma_gyraze(gdata_list):
-            me = species['elc'].m
-            ne = pgkyl_.get_values(gdata_list[1])
-            Bmag = pgkyl_.get_values(gdata_list[0])
+            me = phys_tools.electron_mass
+            ne = pgkyl_.get_values(gdata_list[0])
+            Bmag = pgkyl_.get_values(gdata_list[1])
             eps0 = phys_tools.eps0
             return 1/Bmag * np.sqrt(me*ne/eps0)
         default_qttes.append([name,symbol,units,field2load,receipe_gamma_gyraze])
@@ -1167,6 +1167,18 @@ class DataParam:
             alpha = np.arcsin(1/(jacobian * np.sqrt(gxx*gyy)))
             return alpha * 180/np.pi # convert to degrees
         default_qttes.append([name,symbol,units,field2load,receipe_alpha_gyraze])
+        
+        # GYRAZE normalize phi
+        name = 'phi_gyraze'
+        symbol = r'$\phi_{GYRAZE}$'
+        units = r''
+        field2load = ['phi','Tpare','Tperpe']
+        def receipe_phi_gyraze(gdata_list):
+            me = phys_tools.electron_mass
+            phi = pgkyl_.get_values(gdata_list[0])
+            Te = me*(pgkyl_.get_values(gdata_list[1]) + 2.0*pgkyl_.get_values(gdata_list[2]))/3.0
+            return phys_tools.elementary_charge * phi/Te
+        default_qttes.append([name,symbol,units,field2load,receipe_phi_gyraze])
         
         #parallel current density
         name       = 'jpar'
