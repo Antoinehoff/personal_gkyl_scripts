@@ -1083,7 +1083,7 @@ class DataParam:
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
         
         # Bohm normalized speed u_pari / c_s
-        name      = 'u_pari_cs'
+        name      = 'upari_cs'
         symbol    = r'$u_{\parallel i}/c_s$'
         units     = ''
         field2load = ['upari','Tpare','Tperpe']
