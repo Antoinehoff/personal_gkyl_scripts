@@ -1077,10 +1077,26 @@ class DataParam:
         def receipe_Tratio(gdata_list,species_=species_kinetic_list):
             Te = (pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0
             Ti = (pgkyl_.get_values(gdata_list[2]) + 2.0*pgkyl_.get_values(gdata_list[3]))/3.0
-            me = species_['elc'].m
-            mi = species_['ion'].m
+            me = [s_.m for s_ in species_kinetic_list if s_.nshort == 'e'][0]
+            mi = [s_.m for s_ in species_kinetic_list if s_.nshort == 'i'][0]
             return Ti*mi/(Te*me)
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
+        
+        # Bohm normalized speed u_pari / c_s
+        name      = 'u_pari_cs'
+        symbol    = r'$u_{\parallel i}/c_s$'
+        units     = ''
+        field2load = ['upari','Tpare','Tperpe']
+        def receipe_u_pari_cs(gdata_list,species_=species_kinetic_list):
+            u_pari = pgkyl_.get_values(gdata_list[0])
+            Te = (pgkyl_.get_values(gdata_list[1]) + 2.0*pgkyl_.get_values(gdata_list[2]))/3.0
+            if species_ is None:
+                return u_pari/np.sqrt(Te)
+            me = [s_.m for s_ in species_kinetic_list if s_.nshort == 'e'][0]
+            mi = [s_.m for s_ in species_kinetic_list if s_.nshort == 'i'][0]
+            cs = np.sqrt(Te*me/mi)
+            return u_pari/cs
+        default_qttes.append([name,symbol,units,field2load,receipe_u_pari_cs])
 
         #Debye length (lambda_D = sqrt(e0 kB Te / sum_s(q_s^2 n_s)))
         name = 'lambdaD'
