@@ -439,7 +439,7 @@ class GyrazeInterface:
             '#set type_distfunc_entrance (= ADHOC or other string)\n'
             'GKEYLL data v0.1\n'
             '#set alphadeg\n'
-            f'{self.dataset.attributes["alpha"].v0:1.8f}\n'
+            f'{self.dataset.attributes['alpha'].v0:1.8f}\n'
             '#set gammaflag\n'
             '1\n'
             '#set gamma_ref\n'
@@ -515,12 +515,12 @@ class GyrazeInterface:
         self.input_physparams_text = self.generate_input_physparams_content()
         self.input_numparams_text = self.generate_input_numparams_content()
 
-    def append_h5file(self,hf,x0,y0,z0,tf):
+    def append_h5file(self,hf,x0,y0,z0,tf,dens_pol=None):
         # Create a new group for each (x0, y0, z0) triplet
         if self.number_datasets:
             group_name = f'{self.nsample:06d}'
         else:
-            group_name = f'x_{x0:.3f}_y_{y0:.3f}_z_{z0:.3f}_alpha_{self.alphadeg:.3f}_tf_{tf}'
+            group_name = f'x_{x0:.3f}_y_{y0:.3f}_z_{z0:.3f}_tf_{tf}'
         grp = hf.create_group(group_name)
         # Store text file contents as strings
         grp.create_dataset('Fe_mpe_args.txt', data=self.fe_mpe_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
@@ -544,6 +544,13 @@ class GyrazeInterface:
             if np.isscalar(attr.v0):
                 ext0 = '' if attr.fieldname in ['TioverTe', 'mioverme', 'nioverne'] else '0'
                 grp.attrs[attr_name + ext0] = attr.v0
+                
+        if dens_pol is not None:
+            grp.attrs['dens_pol'] = dens_pol
+            Bmag = self.dataset.attributes['B'].v0
+            eps0 = 8.854187817e-12
+            gamma_pol = 1/Bmag * np.sqrt( self.me * dens_pol / eps0)
+            grp.attrs['gamma_pol'] = gamma_pol
 
     def generate(self, time_frames: Optional[Union[List[int], int]] = None, 
                  xmin: Optional[float] = None, 
@@ -562,6 +569,7 @@ class GyrazeInterface:
                  sperp_max_i: Optional[float] = None,
                  vpos_fe: Optional[bool] = True,
                  vpos_fi: Optional[bool] = True,
+                 dens_pol: Optional[float] = None,
                  lim_dict: Optional[dict] = None,
                  verbose: bool = False,):
         '''
@@ -601,6 +609,8 @@ class GyrazeInterface:
             If True, only consider electrons with positive parallel velocity towards the wall.
         vpos_fi : bool
             If True, only consider ions with positive parallel velocity towards the wall.
+        dens_pol : float, optional
+            If provided, gamma is evaluated using this density instead of the local density at (x0, y0, z0).
         lim_dict : dict, optional
             Dictionary specifying limits for filtering points.
             E.g., provided as {'phi': {'min': float, 'max': float}}, skip points where phi0 is outside this range.
@@ -671,7 +681,7 @@ class GyrazeInterface:
                             else:
                                 zplane=('upper' if izplane==np.argmax(self.dataset.grids['z']) else 'lower')
                                 self.generate_input_files(zplane=zplane)
-                                self.append_h5file(hf, x0, y0, z0, tf)
+                                self.append_h5file(hf, x0, y0, z0, tf, dens_pol=dens_pol)
                                 self.nsample += 1
                             
             hf.attrs['nsample'] = self.nsample
