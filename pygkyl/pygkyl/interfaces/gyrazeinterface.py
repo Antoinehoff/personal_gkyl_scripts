@@ -170,8 +170,8 @@ class GyrazeDataset:
         self.attributes['ni'] = GyrazeAttribute('ni', r'$n_i$', 'm$^{-3}$')
         self.attributes['Te'] = GyrazeAttribute('Te', r'$T_e$', 'eV')
         self.attributes['Ti'] = GyrazeAttribute('Ti', r'$T_i$', 'eV')
-        self.attributes['gamma'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$', '')
-        self.attributes['gamma_gyraze'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$ (Gyraze definition)', '', manual=True)
+        self.attributes['alpha'] = GyrazeAttribute('alpha_gyraze', r'$\alpha$', '')
+        self.attributes['gamma'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$', '')        
         self.attributes['phi_norm'] = GyrazeAttribute('phi_norm', r'$e\phi/T_e$', '', manual=True)
         self.attributes['nioverne'] = GyrazeAttribute('nioverne', r'$n_i/n_e$', '', manual=True)
         self.attributes['TioverTe'] = GyrazeAttribute('TioverTe', r'$T_i/T_e$', '', manual=True)
@@ -271,7 +271,6 @@ class GyrazeDataset:
 class GyrazeInterface:
     def __init__(self, simulation:Simulation, **kwargs):
         self.simulation = simulation
-        self.alphadeg : float = kwargs.get('alphadeg', 5.0)
         self.filter_negativity : bool = kwargs.get('filter_negativity', False)
         self.no_distf : bool = kwargs.get('no_distf', False)
         self.nsmooth_distf : Optional[int] = kwargs.get('nsmooth_distf', 0)
@@ -440,7 +439,7 @@ class GyrazeInterface:
             '#set type_distfunc_entrance (= ADHOC or other string)\n'
             'GKEYLL data v0.1\n'
             '#set alphadeg\n'
-            f'{self.alphadeg:1.8f}\n'
+            f'{self.dataset.attributes["alpha"].v0:1.8f}\n'
             '#set gammaflag\n'
             '1\n'
             '#set gamma_ref\n'
@@ -534,7 +533,6 @@ class GyrazeInterface:
         grp.attrs['x0'] = x0
         grp.attrs['y0'] = y0
         grp.attrs['z0'] = z0
-        grp.attrs['alphadeg'] = self.alphadeg
         grp.attrs['tf'] = tf
         grp.attrs['t0'] = self.dataset.t0
         grp.attrs['mi'] = self.mi
@@ -552,7 +550,6 @@ class GyrazeInterface:
                  xmax: Optional[float] = None, 
                  Nxsample: Optional[int] = None, 
                  Nysample: Optional[int] = None, 
-                 alphadeg: Optional[float] = None, 
                  zplane: Optional[str] = None, 
                  filter_negativity: Optional[bool] = None,
                  no_distf: Optional[bool] = None,
@@ -581,8 +578,6 @@ class GyrazeInterface:
             Number of x points to sample. If None, use all SOL points.
         Nysample : int, optional
             Number of y points to sample. If None, use all points.
-        alphadeg : float, optional
-            Angle in degrees between magnetic field and wall normal. If None, use 0.3.
         zplane : str, optional
             Which z-plane to sample. If None, both upper and lower side of the limiter. Options: 'upper', 'lower', 'both'.
         filter_negativity : bool, optional
@@ -618,7 +613,6 @@ class GyrazeInterface:
         xmax = xmax if xmax is not None else self.xmax
         Nxsample = Nxsample if Nxsample is not None else self.NxSOL
         Nysample = Nysample if Nysample is not None else self.NySOL
-        self.alphadeg = alphadeg if alphadeg is not None else self.alphadeg
         zplane = zplane if zplane is not None else 'both'
         
         if filter_negativity is not None:
@@ -645,7 +639,7 @@ class GyrazeInterface:
                     self.dataset.attributes[key].set_vlim(value, which)
 
         if verbose: 
-            print(f'Generating Gyraze input data for alphadeg={self.alphadeg}, time frames={time_frames}, x=[{xmin},{xmax}], Nx={Nxsample}, Ny={Nysample}, zplane={zplane}')
+            print(f'Generating Gyraze input data for alpha={self.dataset.attributes["alpha"].v0}, time frames={time_frames}, x=[{xmin},{xmax}], Nx={Nxsample}, Ny={Nysample}, zplane={zplane}')
             expected_num = len(time_frames) * Nxsample * Nysample * (2 if zplane=='both' else 1)
             print(f'Expected number of datasets (before skipping negatives): {expected_num}')
             
