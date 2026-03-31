@@ -53,7 +53,8 @@ class DataParam:
         self.time_independent_fields = [
             'b_x', 'b_y', 'b_z', 'Jacobian', 'Bmag', 
             'g_xx', 'g_xy', 'g_xz', 'g_yy', 'g_yz', 'g_zz',
-            'gxx', 'gxy', 'gxz', 'gyy', 'gyz', 'gzz']
+            'gxx', 'gxy', 'gxz', 'gyy', 'gyz', 'gzz', 
+            'alpha_gyraze', 'bxy_angle']
         
         
     def set_data_file_dict(self, checkfiles=True):
@@ -1124,6 +1125,17 @@ class DataParam:
             return np.sqrt(num/denom)
         default_qttes.append([name,symbol,units,field2load,receipe_lambdaD])
         
+        name = 'bxy_angle'
+        symbol = r'$\alpha$'
+        units = r'$^{\circ}$'
+        field2load = ['g_zz','gzz']
+        def receipe_bxy_angle(gdata_list):
+            g_zz = pgkyl_.get_values(gdata_list[0])
+            gzz = pgkyl_.get_values(gdata_list[1])
+            alpha = np.arcsin(1/np.sqrt(g_zz*gzz))
+            return alpha * 180/np.pi # convert to degrees
+        default_qttes.append([name,symbol,units,field2load,receipe_bxy_angle])
+        
         # GYRAZE gamma factor, gamma = 1/B sqrt(m_e n_e/eps0) = rho_e/Lambda_d, eq. 9 of https://arxiv.org/2508.09067
         name = 'gamma_gyraze'
         symbol = r'$\gamma_{GYRAZE}$'
@@ -1141,12 +1153,11 @@ class DataParam:
         name = 'alpha_gyraze'
         symbol = r'$\alpha_{GYRAZE}$'
         units = r'$^{\circ}$'
-        field2load = ['Jacobian','gxx','gyy']
+        field2load = ['g_zz','gzz']
         def receipe_alpha_gyraze(gdata_list):
-            jacobian = pgkyl_.get_values(gdata_list[0])
-            gxx = pgkyl_.get_values(gdata_list[1])
-            gyy = pgkyl_.get_values(gdata_list[2])
-            alpha = np.arcsin(1/(jacobian * np.sqrt(gxx*gyy)))
+            g_zz = pgkyl_.get_values(gdata_list[0])
+            gzz = pgkyl_.get_values(gdata_list[1])
+            alpha = np.arcsin(1/np.sqrt(g_zz*gzz))
             return alpha * 180/np.pi # convert to degrees
         default_qttes.append([name,symbol,units,field2load,receipe_alpha_gyraze])
         
