@@ -365,7 +365,7 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
         # Use the colorscale argument, override to 'log' if fourier_y
         cs = 'log' if fourier_y else colorscale
         if space_time:
-            if ((simulation.data_param.field_info_dict[field + 'colormap'] == 'bwr' or cmap0 == 'bwr' or len(fluctuation) > 0)
+            if ((cmap0 == 'bwr' or len(fluctuation) > 0)
                 and not fourier_y):
                 cmap = 'bwr'
                 vmax = np.nanmax(np.abs(values))
