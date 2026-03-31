@@ -170,8 +170,8 @@ class GyrazeDataset:
         self.attributes['ni'] = GyrazeAttribute('ni', r'$n_i$', 'm$^{-3}$')
         self.attributes['Te'] = GyrazeAttribute('Te', r'$T_e$', 'eV')
         self.attributes['Ti'] = GyrazeAttribute('Ti', r'$T_i$', 'eV')
-        self.attributes['gamma'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$', '')
-        self.attributes['gamma_gyraze'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$ (Gyraze definition)', '', manual=True)
+        self.attributes['alpha'] = GyrazeAttribute('alpha_gyraze', r'$\alpha$', '')
+        self.attributes['gamma'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$', '')        
         self.attributes['phi_norm'] = GyrazeAttribute('phi_norm', r'$e\phi/T_e$', '', manual=True)
         self.attributes['nioverne'] = GyrazeAttribute('nioverne', r'$n_i/n_e$', '', manual=True)
         self.attributes['TioverTe'] = GyrazeAttribute('TioverTe', r'$T_i/T_e$', '', manual=True)
@@ -271,7 +271,6 @@ class GyrazeDataset:
 class GyrazeInterface:
     def __init__(self, simulation:Simulation, **kwargs):
         self.simulation = simulation
-        self.alphadeg : float = kwargs.get('alphadeg', 5.0)
         self.filter_negativity : bool = kwargs.get('filter_negativity', False)
         self.no_distf : bool = kwargs.get('no_distf', False)
         self.nsmooth_distf : Optional[int] = kwargs.get('nsmooth_distf', 0)
@@ -440,7 +439,7 @@ class GyrazeInterface:
             '#set type_distfunc_entrance (= ADHOC or other string)\n'
             'GKEYLL data v0.1\n'
             '#set alphadeg\n'
-            f'{self.alphadeg:1.8f}\n'
+            f'{self.dataset.attributes['alpha'].v0:1.8f}\n'
             '#set gammaflag\n'
             '1\n'
             '#set gamma_ref\n'
@@ -516,12 +515,12 @@ class GyrazeInterface:
         self.input_physparams_text = self.generate_input_physparams_content()
         self.input_numparams_text = self.generate_input_numparams_content()
 
-    def append_h5file(self,hf,x0,y0,z0,tf):
+    def append_h5file(self,hf,x0,y0,z0,tf,dens_pol=None):
         # Create a new group for each (x0, y0, z0) triplet
         if self.number_datasets:
             group_name = f'{self.nsample:06d}'
         else:
-            group_name = f'x_{x0:.3f}_y_{y0:.3f}_z_{z0:.3f}_alpha_{self.alphadeg:.3f}_tf_{tf}'
+            group_name = f'x_{x0:.3f}_y_{y0:.3f}_z_{z0:.3f}_tf_{tf}'
         grp = hf.create_group(group_name)
         # Store text file contents as strings
         grp.create_dataset('Fe_mpe_args.txt', data=self.fe_mpe_args_text, dtype=h5py.string_dtype(encoding='utf-8'))
@@ -534,7 +533,6 @@ class GyrazeInterface:
         grp.attrs['x0'] = x0
         grp.attrs['y0'] = y0
         grp.attrs['z0'] = z0
-        grp.attrs['alphadeg'] = self.alphadeg
         grp.attrs['tf'] = tf
         grp.attrs['t0'] = self.dataset.t0
         grp.attrs['mi'] = self.mi
@@ -546,13 +544,19 @@ class GyrazeInterface:
             if np.isscalar(attr.v0):
                 ext0 = '' if attr.fieldname in ['TioverTe', 'mioverme', 'nioverne'] else '0'
                 grp.attrs[attr_name + ext0] = attr.v0
+                
+        if dens_pol is not None:
+            grp.attrs['dens_pol'] = dens_pol
+            Bmag = self.dataset.attributes['B'].v0
+            eps0 = 8.854187817e-12
+            gamma_pol = 1/Bmag * np.sqrt( self.me * dens_pol / eps0)
+            grp.attrs['gamma_pol'] = gamma_pol
 
     def generate(self, time_frames: Optional[Union[List[int], int]] = None, 
                  xmin: Optional[float] = None, 
                  xmax: Optional[float] = None, 
                  Nxsample: Optional[int] = None, 
                  Nysample: Optional[int] = None, 
-                 alphadeg: Optional[float] = None, 
                  zplane: Optional[str] = None, 
                  filter_negativity: Optional[bool] = None,
                  no_distf: Optional[bool] = None,
@@ -565,6 +569,7 @@ class GyrazeInterface:
                  sperp_max_i: Optional[float] = None,
                  vpos_fe: Optional[bool] = True,
                  vpos_fi: Optional[bool] = True,
+                 dens_pol: Optional[float] = None,
                  lim_dict: Optional[dict] = None,
                  verbose: bool = False,):
         '''
@@ -581,8 +586,6 @@ class GyrazeInterface:
             Number of x points to sample. If None, use all SOL points.
         Nysample : int, optional
             Number of y points to sample. If None, use all points.
-        alphadeg : float, optional
-            Angle in degrees between magnetic field and wall normal. If None, use 0.3.
         zplane : str, optional
             Which z-plane to sample. If None, both upper and lower side of the limiter. Options: 'upper', 'lower', 'both'.
         filter_negativity : bool, optional
@@ -606,6 +609,8 @@ class GyrazeInterface:
             If True, only consider electrons with positive parallel velocity towards the wall.
         vpos_fi : bool
             If True, only consider ions with positive parallel velocity towards the wall.
+        dens_pol : float, optional
+            If provided, gamma is evaluated using this density instead of the local density at (x0, y0, z0).
         lim_dict : dict, optional
             Dictionary specifying limits for filtering points.
             E.g., provided as {'phi': {'min': float, 'max': float}}, skip points where phi0 is outside this range.
@@ -618,7 +623,6 @@ class GyrazeInterface:
         xmax = xmax if xmax is not None else self.xmax
         Nxsample = Nxsample if Nxsample is not None else self.NxSOL
         Nysample = Nysample if Nysample is not None else self.NySOL
-        self.alphadeg = alphadeg if alphadeg is not None else self.alphadeg
         zplane = zplane if zplane is not None else 'both'
         
         if filter_negativity is not None:
@@ -645,7 +649,7 @@ class GyrazeInterface:
                     self.dataset.attributes[key].set_vlim(value, which)
 
         if verbose: 
-            print(f'Generating Gyraze input data for alphadeg={self.alphadeg}, time frames={time_frames}, x=[{xmin},{xmax}], Nx={Nxsample}, Ny={Nysample}, zplane={zplane}')
+            print(f'Generating Gyraze input data for alpha={self.dataset.attributes["alpha"].v0}, time frames={time_frames}, x=[{xmin},{xmax}], Nx={Nxsample}, Ny={Nysample}, zplane={zplane}')
             expected_num = len(time_frames) * Nxsample * Nysample * (2 if zplane=='both' else 1)
             print(f'Expected number of datasets (before skipping negatives): {expected_num}')
             
@@ -677,7 +681,7 @@ class GyrazeInterface:
                             else:
                                 zplane=('upper' if izplane==np.argmax(self.dataset.grids['z']) else 'lower')
                                 self.generate_input_files(zplane=zplane)
-                                self.append_h5file(hf, x0, y0, z0, tf)
+                                self.append_h5file(hf, x0, y0, z0, tf, dens_pol=dens_pol)
                                 self.nsample += 1
                             
             hf.attrs['nsample'] = self.nsample
