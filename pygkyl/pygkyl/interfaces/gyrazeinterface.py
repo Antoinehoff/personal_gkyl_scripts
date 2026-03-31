@@ -439,7 +439,7 @@ class GyrazeInterface:
             '#set type_distfunc_entrance (= ADHOC or other string)\n'
             'GKEYLL data v0.1\n'
             '#set alphadeg\n'
-            f'{self.dataset.attributes['alpha'].v0:1.8f}\n'
+            f"{self.dataset.attributes['alpha'].v0:1.8f}\n"
             '#set gammaflag\n'
             '1\n'
             '#set gamma_ref\n'
