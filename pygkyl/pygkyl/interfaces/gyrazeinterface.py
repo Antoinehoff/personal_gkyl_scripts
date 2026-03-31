@@ -170,7 +170,7 @@ class GyrazeDataset:
         self.attributes['ni'] = GyrazeAttribute('ni', r'$n_i$', 'm$^{-3}$')
         self.attributes['Te'] = GyrazeAttribute('Te', r'$T_e$', 'eV')
         self.attributes['Ti'] = GyrazeAttribute('Ti', r'$T_i$', 'eV')
-        self.attributes['gamma'] = GyrazeAttribute('rhoe_lambdaD', r'$\rho_e/\lambda_D$', '')
+        self.attributes['gamma'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$', '')
         self.attributes['gamma_gyraze'] = GyrazeAttribute('gamma_gyraze', r'$\gamma$ (Gyraze definition)', '', manual=True)
         self.attributes['phi_norm'] = GyrazeAttribute('phi_norm', r'$e\phi/T_e$', '', manual=True)
         self.attributes['nioverne'] = GyrazeAttribute('nioverne', r'$n_i/n_e$', '', manual=True)
