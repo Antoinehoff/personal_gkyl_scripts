@@ -178,6 +178,19 @@ class ScanMetadata:
     def _get_slices(self, power_val):
         return get_power_slices(self.scan_params, self.scan_keys, power_val)
 
+    def _ensure_ky(self, ky):
+        """Recompute linear GK fields if *ky* changed (or first call)."""
+        if ky is None:
+            return
+        if getattr(self, '_current_ky', None) == ky:
+            return
+        self._current_ky = ky
+        fmod.compute_linear_gk_fields(
+            self.data, self.metadata,
+            self.scan_params, self.scan_keys,
+            self.all_field_symbols, self.field_units, ky,
+        )
+
     # ------------------------------------------------------------------
     # Public API: info
     # ------------------------------------------------------------------
@@ -284,7 +297,8 @@ class ScanMetadata:
     def plot_contour_grid(self, fields_or_data, fields=None,
                           fixed_params=None, suptitle='', method='contourf',
                           cmap='coolwarm', clim=None, deviation=False,
-                          show_fig=True, figfilename=None, dpi=300):
+                          show_fig=True, figfilename=None, dpi=300, ky=None):
+        self._ensure_ky(ky)
         if isinstance(fields_or_data, list):
             field_list = fields_or_data
             data = self.extract_field_data(field_list, fixed_params=fixed_params)
@@ -305,6 +319,7 @@ class ScanMetadata:
                       show_fig=show_fig, figfilename=figfilename, dpi=dpi)
 
     def plot_field_vs_field(self, field_x: str, field_y: str, **kwargs):
+        self._ensure_ky(kwargs.pop('ky', None))
         _plot_scatter(self, field_x, field_y, **kwargs)
 
     def compare_profiles(self, vary_param, vary_vals,
