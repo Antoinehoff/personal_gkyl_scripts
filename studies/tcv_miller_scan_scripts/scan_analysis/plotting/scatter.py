@@ -73,7 +73,7 @@ def plot_field_vs_field(scan, field_x, field_y,
                         marker_size=None, figfilename=None, dpi=300,
                         xlim=None, ylim=None, axis_equal=False,
                         show_fig=True, annotate=False,
-                        lines=None, shadows=None):
+                        lines=None, shadows=None, edgecolor='None'):
     """Scatter-plot of one field against another across power levels.
 
     Parameters
@@ -89,6 +89,8 @@ def plot_field_vs_field(scan, field_x, field_y,
         ``[{'x': [...], 'y': [...], 'kwargs': {...}}, ...]``
     shadows : list[dict], optional
         ``[{'x': [...], 'y': [lo, hi], 'kwargs': {...}}, ...]``
+    edgecolor : str, optional
+        Edge color for markers. Default 'None' (no edge).
     """
     if lines is None:
         lines = []
@@ -141,7 +143,6 @@ def plot_field_vs_field(scan, field_x, field_y,
     free_keys = [k for k in scan.scan_keys if k != 'energy_srcCORE']
     free_vals = [scan.scan_params[k] for k in free_keys]
     free_combos = list(itertools.product(*free_vals))
-    edgecolor = 'None'
 
     for p_idx, power in enumerate(powers):
         sl = scan._get_slices(power)
