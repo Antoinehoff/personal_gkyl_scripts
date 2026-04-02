@@ -18,6 +18,7 @@ FIELD_SYMBOLS = {
     'ne': r'n_e',       'phi': r'\phi',
     'Pi': r'P_i',       'Pe': r'P_e',
     'ni': r'n_i',       'upar': r'u_\parallel',
+    'betae': r'\beta_e',
     'hflux_xi': r'Q_{xi}',   'hflux_xe': r'Q_{xe}',
     'pflux_xi': r'\Gamma_{xi}', 'pflux_xe': r'\Gamma_{xe}',
     'kn': r'k_n',       'kTi': r'k_{T_i}', 'kTe': r'k_{T_e}',
@@ -32,6 +33,7 @@ FIELD_UNITS = {
     'ne': r'[$m^{-3}$]', 'phi': r'[V]',
     'Pi': r'[kPa]',     'Pe': r'[kPa]',
     'ni': r'[$m^{-3}$]', 'upar': r'[m/s]',
+    'betae': r'[$\%$]',
     'hflux_xi': r'[MW/m$^2$]', 'hflux_xe': r'[MW/m$^2$]',
     'pflux_xi': r'[m$^{-2}$ s$^{-1}$]', 'pflux_xe': r'[m$^{-2}$ s$^{-1}$]',
     'T': r'[eV]',       'n': r'[$m^{-3}$]',
@@ -248,7 +250,7 @@ def compute_temperature_ratio(data, locations, all_field_symbols, location_symbo
         if f'Ti_{loc}' in data and f'Te_{loc}' in data:
             data[key] = data[f'Ti_{loc}'] / data[f'Te_{loc}']
             all_field_symbols[key] = (
-                r'$(T_i/T_e)^{' + location_symbols.get(loc, loc) + r'}$'
+                r'$T_i/T_e|_{' + location_symbols.get(loc, loc) + r'}$'
             )
 
 
@@ -293,14 +295,17 @@ def compute_diffusivity(data, all_field_symbols):
     if 'chixe' in data and 'chixi' in data:
         data['chixe_over_chixi'] = data['chixe'] / data['chixi']
         all_field_symbols['chixe_over_chixi'] = (
-            r'$\chi_{e}^{\text{sep}} / \chi_{i}^{\text{sep}}$'
+            r'$\chi_{e} / \chi_{i}|_{\text{sep}}$'
         )
     if 'Dxe' in data and 'chixe' in data and 'chixi' in data:
         data['De_over_chitot'] = data['Dxe'] / (data['chixe'] + data['chixi'])
         all_field_symbols['De_over_chitot'] = (
-            r'$D_{e}^{\text{sep}} / (\chi_{e}^{\text{sep}} + \chi_{i}^{\text{sep}})$'
+            r'$D_{e} / (\chi_{e} + \chi_{i})|_{\text{sep}}$'
         )
-
+        data['De_over_chie'] = data['Dxe'] / (data['chixe'])
+        all_field_symbols['De_over_chie'] = (
+            r'$D_{e} / (\chi_{e})|_{\text{sep}}$'
+        )
 
 def compute_relative_variations(data, all_field_symbols):
     """Relative edge-to-LCFS drops and gradient scale lengths."""
@@ -310,9 +315,9 @@ def compute_relative_variations(data, all_field_symbols):
     Roverdr = raxis / ((loc_vals['lcfs'] - loc_vals['edge']) * amid)
 
     for name, field, sym_delta, sym_rl in [
-        ('dne_rel', 'ne', r'\Delta n_e / n_{e}', r'R/L_{n_e}'),
-        ('dTe_rel', 'Te', r'\Delta T_e / T_{e}', r'R/L_{T_e}'),
-        ('dTi_rel', 'Ti', r'\Delta T_i / T_{i}', r'R/L_{T_i}'),
+        ('dne_rel', 'ne', r'\Delta n_e / n_{e}', r'R/L_{n_e}|_{\text{sep}}'),
+        ('dTe_rel', 'Te', r'\Delta T_e / T_{e}', r'R/L_{T_e}|_{\text{sep}}'),
+        ('dTi_rel', 'Ti', r'\Delta T_i / T_{i}', r'R/L_{T_i}|_{\text{sep}}'),
     ]:
         edge_key = f'{field}_edge'
         lcfs_key = f'{field}_lcfs'
@@ -471,6 +476,44 @@ def compute_confinement_time(data, all_field_symbols):
         all_field_symbols['tau_E'] = r'$\tau_E$ [s]'
     except KeyError:
         pass
+
+
+def compute_linear_gk_fields(data, metadata, scan_params, scan_keys,
+                             all_field_symbols, field_units, ky):
+    """Interpolate linear GK growth rate and frequency at a given *ky*.
+
+    Populates ``data['gamma']``, ``data['omega']``, and
+    ``data['omega_over_gamma']``.
+    """
+    param_shapes = [len(scan_params[k]) for k in scan_keys]
+    gamma_arr = np.full(param_shapes, np.nan)
+    omega_arr = np.full(param_shapes, np.nan)
+
+    for entry in metadata:
+        lgk = entry.get('linear_gk', {})
+        ky_arr = lgk.get('ky')
+        omega_complex = lgk.get('omega')
+        if ky_arr is None or omega_complex is None:
+            continue
+        ky_arr = np.asarray(ky_arr, dtype=float)
+        omega_complex = np.asarray(omega_complex, dtype=complex)
+        if len(ky_arr) == 0 or ky < ky_arr.min() or ky > ky_arr.max():
+            continue
+        indices = tuple(scan_params[k].index(entry[k]) for k in scan_keys)
+        gamma_arr[indices] = np.interp(ky, ky_arr, omega_complex.real)
+        omega_arr[indices] = np.interp(ky, ky_arr, omega_complex.imag)
+
+    data['gamma'] = gamma_arr
+    data['omega'] = omega_arr
+    with np.errstate(divide='ignore', invalid='ignore'):
+        data['omega_over_gamma'] = omega_arr / gamma_arr
+
+    all_field_symbols['gamma'] = r'$\gamma\, R/c_s$'
+    all_field_symbols['omega'] = r'$\omega\, R/c_s$'
+    all_field_symbols['omega_over_gamma'] = r'$\omega / \gamma$'
+    field_units['gamma'] = ''
+    field_units['omega'] = ''
+    field_units['omega_over_gamma'] = ''
 
 
 # =====================================================================
