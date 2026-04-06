@@ -8,10 +8,72 @@ app = marimo.App(width="full")
 def _():
     import numpy as np
 
+    def filter_downsample(field, nint_x, nint_y, filter_type="lanczos", a=2, sigma=0.5, periodic_y=True):
+        """Downsample a 2-D field by integer factors with an antialiasing pre-filter.
+        Separable: filters along y (periodic) then x (non-periodic edge-padded).
+        np.sinc is normalised: sinc(x) = sin(pi*x)/(pi*x), sinc(0) = 1.
+        """
+        def make_kernel(n, filter_type, a, sigma):
+            if n == 1:
+                return np.ones(1)
+            if filter_type == "box":
+                # Uniform average of n cells. Simple but slow rolloff (~0.64 at Nyquist).
+                w = np.ones(n)
+            elif filter_type == "triangle":
+                # Convolution of two box filters: all-positive, squared-sinc frequency
+                # response — better Nyquist attenuation (~0.41) than box with no ringing.
+                box = np.ones(n)
+                w = np.convolve(box, box)  # length 2n-1
+            elif filter_type == "gaussian":
+                # All-positive, no ringing. sigma is the half-width in coarse-cell units.
+                half = int(np.ceil(3.0 * sigma * n))
+                k = np.arange(-half, half + 1, dtype=float)
+                w = np.exp(-0.5 * (k / (sigma * n)) ** 2)
+            elif filter_type == "hann":
+                # Pure Hann window smoother (no sinc), all-positive: cosine rolloff over
+                # a*n fine cells. Smoother than Gaussian at the cost of a wider stencil.
+                half = a * n
+                k = np.arange(-half, half + 1, dtype=float)
+                w = 0.5 + 0.5 * np.cos(np.pi * k / half)
+            elif filter_type == "blackman":
+                # Pure Blackman window smoother (no sinc), all-positive: sharper rolloff
+                # than Hann, best stopband of the window-only family.
+                half = a * n
+                k = np.arange(-half, half + 1, dtype=float)
+                t = k / half
+                w = 0.42 + 0.5 * np.cos(np.pi * t) + 0.08 * np.cos(2 * np.pi * t)
+            else:
+                w = np.ones(n)
+            w = np.clip(w, 0, None)  # ensure all-positive (safety guard)
+            w /= w.sum()
+            return w
+
+        Nx_f, Ny_f = field.shape
+
+        # --- filter along y (axis=1) ---
+        wy = make_kernel(nint_y, filter_type, a, sigma)
+        half_y = len(wy) // 2
+        if periodic_y:
+            pad_y = np.concatenate([field[:, -half_y:], field, field[:, :half_y]], axis=1)
+        else:
+            pad_y = np.pad(field, ((0, 0), (half_y, half_y)), mode='edge')
+        tmp = sum(wy[ki] * pad_y[:, ki:ki + Ny_f] for ki in range(len(wy)))
+
+        # --- filter along x (axis=0, reflect-padded) ---
+        # reflect padding mirrors the signal at the boundary, so the filter
+        # averages real (mirrored) values at the edges rather than a constant,
+        # preventing amplitude preservation artifacts with edge padding.
+        wx = make_kernel(nint_x, filter_type, a, sigma)
+        half_x = len(wx) // 2
+        pad_x = np.pad(tmp, ((half_x, half_x), (0, 0)), mode='reflect')
+        out = sum(wx[ki] * pad_x[ki:ki + Nx_f, :] for ki in range(len(wx)))
+
+        return out[::nint_x, ::nint_y]
+
     def q_func(r, r0, q0, nshear):
         return q0 * pow(r/r0, nshear)
     
-    return q_func, np
+    return filter_downsample, q_func, np
 
 
 
@@ -70,33 +132,45 @@ def _(mo):
     # sigma_x / sigma_y: half-widths of the Gaussian envelope (in box units);
     #   only used when field_mode == "gaussian".
     field_mode = mo.ui.dropdown(options=["single", "gaussian"], value="single", label="Field mode")
-    kx_mode_slider = mo.ui.slider(value=1, start=0, stop=8, step=1, label="kx mode number (integer)")
+    kx_mode_slider = mo.ui.slider(value=2, start=0, stop=8, step=1, label="kx mode number (integer)")
     ky_mode_slider = mo.ui.slider(value=1, start=0, stop=8, step=1, label="ky mode number (integer)")
     sigma_x_slider = mo.ui.slider(value=0.1, start=0.05, stop=2.0, step=0.01, label="sigma_x (plane units)")
     sigma_y_slider = mo.ui.slider(value=1.0, start=0.1, stop=6.0, step=0.01, label="sigma_y (plane units)")
-    return field_mode, kx_mode_slider, ky_mode_slider, sigma_x_slider, sigma_y_slider
+    add_mode2 = mo.ui.checkbox(value=True, label="Add 2nd mode")
+    kx2_mode_slider = mo.ui.slider(value=5, start=0, stop=8, step=1, label="kx2 mode number (integer)")
+    ky2_mode_slider = mo.ui.slider(value=5, start=0, stop=8, step=1, label="ky2 mode number (integer)")
+    return field_mode, kx_mode_slider, ky_mode_slider, sigma_x_slider, sigma_y_slider, add_mode2, kx2_mode_slider, ky2_mode_slider
 
 # Cell: magnetic-shear slider — sets the normalised shear ŝ that governs the twist-and-shift offset.
 @app.cell
 def _(mo):
-    shat_slider = mo.ui.slider(value=0.5, start=0.0, stop=5.0, step=0.5, label="ŝ (magnetic shear)")
-    q0_slider = mo.ui.slider(value=1.0, start=1.0, stop=5.0, step=0.1, label="q0 (safety factor)")
+    shat_slider = mo.ui.slider(value=2.5, start=0.0, stop=5.0, step=0.5, label="ŝ (magnetic shear)")
+    q0_slider = mo.ui.slider(value=2.1, start=1.0, stop=5.0, step=0.1, label="q0 (safety factor)")
     return shat_slider, q0_slider
 
 # Cell: visualisation-control widgets — colormap picker and oversampling factors for the shift.
 @app.cell
 def _(mo):
     cmap_dropdown = mo.ui.dropdown(options=["seismic", "viridis", "twilight"], value="seismic", label="Colormap")
-    nint_x_slider = mo.ui.slider(value=1, start=1, stop=8, step=1, label="Oversampling x (nint_x)")
-    nint_y_slider = mo.ui.slider(value=1, start=1, stop=8, step=1, label="Oversampling y (nint_y)")
-    return cmap_dropdown, nint_x_slider, nint_y_slider
+    nint_x_slider = mo.ui.slider(value=4, start=1, stop=8, step=1, label="Oversampling x (nint_x)")
+    nint_y_slider = mo.ui.slider(value=4, start=1, stop=8, step=1, label="Oversampling y (nint_y)")
+    apply_filter = mo.ui.checkbox(value=True, label="Apply downsampling filter")
+    filter_dropdown = mo.ui.dropdown(
+        options=["gaussian", "triangle", "hann", "blackman", "box"],
+        value="gaussian", label="Downsampling filter",
+    )
+    lanczos_a_slider = mo.ui.slider(value=2, start=1, stop=5, step=1, label="Lobe count a (lanczos/hann/blackman)")
+    gaussian_sigma_slider = mo.ui.slider(value=0.5, start=0.1, stop=3.0, step=0.1, label="Gaussian σ (in coarse cells)")
+    return cmap_dropdown, nint_x_slider, nint_y_slider, apply_filter, filter_dropdown, lanczos_a_slider, gaussian_sigma_slider
 
 
 # Cell: core computation — builds the grid, constructs the test field phi(x,y), applies the
 #   twist-and-shift via spectral y-shifts, and optionally low-pass filters both fields.
 @app.cell
-def _(field_mode,nint_x_slider,nint_y_slider,Nx_slider,Ny_slider,kx_mode_slider,
-      ky_mode_slider,np,shat_slider,q0_slider,sigma_x_slider,sigma_y_slider,q_func):
+def _(field_mode,nint_x_slider,nint_y_slider,apply_filter,filter_dropdown,lanczos_a_slider,gaussian_sigma_slider,
+      Nx_slider,Ny_slider,kx_mode_slider,ky_mode_slider,np,shat_slider,q0_slider,
+      sigma_x_slider,sigma_y_slider,q_func,filter_downsample,
+      add_mode2,kx2_mode_slider,ky2_mode_slider):
     
     # --- Unpack slider values into plain variables ---
     Nx = Nx_slider.value
@@ -155,6 +229,12 @@ def _(field_mode,nint_x_slider,nint_y_slider,Nx_slider,Ny_slider,kx_mode_slider,
         carrier = np.cos(kx_val * (X - x_center) + ky_val * (Y - y_center))
         phi = envelope * carrier
 
+    # Add optional second mode before normalisation.
+    if add_mode2.value:
+        kx2_val = kx2_mode_slider.value * dkx
+        ky2_val = ky2_mode_slider.value * dky
+        phi = phi + np.cos(kx2_val * X + ky2_val * Y)
+
     # Normalize to unit amplitude so the colour scale is the same for both modes.
     phi_max = np.max(np.abs(phi))
     if phi_max > 0:
@@ -193,17 +273,48 @@ def _(field_mode,nint_x_slider,nint_y_slider,Nx_slider,Ny_slider,kx_mode_slider,
             Y_shifted_wrapped_fine[i, :], y_fine, phi_fine[i, :], period=Ly
         )
 
-    # --- 3. Downsample shifted field back to original grid ---
-    phi_shifted_coarse_y = np.zeros((Nx_fine, Ny))
-    for i in range(Nx_fine):
-        phi_shifted_coarse_y[i, :] = np.interp(y, y_fine, phi_shifted_fine[i, :], period=Ly)
-    phi_shifted = np.zeros((Nx, Ny))
-    for j in range(Ny):
-        phi_shifted[:, j] = np.interp(x, x_fine, phi_shifted_coarse_y[:, j])
+    # --- 3. Downsample: optionally apply antialiasing filter before decimation ---
+    # When apply_filter is off, decimate directly (no convolution) so that the
+    # effect of aliasing is visible by toggling the checkbox.
+    a = lanczos_a_slider.value
+    sigma = gaussian_sigma_slider.value
+    if apply_filter.value:
+        phi_shifted = filter_downsample(
+            phi_shifted_fine, nint_x, nint_y,
+            filter_type=filter_dropdown.value, a=a, sigma=sigma, periodic_y=True
+        )
+    else:
+        phi_shifted = phi_shifted_fine[::nint_x, ::nint_y]
 
     return (A, x0, Lx, Ly, Nx, Ny, X, Y, delta_y, dky, dx, dy,
             field_mode, kx_val, ky_val, phi, phi_shifted,
+            X_fine, Y_fine, phi_fine, phi_shifted_fine,
             q_profile, shat, sigma_x_slider, sigma_y_slider, x, x_local, y)
+
+# Cell: fine-grid field plots — pcolormesh of phi and phi_shifted on the oversampled mesh.
+@app.cell
+def _(X_fine, Y_fine, cmap_dropdown, np, phi_fine, phi_shifted_fine, plt):
+    _cmap = cmap_dropdown.value
+    _vmax = np.max(np.abs(phi_fine))
+    _panels = [
+        ("φ fine grid", phi_fine),
+        ("φ fine grid shifted", phi_shifted_fine),
+    ]
+    _fig, _axes = plt.subplots(1, 2, figsize=(10, 4.5), squeeze=False)
+    _axes = _axes[0]
+    for _i, (_title, _data) in enumerate(_panels):
+        _im = _axes[_i].pcolormesh(
+            X_fine, Y_fine, _data, cmap=_cmap, vmin=-_vmax, vmax=_vmax, shading="auto"
+        )
+        _axes[_i].set_title(_title)
+        _axes[_i].set_xlabel("x")
+        _axes[_i].set_ylabel("y")
+        plt.colorbar(_im, ax=_axes[_i], shrink=0.8)
+    plt.tight_layout()
+    fig_fine = plt.gcf()
+    plt.close(fig_fine)
+    return fig_fine,
+
 
 # Cell: real-space field plots — side-by-side pcolormesh of the original and twist-shifted phi(x,y).
 @app.cell
@@ -276,6 +387,7 @@ def _(Lx, Ly, Nx, Ny, np, phi, phi_shifted, plt):
         _axes[_i].set_title(_title)
         _axes[_i].set_xlabel("kx")
         _axes[_i].set_ylabel("ky")
+        _axes[_i].set_ylim(0, np.max(_ky_axis))
         plt.colorbar(_im, ax=_axes[_i], shrink=0.8)
     plt.tight_layout()
     fig_fourier = plt.gcf()
@@ -317,9 +429,10 @@ def _(np, plt, q_profile, shat, x_local):
 def _(
     Nx_slider, Ny_slider,
     field_mode, kx_mode_slider, ky_mode_slider, sigma_x_slider, sigma_y_slider,
+    add_mode2, kx2_mode_slider, ky2_mode_slider,
     shat_slider, q0_slider,
-    cmap_dropdown, nint_x_slider, nint_y_slider,
-    fig_realspace, fig_fourier, fig_profiles,
+    cmap_dropdown, nint_x_slider, nint_y_slider, apply_filter, filter_dropdown, lanczos_a_slider, gaussian_sigma_slider,
+    fig_realspace, fig_fourier, fig_profiles, fig_fine,
     mo,
 ):
     _left = mo.vstack([
@@ -330,15 +443,24 @@ def _(
         mo.hstack([ky_mode_slider]),
         mo.hstack([sigma_x_slider]),
         mo.hstack([sigma_y_slider]),
+        mo.hstack([add_mode2]),
+        mo.hstack([kx2_mode_slider]),
+        mo.hstack([ky2_mode_slider]),
         mo.hstack([q0_slider]),
         mo.hstack([shat_slider]),
         mo.hstack([cmap_dropdown]),
         mo.hstack([nint_x_slider]),
         mo.hstack([nint_y_slider]),
+        mo.hstack([apply_filter]),
+        mo.hstack([filter_dropdown]),
+        mo.hstack([lanczos_a_slider]),
+        mo.hstack([gaussian_sigma_slider]),
     ])
     _right = mo.vstack([
         mo.md("## Profiles & Diagnostics"),
         fig_profiles,
+        mo.md("## Real-Space Fields (fine grid)"),
+        fig_fine,
         mo.md("## Real-Space Fields"),
         fig_realspace,
         mo.md("## Fourier Space"),
