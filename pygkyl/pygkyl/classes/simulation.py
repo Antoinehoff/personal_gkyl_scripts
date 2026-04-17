@@ -1041,7 +1041,7 @@ class Simulation:
                    close_fig=close_fig, clim=clim)
     
     def plot_balance(self, balance_type='particle', species=['elc', 'ion'],
-                    figout=[], rm_legend=False, fig_size=(8,6), log_abs=False,
+                    figout=[], rm_legend=False, fig_size=(5,3.5), log_abs=False,
                     close_fig=False, data=[], xlim=None, ylim=None):
         """
         Plot particle or energy balance diagnostics.
@@ -1057,7 +1057,7 @@ class Simulation:
         rm_legend : bool, optional
             Remove legend. Default: False
         fig_size : tuple, optional
-            Figure size (width, height). Default: (8, 6)
+            Figure size (width, height). Default: (5, 3.5)
         log_abs : bool, optional
             Use log scale for absolute values. Default: False
         close_fig : bool, optional
