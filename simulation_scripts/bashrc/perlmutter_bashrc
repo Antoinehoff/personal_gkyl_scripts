@@ -12,6 +12,13 @@ then
 fi
 export PATH
 
+# To avoid filling up home with cache
+export PIP_CACHE_DIR=/pscratch/sd/a/ah1032/.pip-cache
+export PYTHONUSERBASE=/pscratch/sd/a/ah1032/.local
+export PATH=$PYTHONUSERBASE/bin:$PATH
+export VSCODE_EXTENSIONS_DIR=/pscratch/sd/a/ah1032/.vscode-extensions
+mkdir -p $PIP_CACHE_DIR $PYTHONUSERBASE $VSCODE_EXTENSIONS_DIR
+
 # Uncomment the following line if you don't like systemctl's auto-paging feature:
 # export SYSTEMD_PAGER=
 
@@ -21,12 +28,47 @@ alias dus='for dir in */ .*/; do [ "$dir" != "." ] && [ "$dir" != ".." ] && du -
 alias quota='quota -s'
 alias queue_u_details='squeue -u ah1032 --format="%.18i %.10P %.30j %.8u %.2t %.10M %.6D %.20R"'
 alias queue_u='squeue -u ah1032 --format="%.9i %.10P %.48j %.2t %.9M %.6D %.16R" --sort=i'
+alias queue_u_refresh='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/perlmutter_queue.sh'
 alias go_scratch='cd $SCRATCH'
+alias go_m4564='cd /global/cfs/cdirs/m4564'
 alias bashrc_check='cat ~/.bashrc'
 alias bashrc_refresh='. ~/.bashrc'
 alias bashrc_edit='vi ~/.bashrc'
 alias replace_filename_pattern='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/replace_filename_pattern.sh'
 alias grant_access='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/grant_access.sh'
+
+
+mpirun() {
+    if [[ $# -lt 1 ]]; then
+        echo "This is a wrapper to srun on perlmutter. It translates mpirun arguments to srun arguments." 
+        echo "For example, -np or --np or -n will be translated to -n for srun."
+        echo "Usage: mpirun -np <N> <exe> [args ...]"
+        return 1
+    fi
+
+    local args=("$@")
+    local out=("srun")
+    local i=0
+
+    while (( i < ${#args[@]} )); do
+        case "${args[i]}" in
+            -np|--np|-n)
+                ((i++))
+                if (( i >= ${#args[@]} )); then
+                    echo "Error: ${args[i-1]} requires a value"
+                    return 1
+                fi
+                out+=("-n" "${args[i]}")
+                ;;
+            *)
+                out+=("${args[i]}")
+                ;;
+        esac
+        ((i++))
+    done
+
+    command srun "${out[@]:1}"
+}
 
 check_job_status() {
     if [[ -z "$1" ]]; then
@@ -64,7 +106,9 @@ gif2mp4() {
 
 # Gkeyll specific commands
 alias pgkyl_env_setup='source ~/py_venv/pgkyl/bin/activate'
-alias gkyl_module='module load python PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12'
+alias gkyl_module_gpu='module purge && module load python PrgEnv-gnu/8.6.0 cudatoolkit/13.0 craype-accel-nvidia80 cray-mpich/9.0.1 nccl/2.29.2-cu13'
+alias gkyl_module_cpu='module unload nccl/2.29.2-cu13 cudatoolkit craype-accel-nvidia80 && module load craype-x86-milan cray-mpich/9.0.1 cray-libsci/25.09.0'
+# alias gkyl_module='module load python PrgEnv-gnu/8.5.0 cudatoolkit/12.9 craype-accel-nvidia80 cray-mpich/8.1.30 nccl/2.18.3-cu12 cray-libsci/25.09.0'
 alias gkyl_total_runtime='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_total_runtime.sh'
 alias gkyl_available_frames='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_available_frames.sh'
 alias gkyl_clean_out='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_clean_out.sh'
@@ -76,34 +120,10 @@ alias gkyl_submit='sh ~/personal_gkyl_scripts/simulation_scripts/submit/perlmutt
 alias gkyl_get_makefile='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_get_makefile.sh'
 alias gkyl_dt_avg='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_dt_avg.sh'
 alias gkyl_create_restart_link='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_create_restart_link.sh'
-
-gkyl_run_gpu() {
-    # Check if the number of arguments is less than 1 or if -h or --help is provided
-    if [[ $# -lt 1 || "$1" == "-h" || "$1" == "--help" ]]; then
-        echo "Usage: gkyl_run_gpus <ngpu> [additional gkyl options]"
-        echo "Run the 'gkeyll' executable with the specified number of GPUs using srun."
-        echo "This function automatically calculates the number of nodes needed."
-        echo "Example: gkyl_run_gpus 8 your_input_file.lua"
-        return 1
-    fi
-
-    local ngpu=$1
-    shift  # Shift the arguments to remove the first one (ngpu)
-
-    # Assuming 4 GPUs per node, calculate the number of nodes required.
-    local gpus_per_node=4
-    local nnodes=$(( (ngpu + gpus_per_node - 1) / gpus_per_node ))
-
-    # Use -N to specify the calculated number of nodes.
-    # --ntasks is set to the number of GPUs, assuming one task per GPU.
-    CMD="srun -N $nnodes --ntasks=$ngpu --gpus-per-task=1 --gpu-bind=closest -u ./gkeyll -g -M -e $ngpu $* | tee gkyl_run_gpu.log"
-    echo "Executing command: $CMD"
-    eval $CMD
-}
+alias gkyl_run_gpu='sh ~/personal_gkyl_scripts/simulation_scripts/submit/perlmutter_run_gpu.sh'
+alias gkyl_valgrind='valgrind --leak-check=full --max-stackframe=5000000 -s'
 
 # Gyacomo specific commands
 alias gyac_continue='sh ~/gyacomo/scripts/shell_scripts/continue.sh'
 alias gyac_new_prob='sh ~/gyacomo/new_prob.sh'
 alias gyac_submit='sh ~/gyacomo/scripts/shell_scripts/gyac_submit.sh'
-
-gkyl_setup_gpu

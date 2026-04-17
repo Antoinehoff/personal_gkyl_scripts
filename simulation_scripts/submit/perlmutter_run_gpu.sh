@@ -16,7 +16,7 @@ Options:
   The remaining arguments are passed directly to the Gkeyll executable.
 
 Example:
-  $(basename "$0") -n 8 -d 2d -r 40 [To restart at frame 40]
+  $(basename "$0") -n 8 -d 2 -r 40 [To restart at frame 40]
   $(basename "$0") --ngpu 16 --dim 3d --exec custom_gkeyll --log my_simulation.log
 
 EOF
@@ -46,9 +46,9 @@ while [[ $# -gt 0 ]]; do
             ;;
         -d|--dim)
             if [[ "$2" == "2d" || "$2" == "2D" || "$2" == "2" ]]; then
-                decomp="-d"
+                decomp_dir="-d"
             elif [[ "$2" == "3d" || "$2" == "3D" || "$2" == "3" ]]; then
-                decomp="-e"
+                decomp_dir="-e"
             else
                 echo "Error: Invalid dimension '$2'. Use '2d' or '3d'."
                 exit 1

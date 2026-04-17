@@ -3,14 +3,22 @@
 # It extracts the numbers just before .gkyl in the filenames.
 # It is useful for checking which frames are available in a simulation.
 
-# Check if a folder was provided as an argument
-if [ -z "$1" ]; then
-    echo "Error: No folder path provided."
-    echo "Usage: $0 <folder_path>"
-    exit 1
+# Check for help flag or set default directory
+if [[ "$1" == "-h" || "$1" == "--help" ]]; then
+    echo "Usage: $0 [folder_path]"
+    echo ""
+    echo "Lists all available restart simulation frames in the specified folder."
+    echo "Looks for files matching *-ion_<N>.gkyl and extracts the frame numbers."
+    echo ""
+    echo "Arguments:"
+    echo "  folder_path   Path to the simulation folder (default: current directory)"
+    echo ""
+    echo "Options:"
+    echo "  -h, --help    Show this help message and exit"
+    exit 0
 fi
 
-folder="$1"
+folder="${1:-.}"
 frames=()
 
 # Loop through all files matching the pattern

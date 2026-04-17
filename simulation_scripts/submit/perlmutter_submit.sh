@@ -12,7 +12,7 @@ TIME="06:00:00"  # HH:MM:SS
 #.Mail is sent to you when the job starts and when it terminates or aborts.
 EMAIL="ahoffman@pppl.gov"
 #.Module to load.
-MODULES="PrgEnv-gnu/8.5.0 craype-accel-nvidia80 cray-mpich/8.1.28 cudatoolkit/12.4 nccl/2.18.3-cu12"
+MODULES="PrgEnv-gnu/8.6.0 craype-accel-nvidia80 cray-mpich/9.0.1 cudatoolkit/13.0 nccl/2.29.2-cu13"
 #.Set the account. CEDA: m4564, Mana: m5053
 ACCOUNT="m4564"
 #.Default value to check a possible restart.
@@ -37,9 +37,10 @@ show_help() {
     echo "  -h          Display this help and exit"
     echo "  -a ACCOUNT  Account to use (default: $ACCOUNT)"
     echo "  -i INPUTC   C Input file name (default: gkeyll.c)"
+    echo "  --nprocs NPROCS  Number of processes (overrides auto-detection)"
 }
-# check the following options : -q -n -t -h -N -r -d -a -j -p
-while getopts ":q:n:t:r:N:d:a:i:jph" opt; do
+# check the following options : -q -n -t -h -N -r -d -a -j -p -i -- --nprocs
+while getopts ":q:n:t:r:N:d:ja:pi:-:" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG
@@ -92,6 +93,20 @@ while getopts ":q:n:t:r:N:d:a:i:jph" opt; do
         i )
             INPUT_FILE=$OPTARG
             ;;
+        - )
+            case $OPTARG in
+                nprocs | numprocs )
+                    # Extract the value from the next position in the argument list
+                    TOTAL_GPUS="${!OPTIND}"
+                    # Manually increment the getopts index to skip the value we just grabbed
+                    OPTIND=$(( OPTIND + 1 ))
+                    ;;
+                * )
+                    echo "Invalid option: --$OPTARG" >&2
+                    exit 1
+                    ;;
+            esac
+            ;;
         h )
             show_help
             exit 0
@@ -114,10 +129,14 @@ EXEC_NAME=$(basename "$INPUT_FILE" .c)
 GKYLEXE="gkeyll"
 
 #.AUXILIARY SLURM VARIABLES
-#.Total number of cores/tasks/MPI processes.
-NTASKS_PER_NODE=$GPU_PER_NODE
-#.Calculate total number of GPUs (nodes * GPUs per node)
-TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
+#.Calculate total number of GPUs (nodes * GPUs per node) if not overridden
+if [ -z "$TOTAL_GPUS" ]; then
+    TOTAL_GPUS=$(( NODES * GPU_PER_NODE ))
+fi
+
+#.Update tasks per node based on the total requested
+# If TOTAL_GPUS was overridden, we distribute them across the requested nodes
+NTASKS_PER_NODE=$(( TOTAL_GPUS / NODES ))
 
 #.------- DETECT 2D vs 3D RUN
 # Check C input file for cdim value to determine run type
@@ -174,6 +193,8 @@ ERROR="error_$FRAME_SUFFIX.out"
 # get time in seconds
 IFS=':' read -r h m s <<< "$TIME"
 seconds=$((10#$h * 3600 + 10#$m * 60 + 10#$s))
+# save 10% of the time for safety
+seconds=$((seconds * 90 / 100))
 RUNTIME_OPT="-o max_run_time=$seconds"
 
 #.Run command - will be modified at runtime if auto-detecting

@@ -12,58 +12,41 @@ PRINT_ONLY=false  # Default: do not just print the command
 
 # Help function
 show_help() {
-    echo "Usage: $0 [-a ACCOUNT] [-N NODES] [-g GPUS] [-t TIME] [-T TASKS] [-n NODE_TYPE] [-q QOS] [-p]"
+    echo "Usage: $0 [-a ACCOUNT] [-N NODES] [-g GPUS] [-t TIME] [-T TASKS] [-q QOS] [--gpu|--cpu] [-p]"
     echo "Run salloc with specified or default parameters."
     echo "  -a ACCOUNT      Account to use (default: $ACCOUNT)"
     echo "  -N NODES        Number of nodes (default: $NODES)"
     echo "  -g GPUS         Number of GPUs (default: $GPUS)"
     echo "  -T TASKS        Tasks per node (default: $TASKS_PER_NODE)"
     echo "  -t TIME         Wall time (default: $TIME)"
-    echo "  -n NODE_TYPE    Node type: gpu or cpu (default: $NODE_TYPE)"
+    echo "  --gpu           Use GPU nodes (default)"
+    echo "  --cpu           Use CPU nodes"
     echo "  -q QOS          QOS to use (default: $QOS)"
     echo "  -p              Print the command line and exit without executing"
     echo "  -h              Display this help and exit"
 }
 
-# Parse options
-while getopts ":a:N:g:T:t:n:q:ph" opt; do
-    case ${opt} in
-        a )
-            ACCOUNT=$OPTARG
-            ;;
-        N )
-            NODES=$OPTARG
-            ;;
-        g )
-            GPUS=$OPTARG
-            ;;
-        T )
-            TASKS_PER_NODE=$OPTARG
-            ;;
-        t )
-            TIME=$OPTARG
-            ;;
-        n )
-            NODE_TYPE=$OPTARG
-            if [[ "$NODE_TYPE" != "gpu" && "$NODE_TYPE" != "cpu" ]]; then
-                echo "Invalid node type: $NODE_TYPE. Must be 'gpu' or 'cpu'." >&2
-                exit 1
-            fi
-            ;;
-        q )
-            QOS=$OPTARG
-            ;;
-        p )
-            PRINT_ONLY=true
-            ;;
-        h )
-            show_help
-            exit 0
-            ;;
-        \? )
-            echo "Invalid option: -$OPTARG" >&2
-            exit 1
-            ;;
+# Parse options (GNU getopt for long option support)
+PARSED=$(getopt -o a:N:g:T:t:q:ph --long gpu,cpu,account:,nodes:,gpus:,tasks:,time:,qos:,print,help -n "$0" -- "$@")
+if [[ $? -ne 0 ]]; then
+    exit 1
+fi
+eval set -- "$PARSED"
+
+while true; do
+    case "$1" in
+        -a|--account)       ACCOUNT="$2";         shift 2 ;;
+        -N|--nodes)         NODES="$2";           shift 2 ;;
+        -g|--gpus)          GPUS="$2";            shift 2 ;;
+        -T|--tasks)         TASKS_PER_NODE="$2";  shift 2 ;;
+        -t|--time)          TIME="$2";            shift 2 ;;
+        -q|--qos)           QOS="$2";             shift 2 ;;
+        --gpu)              NODE_TYPE="gpu";       shift   ;;
+        --cpu)              NODE_TYPE="cpu";       shift   ;;
+        -p|--print)         PRINT_ONLY=true;       shift   ;;
+        -h|--help)          show_help; exit 0      ;;
+        --)                 shift; break           ;;
+        *)                  echo "Invalid option: $1" >&2; exit 1 ;;
     esac
 done
 
