@@ -485,7 +485,7 @@ def plot_time_serie(simulation,fieldnames='phi',cut_coords=[0.0,0.0,0.0], time_f
                     units = units + r'/s'
             ax.plot(t,v,label=label)
             if data_dict is not None:
-                data_dict[subfield] = (t, v, f0.tunits, f0.vunits, f0.symbol)
+                data_dict[subfield] = (t, v, f0.tunits, f0.vunits, f0.vsymbol)
 
         # units = math_utils.simplify_units(units) # this is not robuts...
         fig_tools.finalize_plot(ax, fig, xlabel=f0.tunits, ylabel=units, figout=figout,
