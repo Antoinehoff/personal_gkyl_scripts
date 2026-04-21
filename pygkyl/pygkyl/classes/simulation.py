@@ -604,54 +604,54 @@ class Simulation:
         All figures are closed automatically (close_fig=True).
         """
         print("Testing plot_1D...")
-        self.plot_1D(close_fig=True)
+        self.plot_1D(closeFig=True)
         
         print("Testing plot_DG_1D...")
-        self.plot_DG_1D(close_fig=True)
+        self.plot_DG_1D(closeFig=True)
         
         print("Testing plot_2D...")
-        self.plot_2D(close_fig=True)
+        self.plot_2D(closeFig=True)
         
         print("Testing plot_1D_time_evolution...")
-        self.plot_1D_time_evolution(close_fig=True)
+        self.plot_1D_time_evolution(closeFig=True)
         
         print("Testing plot_integrated_moment...")
-        self.plot_integrated_moment(close_fig=True)
+        self.plot_integrated_moment(closeFig=True)
         
         print("Testing plot_time_serie...")
-        self.plot_time_serie(close_fig=True)
+        self.plot_time_serie(closeFig=True)
         
         print("Testing plot_poloidal_projection...")
-        self.plot_poloidal_projection(close_fig=True)
+        self.plot_poloidal_projection(closeFig=True)
         
         print("Testing plot_flux_surface_projection...")
-        self.plot_flux_surface_projection(close_fig=True)
+        self.plot_flux_surface_projection(closeFig=True)
         
         print("Testing plot_balance...")
-        self.plot_balance(close_fig=True)
+        self.plot_balance(closeFig=True)
         
         print("Testing plot_loss...")
-        self.plot_loss(close_fig=True)
+        self.plot_loss(closeFig=True)
         
         print("All plotting tests completed successfully!")
 
 
-    def plot_1D(self, cut_dir='x', cut_coords=[0.0,0.0,0.0], field_name='phi',
-                frame_idx=None, xlim=[], ylim=[], xscale='', yscale='', 
-                periodicity=0, grid=False, figout=[], plot_data=[], errorbar=False, 
-                show_title=True, show_legend=True, close_fig=False):
+    def plot_1D(self, cutDir='x', cutCoords=[0.0,0.0,0.0], fieldName='phi',
+                frameIdx=None, xlim=[], ylim=[], xscale='', yscale='', 
+                periodicity=0, grid=False, figout=[], plotData=[], errorbar=False, 
+                showTitle=True, showLegend=True, closeFig=False):
         """
         Plot 1D data for given field(s) and time frames.
         
         Parameters
         ----------
-        cut_dir : str, optional
+        cutDir : str, optional
             Cut direction ('x', 'y', 'z', 'vpar', 'mu'). Default: 'x'
-        cut_coords : list, optional
+        cutCoords : list, optional
             Coordinates for the cut [x, y, z]. Default: [0.0, 0.0, 0.0]
-        field_name : str or list, optional
+        fieldName : str or list, optional
             Field name(s) to plot. Default: 'phi'
-        frame_idx : int, list, or None, optional
+        frameIdx : int, list, or None, optional
             Time frame(s) to plot. None uses last available frame. Default: None
         xlim : list, optional
             X-axis limits [xmin, xmax]. Default: []
@@ -669,11 +669,11 @@ class Simulation:
             List to append figure object to. Default: []
         errorbar : bool, optional
             Show error bars for time-averaged data. Default: False
-        show_title : bool, optional
+        showTitle : bool, optional
             Display plot title. Default: True
-        show_legend : bool, optional
+        showLegend : bool, optional
             Display legend. Default: True
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
             
         Returns
@@ -683,37 +683,37 @@ class Simulation:
             
         Examples
         --------
-        >>> sim.plot_1D(fieldnames='phi', cdirection='x', time_frames=[0, 10, 20])
-        >>> sim.plot_1D(fieldnames=['ne', 'ni'], ccoords=[0.5, 0.0, 0.0])
+        >>> sim.plot_1D(fieldName='phi', cutDir='x', frameIdx=[0, 10, 20])
+        >>> sim.plot_1D(fieldName=['ne', 'ni'], cutCoords=[0.5, 0.0, 0.0])
         """
         from ..utils.plot_utils import plot_1D as plot
-        return plot(simulation=self, cdirection=cut_dir, ccoords=cut_coords, 
-                   fieldnames=field_name, time_frames=frame_idx, xlim=xlim, 
+        return plot(simulation=self, cdirection=cutDir, ccoords=cutCoords, 
+                   fieldnames=fieldName, time_frames=frameIdx, xlim=xlim, 
                    ylim=ylim, xscale=xscale, yscale=yscale, periodicity=periodicity,
-                   grid=grid, figout=figout, errorbar=errorbar, plot_data=plot_data,
-                   show_title=show_title, show_legend=show_legend, close_fig=close_fig)
+                   grid=grid, figout=figout, errorbar=errorbar, plot_data=plotData,
+                   show_title=showTitle, show_legend=showLegend, close_fig=closeFig)
     
-    def plot_DG_1D(self, field_name='phi', frame_idx=None, cut_dir='x', cut_coords=[0.0,0.0,0.0], xlim=[], ylim=[],
-                           show_cells=True, figout=[], derivative=False, dgcoeffidx=None, close_fig=False,
-                           figsize=None, fig_dpi=None):
+    def plot_DG_1D(self, fieldName='phi', frameIdx=None, cutDir='x', cutCoords=[0.0,0.0,0.0], xlim=[], ylim=[],
+                           showCells=True, figout=[], derivative=False, dgcoeffidx=None, closeFig=False,
+                           figSize=None, figDpi=None):
         """
         Plot 1D data for given field(s) and time frames using DG basis.
         
         Parameters
         ----------
-        fieldname : str, optional
+        fieldName : str, optional
             Field name to plot. Default: 'phi' (multiple fields supported)
-        frame_idx : int or None, optional
+        frameIdx : int or None, optional
             Time frame to plot. None uses last available. Default: None
-        cut_dir : str, optional
+        cutDir : str, optional
             Cut direction ('x', 'y', 'z', 'vpar', 'mu'). Default: 'x'
-        cut_coords : list, optional
+        cutCoords : list, optional
             Coordinates for the cut [x, y, z, vpar, mu] for phase space. Default: [0.0, 0.0, 0.0, 0.0, 0.0]
         xlim : list, optional
             X-axis limits [xmin, xmax]. Default: []
         ylim : list, optional
             Y-axis limits [ymin, ymax]. Default: []
-        show_cells : bool, optional
+        showCells : bool, optional
             Show DG cells. Default: True
         figout : list, optional
             List to append figure object to. Default: []
@@ -721,7 +721,7 @@ class Simulation:
             Plot derivative of the field. Default: False
         dgcoeffidx : int or None, optional
             Index of DG coefficient to plot. Default: None (plots full DG representation)
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
             
         Returns
@@ -731,41 +731,41 @@ class Simulation:
         
         Examples
         --------
-        >>> sim.plot_DG_1D(fieldname='phi', sim_frame=0, cutdir='x', cutcoord=[0.5, 0.0, 0.0])
-        >>> sim.plot_DG_1D(fieldname='fe', sim_frame=10, cutdir='vpar', cutcoord=[0.0, 0.0, 0.0, 0.0, 0.0])
+        >>> sim.plot_DG_1D(fieldName='phi', frameIdx=0, cutDir='x', cutCoords=[0.5, 0.0, 0.0])
+        >>> sim.plot_DG_1D(fieldName='fe', frameIdx=10, cutDir='vpar', cutCoords=[0.0, 0.0, 0.0, 0.0, 0.0])
         
         """
         from ..utils.plot_utils import plot_DG_representation as plot
-        return plot(simulation=self, fieldname=field_name, sim_frame=frame_idx, cutdir=cut_dir, 
-                   cutcoord=cut_coords, xlim=xlim, ylim=ylim, show_cells=show_cells,
-                   figout=figout, derivative=derivative, dgcoeffidx=dgcoeffidx, close_fig=close_fig, 
-                   figsize=figsize, fig_dpi=fig_dpi)
+        return plot(simulation=self, fieldname=fieldName, sim_frame=frameIdx, cutdir=cutDir, 
+                   cutcoord=cutCoords, xlim=xlim, ylim=ylim, show_cells=showCells,
+                   figout=figout, derivative=derivative, dgcoeffidx=dgcoeffidx, close_fig=closeFig, 
+                   figsize=figSize, fig_dpi=figDpi)
     
-    def plot_2D(self, cut_dir='xy', cut_coords=[0.0,0.0,0.0], frame_idx=None,
-                field_name='phi', cmap=None, time_average=False, fluctuation='',
-                plot_type='pcolormesh', xlim=[], ylim=[], clim=[], aspect='auto',
-                colorscale='linear', show_title=True, figout=[], cutout=[], figsize=None, 
-                fig_dpi=None, val_out=[], frames_to_plot=None, cmap_period=1, close_fig=False):
+    def plot_2D(self, cutDir='xy', cutCoords=[0.0,0.0,0.0], frameIdx=None,
+                fieldName='phi', cmap=None, timeAverage=False, fluctuation='',
+                plotType='pcolormesh', xlim=[], ylim=[], clim=[], aspect='auto',
+                colorScale='linear', showTitle=True, figout=[], cutOut=[], figSize=None, 
+                figDpi=None, valOut=[], framesToPlot=None, cmapPeriod=1, closeFig=False):
         """
         Plot 2D cut of the simulation domain for given field(s).
         
         Parameters
         ----------
-        cut_dir : str, optional
+        cutDir : str, optional
             Plane to cut ('xy', 'xz', 'yz'). Use 'kx', 'ky', 'kz' for Fourier. Default: 'xy'
-        cut_coords : list, optional
+        cutCoords : list, optional
             Coordinates for the cut plane. Default: [0.0, 0.0, 0.0]
-        frame_idx : int or None, optional
+        frameIdx : int or None, optional
             Time frame to plot. None uses last available. Default: None
-        field_name : str or list, optional
+        fieldName : str or list, optional
             Field name(s) to plot. Default: 'phi' (multiple fields supported)
         cmap : str or None, optional
             Colormap name. None uses field default. Default: None
-        time_average : bool, optional
+        timeAverage : bool, optional
             Average over time frames. Default: False
         fluctuation : str, optional
             Fluctuation type ('', 'tavg', 'tavg_relative', 'yavg'). Default: ''
-        plot_type : str, optional
+        plotType : str, optional
             Plot type ('pcolormesh', 'contourf', 'contour'). Default: 'pcolormesh'
         xlim : list, optional
             X-axis limits [xmin, xmax]. Default: []
@@ -775,23 +775,23 @@ class Simulation:
             Color limits. Can be single value, [min, max], or list of limits per field. Default: []
         aspect : str or float, optional
             Aspect ratio for the plot. Default: 'auto'
-        colorscale : str, optional
+        colorScale : str, optional
             Color scale ('linear', 'log'). Default: 'linear'
-        show_title : bool, optional
+        showTitle : bool, optional
             Display plot title. Default: True
         figout : list, optional
             List to append figure object to. Default: []
-        cutout : list, optional
+        cutOut : list, optional
             List to append cut coordinates to. Default: []
-        figsize : tuple, optional
+        figSize : tuple, optional
             Figure size (width, height) in inches. Default: None (uses lib default (5,3.5))
-        val_out : list, optional
+        valOut : list, optional
             List to append plot values to. Default: []
-        frames_to_plot : list or None, optional
+        framesToPlot : list or None, optional
             Pre-loaded frames to plot. Default: None
-        cmap_period : int, optional
+        cmapPeriod : int, optional
             Colormap period for cyclic colormaps. Default: 1
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
             
         Returns
@@ -801,46 +801,46 @@ class Simulation:
             
         Examples
         --------
-        >>> sim.plot_2D(fieldnames='phi', cut_dir='xy', cut_coord=[0.0])
-        >>> sim.plot_2D(fieldnames=['ne', 'Te'], fluctuation='tavg', cmap='viridis')
-        >>> sim.plot_2D(fieldnames='ni', cut_dir='kxy', colorscale='log')
+        >>> sim.plot_2D(fieldName='phi', cutDir='xy', cutCoords=[0.0])
+        >>> sim.plot_2D(fieldName=['ne', 'Te'], fluctuation='tavg', cmap='viridis')
+        >>> sim.plot_2D(fieldName='ni', cutDir='kxy', colorScale='log')
         """
         from ..utils.plot_utils import plot_2D_cut as plot
-        return plot(simulation=self, cut_dir=cut_dir, cut_coord=cut_coords,
-                   time_frame=frame_idx, fieldnames=field_name, cmap=cmap,
-                   time_average=time_average, fluctuation=fluctuation,
-                   plot_type=plot_type, xlim=xlim, ylim=ylim, clim=clim,
-                   colorscale=colorscale, show_title=show_title, figout=figout,
-                   cutout=cutout, val_out=val_out, frames_to_plot=frames_to_plot,
-                   cmap_period=cmap_period, close_fig=close_fig, aspect=aspect,
-                   figsize=figsize, fig_dpi=fig_dpi)
+        return plot(simulation=self, cut_dir=cutDir, cut_coord=cutCoords,
+                   time_frame=frameIdx, fieldnames=fieldName, cmap=cmap,
+                   time_average=timeAverage, fluctuation=fluctuation,
+                   plot_type=plotType, xlim=xlim, ylim=ylim, clim=clim,
+                   colorscale=colorScale, show_title=showTitle, figout=figout,
+                   cutout=cutOut, val_out=valOut, frames_to_plot=framesToPlot,
+                   cmap_period=cmapPeriod, close_fig=closeFig, aspect=aspect,
+                   figsize=figSize, fig_dpi=figDpi)
     
-    def plot_1D_time_evolution(self, cut_dir='x', cut_coords=[0.0,0.0,0.0], field_name='phi',
-                               frame_indices=None, space_time=False, cmap='inferno',
-                               fluctuation='', plot_type='pcolormesh', yscale='linear',
-                               xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
-                               show_title=True, cmap_period=1, close_fig=False, data_dict={},
-                               figsize=None):
+    def plot_1D_time_evolution(self, cutDir='x', cutCoords=[0.0,0.0,0.0], fieldName='phi',
+                               frameIndices=None, spaceTime=False, cmap='inferno',
+                               fluctuation='', plotType='pcolormesh', yscale='linear',
+                               xlim=[], ylim=[], clim=[], figout=[], colorScale='linear',
+                               showTitle=True, cmapPeriod=1, closeFig=False, dataDict={},
+                               figSize=None):
         """
         Plot 1D time evolution (space-time diagram) for given field(s).
         
         Parameters
         ----------
-        cut_dir : str, optional
+        cutDir : str, optional
             Cut direction ('x', 'y', 'z', 'vpar', 'mu'). Default: 'x'
-        cut_coords : list, optional
+        cutCoords : list, optional
             Coordinates for the cut [x, y, z]. Default: [0.0, 0.0, 0.0]
-        field_name : str or list, optional
+        fieldName : str or list, optional
             Field name(s) to plot. Default: 'phi' (multiple fields supported)
-        frame_indices : list, optional
+        frameIndices : list, optional
             Time frames to include. Default: None (first and last frames)
-        space_time : bool, optional
+        spaceTime : bool, optional
             Create space-time diagram (2D). If False, overlay 1D plots. Default: False
         cmap : str, optional
             Colormap for space-time plot. Default: 'inferno'
         fluctuation : str, optional
             Fluctuation type ('', 'tavg', 'tavg_relative'). Default: ''
-        plot_type : str, optional
+        plotType : str, optional
             Plot type ('pcolormesh', 'contourf'). Default: 'pcolormesh'
         yscale : str, optional
             Y-axis scale ('linear', 'log'). Default: 'linear'
@@ -852,44 +852,44 @@ class Simulation:
             Color limits for space-time plot. Default: []
         figout : list, optional
             List to append figure to. Default: []
-        colorscale : str, optional
+        colorScale : str, optional
             Color scale ('linear', 'log'). Default: 'linear'
-        show_title : bool, optional
+        showTitle : bool, optional
             Display plot title. Default: True
-        cmap_period : int, optional
+        cmapPeriod : int, optional
             Colormap period for cyclic colormaps. Default: 1
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
-        figsize : tuple, optional
+        figSize : tuple, optional
             Figure size (width, height) in inches. Default: None (uses lib default (5,3.5))
-        data_dict : dict, optional
+        dataDict : dict, optional
             Dictionary to store (time, values) tuples for each field. Default: {}
             
         Examples
         --------
-        >>> sim.plot_1D_time_evolution('x', [0.0, 0.0], 'phi', twindow=range(0, 100))
-        >>> sim.plot_1D_time_evolution('z', [0.5, 0.0, 0.0], 'ne', space_time=True)
+        >>> sim.plot_1D_time_evolution(cutDir='x', cutCoords=[0.0, 0.0], fieldName='phi', frameIndices=range(0, 100))
+        >>> sim.plot_1D_time_evolution(cutDir='z', cutCoords=[0.5, 0.0, 0.0], fieldName='ne', spaceTime=True)
         """
         from ..utils.plot_utils import plot_1D_time_evolution as plot
-        if space_time and len(frame_indices) == 1:
+        if spaceTime and len(frameIndices) == 1:
             print("Warning: Only one time frame provided. Space-time diagram will not be meaningful.")
-            frame_indices = [frame_indices[0], frame_indices[0]]
-        return plot(simulation=self, cdirection=cut_dir, ccoords=cut_coords,
-                   fieldnames=field_name, twindow=frame_indices, space_time=space_time,
-                   cmap=cmap, fluctuation=fluctuation, plot_type=plot_type,
+            frameIndices = [frameIndices[0], frameIndices[0]]
+        return plot(simulation=self, cdirection=cutDir, ccoords=cutCoords,
+                   fieldnames=fieldName, twindow=frameIndices, space_time=spaceTime,
+                   cmap=cmap, fluctuation=fluctuation, plot_type=plotType,
                    yscale=yscale, xlim=xlim, ylim=ylim, clim=clim,
-                   figout=figout, colorscale=colorscale, show_title=show_title,
-                   cmap_period=cmap_period, close_fig=close_fig, data_dict=data_dict,
-                   figsize=figsize)
+                   figout=figout, colorscale=colorScale, show_title=showTitle,
+                   cmap_period=cmapPeriod, close_fig=closeFig, data_dict=dataDict,
+                   figsize=figSize)
     
-    def plot_integrated_moment(self, field_name='ne', xlim=[], ylim=[], ddt=False,
-                              figout=[], twindow=[], data_dict={}, close_fig=False, figsize=None):
+    def plot_integrated_moment(self, fieldName='ne', xlim=[], ylim=[], ddt=False,
+                              figout=[], twindow=[], dataDict={}, closeFig=False, figSize=None):
         """
         Plot integrated moments over time for different species.
         
         Parameters
         ----------
-        field_name : str or list, optional
+        fieldName : str or list, optional
             Integrated moment field name(s) (e.g., 'intM0e', 'intWtot'). Default: 'ne' (multiple fields supported)
         xlim : list, optional
             X-axis limits. Default: []
@@ -901,9 +901,9 @@ class Simulation:
             List to append figure to. Default: []
         twindow : list, optional
             Time window [t_start, t_end]. Default: []
-        data_dict : dict, optional
+        dataDict : dict, optional
             Dictionary to store (time, values) tuples. Default: {}
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
             
         Returns
@@ -917,22 +917,22 @@ class Simulation:
         >>> sim.plot_integrated_moment(['intWtot', 'intWkin'], ddt=True)
         """
         from ..utils.plot_utils import plot_integrated_moment as plot
-        return plot(simulation=self, fieldnames=field_name, xlim=xlim,
+        return plot(simulation=self, fieldnames=fieldName, xlim=xlim,
                    ylim=ylim, ddt=ddt, figout=figout, twindow=twindow, 
-                   close_fig=close_fig, data_dict=data_dict, figsize=figsize)
+                   close_fig=closeFig, data_dict=dataDict, figsize=figSize)
     
-    def plot_time_serie(self, field_name='phi', cut_coords=[0.0,0.0,0.0], time_frames=None,
-                       figout=[], xlim=[], ylim=[], ddt=False, data_dict={}, close_fig=False, figsize=None):
+    def plot_time_serie(self, fieldName='phi', cutCoords=[0.0,0.0,0.0], timeFrames=None,
+                       figout=[], xlim=[], ylim=[], ddt=False, dataDict={}, closeFig=False, figSize=None):
         """
         Plot time series of field values at specific coordinates.
         
         Parameters
         ----------
-        field_name : str or list, optional
+        fieldName : str or list, optional
             Field name(s) to plot. Default: 'phi' (multiple fields supported)
-        cut_coords : list, optional
+        cutCoords : list, optional
             Coordinates [x, y, z] to sample. Default: [0.0, 0.0, 0.0]
-        time_frames : list or None, optional
+        timeFrames : list or None, optional
             Time frames to include. Default: None
         figout : list, optional
             List to append figure to. Default: []
@@ -942,36 +942,36 @@ class Simulation:
             Y-axis limits. Default: []
         ddt : bool, optional
             Plot time derivative. Default: False
-        data_dict : dict, optional
+        dataDict : dict, optional
             Dictionary to store (time, values) tuples. Default: {}
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
             
         Examples
         --------
-        >>> sim.plot_time_serie('phi', [0.5, 0.0, 0.0])
-        >>> sim.plot_time_serie(['ne', 'Te'], [0.0, 0.0, 0.0], ddt=True)
+        >>> sim.plot_time_serie(fieldName='phi', cutCoords=[0.5, 0.0, 0.0])
+        >>> sim.plot_time_serie(fieldName=['ne', 'Te'], cutCoords=[0.0, 0.0, 0.0], ddt=True)
         """
         from ..utils.plot_utils import plot_time_serie as plot
-        return plot(simulation=self, fieldnames=field_name, cut_coords=cut_coords,
-                   time_frames=time_frames, figout=figout, xlim=xlim, ylim=ylim,
-                   ddt=ddt, data_dict=data_dict, close_fig=close_fig, figsize=figsize)
+        return plot(simulation=self, fieldnames=fieldName, cut_coords=cutCoords,
+                   time_frames=timeFrames, figout=figout, xlim=xlim, ylim=ylim,
+                   ddt=ddt, data_dict=dataDict, close_fig=closeFig, figsize=figSize)
     
-    def plot_poloidal_projection(self, field_name='phi', frame_idx=None, out_file_name='',
+    def plot_poloidal_projection(self, fieldName='phi', frameIdx=None, outFileName='',
                                  nzInterp=32, colorMap='inferno', colorScale='lin',
                                  showInset=True, showLimiter=True, showLCFS=True, showAxis=True,
                                  showVessel=False, limiterColor='gray', cutoutLimiter=False, xlim=[], ylim=[], clim=[],
-                                 logScaleFloor=1e-3, figout=[], close_fig=False, fig_dpi=150, figsize=None):
+                                 logScaleFloor=1e-3, figout=[], closeFig=False, figDpi=150, figSize=None):
         """
         Create poloidal projection plot of the simulation domain.
         
         Parameters
         ----------
-        field_name : str, optional
+        fieldName : str, optional
             Field to plot. Default: 'phi'
-        frame_idx : int, optional
+        frameIdx : int, optional
             Time frame to plot. Default: 0
-        out_file_name : str, optional
+        outFileName : str, optional
             Output filename for saving. Default: ''
         nzInterp : int, optional
             Number of z interpolation points. Default: 32
@@ -1003,29 +1003,29 @@ class Simulation:
             Floor value for log scale. Default: 1e-3
         figout : list, optional
             List to append figure to. Default: []
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
-        fig_dpi : int, optional
+        figDpi : int, optional
             Figure DPI (dots per inch). Default: 300
-        figsize : tuple, optional
+        figSize : tuple, optional
             Figure size (width, height). Default: None
             
         Examples
         --------
-        >>> sim.plot_poloidal_projection('phi', timeFrame=50)
-        >>> sim.plot_poloidal_projection('ne', colorScale='log', showInset=False)
+        >>> sim.plot_poloidal_projection(fieldName='phi', frameIdx=50)
+        >>> sim.plot_poloidal_projection(fieldName='ne', colorScale='log', showInset=False)
         """
         from ..utils.plot_utils import poloidal_proj as plot
-        return plot(simulation=self, fieldName=field_name, timeFrame=frame_idx,
-                   outFilename=out_file_name, nzInterp=nzInterp, colorMap=colorMap,
+        return plot(simulation=self, fieldName=fieldName, timeFrame=frameIdx,
+                   outFilename=outFileName, nzInterp=nzInterp, colorMap=colorMap,
                    showInset=showInset, showLimiter=showLimiter, showLCFS=showLCFS, 
-                   showAxis=showAxis,showVessel=showVessel,limiterColor=limiterColor, 
+                   showAxis=showAxis, showVessel=showVessel, limiterColor=limiterColor, 
                    cutoutLimiter=cutoutLimiter, colorScale=colorScale, xlim=xlim, ylim=ylim,
                    clim=clim, logScaleFloor=logScaleFloor, figout=figout,
-                   close_fig=close_fig, fig_dpi=fig_dpi, figsize=figsize)
+                   close_fig=closeFig, fig_dpi=figDpi, figsize=figSize)
     
-    def plot_flux_surface_projection(self, rho=0.9, field_name='phi', frame_idx=None, Nint=32,
-                                     figout=[], close_fig=False, clim=[]):
+    def plot_flux_surface_projection(self, rho=0.9, fieldName='phi', frameIdx=None, Nint=32,
+                                     figout=[], closeFig=False, clim=[]):
         """
         Create flux surface projection plot.
         
@@ -1033,49 +1033,49 @@ class Simulation:
         ----------
         rho : float
             Normalized radial coordinate. Default: 0.9
-        field_name : str
+        fieldName : str
             Field to plot. Default: 'phi'
-        frame_idx : int
+        frameIdx : int
             Time frame to plot. Default: None (last frame)
         Nint : int, optional
             Number of integration points. Default: 32
         figout : list, optional
             List to append figure to. Default: []
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
         clim : list, optional
             Color limits. Default: []
             
         Examples
         --------
-        >>> sim.plot_flux_surface_projection(0.5, 'phi', 50)
+        >>> sim.plot_flux_surface_projection(rho=0.5, fieldName='phi', frameIdx=50)
         """
         from ..utils.plot_utils import flux_surface_proj as plot
-        return plot(simulation=self, rho=rho, fieldName=field_name,
-                   timeFrame=frame_idx, Nint=Nint, figout=figout,
-                   close_fig=close_fig, clim=clim)
+        return plot(simulation=self, rho=rho, fieldName=fieldName,
+                   timeFrame=frameIdx, Nint=Nint, figout=figout,
+                   close_fig=closeFig, clim=clim)
     
-    def plot_balance(self, balance_type='particle', species=['elc', 'ion'],
-                    figout=[], rm_legend=False, fig_size=(5,3.5), log_abs=False,
-                    close_fig=False, data=[], xlim=None, ylim=None):
+    def plot_balance(self, balanceType='particle', species=['elc', 'ion'],
+                    figout=[], rmLegend=False, figSize=(5,3.5), logAbs=False,
+                    closeFig=False, data=[], xlim=None, ylim=None):
         """
         Plot particle or energy balance diagnostics.
         
         Parameters
         ----------
-        balance_type : str, optional
+        balanceType : str, optional
             Type of balance ('particle', 'energy'). Default: 'particle'
         species : list, optional
             Species to include. Default: ['elc', 'ion']
         figout : list, optional
             List to append figure to. Default: []
-        rm_legend : bool, optional
+        rmLegend : bool, optional
             Remove legend. Default: False
-        fig_size : tuple, optional
+        figSize : tuple, optional
             Figure size (width, height). Default: (5, 3.5)
-        log_abs : bool, optional
+        logAbs : bool, optional
             Use log scale for absolute values. Default: False
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
         data : list, optional
             List to get (time, values, label) tuples to. Default: []
@@ -1086,29 +1086,29 @@ class Simulation:
             
         Examples
         --------
-        >>> sim.plot_balance('particle')
-        >>> sim.plot_balance('energy', species=['ion'], log_abs=True)
+        >>> sim.plot_balance(balanceType='particle')
+        >>> sim.plot_balance(balanceType='energy', species=['ion'], logAbs=True)
         """
         from ..utils.plot_utils import plot_balance as plot
-        return plot(simulation=self, balance_type=balance_type, species=species,
-                   figout=figout, rm_legend=rm_legend, fig_size=fig_size,
-                   log_abs=log_abs, close_fig=close_fig, data=data, xlim=xlim, ylim=ylim)
+        return plot(simulation=self, balance_type=balanceType, species=species,
+                   figout=figout, rm_legend=rmLegend, fig_size=figSize,
+                   log_abs=logAbs, close_fig=closeFig, data=data, xlim=xlim, ylim=ylim)
     
-    def plot_loss(self, losstype='energy', walls=[], volfrac_scaled=True,
-                 show_avg=True, title=True, figout=[], xlim=[], ylim=[],
-                 showall=False, legend=True, data_out=[], close_fig=False):
+    def plot_loss(self, lossType='energy', walls=[], volFracScaled=True,
+                 showAvg=True, title=True, figout=[], xlim=[], ylim=[],
+                 showall=False, legend=True, dataOut=[], closeFig=False):
         """
         Plot particle or energy loss through boundaries.
         
         Parameters
         ----------
-        losstype : str, optional
+        lossType : str, optional
             Type of loss ('particle', 'energy'). Default: 'energy'
         walls : list, optional
             Walls to include (['x_l', 'x_u', 'z_l', 'z_u']). Default: []
-        volfrac_scaled : bool, optional
+        volFracScaled : bool, optional
             Scale by volume fraction. Default: True
-        show_avg : bool, optional
+        showAvg : bool, optional
             Show average value line. Default: True
         title : bool, optional
             Display plot title. Default: True
@@ -1122,9 +1122,9 @@ class Simulation:
             Show individual wall contributions. Default: False
         legend : bool, optional
             Display legend. Default: True
-        data_out : list, optional
+        dataOut : list, optional
             List to append (time, loss, label) tuples to. Default: []
-        close_fig : bool, optional
+        closeFig : bool, optional
             Close figure after plotting. Default: False
             
         Examples
@@ -1133,12 +1133,12 @@ class Simulation:
         >>> sim.plot_loss('energy', showall=True)
         """
         from ..utils.plot_utils import plot_loss as plot
-        return plot(simulation=self, losstype=losstype, walls=walls,
-                   volfrac_scaled=volfrac_scaled, show_avg=show_avg, title=title,
+        return plot(simulation=self, losstype=lossType, walls=walls,
+                   volfrac_scaled=volFracScaled, show_avg=showAvg, title=title,
                    figout=figout, xlim=xlim, ylim=ylim, showall=showall,
-                   legend=legend, data_out=data_out, close_fig=close_fig)
+                   legend=legend, data_out=dataOut, close_fig=closeFig)
         
-    def make_movie(self, plot_function, frame_list, movieprefix='', **kwargs):
+    def make_movie(self, plotFunction, frameList, moviePrefix='', **kwargs):
         """
         Generate a movie from any plotting function that accepts time_frame parameter.
         
@@ -1147,12 +1147,12 @@ class Simulation:
         
         Parameters
         ----------
-        plot_function : callable
+        plotFunction : callable
             Plotting method to use (e.g., self.plot_2D, self.plot_poloidal_projection).
             Must accept 'time_frame' and 'close_fig' parameters.
-        time_frames : list or range
+        frameList : list or range
             Time frame indices to include in the movie.
-        movieprefix : str, optional
+        moviePrefix : str, optional
             Prefix for the output movie filename. Default: ''
         **kwargs : dict
             Additional keyword arguments passed to the plotting function.
@@ -1167,20 +1167,20 @@ class Simulation:
         --------
         >>> # Make a 2D movie
         >>> sim.make_movie(sim.plot_2D, range(0, 100, 5), 
-        ...                movieprefix='phi_xy', fieldnames='phi', cut_dir='xy')
+        ...                moviePrefix='phi_xy', fieldName='phi', cutDir='xy')
         
         >>> # Make a poloidal projection movie
         >>> sim.make_movie(sim.plot_poloidal_projection, range(0, 50, 2),
-        ...                movieprefix='phi_poloidal', fieldName='phi')
+        ...                moviePrefix='phi_poloidal', fieldName='phi')
         
         >>> # Make a 1D time evolution movie (for specific time slices)
         >>> sim.make_movie(sim.plot_1D, range(0, 100, 5),
-        ...                movieprefix='phi_radial', fieldnames='phi', cdirection='x')
+        ...                moviePrefix='phi_radial', fieldName='phi', cutDir='x')
         
         Notes
         -----
         - Automatically creates and cleans up temporary directory for frames
-        - Use 'movieprefix' to name your output file
+        - Use 'moviePrefix' to name your output file
         - The plotting function MUST accept 'time_frame' and 'close_fig' parameters
         """
         import os
@@ -1188,32 +1188,32 @@ class Simulation:
         from ..tools import fig_tools
         
         # Validate inputs
-        if not callable(plot_function):
-            raise ValueError("plot_function must be a callable (method/function)")
+        if not callable(plotFunction):
+            raise ValueError("plotFunction must be a callable (method/function)")
         
-        if not hasattr(frame_list, '__iter__'):
-            frame_list = [frame_list]
+        if not hasattr(frameList, '__iter__'):
+            frameList = [frameList]
         
-        frame_list = list(frame_list)
-        if len(frame_list) == 0:
-            raise ValueError("frame_list cannot be empty")
+        frameList = list(frameList)
+        if len(frameList) == 0:
+            raise ValueError("frameList cannot be empty")
         
         # Create temporary directory for frames
         movDirTmp = 'movie_frames_tmp'
         os.makedirs(movDirTmp, exist_ok=True)
         
         frameFileList = []
-        total_frames = len(frame_list)
+        total_frames = len(frameList)
         
         # Generate all frames
-        for i, tf in enumerate(frame_list, 1):
+        for i, tf in enumerate(frameList, 1):
             frameFileName = f'{movDirTmp}/frame_{tf:06d}.png'
             frameFileList.append(frameFileName)
             
             # Create the plot with close_fig=True to avoid memory issues
             figout = []
             try:
-                plot_function(frame_idx=tf, figout=figout, close_fig=True, **kwargs)
+                plotFunction(frameIdx=tf, figout=figout, closeFig=True, **kwargs)
 
                 figout[0].savefig(frameFileName, dpi=150, bbox_inches='tight')
 
@@ -1229,10 +1229,10 @@ class Simulation:
         sys.stdout.write("\n")
         
         # Generate movie name based on prefix
-        if movieprefix:
-            movieprefix += '_'
-        fieldname = kwargs['field_name'][0] if 'field_name' in kwargs else 'movie'
-        movieName = f"{movieprefix}{fieldname}_frames_{frame_list[0]}_to_{frame_list[-1]}"
+        if moviePrefix:
+            moviePrefix += '_'
+        fieldname = kwargs['fieldName'][0] if 'fieldName' in kwargs else 'movie'
+        movieName = f"{moviePrefix}{fieldname}_frames_{frameList[0]}_to_{frameList[-1]}"
         
         # Compile the movie
         print(f"Compiling movie: {movieName}")
