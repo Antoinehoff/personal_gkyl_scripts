@@ -130,7 +130,7 @@ def get_balance_data(data_path, species_names, moment_idx):
             time_bflux, bflux_total, has_bflux)
 
 def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
-                 rm_legend=False, fig_size=(8,6), log_abs=False, data=[], xlim=None, ylim=None):
+                 rm_legend=False, figsize=(8,6), log_abs=False, data=[], xlim=None, ylim=None):
     moment_idx = 0 if balance_type == 'particle' else 2
     symbol = 'N' if balance_type == 'particle' else r'\mathcal{E}'
      
@@ -138,7 +138,7 @@ def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], fi
     (time_fdot, fdot, has_fdot, _, _, _, time_src, src, has_source, 
      time_bflux, bflux_tot, has_bflux) = get_balance_data(data_path, species, moment_idx)
 
-    field, fig, axs = fig_tools.setup_figure(balance_type,fig_size=fig_size)
+    field, fig, axs = fig_tools.setup_figure(balance_type,figsize=figsize)
     ax = axs[0]
     def plot_(ax, xdata, ydata, label, data): 
         data.append((xdata, ydata, label))
