@@ -603,11 +603,11 @@ def plot_nodes(simulation, close_fig=False):
     if close_fig: plt.close()
 
 def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
-                 rm_legend=False, fig_size=(8,6), log_abs=False, close_fig=False, data=[], 
+                 rm_legend=False, figsize=(8,6), log_abs=False, close_fig=False, data=[], 
                  xlim=None, ylim=None):
     from ..ext.gkeyll_gk_balance import plot_balance
     plot_balance(simulation, balance_type=balance_type, species=species, figout=figout, 
-                 rm_legend=rm_legend, fig_size=fig_size, log_abs=log_abs, data=data, xlim=xlim, ylim=ylim)
+                 rm_legend=rm_legend, figsize=figsize, log_abs=log_abs, data=data, xlim=xlim, ylim=ylim)
     if close_fig: plt.close()
     
 def plot_loss(simulation, losstype='energy', walls=[], volfrac_scaled=True, show_avg=True,

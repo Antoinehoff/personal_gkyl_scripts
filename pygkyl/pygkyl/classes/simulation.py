@@ -1091,7 +1091,7 @@ class Simulation:
         """
         from ..utils.plot_utils import plot_balance as plot
         return plot(simulation=self, balance_type=balanceType, species=species,
-                   figout=figout, rm_legend=rmLegend, fig_size=figSize,
+                   figout=figout, rm_legend=rmLegend, figsize=figSize,
                    log_abs=logAbs, close_fig=closeFig, data=data, xlim=xlim, ylim=ylim)
     
     def plot_loss(self, lossType='energy', walls=[], volFracScaled=True,
