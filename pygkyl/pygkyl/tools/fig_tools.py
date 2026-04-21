@@ -26,6 +26,7 @@ from PIL import Image
 import os
 
 default_figsz = [5,3.5]
+default_fig_dpi = 150
 
 def label_from_simnorm(simulation,name):
     return label(simulation.normalization.dict[name+'symbol'],simulation.normalization.dict[name+'units'])
@@ -45,7 +46,9 @@ def multiply_by_m3_expression(expression):
         expression_new = expression + r'm$^3$'
     return expression_new
 
-def setup_figure(fieldnames,fig_size=default_figsz):
+def setup_figure(fieldnames,figsize=None):
+    if figsize is None:
+        figsize = default_figsz
     if fieldnames == '':
         ncol = 2
         fields = ['ne','upari','Tpari','Tperpi']
@@ -56,7 +59,7 @@ def setup_figure(fieldnames,fig_size=default_figsz):
         ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
         fields = fieldnames
     nrow = len(fields)//ncol + len(fields)%ncol
-    fig,axs = plt.subplots(nrow,ncol,figsize=(fig_size[0]*ncol,fig_size[1]*nrow))
+    fig,axs = plt.subplots(nrow,ncol,figsize=(figsize[0]*ncol,figsize[1]*nrow))
     if ncol == 1:
         axs = [axs]
     else:
@@ -65,7 +68,7 @@ def setup_figure(fieldnames,fig_size=default_figsz):
 
 def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
             xlabel='', ylabel='', clabel='', title='', cmap_period=1,
-            cmap='viridis', colorscale='linear', plot_type='pcolormesh'):
+            cmap='viridis', colorscale='linear', plot_type='pcolormesh', aspect='auto'):
     z = np.squeeze(z)
     
     if colorscale == 'log':
@@ -85,8 +88,6 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
         # transpose z
         z = z.T
         im = ax.imshow(z, cmap=cmap, norm=norm, extent=[x[0], x[-1], y[0], y[-1]], origin='lower', interpolation='quadric')
-        # adapt the aspect ratio
-        ax.set_aspect('auto')
     # Handle periodic colormap
     if cmap_period > 1:
         # Create a periodic colormap by repeating the original colormap
@@ -103,6 +104,9 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
         # Create new colormap from repeated colors
         periodic_cmap = mcolors.ListedColormap(repeated_colors)
         im.set_cmap(periodic_cmap)
+        
+    # adapt the aspect ratio
+    ax.set_aspect(aspect)
     
     cbar = fig.colorbar(im, ax=ax)
     finalize_plot(ax,fig,xlabel=xlabel,ylabel=ylabel,title=title,xlim=xlim,ylim=ylim,

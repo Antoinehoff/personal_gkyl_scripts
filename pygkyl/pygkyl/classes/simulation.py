@@ -694,7 +694,8 @@ class Simulation:
                    show_title=show_title, show_legend=show_legend, close_fig=close_fig)
     
     def plot_DG_1D(self, field_name='phi', frame_idx=None, cut_dir='x', cut_coords=[0.0,0.0,0.0], xlim=[], ylim=[],
-                           show_cells=True, figout=[], derivative=False, dgcoeffidx=None, close_fig=False):
+                           show_cells=True, figout=[], derivative=False, dgcoeffidx=None, close_fig=False,
+                           figsize=None, fig_dpi=150):
         """
         Plot 1D data for given field(s) and time frames using DG basis.
         
@@ -737,13 +738,14 @@ class Simulation:
         from ..utils.plot_utils import plot_DG_representation as plot
         return plot(simulation=self, fieldname=field_name, sim_frame=frame_idx, cutdir=cut_dir, 
                    cutcoord=cut_coords, xlim=xlim, ylim=ylim, show_cells=show_cells,
-                   figout=figout, derivative=derivative, dgcoeffidx=dgcoeffidx, close_fig=close_fig)
+                   figout=figout, derivative=derivative, dgcoeffidx=dgcoeffidx, close_fig=close_fig, 
+                   figsize=figsize, fig_dpi=fig_dpi)
     
     def plot_2D(self, cut_dir='xy', cut_coords=[0.0,0.0,0.0], frame_idx=None,
                 field_name='phi', cmap=None, time_average=False, fluctuation='',
-                plot_type='pcolormesh', xlim=[], ylim=[], clim=[], 
-                colorscale='linear', show_title=True, figout=[], cutout=[], 
-                val_out=[], frames_to_plot=None, cmap_period=1, close_fig=False):
+                plot_type='pcolormesh', xlim=[], ylim=[], clim=[], aspect='auto',
+                colorscale='linear', show_title=True, figout=[], cutout=[], figsize=None, 
+                fig_dpi=150, val_out=[], frames_to_plot=None, cmap_period=1, close_fig=False):
         """
         Plot 2D cut of the simulation domain for given field(s).
         
@@ -771,6 +773,8 @@ class Simulation:
             Y-axis limits [ymin, ymax]. Default: []
         clim : list or float, optional
             Color limits. Can be single value, [min, max], or list of limits per field. Default: []
+        aspect : str or float, optional
+            Aspect ratio for the plot. Default: 'auto'
         colorscale : str, optional
             Color scale ('linear', 'log'). Default: 'linear'
         show_title : bool, optional
@@ -779,6 +783,8 @@ class Simulation:
             List to append figure object to. Default: []
         cutout : list, optional
             List to append cut coordinates to. Default: []
+        figsize : tuple, optional
+            Figure size (width, height) in inches. Default: None (uses lib default (5,3.5))
         val_out : list, optional
             List to append plot values to. Default: []
         frames_to_plot : list or None, optional
@@ -806,13 +812,15 @@ class Simulation:
                    plot_type=plot_type, xlim=xlim, ylim=ylim, clim=clim,
                    colorscale=colorscale, show_title=show_title, figout=figout,
                    cutout=cutout, val_out=val_out, frames_to_plot=frames_to_plot,
-                   cmap_period=cmap_period, close_fig=close_fig)
+                   cmap_period=cmap_period, close_fig=close_fig, aspect=aspect,
+                   figsize=figsize)
     
     def plot_1D_time_evolution(self, cut_dir='x', cut_coords=[0.0,0.0,0.0], field_name='phi',
                                frame_indices=None, space_time=False, cmap='inferno',
                                fluctuation='', plot_type='pcolormesh', yscale='linear',
                                xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
-                               show_title=True, cmap_period=1, close_fig=False, data_dict={}):
+                               show_title=True, cmap_period=1, close_fig=False, data_dict={},
+                               figsize=None):
         """
         Plot 1D time evolution (space-time diagram) for given field(s).
         
@@ -852,6 +860,10 @@ class Simulation:
             Colormap period for cyclic colormaps. Default: 1
         close_fig : bool, optional
             Close figure after plotting. Default: False
+        figsize : tuple, optional
+            Figure size (width, height) in inches. Default: None (uses lib default (5,3.5))
+        data_dict : dict, optional
+            Dictionary to store (time, values) tuples for each field. Default: {}
             
         Examples
         --------
@@ -867,10 +879,11 @@ class Simulation:
                    cmap=cmap, fluctuation=fluctuation, plot_type=plot_type,
                    yscale=yscale, xlim=xlim, ylim=ylim, clim=clim,
                    figout=figout, colorscale=colorscale, show_title=show_title,
-                   cmap_period=cmap_period, close_fig=close_fig, data_dict=data_dict)
+                   cmap_period=cmap_period, close_fig=close_fig, data_dict=data_dict,
+                   figsize=figsize)
     
     def plot_integrated_moment(self, field_name='ne', xlim=[], ylim=[], ddt=False,
-                              figout=[], twindow=[], data_dict={}, close_fig=False):
+                              figout=[], twindow=[], data_dict={}, close_fig=False, figsize=None):
         """
         Plot integrated moments over time for different species.
         
@@ -906,10 +919,10 @@ class Simulation:
         from ..utils.plot_utils import plot_integrated_moment as plot
         return plot(simulation=self, fieldnames=field_name, xlim=xlim,
                    ylim=ylim, ddt=ddt, figout=figout, twindow=twindow, 
-                   close_fig=close_fig, data_dict=data_dict)
+                   close_fig=close_fig, data_dict=data_dict, figsize=figsize)
     
     def plot_time_serie(self, field_name='phi', cut_coords=[0.0,0.0,0.0], time_frames=None,
-                       figout=[], xlim=[], ylim=[], ddt=False, data_dict={}, close_fig=False):
+                       figout=[], xlim=[], ylim=[], ddt=False, data_dict={}, close_fig=False, figsize=None):
         """
         Plot time series of field values at specific coordinates.
         
@@ -942,13 +955,13 @@ class Simulation:
         from ..utils.plot_utils import plot_time_serie as plot
         return plot(simulation=self, fieldnames=field_name, cut_coords=cut_coords,
                    time_frames=time_frames, figout=figout, xlim=xlim, ylim=ylim,
-                   ddt=ddt, data_dict=data_dict, close_fig=close_fig)
+                   ddt=ddt, data_dict=data_dict, close_fig=close_fig, figsize=figsize)
     
     def plot_poloidal_projection(self, field_name='phi', frame_idx=None, out_file_name='',
                                  nzInterp=32, colorMap='inferno', colorScale='lin',
                                  showInset=True, showLimiter=True, showLCFS=True, showAxis=True,
                                  showVessel=False, limiterColor='gray', cutoutLimiter=False, xlim=[], ylim=[], clim=[],
-                                 logScaleFloor=1e-3, figout=[], close_fig=False, fig_dpi=300):
+                                 logScaleFloor=1e-3, figout=[], close_fig=False, fig_dpi=300, figsize=None):
         """
         Create poloidal projection plot of the simulation domain.
         
@@ -994,6 +1007,8 @@ class Simulation:
             Close figure after plotting. Default: False
         fig_dpi : int, optional
             Figure DPI (dots per inch). Default: 300
+        figsize : tuple, optional
+            Figure size (width, height). Default: None
             
         Examples
         --------
@@ -1007,7 +1022,7 @@ class Simulation:
                    showAxis=showAxis,showVessel=showVessel,limiterColor=limiterColor, 
                    cutoutLimiter=cutoutLimiter, colorScale=colorScale, xlim=xlim, ylim=ylim,
                    clim=clim, logScaleFloor=logScaleFloor, figout=figout,
-                   close_fig=close_fig, fig_dpi=fig_dpi)
+                   close_fig=close_fig, fig_dpi=fig_dpi, figsize=figsize)
     
     def plot_flux_surface_projection(self, rho=0.9, field_name='phi', frame_idx=None, Nint=32,
                                      figout=[], close_fig=False, clim=[]):

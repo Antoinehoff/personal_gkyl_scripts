@@ -387,7 +387,8 @@ class PoloidalProjection:
   def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
            shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False, vessel_var = None,
-           show_axis=True, cutout_limiter=False, cmap_period = 1, figout=[], close_fig=False, fig_dpi=300, limiter_color='gray'):
+           show_axis=True, cutout_limiter=False, cmap_period = 1, figout=[], close_fig=False, fig_dpi=300, limiter_color='gray', 
+           figsize=None):
     '''
     Plot the color map of a field on the poloidal plane given the flux-tube data.
     There are two options:
@@ -412,6 +413,15 @@ class PoloidalProjection:
         clim: Color limits. (optional)
         climInset: Color limits for the inset. (optional)
         colorScale: Color scale. (default: 'linear')
+        logScaleFloor: Floor value for log scale. (default: 1e-3)
+        fluctuation: If True, plot the fluctuations instead of the time average. (default: False)
+        average: If True, plot the time average instead of the fluctuations. (default: False)
+        favg: If provided, use this array as the time average for fluctuation calculation. (optional)
+        cutout_limiter: If True, cut out the limiter region from the plot. (default: False)
+        cmap_period: If > 1, repeat the colormap with reversed alternate periods for continuity. (default: 1)
+        figout: If provided, append the figure object to this list instead of saving. (optional)
+        close_fig: If True, close the figure after saving or appending to figout. (default: False)
+        figsize: If provided, use this as the figure size instead of the default. (optional)
     '''
     colorMap = fig_tools.check_colormap(colorMap)
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
@@ -479,7 +489,8 @@ class PoloidalProjection:
     #.Create the figure.
     ax1aPos   = [ [0.10, 0.08, 0.76, 0.88] ]
     cax1aPos  = [0.88, 0.08, 0.02, 0.88]
-    fig1a     = plt.figure(figsize=self.figSize, dpi=self.dpi)
+    fsz = figsize if figsize else self.figSize
+    fig1a     = plt.figure(figsize=fsz, dpi=self.dpi)
     ax1a      = list()
     for i in range(len(ax1aPos)):
         ax1a.append(fig1a.add_axes(ax1aPos[i]))

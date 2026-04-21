@@ -40,9 +40,9 @@ import os, re
 def plot_1D(simulation,cdirection='x',ccoords=[0.0,0.0,0.0],fieldnames='phi',
             time_frames=None, xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
             figout = [], errorbar = False, show_title = True, show_legend = True, close_fig = False,
-            plot_data = []):
+            plot_data = [], figsize=None):
     
-    fields,fig,axs = fig_tools.setup_figure(fieldnames)
+    fields,fig,axs = fig_tools.setup_figure(fieldnames, figsize=figsize)
     
     if time_frames is None:
         time_frames = simulation.data_param.get_available_frames(simulation)['field'][-1]
@@ -90,7 +90,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
                 fieldnames='phi', cmap=None, time_average=False, fluctuation='', plot_type='pcolormesh',
                 xlim=[], ylim=[], clim=[], colorscale = 'linear', show_title=True,
                 figout=[],cutout=[], val_out=[], frames_to_plot = None, cmap_period=1,
-                close_fig=False):
+                close_fig=False, aspect='auto', figsize=None):
     if time_frame is None:
         time_frame = simulation.data_param.get_available_frames(simulation)['field'][-1]
     if isinstance(fluctuation,bool): fluctuation = 'tavg' if fluctuation else ''
@@ -124,7 +124,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
     else:
         fourier_y = False
     
-    fields,fig,axs = fig_tools.setup_figure(fieldnames)
+    fields,fig,axs = fig_tools.setup_figure(fieldnames, figsize=figsize)
     kf = 0 # field counter
     for ax,field in zip(axs,fields):
         if frames_to_plot:
@@ -177,7 +177,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
                           cmap=cmap_, xlim=xlim, ylim=ylim, clim=clim[kf],
                           xlabel=xlabel, ylabel=ylabel, cmap_period=cmap_period,
                           colorscale=colorscale, clabel=lbl, title=frame.fulltitle if show_title else '', 
-                          vmin=vmin, vmax=vmax, plot_type=plot_type)
+                          vmin=vmin, vmax=vmax, plot_type=plot_type, aspect=aspect)
         kf += 1 # field counter
     
     fig.tight_layout()
@@ -188,7 +188,8 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
     if close_fig: plt.close(fig)
 
 def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='x', cutcoord=[0.0,0.0,0.0], xlim=[], ylim=[],
-                           show_cells=True, figout=[], derivative=False, close_fig=False, dgcoeffidx=None):
+                           show_cells=True, figout=[], derivative=False, close_fig=False, dgcoeffidx=None, 
+                           figsize=fig_tools.default_figsz, fig_dpi=fig_tools.default_dpi):
     """
     Plot the DG representation of a field along one direction at a given time frame.
     """
@@ -286,7 +287,7 @@ def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='
         DG_proj.append(None)
         s_proj.append(cells[ic]/sscale - sshift)
 
-    fig = plt.figure(figsize=(fig_tools.default_figsz[0],fig_tools.default_figsz[1]))
+    fig = plt.figure(figsize=figsize, dpi=fig_dpi)
     ax = fig.add_subplot(111)
     ax.plot(s_proj, DG_proj,'-')
     # add a vertical line to mark each cell boundary
@@ -309,7 +310,7 @@ def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='
 def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInterp=32, polproj=None, cmap_period=1,
                              colorMap = None, colorScale = 'lin', fig_dpi=300, limiterColor='gray', cutoutLimiter=False,
                              showInset=True, showLCFS=True, showVessel=False, showLimiter=True, showAxis=True,
-                             xlim=[], ylim=[],clim=[], logScaleFloor=1e-3, figout=[], close_fig=False):
+                             xlim=[], ylim=[],clim=[], logScaleFloor=1e-3, figout=[], close_fig=False, figsize=None):
     if timeFrame is None:
         timeFrame = simulation.data_param.get_available_frames(simulation)['field'][-1]
     if polproj is None:
@@ -320,16 +321,16 @@ def poloidal_proj(simulation, fieldName='phi', timeFrame=0, outFilename='',nzInt
                  outFilename=outFilename, colorMap=colorMap, show_inset=showInset,
                  xlim=xlim, ylim=ylim, clim=clim, logScaleFloor=logScaleFloor, cmap_period=cmap_period,
                  show_LCFS=showLCFS, show_vessel=showVessel, show_limiter=showLimiter, show_axis=showAxis,
-                 figout=figout, close_fig=close_fig, cutout_limiter=cutoutLimiter, limiter_color=limiterColor, fig_dpi=fig_dpi)
+                 figout=figout, close_fig=close_fig, cutout_limiter=cutoutLimiter, limiter_color=limiterColor, fig_dpi=fig_dpi, 
+                 figsize=figsize)
 
-def flux_surface_proj(simulation, rho=0.9, fieldName='phi', timeFrame=None, Nint=32, figout=[], close_fig=False,
-                      clim=[]):
+def flux_surface_proj(simulation, rho=0.9, fieldName='phi', timeFrame=None, Nint=32, figout=[], close_fig=False, clim=[], figsize=None, fig_dpi=150):
     if timeFrame is None:
         timeFrame = simulation.data_param.get_available_frames(simulation)['field'][-1]
     fsproj = FluxSurfProjection()
     fsproj.setup(simulation, rho=rho, timeFrame=timeFrame,
                  Nint=Nint)
-    fsproj.plot(fieldName=fieldName, timeFrame=timeFrame, figout=figout, close_fig=close_fig, clim=clim)
+    fsproj.plot(fieldName=fieldName, timeFrame=timeFrame, figout=figout, close_fig=close_fig, clim=clim, figsize=figsize, fig_dpi=fig_dpi)
     
 #--- Time independent or time series plot routines
   
@@ -337,14 +338,15 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
                            twindow=None, space_time=False, cmap=None, data_dict={},
                            fluctuation='', plot_type='pcolormesh', yscale='linear',
                            xlim=[], ylim=[], clim=[], figout=[], colorscale='linear',
-                           show_title=True, cmap_period=1, close_fig=False):
+                           show_title=True, cmap_period=1, close_fig=False,
+                           figsize=None):
     if twindow is None:
         twindow = simulation.data_param.get_available_frames(simulation)['field']
         twindow = [twindow[0], twindow[-1]]
     if not isinstance(twindow, list): twindow = [twindow]
     if clim: clim = [clim] if not isinstance(clim[0], list) else clim
     cmap0 = cmap if cmap else simulation.data_param.field_info_dict[fieldnames[0]+'colormap']
-    fields, fig, axs = fig_tools.setup_figure(fieldnames)
+    fields, fig, axs = fig_tools.setup_figure(fieldnames, figsize=figsize)
     kf = 0  # field counter
     for ax, field in zip(axs, fields):
         x, t, values, xlabel, tlabel, vlabel, vunits, slicetitle, fourier_y = \
@@ -427,8 +429,8 @@ def plot_domain(simulation,geom_type='Miller',vessel_corners=[[0.6,1.2],[-0.7,0.
     if close_fig: plt.close(fig)
 
 def plot_integrated_moment(simulation,fieldnames='ne',xlim=[],ylim=[],ddt=False,figout=[],twindow=[],data_dict={},
-                           close_fig=False):
-    fields,fig,axs = fig_tools.setup_figure(fieldnames)
+                           close_fig=False, figsize=None):
+    fields,fig,axs = fig_tools.setup_figure(fieldnames, figsize=figsize)
     for ax,field in zip(axs,fields):
         if not isinstance(field,list):
             subfields = [field] #simple plot
@@ -454,10 +456,10 @@ def plot_integrated_moment(simulation,fieldnames='ne',xlim=[],ylim=[],ddt=False,
     return int_mom.time
     
 def plot_time_serie(simulation,fieldnames='phi',cut_coords=[0.0,0.0,0.0], time_frames=None,
-                    figout=[],xlim=[],ylim=[], ddt = False, data_dict={}, close_fig=False):
+                    figout=[],xlim=[],ylim=[], ddt = False, data_dict={}, close_fig=False, figsize=None):
     if time_frames is None:
         time_frames = simulation.data_param.get_available_frames(simulation)['field'][-1]
-    fields,fig,axs = fig_tools.setup_figure(fieldnames)
+    fields,fig,axs = fig_tools.setup_figure(fieldnames, figsize=figsize)
     for ax,field in zip(axs,fields):
         if not isinstance(field, list):
             subfields = [field]  # Simple plot

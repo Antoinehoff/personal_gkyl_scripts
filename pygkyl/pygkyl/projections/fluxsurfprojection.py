@@ -79,7 +79,8 @@ class FluxSurfProjection:
     return field_fs, self.phi_fs, self.theta_fs
   
   def plot(self, fieldName, timeFrame, outFilename='', fluctuation='',
-           figout=[], xlim=[], ylim=[], clim=[], colorMap=None, close_fig=False):
+           figout=[], xlim=[], ylim=[], clim=[], colorMap=None, close_fig=False,
+           figsize=None, fig_dpi=150):
 
     if isinstance(fluctuation, bool): fluctuation = 'tavg' if fluctuation else ''
     if isinstance(timeFrame, list):
@@ -114,7 +115,8 @@ class FluxSurfProjection:
 
     field_fs = self.project_field(toproject)
     
-    fig, ax = plt.subplots(figsize=(fig_tools.default_figsz[0], fig_tools.default_figsz[1]))
+    fsz = figsize if figsize else (fig_tools.default_figsz[0], fig_tools.default_figsz[1])
+    fig, ax = plt.subplots(figsize=fsz, dpi=fig_dpi)
     colorMap = colorMap if colorMap else self.sim.data_param.field_info_dict[fieldName+'colormap']
     if colorMap == 'bwr':
         vmax = np.max(np.abs(field_fs))
