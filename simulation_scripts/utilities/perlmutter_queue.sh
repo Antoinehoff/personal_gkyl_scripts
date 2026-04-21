@@ -1,10 +1,29 @@
 #!/bin/bash
 # Continuously refreshing squeue monitor
-# Usage: gkyl_check_queue.sh [refresh_interval_in_seconds]
+# Usage: perlmutter_queue.sh [-r SECONDS] [-h]
 
-INTERVAL="${1:-5}"
+INTERVAL=5
 USER="ah1032"
 FORMAT="%.9i %.10P %.48j %.2t %.9M %.6D %.16R"
+
+show_help() {
+    echo "Usage: $0 [-r SECONDS] [-h]"
+    echo ""
+    echo "Continuously refreshing squeue monitor for user $USER."
+    echo ""
+    echo "Options:"
+    echo "  -r SECONDS    Refresh interval in seconds (default: $INTERVAL)"
+    echo "  -h            Show this help message and exit"
+}
+
+while getopts ":r:h" opt; do
+    case $opt in
+        r) INTERVAL="$OPTARG" ;;
+        h) show_help; exit 0 ;;
+        :) echo "Error: -$OPTARG requires an argument." >&2; exit 1 ;;
+        \?) echo "Invalid option: -$OPTARG" >&2; exit 1 ;;
+    esac
+done
 
 trap 'tput cnorm; clear; exit 0' INT TERM
 
