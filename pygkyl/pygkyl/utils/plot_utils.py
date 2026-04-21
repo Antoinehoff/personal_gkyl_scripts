@@ -189,7 +189,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
 
 def plot_DG_representation(simulation, fieldname='phi', sim_frame=None, cutdir='x', cutcoord=[0.0,0.0,0.0], xlim=[], ylim=[],
                            show_cells=True, figout=[], derivative=False, close_fig=False, dgcoeffidx=None, 
-                           figsize=fig_tools.default_figsz, fig_dpi=fig_tools.default_dpi):
+                           figsize=fig_tools.default_figsz, fig_dpi=fig_tools.default_fig_dpi):
     """
     Plot the DG representation of a field along one direction at a given time frame.
     """
