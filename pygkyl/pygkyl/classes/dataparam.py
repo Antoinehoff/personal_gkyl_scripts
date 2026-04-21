@@ -338,7 +338,7 @@ class DataParam:
                 src_ = 'src_' if add_source else ''
                 S_ = 'S' if add_source else ''
                 # distribution functions
-                default_qttes.append(['%sf%s'%(src_,s_), r'%s$f_%s$'%(S_,s_), '[f]'])
+                default_qttes.append(['%sf%s'%(src_,s_), r'%s$f_%s$'%(S_,s_), 'f'])
                 # Moments (id: src_xs or xs)
                 default_qttes.append(['%sM0%s'%(src_,s_), r'%s$M_{0%s}$'%(S_,s_), r'm$^{-3}$'])
                 default_qttes.append(['%sM1%s'%(src_,s_), r'%s$M_{1%s}$'%(S_,s_), r'm$^{-2}$/s'])
