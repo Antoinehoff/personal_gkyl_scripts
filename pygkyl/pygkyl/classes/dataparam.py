@@ -1614,7 +1614,7 @@ class DataParam:
                            'flan_imp_density','flan_imp_counts'] # spec. indep
         
         spec_dep_fields = ['M0','M2','M2par','M2perp',
-                           'n','T','Tpar','Tperp','p',
+                           'n','T','Tpar','Tperp','p', 'beta',
                            'BM_n','BM_Tpar','BM_Tperp',
                            'MM_n','MM_T', 'HM_n','HM_H',
                            'src_M0','src_M2','src_M2par','src_M2perp',
