@@ -695,7 +695,7 @@ class Simulation:
     
     def plot_DG_1D(self, field_name='phi', frame_idx=None, cut_dir='x', cut_coords=[0.0,0.0,0.0], xlim=[], ylim=[],
                            show_cells=True, figout=[], derivative=False, dgcoeffidx=None, close_fig=False,
-                           figsize=None, fig_dpi=150):
+                           figsize=None, fig_dpi=None):
         """
         Plot 1D data for given field(s) and time frames using DG basis.
         
@@ -745,7 +745,7 @@ class Simulation:
                 field_name='phi', cmap=None, time_average=False, fluctuation='',
                 plot_type='pcolormesh', xlim=[], ylim=[], clim=[], aspect='auto',
                 colorscale='linear', show_title=True, figout=[], cutout=[], figsize=None, 
-                fig_dpi=150, val_out=[], frames_to_plot=None, cmap_period=1, close_fig=False):
+                fig_dpi=None, val_out=[], frames_to_plot=None, cmap_period=1, close_fig=False):
         """
         Plot 2D cut of the simulation domain for given field(s).
         
@@ -813,7 +813,7 @@ class Simulation:
                    colorscale=colorscale, show_title=show_title, figout=figout,
                    cutout=cutout, val_out=val_out, frames_to_plot=frames_to_plot,
                    cmap_period=cmap_period, close_fig=close_fig, aspect=aspect,
-                   figsize=figsize)
+                   figsize=figsize, fig_dpi=fig_dpi)
     
     def plot_1D_time_evolution(self, cut_dir='x', cut_coords=[0.0,0.0,0.0], field_name='phi',
                                frame_indices=None, space_time=False, cmap='inferno',
@@ -961,7 +961,7 @@ class Simulation:
                                  nzInterp=32, colorMap='inferno', colorScale='lin',
                                  showInset=True, showLimiter=True, showLCFS=True, showAxis=True,
                                  showVessel=False, limiterColor='gray', cutoutLimiter=False, xlim=[], ylim=[], clim=[],
-                                 logScaleFloor=1e-3, figout=[], close_fig=False, fig_dpi=300, figsize=None):
+                                 logScaleFloor=1e-3, figout=[], close_fig=False, fig_dpi=150, figsize=None):
         """
         Create poloidal projection plot of the simulation domain.
         

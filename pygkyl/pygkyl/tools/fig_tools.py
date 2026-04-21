@@ -26,7 +26,7 @@ from PIL import Image
 import os
 
 default_figsz = [5,3.5]
-default_fig_dpi = 150
+default_fig_dpi = 100
 
 def label_from_simnorm(simulation,name):
     return label(simulation.normalization.dict[name+'symbol'],simulation.normalization.dict[name+'units'])
@@ -46,9 +46,11 @@ def multiply_by_m3_expression(expression):
         expression_new = expression + r'm$^3$'
     return expression_new
 
-def setup_figure(fieldnames,figsize=None):
+def setup_figure(fieldnames,figsize=None,fig_dpi=None):
     if figsize is None:
         figsize = default_figsz
+    if fig_dpi is None:
+        fig_dpi = default_fig_dpi
     if fieldnames == '':
         ncol = 2
         fields = ['ne','upari','Tpari','Tperpi']
@@ -59,7 +61,7 @@ def setup_figure(fieldnames,figsize=None):
         ncol = 1 * (len(fieldnames) == 1) + 2 * (len(fieldnames) > 1)
         fields = fieldnames
     nrow = len(fields)//ncol + len(fields)%ncol
-    fig,axs = plt.subplots(nrow,ncol,figsize=(figsize[0]*ncol,figsize[1]*nrow))
+    fig,axs = plt.subplots(nrow,ncol,figsize=(figsize[0]*ncol,figsize[1]*nrow), dpi=fig_dpi)
     if ncol == 1:
         axs = [axs]
     else:
