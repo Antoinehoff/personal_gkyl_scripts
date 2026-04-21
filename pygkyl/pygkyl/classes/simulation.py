@@ -695,7 +695,7 @@ class Simulation:
     
     def plot_DG_1D(self, field_name='phi', frame_idx=None, cut_dir='x', cut_coords=[0.0,0.0,0.0], xlim=[], ylim=[],
                            show_cells=True, figout=[], derivative=False, dgcoeffidx=None, close_fig=False,
-                           figsize=None, fig_dpi=150):
+                           figsize=None, fig_dpi=None):
         """
         Plot 1D data for given field(s) and time frames using DG basis.
         
@@ -813,7 +813,7 @@ class Simulation:
                    colorscale=colorscale, show_title=show_title, figout=figout,
                    cutout=cutout, val_out=val_out, frames_to_plot=frames_to_plot,
                    cmap_period=cmap_period, close_fig=close_fig, aspect=aspect,
-                   figsize=figsize)
+                   figsize=figsize, fig_dpi=fig_dpi)
     
     def plot_1D_time_evolution(self, cut_dir='x', cut_coords=[0.0,0.0,0.0], field_name='phi',
                                frame_indices=None, space_time=False, cmap='inferno',
