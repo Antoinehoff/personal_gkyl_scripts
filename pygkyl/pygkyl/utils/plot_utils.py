@@ -277,7 +277,19 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
                 fieldnames='phi', cmap=None, time_average=False, fluctuation='', plot_type='pcolormesh',
                 xlim=[], ylim=[], clim=[], colorscale = 'linear', show_title=True,
                 figout=[],cutout=[], val_out=[], frames_to_plot = None, cmap_period=1,
-                close_fig=False, aspect='auto', figsize=None, fig_dpi=None):
+                close_fig=False, aspect='auto', figsize=None, fig_dpi=None,
+                quiver_params=None):
+    """
+    quiver_params : dict or list of dict or None
+        Optional quiver overlay per subplot.  A single dict is broadcast to all
+        subplots; a list (with None entries to skip individual subplots) gives
+        per-subplot control.  Two keys are consumed before passing the rest
+        straight to ax.quiver():
+            fieldname_1 : str -- x-component field name
+            fieldname_2 : str -- y-component field name
+        All remaining keys (e.g. scale, width, color, alpha, ...) are forwarded
+        directly to ax.quiver(). 'color' defaults to 'white' if not provided.
+    """
     if time_frame is None:
         time_frame = _get_default_field_frame(simulation)
     if isinstance(fluctuation, bool):
@@ -287,6 +299,17 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
     fieldnames = _as_list(fieldnames)
     clim = _normalize_clim(clim, len(fieldnames))
     cut_dir, fourier_y = _parse_cut_direction(cut_dir)
+
+    # Normalise quiver_params to a per-subplot list
+    nfields = len(fieldnames)
+    if quiver_params is None:
+        quiver_list = [None] * nfields
+    elif isinstance(quiver_params, dict):
+        quiver_list = [quiver_params] * nfields
+    else:
+        quiver_list = list(quiver_params)
+        if len(quiver_list) == 1:
+            quiver_list = quiver_list * nfields
 
     fields, fig, axs = fig_tools.setup_figure(fieldnames, figsize=figsize, fig_dpi=fig_dpi)
     for field_index, (ax, field) in enumerate(zip(axs, fields)):
@@ -340,7 +363,24 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
             plot_type=plot_type,
             aspect=aspect,
         )
-    
+
+        # Optionally overlay quiver arrows for this subplot
+        qp = quiver_list[field_index]
+        if qp is not None:
+            qp = dict(qp)  # shallow copy so we never mutate the caller's dict
+            fn1 = qp.pop('fieldname_1', None)
+            fn2 = qp.pop('fieldname_2', None)
+            if fn1 is not None and fn2 is not None:
+                _, qdata_1 = _load_2d_frame(simulation, fn1, time_frame, cut_coord, cut_dir,
+                                            fourier_y, fluctuation, None, 0)
+                _, qdata_2 = _load_2d_frame(simulation, fn2, time_frame, cut_coord, cut_dir,
+                                            fourier_y, fluctuation, None, 0)
+                qp.setdefault('color', 'white')
+                max_val = np.nanmax(np.sqrt(qdata_1**2 + qdata_2**2))
+                qp.setdefault('scale', 1.25*max_val)  # Default scale based on max vector magnitude
+                Y, X = np.meshgrid(frame.new_grids[1], frame.new_grids[0])
+                ax.quiver(X, Y, np.squeeze(qdata_1), np.squeeze(qdata_2), **qp)
+
     fig.tight_layout()
     figout.append(fig)
     cutout.append(frame.slicecoords)

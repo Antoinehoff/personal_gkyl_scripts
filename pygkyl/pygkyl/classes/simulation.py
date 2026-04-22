@@ -745,7 +745,8 @@ class Simulation:
                 fieldName='phi', cmap=None, timeAverage=False, fluctuation='',
                 plotType='pcolormesh', xlim=[], ylim=[], clim=[], aspect='auto',
                 colorScale='linear', showTitle=True, figout=[], cutOut=[], figSize=None, 
-                figDpi=None, valOut=[], framesToPlot=None, cmapPeriod=1, closeFig=False):
+                figDpi=None, valOut=[], framesToPlot=None, cmapPeriod=1, closeFig=False,
+                quiverParams=None):
         """
         Plot 2D cut of the simulation domain for given field(s).
         
@@ -793,7 +794,9 @@ class Simulation:
             Colormap period for cyclic colormaps. Default: 1
         closeFig : bool, optional
             Close figure after plotting. Default: False
-            
+        quiverParams : dict or None, optional
+            Parameters for quiver plot 
+            e.g., {'fieldname_1': 'Ex', 'fieldname_2': 'Ey', 'scale': 1, 'width': 0.002}).
         Returns
         -------
         None
@@ -813,7 +816,7 @@ class Simulation:
                    colorscale=colorScale, show_title=showTitle, figout=figout,
                    cutout=cutOut, val_out=valOut, frames_to_plot=framesToPlot,
                    cmap_period=cmapPeriod, close_fig=closeFig, aspect=aspect,
-                   figsize=figSize, fig_dpi=figDpi)
+                   figsize=figSize, fig_dpi=figDpi, quiver_params=quiverParams)
     
     def plot_1D_time_evolution(self, cutDir='x', cutCoords=[0.0,0.0,0.0], fieldName='phi',
                                frameIndices=None, spaceTime=False, cmap='inferno',
