@@ -893,6 +893,46 @@ class DataParam:
                     QgB   = receipe_gradB_hflux_s(QgBlist,i=i,q=q,m=m)
                     return QExB + QgB
                 default_qttes.append([name,symbol,units,field2load,receipe_hflux_s])
+            
+            # Dot product of the gradB and diamagnetic drift velocities: v_gB . v_Ds
+            # This acts as our proxy for the interchange drive (omega_D * omega_*)
+            name       = 'vgB_dot_vD%s'%(s_)
+            symbol     = r'$\mathbf{v}_{\nabla B} \cdot \mathbf{v}_{D%s}$'%(s_)
+            units      = r'm$^2$/s$^2$'
+            # 7 fields loaded: indices 0 to 6
+            field2load = ['n%s'%s_,'Tperp%s'%s_,'b_x','b_y','b_z','Bmag','Jacobian']
+            def receipe_vgB_dot_vD(gdata_list, i=i_, q=spec.q, m=spec.m):
+                vdot = 0.0 
+                for comp in range(3):
+                    # Calculate cyclic indices for the magnetic field components
+                    j = (comp + 1) % 3
+                    k = (comp + 2) % 3
+                    # Construct the exact 5-item list receipe_vgB expects
+                    # Expected: ['Tperp', 'b_j', 'b_k', 'Bmag', 'Jacobian']
+                    list_for_vgB = [
+                        gdata_list[1],       # Tperp
+                        gdata_list[2 + j],   # b_j 
+                        gdata_list[2 + k],   # b_k 
+                        gdata_list[5],       # Bmag
+                        gdata_list[6]        # Jacobian
+                    ] 
+                    # Construct the exact 6-item list receipe_vDia expects
+                    # Expected: ['n', 'Tperp', 'b_j', 'b_k', 'Bmag', 'Jacobian']
+                    list_for_vDia = [
+                        gdata_list[0],       # n
+                        gdata_list[1],       # Tperp
+                        gdata_list[2 + j],   # b_j 
+                        gdata_list[2 + k],   # b_k 
+                        gdata_list[5],       # Bmag
+                        gdata_list[6]        # Jacobian
+                    ]               
+                    # Compute the velocities for this spatial component
+                    vgB_i = receipe_vgB(list_for_vgB, i=comp, q=q, m=m)
+                    vD_i = receipe_vDia(list_for_vDia, i=comp, q=q, m=m)            
+                    # Add to the total dot product
+                    vdot += vgB_i * vD_i       
+                return vdot
+            default_qttes.append([name,symbol,units,field2load,receipe_vgB_dot_vD])
                 
         # Fluid species diagnostics
         for spec in species_fluid_list:

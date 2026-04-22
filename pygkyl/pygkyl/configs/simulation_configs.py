@@ -44,6 +44,8 @@ def import_config(configName='tcv_pt', simDir ='', filePrefix = '',
         sim = get_d3d_pt_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['D3D_NT', 'd3d_nt']:
         sim = get_d3d_nt_sim_config(simDir, filePrefix, **kwargs)
+    elif configName in ['D3D_NT_ashift', 'd3d_nt_ashift']:
+        sim = get_d3d_nt_a_shift_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['SPARC', 'sparc']:
         sim = get_sparc_sim_config(simDir, filePrefix, **kwargs)
     elif configName in ['NSTXU', 'nstxu']:
@@ -339,6 +341,101 @@ def get_d3d_pt_sim_config(simdir, fileprefix, **kwargs):
     return simulation
 
 def get_d3d_nt_sim_config(simdir, fileprefix, **kwargs):
+    '''
+    This function returns a simulation object for a TCV NT clopen 3x2v simulation.
+    '''
+    R_axis = 1.7074685
+    x_LCFS = kwargs.get('x_LCFS', 0.10)
+    x_out = kwargs.get('x_out', 0.05)
+    dimensionality = kwargs.get('dimensionality', '3x2v')
+    
+    simulation = Simulation(dimensionality=dimensionality)
+    simulation.set_phys_param()
+
+    simulation.set_geom_param(
+        B_axis      = 2.0,           # Magnetic field at magnetic axis [T]
+        R_axis      = R_axis,        # Magnetic axis major radius
+        Z_axis      = -0.0014645315,         # Magnetic axis height
+        R_LCFSmid   = 2.17,   # Major radius of LCFS at the midplane
+        a_shift     = 1.0,                 # Parameter in Shafranov shift
+        kappa       = 1.35,                 # Elongation factor
+        delta       = -0.4,                 # Triangularity factor
+        qfit        = [154.51071835546747, -921.8584472748003, 
+                       1842.1077075366113, -1231.619813170522],
+        x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
+        x_out       = x_out                  # SOL domain width
+    )
+    # Define the species
+    simulation.add_species(Species(name='ion',
+                m=2.01410177811*simulation.phys_param.mp, # Ion mass
+                q=simulation.phys_param.eV,               # Ion charge [C]
+                T0=300*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='elc',
+                m=simulation.phys_param.me, 
+                q=-simulation.phys_param.eV, # Electron charge [C]
+                T0=300*simulation.phys_param.eV, 
+                n0=2.0e19))
+    simulation.add_species(Species(name='D0',
+                m=2.01410177811*simulation.phys_param.mp,    # Usually same mass as the ion
+                q=0.0,                         # Neutral charge is 0
+                T0=1.0*simulation.phys_param.eV,
+                n0=1.0e19,
+                is_fluid=True))
+
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+
+    # Add a custom poloidal projection inset to position the inset according to geometry.
+    simulation.polprojInsets = [
+        Inset(
+            lowerCornerRelPos=[0.3,0.3],
+            xlim = [2.24,2.38],
+            ylim = [-0.15,0.15],
+            markLoc=[1,4])
+    ]
+    
+    # Add discharge ID
+    simulation.dischargeID = 'DIII-D #171646'
+        
+    # Add vessel data filename
+    simulation.geom_param.vessel_data = d3d_vessel_data
+    
+    # Add view points for the toroidal projection
+    simulation.geom_param.camera_global = {
+        'position':(2.5, 2.52, 0.6),
+        'looking_at':(0.0, -0.2, -0.2),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_lower = {   
+        'position':(0.83, 0.78, -0.1),
+        'looking_at':(0., 0.74, -0.19),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_obmp = {
+        'position':(0.4, 0.9, 0.0),
+        'looking_at':(0.0, 0.98, 0.0),
+            'zoom': 1.0
+    }
+    # Cameras for 1:2 formats
+    simulation.geom_param.camera_global_1by2 = {
+        'position':(2.3, 2.3, 0.75),
+        'looking_at':(0.0, 0.8, 0),
+        'zoom': 1.0
+    }
+    simulation.geom_param.camera_zoom_1by2 = {   
+        'position':(2.0, 0.78, 0.1),
+        'looking_at':(0., 0.74, 0.05),
+        'zoom': 1.0
+    }
+    # One side camera for high resolution
+    simulation.geom_param.camera_poloidal = {
+        'position':(1., 1.25, 0),
+        'looking_at':(0, -4.25, 0),
+            'zoom': 0.57
+    }
+    return simulation
+
+def get_d3d_nt_a_shift_sim_config(simdir, fileprefix, **kwargs):
     '''
     This function returns a simulation object for a TCV NT clopen 3x2v simulation.
     '''

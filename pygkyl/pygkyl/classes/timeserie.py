@@ -143,7 +143,7 @@ class TimeSerie:
         for i in range(len(self.frames)):
             self.frames[i].values = 0*self.frames[i].values + favg
 
-    def fluctuations(self,fluctuationType='',avg_array=None):
+    def fluctuations(self,fluctuationType='',avg_array=None, square=False):
         if avg_array is None:
             if 'tavg' in fluctuationType:
                 tavg = self.get_time_average()
@@ -161,11 +161,22 @@ class TimeSerie:
                 # Avoid division by zero
                 self.frames[i].values = np.where(avg != 0.0, 100.0 * self.frames[i].values / avg, 0.0)
                 
+            # Square the final fluctuation if requested
+            if square:
+                self.frames[i].values = self.frames[i].values ** 2
+
         self.vsymbol = self.vsymbol + r' $-\langle$'+self.vsymbol+r'$\rangle_%s$'%('t' if 'tavg' in fluctuationType else 'y')
             
         if 'relative' in fluctuationType:
             self.vsymbol = r'(' + self.vsymbol + r') $/\langle$'+self.frames[0].vsymbol+r'$\rangle_y$'
             self.vunits = r'\%'
+        
+        if square:
+            self.vsymbol = r'(' + self.vsymbol + r')^2'
+            if self.vunits and self.vunits != r'\%':
+                self.vunits = self.vunits + r'^2'
+            elif self.vunits == r'\%':
+                self.vunits = r'\%^2'
           
     def free_values(self):
         '''

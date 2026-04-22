@@ -384,7 +384,8 @@ class PoloidalProjection:
     field_RZ = self.project_field(field_frame.values, evalDGfunc=evalDGfunc)
     return field_RZ, self.RIntN, self.ZIntN, field_frame.time
   
-  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', fluctuation='',
+  def plot(self, fieldName, timeFrame, outFilename='', colorMap = '', 
+           fluctuation='', fluc_sq=False, fluc_tavg=False, fluc_yavg=False,
            xlim=[],ylim=[],clim=[],climInset=[], colorScale='linear', logScaleFloor = 1e-3, favg = None,
            shading='auto', average='',show_LCFS=True, show_limiter=True, show_inset=True, show_vessel=False,
            show_axis=True, cutout_limiter=False, cmap_period = 1, figout=[], close_fig=False, fig_dpi=300, limiter_color='gray'):
@@ -431,9 +432,14 @@ class PoloidalProjection:
     if (len(fluctuation) > 0) or (len(average) > 0):
       serie = TimeSerie(simulation=self.sim, fieldname=fieldName, time_frames=avg_window, load=True)
       if fluctuation:
-        serie.fluctuations(fluctuationType=fluctuation,avg_array=favg)
+        serie.fluctuations(fluctuationType=fluctuation,avg_array=favg,square=fluc_sq)
         colorMap = colorMap if colorMap else 'bwr'
+        if fluc_tavg:
+          serie.average(averageType='tavg')
+        if fluc_yavg:
+          serie.average(averageType='yavg')
       elif average:
+        print(average)
         serie.average(averageType=average)
         colorMap = colorMap if colorMap else self.sim.normalization.dict[fieldName+'colormap']
       toproject = serie.frames[-1].values
