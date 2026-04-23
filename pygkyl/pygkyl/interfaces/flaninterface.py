@@ -85,7 +85,66 @@ class FlanInterface:
 
             # Return tau_Ecomp / tau_imp
             return np.abs(Ecomp / dEcomp_dt) * omega_c
+
+        # The radial (cross-field, not cylindrical R) and poloidal velocities
+        elif dname.lower() in ["v_rad", "v_pol", "exb_rad", "exb_pol"]:
+
+            # Geometry arrays (nx, ny, nz)
+            X = flan_nc["geometry"]["X"][:].data
+            Y = flan_nc["geometry"]["Y"][:].data
+            Z = flan_nc["geometry"]["Z"][:].data
+            R = np.sqrt(X**2 + Y**2)
+
+            # Magnetic field arrays
+            BX = flan_nc["background"]["B_X"][tframe]   # (nx, ny, nz)
+            BY = flan_nc["background"]["B_Y"][tframe]
+            BZ = flan_nc["background"]["B_Z"][tframe]
+
+            # Velocity components
+            if dname.lower() in ["v_rad", "v_pol"]:
+                vX = flan_nc["output"]["v_X"][tframe]   # (nx, ny, nz)
+                vY = flan_nc["output"]["v_Y"][tframe]
+                vZ = flan_nc["output"]["v_Z"][tframe]
+
+            # In theory straightforward to implement...
+            if dname.lower() in ["exb_rad", "exb_pol"]:
+                print("ExB radial/poloidal components not implemented.")
+
+            # Stack into vector fields
+            B = np.stack([BX, BY, BZ], axis=-1)         # (nx, ny, nz, 3)
+            v = np.stack([vX, vY, vZ], axis=-1)
+
+            # Toroidal unit vector e_phi = (-y, x, 0) / R
+            e_phi = np.zeros(X.shape + (3,))
+            e_phi[..., 0] = -Y / R
+            e_phi[..., 1] =  X / R
+            e_phi[..., 2] =  0.0
+
+            # Normalize
+            e_phi /= np.linalg.norm(e_phi, axis=-1, keepdims=True)
+
+            # Broadcast e_phi to match time dimension. Broadcast requires 
+            # the rightmost index match, which in this case is 3 for both 
+            # arrays. Now e_phi behaves like an (nt, nx, ny, nz, 3) shaped 
+#               # array without actually using any additional memory.
+            e_phi = np.broadcast_to(e_phi, B.shape)
+
+            # Poloidal direction = B x e_phi
+            e_pol = np.cross(B, e_phi)
+            e_pol /= np.linalg.norm(e_pol, axis=-1, keepdims=True)
             
+            # Radial direction = e_phi x e_pol
+            e_r = np.cross(e_phi, e_pol)
+            e_r /= np.linalg.norm(e_r, axis=-1, keepdims=True)
+
+            # Project velocity onto radial and poloidal directions. This is just
+            # the dot product. v*e_r is the 3 terms in the dot product, then we
+            # sum them along the coordinate axes to finish the dot product.
+            if dname.lower() == "v_rad":
+                return np.sum(v * e_r, axis=-1)
+            elif dname.lower() == "v_pol":
+                return np.sum(v * e_pol, axis=-1)
+
 
     def load_data(self, fieldname, tframe, xyz=True):
 
@@ -99,7 +158,7 @@ class FlanInterface:
             # load_derived_values to perform the calculations, otherwise just load
             # the data straight up.
             derived_dnames = ["gca_validity_time_EX", "gca_validity_time_EY", 
-                "gca_validity_time_EZ", "gca_validity_time_E"]
+                "gca_validity_time_EZ", "gca_validity_time_E", "v_rad", "v_pol"]
             if dname in derived_dnames:
                 values = self.load_derived_values(flan_nc, dname, tframe)
             else:

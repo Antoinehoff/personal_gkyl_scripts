@@ -1262,6 +1262,20 @@ class DataParam:
         units = r''
         default_qttes.append([name,symbol,units,field2load,receipe_flan])
 
+        # Radial (cross-field, not cylindrical R) velocity
+        name = 'flan_v_rad'
+        symbol = r'$v_{rad}$'
+        units = r'm/s'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
+        # Poloidal velocity
+        name = 'flan_v_pol'
+        symbol = r'$v_{pol}$'
+        units = r'm/s'
+        field2load = ['flan'] # phi is here just to get conf grids info, the flan interface will get the values
+        default_qttes.append([name,symbol,units,field2load,receipe_flan])
+
         dirs = ['x','y','z']
         Dirs = ['X','Y','Z']
         for i in range(3):
