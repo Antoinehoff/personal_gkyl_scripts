@@ -11,6 +11,7 @@ Functions:
 """
 
 import fnmatch
+import glob
 import os,re,sys
 from ..interfaces.flaninterface import FlanInterface
 import postgkyl as pg
@@ -40,8 +41,6 @@ def find_available_frames(simulation,dataname='field'):
         flan = FlanInterface(simulation.flandatapath)
         frames = flan.avail_frames
     else:
-        # Regular expression pattern to match files with the format "prefix-dataname_framenumber.gkyl"
-        pattern = re.compile(r"%s-%s_([0-9]+)\.gkyl$"%(simulation.prefix, dataname))
         folder_path = simulation.datadir
         # List to store the frame numbers
         frames = []
@@ -55,31 +54,26 @@ def find_available_frames(simulation,dataname='field'):
             print("Path is not a directory: %s"%folder_path)
             return frames
         
+        # Use glob to pre-filter matching files at the OS level, then extract
+        # the frame number only from already-matching filenames. This is much
+        # faster than listing all files and regex-matching each one.
+        glob_pattern = os.path.join(folder_path, "%s-%s_*.gkyl" % (simulation.prefix, dataname))
+
         try:
-            files = os.listdir(folder_path)
+            matched_files = glob.glob(glob_pattern)
         except (PermissionError, OSError) as e:
-            print("Error accessing directory %s: %s"%(folder_path, str(e)))
+            print("Error accessing directory %s: %s" % (folder_path, str(e)))
             return frames
-        
-        if len(files) == 0:
-            print("No file found in %s"%folder_path)
+
+        if len(matched_files) == 0:
+            print("No %s file found."%dataname)
             return frames
-            
-        # Iterate over all files in the specified folder
-        for filename in files:
-            # Skip directories, only process files
-            if os.path.isdir(os.path.join(folder_path, filename)):
-                continue
-            # Use regular expression to find matching filenames
-            match = pattern.search(filename)
+
+        number_re = re.compile(r"_([0-9]+)\.gkyl$")
+        for filepath in matched_files:
+            match = number_re.search(os.path.basename(filepath))
             if match:
-                # Extract the frame number and add it to the list
-                frame_number = int(match.group(1))
-                frames.append(frame_number)
-                
-        # if len(frames) == 0:
-        #     print("No frames found for dataname '%s' in directory %s"%(dataname, folder_path))
-        #     print("(Pattern used: %s-%s_([0-9]+).gkyl)"%(simulation.prefix, dataname))
+                frames.append(int(match.group(1)))
                 
     # Sort the frame numbers for easier interpretation
     frames = list(set(frames))
