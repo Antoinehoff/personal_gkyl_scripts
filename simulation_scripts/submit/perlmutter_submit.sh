@@ -40,7 +40,7 @@ show_help() {
     echo "  --nprocs NPROCS  Number of processes (overrides auto-detection)"
 }
 # check the following options : -q -n -t -h -N -r -d -a -j -p -i -- --nprocs
-while getopts ":q:n:t:r:N:d:ja:pi:-:" opt; do
+while getopts ":q:n:t:r:N:d:ja:phi:-:" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG

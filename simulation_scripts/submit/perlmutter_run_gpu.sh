@@ -75,6 +75,7 @@ done
 
 # Use -N to specify the calculated number of nodes.
 # --ntasks is set to the number of GPUs, assuming one task per GPU.
-CMD="srun -N $nnodes --ntasks=$ngpu --gpus-per-task=1 --gpu-bind=closest -u ./$executable -g -M $decomp_dir $ngpu $* | tee $logname"
+# CMD="srun -N $nnodes --ntasks=$ngpu --gpus-per-task=1 --gpu-bind=closest -u ./$executable -g -M $decomp_dir $ngpu $* | tee $logname"
+CMD="srun -u -n $ngpu ./$executable -g -M $decomp_dir $ngpu $* | tee $logname"
 echo "Executing command: $CMD"
 eval $CMD
