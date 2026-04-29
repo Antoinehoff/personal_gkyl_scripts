@@ -122,6 +122,8 @@ alias gkyl_dt_avg='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_
 alias gkyl_create_restart_link='sh ~/personal_gkyl_scripts/simulation_scripts/utilities/gkyl_create_restart_link.sh'
 alias gkyl_run_gpu='sh ~/personal_gkyl_scripts/simulation_scripts/submit/perlmutter_run_gpu.sh'
 alias gkyl_valgrind='valgrind --leak-check=full --max-stackframe=5000000 -s'
+alias gkyl_compute_sanitizer='compute-sanitizer --tool memcheck --leak-check full'
+alias gkyl_compute_sanitizer_2gpus='srun -N 1 --ntasks=2 --gpus-per-task=1 --gpu-bind=closest compute-sanitizer --tool memcheck --leak-check full'
 
 # Gyacomo specific commands
 alias gyac_continue='sh ~/gyacomo/scripts/shell_scripts/continue.sh'
