@@ -1089,7 +1089,7 @@ class Simulation:
     
     def plot_balance(self, balanceType='particle', species=['elc', 'ion'],
                     figout=[], rmLegend=False, figSize=(5,3.5), logAbs=False,
-                    closeFig=False, data=[], xlim=None, ylim=None):
+                    closeFig=False, data=[], xlim=None, ylim=None, msg=[]):
         """
         Plot particle or energy balance diagnostics.
         
@@ -1115,6 +1115,8 @@ class Simulation:
             X-axis limits. Default: None
         ylim : list, optional
             Y-axis limits. Default: None
+        msg : list, optional
+            List that gets messages on file not found. Default: []
             
         Examples
         --------
@@ -1124,7 +1126,7 @@ class Simulation:
         from ..utils.plot_utils import plot_balance as plot
         return plot(simulation=self, balance_type=balanceType, species=species,
                    figout=figout, rm_legend=rmLegend, figsize=figSize,
-                   log_abs=logAbs, close_fig=closeFig, data=data, xlim=xlim, ylim=ylim)
+                   log_abs=logAbs, close_fig=closeFig, data=data, xlim=xlim, ylim=ylim, msg=msg)
     
     def plot_loss(self, lossType='energy', walls=[], volFracScaled=True,
                  showAvg=True, title=True, figout=[], xlim=[], ylim=[],

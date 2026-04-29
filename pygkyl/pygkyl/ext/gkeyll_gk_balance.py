@@ -40,7 +40,7 @@ def setTickFontSize(axIn,fontSizeIn):
   offset_txt = axIn.xaxis.get_offset_text()
   if offset_txt: offset_txt.set_size(fontSizeIn)
 
-def get_balance_data(data_path, species_names, moment_idx):
+def get_balance_data(data_path, species_names, moment_idx, msg=[]):
     fdot_total = None
     src_total = None
     bflux_total = None
@@ -63,6 +63,8 @@ def get_balance_data(data_path, species_names, moment_idx):
         fdot_file = f"{data_path}{species}_fdot_integrated_moms.gkyl"
         if does_file_exist(fdot_file):
             new_species_names.append(species)
+        else:
+            msg.append(f"-fdot file for species '{species}' not found.")
     species_names = new_species_names
     
     for sI, species in enumerate(species_names):
@@ -74,6 +76,7 @@ def get_balance_data(data_path, species_names, moment_idx):
         else:
             fdot_s = np.zeros((1, 1))  # Placeholder for missing data
             time_fdot_s = np.zeros((1, 1))  # Placeholder for missing time data
+            msg.append(f'{species} fdot integrated moments not found.')
         
         # integrated moms
         intmoms_file = f"{data_path}{species}_integrated_moms.gkyl"
@@ -84,6 +87,7 @@ def get_balance_data(data_path, species_names, moment_idx):
         else:
             intmoms_s = np.zeros_like(fdot_s[:, moment_idx])
             time_intmoms_s = np.zeros_like(time_fdot_s)
+            msg.append(f'{species} integrated moments not found.')
 
         # source
         source_file = f"{data_path}{species}_source_integrated_moms.gkyl"
@@ -94,7 +98,7 @@ def get_balance_data(data_path, species_names, moment_idx):
             src_s[0] = 0.0
         else:
             src_s = np.zeros_like(fdot_s[:, moment_idx])
-
+            msg.append(f'{species} source not found.')
         # boundary flux
         nbflux = 0
         bflux_s_list = []
@@ -108,6 +112,8 @@ def get_balance_data(data_path, species_names, moment_idx):
                     bflux_s_list.append(bflux_tmp_all[:, moment_idx])
                     time_bflux_list.append(time_bflux_tmp)
                     nbflux += 1
+                else:
+                    msg.append(f'{species} {d}-{e} boundary flux not found.')
         
         bflux_tot_s = np.sum(bflux_s_list, axis=0) if nbflux > 0 else np.zeros_like(fdot_s[:, moment_idx])
 
@@ -130,20 +136,21 @@ def get_balance_data(data_path, species_names, moment_idx):
             time_bflux, bflux_total, has_bflux)
 
 def plot_balance(simulation, balance_type='particle', species=['elc', 'ion'], figout=[], 
-                 rm_legend=False, figsize=(8,6), log_abs=False, data=[], xlim=None, ylim=None):
+                 rm_legend=False, figsize=(8,6), log_abs=False, data=[], xlim=None, ylim=None,
+                 msg = []):
     moment_idx = 0 if balance_type == 'particle' else 2
     symbol = 'N' if balance_type == 'particle' else r'\mathcal{E}'
      
     data_path = f"{simulation.data_param.fileprefix}-"
     (time_fdot, fdot, has_fdot, _, _, _, time_src, src, has_source, 
-     time_bflux, bflux_tot, has_bflux) = get_balance_data(data_path, species, moment_idx)
+     time_bflux, bflux_tot, has_bflux) = get_balance_data(data_path, species, moment_idx, msg)
 
     field, fig, axs = fig_tools.setup_figure(balance_type,figsize=figsize)
     ax = axs[0]
     def plot_(ax, xdata, ydata, label, data): 
         data.append((xdata, ydata, label))
         ydata = np.abs(ydata) if log_abs else ydata
-        ax.plot(xdata, ydata, label=label)
+        ax.plot(xdata[1:], ydata[1:], label=label)
        
     # Field energy for energy balance
     field_dot = np.zeros_like(fdot)
