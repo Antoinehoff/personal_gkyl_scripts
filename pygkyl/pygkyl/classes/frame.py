@@ -1,5 +1,6 @@
 import postgkyl as pg
 import numpy as np
+from scipy.interpolate import RegularGridInterpolator
 # NumPy >= 2.0 renamed trapz to trapezoid; support both
 if hasattr(np, 'trapezoid'):
     _trapz = np.trapezoid
@@ -200,15 +201,30 @@ class Frame:
             c_ = self.denormalize_grid_coord(coords[i])
             projection[i] = self.DG_basis.eval_proj(self.DG_data, c_)
         return projection
+    
+    def eval_interp(self, coords):
+        """
+        Evaluate the field on the given coordinates using interpolation of the projected values.
 
-        # xg = [grid[0]] if isinstance(grid[0], float) else grid[0]
-        # yg = [grid[1]] if isinstance(grid[1], float) else grid[1]
-        # zg = [grid[2]] if isinstance(grid[2], float) else grid[2]
-        # projection = np.zeros((len(xg), len(yg), len(zg)))
-        # for i in range(len(xg)):
-        #     for j in range(len(yg)):
-        #         for k in range(len(zg)):
-        #             projection[i, j, k] = DGbasis.eval_proj(DGdata, [xg[i], yg[j], zg[k]])        
+        Parameters:
+        - coords: array-like of shape (N, ndim) or a single coordinate of length ndim.
+
+        Returns:
+        - interpolated values at the requested coordinates (scalar or 1-D array).
+        """
+        coords = np.asarray(coords, dtype=float)
+        single = coords.ndim == 1
+        if single:
+            coords = coords[np.newaxis, :]
+        interp = RegularGridInterpolator(
+            tuple(g for g in self.new_grids),
+            self.values,
+            method='linear',
+            bounds_error=False,
+            fill_value=np.nan,
+        )
+        result = interp(coords)
+        return result[0] if single else result
     
     def load_gkyl(self,normalize=True, fourier_y=False):
         """

@@ -205,3 +205,81 @@ def smooth2D(array, kernel_size=3):
     
     smoothed_array = uniform_filter(array, size=kernel_size, mode='reflect')
     return smoothed_array
+
+def field_line_tracer(xl0_a, yl0_a, zgrid, interp_dBx, interp_dBy, interp_Bmag,
+                      L_periodicity=(None, None, None)):
+    """
+    Trace magnetic field lines given perpendicular field perturbations.
+
+    Integrates dx/dz = dBx/Bmag, dy/dz = dBy/Bmag along the z grid starting
+    from each (x0, y0) seed point.
+
+    Parameters
+    ----------
+    xl0_a : array-like, shape (Nx,)
+        x coordinates of the seed points.
+    yl0_a : array-like, shape (Ny,)
+        y coordinates of the seed points.
+    zgrid : array-like, shape (Nz,)
+        z grid along which to trace (must be monotonic).
+    interp_dBx : callable
+        Interpolator for dB_perp_x; called as interp_dBx([x, y, z]).
+    interp_dBy : callable
+        Interpolator for dB_perp_y; called as interp_dBy([x, y, z]).
+    interp_Bmag : callable
+        Interpolator for Bmag; called as interp_Bmag([x, y, z]).
+    L_periodicity : tuple of 3 entries, optional
+        Each entry is either None (non-periodic) or a (lo, hi) tuple giving
+        the grid bounds for that direction.  The field line coordinate is
+        wrapped as  lo + (coord - lo) % (hi - lo)  so that the wrapping is
+        correct regardless of where the domain origin sits.
+
+    Returns
+    -------
+    xfl : ndarray, shape (Nx, Ny, Nz)
+        x coordinates along the traced field lines.
+    yfl : ndarray, shape (Nx, Ny, Nz)
+        y coordinates along the traced field lines.
+    zfl : ndarray, shape (Nx, Ny, Nz)
+        z coordinates along the traced field lines (same for all seeds).
+    """
+    xl0_a = np.asarray(xl0_a)
+    yl0_a = np.asarray(yl0_a)
+    zgrid = np.asarray(zgrid)
+    Nx = len(xl0_a)
+    Ny = len(yl0_a)
+    Nz = len(zgrid)
+
+    xfl = np.zeros((Nx, Ny, Nz))
+    yfl = np.zeros((Nx, Ny, Nz))
+    zfl = np.zeros((Nx, Ny, Nz))
+
+    for i in range(Nx):
+        for j in range(Ny):
+            xfl[i, j, 0] = xl0_a[i]
+            yfl[i, j, 0] = yl0_a[j]
+            zfl[i, j, 0] = zgrid[0]
+            for iz in range(1, Nz):
+                x_prev = xfl[i, j, iz - 1]
+                y_prev = yfl[i, j, iz - 1]
+                z_prev = zfl[i, j, iz - 1]
+                dBx   = interp_dBx([x_prev, y_prev, z_prev])
+                dBy   = interp_dBy([x_prev, y_prev, z_prev])
+                Bmag  = interp_Bmag([x_prev, y_prev, z_prev])
+                dz = zgrid[iz] - zgrid[iz - 1]
+                xfl[i, j, iz] = x_prev + dBx / Bmag * dz
+                yfl[i, j, iz] = y_prev + dBy / Bmag * dz
+                zfl[i, j, iz] = zgrid[iz]
+                
+                # Apply offset-aware periodic wrapping: lo + (coord - lo) % (hi - lo)
+                if L_periodicity[0] is not None:
+                    lo, hi = L_periodicity[0]
+                    xfl[i, j, iz] = lo + (xfl[i, j, iz] - lo) % (hi - lo)
+                if L_periodicity[1] is not None:
+                    lo, hi = L_periodicity[1]
+                    yfl[i, j, iz] = lo + (yfl[i, j, iz] - lo) % (hi - lo)
+                if L_periodicity[2] is not None:
+                    lo, hi = L_periodicity[2]
+                    zfl[i, j, iz] = lo + (zfl[i, j, iz] - lo) % (hi - lo)
+
+    return xfl, yfl, zfl

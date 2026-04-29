@@ -451,7 +451,10 @@ class DataParam:
             default_qttes.append([name,symbol,units,field2load,receipe_vExB])
             
             # Perpendicular magnetic field perturbation $\delta B_\perp = \nabla \times (A_\parallel b)$
-            # following curl(Apar * b) = Apar * curl(b) + grad(Apar) x b
+            # Direct curl: delta B_perp^i = (1/J) * [d(Apar*bk)/dxj - d(Apar*bj)/dxk]
+            # Using the direct formula avoids the near-cancellation that occurs when
+            # expanding into Apar*curl(b) + grad(Apar)xb, since those two terms are
+            # individually large and of opposite sign.
             name = 'dB_perp_%s'%(ci_)
             symbol = r'$\delta B_{\perp,%s}$'%(ci_)
             units = r'T'
@@ -459,22 +462,16 @@ class DataParam:
             def receipe_dB_perp(gdata_list,i=i_):
                 j = np.mod(i+1,3)
                 k = np.mod(i+2,3)
-                Apar   = pgkyl_.get_values(gdata_list[0])
-                bj     = pgkyl_.get_values(gdata_list[1])
-                bk     = pgkyl_.get_values(gdata_list[2])
+                Apar    = pgkyl_.get_values(gdata_list[0])
+                bj      = pgkyl_.get_values(gdata_list[1])
+                bk      = pgkyl_.get_values(gdata_list[2])
                 Jacob   = pgkyl_.get_values(gdata_list[3])
                 grids   = pgkyl_.get_grid(gdata_list[0])
                 jgrid   = grids[j][:-1]
                 kgrid   = grids[k][:-1]
-                result = 0.0
-                # add Apar * curl(b)
-                curlb = receipe_curl_b([gdata_list[1],gdata_list[2],gdata_list[3]],i=i_)
-                result += Apar * curlb
-                # add grad(Apar) x b
-                dApardj  = np.gradient(Apar, jgrid, axis=j)
-                dApardk  = np.gradient(Apar, kgrid, axis=k)
-                result += (dApardj*bk - dApardk*bj)/Jacob
-                return result
+                dApar_bk_dj = np.gradient(Apar * bk, jgrid, axis=j)
+                dApar_bj_dk = np.gradient(Apar * bj, kgrid, axis=k)
+                return (dApar_bk_dj - dApar_bj_dk) / Jacob
             default_qttes.append([name,symbol,units,field2load,receipe_dB_perp])
             
         for i_ in range(len(directions)):

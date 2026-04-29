@@ -1,5 +1,30 @@
 import os
+import sys
 import numpy as np
+
+# Module-level state shared with fork-based parallel workers.
+# set by make_movie() before the Pool is created; inherited by children via fork.
+_FORK_STATE = {}
+
+def _fork_render_worker(args):
+    """Fork-based worker for make_movie. Inherits _FORK_STATE via fork (Linux/macOS).
+    Each forked process has its own independent matplotlib state, so LaTeX
+    rendering is safe without any locking.
+    """
+    import matplotlib.pyplot as plt
+    tf, frame_file = args
+    fn  = _FORK_STATE['fn']
+    kw  = _FORK_STATE['kwargs']
+    dpi = _FORK_STATE['dpi']
+    figout = []
+    try:
+        fn(frameIdx=tf, figout=figout, closeFig=False, **kw)
+        figout[0].savefig(frame_file, dpi=dpi, bbox_inches='tight')
+    finally:
+        if figout:
+            plt.close(figout[0])
+    return tf
+
 # NumPy >= 2.0 renamed trapz to trapezoid; support both
 if hasattr(np, 'trapezoid'):
     _trapz = np.trapezoid
@@ -746,7 +771,7 @@ class Simulation:
                 plotType='pcolormesh', xlim=[], ylim=[], clim=[], aspect='auto',
                 colorScale='linear', showTitle=True, figout=[], cutOut=[], figSize=None, 
                 figDpi=None, valOut=[], framesToPlot=None, cmapPeriod=1, closeFig=False,
-                quiverParams=None):
+                quiverParams=None, fieldLineParams=None):
         """
         Plot 2D cut of the simulation domain for given field(s).
         
@@ -797,6 +822,9 @@ class Simulation:
         quiverParams : dict or None, optional
             Parameters for quiver plot 
             e.g., {'fieldname_1': 'Ex', 'fieldname_2': 'Ey', 'scale': 1, 'width': 0.002}).
+        fieldLineParams : dict or None, optional
+            Parameters for field line tracer
+            e.g., {'xl0_a': [1.3, 1.325, 1.35, 1.375], 'yl0_a': [-0.1, 0.0, 0.1], 'color': 'white', 'linestyle': '-'}).
         Returns
         -------
         None
@@ -816,7 +844,8 @@ class Simulation:
                    colorscale=colorScale, show_title=showTitle, figout=figout,
                    cutout=cutOut, val_out=valOut, frames_to_plot=framesToPlot,
                    cmap_period=cmapPeriod, close_fig=closeFig, aspect=aspect,
-                   figsize=figSize, fig_dpi=figDpi, quiver_params=quiverParams)
+                   figsize=figSize, fig_dpi=figDpi, quiver_params=quiverParams,
+                   field_line_params=fieldLineParams)
     
     def plot_1D_time_evolution(self, cutDir='x', cutCoords=[0.0,0.0,0.0], fieldName='phi',
                                frameIndices=None, spaceTime=False, cmap='inferno',
@@ -1141,7 +1170,7 @@ class Simulation:
                    figout=figout, xlim=xlim, ylim=ylim, showall=showall,
                    legend=legend, data_out=dataOut, close_fig=closeFig)
         
-    def make_movie(self, plotFunction, frameList, moviePrefix='', **kwargs):
+    def make_movie(self, plotFunction, frameList, moviePrefix='', parallelParams=None, **kwargs):
         """
         Generate a movie from any plotting function that accepts time_frame parameter.
         
@@ -1184,61 +1213,70 @@ class Simulation:
         -----
         - Automatically creates and cleans up temporary directory for frames
         - Use 'moviePrefix' to name your output file
-        - The plotting function MUST accept 'time_frame' and 'close_fig' parameters
+        - The plotting function MUST accept 'frameIdx' and 'closeFig' parameters
+        - parallelParams keys: 'nWorkers' (int, number of parallel processes)
         """
-        import os
-        import sys
         from ..tools import fig_tools
         
-        # Validate inputs
         if not callable(plotFunction):
             raise ValueError("plotFunction must be a callable (method/function)")
-        
         if not hasattr(frameList, '__iter__'):
             frameList = [frameList]
-        
         frameList = list(frameList)
-        if len(frameList) == 0:
+        if not frameList:
             raise ValueError("frameList cannot be empty")
-        
-        # Create temporary directory for frames
+
         movDirTmp = 'movie_frames_tmp'
         os.makedirs(movDirTmp, exist_ok=True)
-        
-        frameFileList = []
-        total_frames = len(frameList)
-        
-        # Generate all frames
-        for i, tf in enumerate(frameList, 1):
-            frameFileName = f'{movDirTmp}/frame_{tf:06d}.png'
-            frameFileList.append(frameFileName)
-            
-            # Create the plot with close_fig=True to avoid memory issues
-            figout = []
-            try:
-                plotFunction(frameIdx=tf, figout=figout, closeFig=True, **kwargs)
+        frameFileList = [f'{movDirTmp}/frame_{tf:06d}.png' for tf in frameList]
+        total_frames  = len(frameList)
+        dpi = 150
 
-                figout[0].savefig(frameFileName, dpi=150, bbox_inches='tight')
+        if parallelParams is not None:
+            # --- Parallel execution via fork-based processes ---
+            # fork() copies process memory so Simulation (with unpicklable closures)
+            # is available in each child without pickling.  Each child also gets its
+            # own matplotlib state, so LaTeX rendering is fully parallel and safe.
+            import multiprocessing as mp
+            n_workers = parallelParams.get('nWorkers', os.cpu_count())
+            # Populate shared state BEFORE forking so workers inherit it.
+            _FORK_STATE.update({'fn': plotFunction, 'kwargs': kwargs, 'dpi': dpi})
+            ctx = mp.get_context('fork')
+            worker_args = list(zip(frameList, frameFileList))
+            completed = [0]
+            print(f"Generating {total_frames} frames using {n_workers} processes...")
+            with ctx.Pool(processes=n_workers) as pool:
+                for tf in pool.imap_unordered(_fork_render_worker, worker_args):
+                    completed[0] += 1
+                    sys.stdout.write(f"\rProcessed frame {tf} ({completed[0]}/{total_frames})...")
+                    sys.stdout.flush()
+        else:
+            # --- Sequential execution ---
+            for i, (tf, frameFileName) in enumerate(zip(frameList, frameFileList), 1):
+                figout = []
+                try:
+                    plotFunction(frameIdx=tf, figout=figout, closeFig=False, **kwargs)
+                    figout[0].savefig(frameFileName, dpi=dpi, bbox_inches='tight')
+                except Exception as e:
+                    print(f"\nWarning: Failed to generate frame {tf}: {e}")
+                    continue
+                finally:
+                    import matplotlib.pyplot as plt
+                    if figout:
+                        plt.close(figout[0])
+                sys.stdout.write(f"\rProcessing frames: {i}/{total_frames}...")
+                sys.stdout.flush()
 
-            except Exception as e:
-                print(f"Warning: Failed to generate frame {tf}: {e}")
-                continue
-            
-            # Progress indicator
-            progress = f"Processing frames: {i}/{total_frames}... "
-            sys.stdout.write("\r" + progress)
-            sys.stdout.flush()
-        
         sys.stdout.write("\n")
-        
-        # Generate movie name based on prefix
+
+        # Build movie name
         if moviePrefix:
             moviePrefix += '_'
-        fieldname = kwargs['fieldName'][0] if 'fieldName' in kwargs else 'movie'
+        fieldname = kwargs.get('fieldName', 'movie')
+        if isinstance(fieldname, list):
+            fieldname = fieldname[0]
         movieName = f"{moviePrefix}{fieldname}_frames_{frameList[0]}_to_{frameList[-1]}"
-        
-        # Compile the movie
+
         print(f"Compiling movie: {movieName}")
         fig_tools.compile_movie(frameFileList, movieName, rmFrames=True)
-        
         return movieName

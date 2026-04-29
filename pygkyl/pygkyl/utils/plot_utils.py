@@ -26,7 +26,7 @@ from .. utils import file_utils
 from ..classes import Frame, IntegratedMoment, TimeSerie
 from ..interfaces import pgkyl_interface as pg_int
 from ..projections import FluxSurfProjection, PoloidalProjection
-from ..tools import fig_tools
+from ..tools import fig_tools, math_tools
 from ..utils import data_utils
 
 # set the font to be LaTeX
@@ -219,6 +219,84 @@ def _load_loss_field(simulation, fieldname):
     return intmom.values, intmom.time, intmom.vunits, intmom.tunits
 
 
+def _fl_build_seeds(flp, grids):
+    """Pop seed parameters from flp and return (xl0_a, yl0_a) in 3D (x,y) space."""
+    xl0_a   = flp.pop('xl0_a', None)
+    yl0_a   = flp.pop('yl0_a', None)
+    nxl     = flp.pop('nxl',   2)
+    nyl     = flp.pop('nyl',   4)
+    xlmin_a = flp.pop('xlmin', None)
+    xlmax_a = flp.pop('xlmax', None)
+    ylmin_a = flp.pop('ylmin', None)
+    ylmax_a = flp.pop('ylmax', None)
+    if xl0_a is None:
+        xlmin = xlmin_a if xlmin_a is not None else grids[0][len(grids[0])//4]
+        xlmax = xlmax_a if xlmax_a is not None else grids[0][3*len(grids[0])//4]
+        xl0_a = np.linspace(xlmin, xlmax, nxl)
+    else:
+        xl0_a = np.atleast_1d(xl0_a)
+    if yl0_a is None:
+        ylmin = ylmin_a if ylmin_a is not None else grids[1][1]
+        ylmax = ylmax_a if ylmax_a is not None else grids[1][-2]
+        yl0_a = np.linspace(ylmin, ylmax, nyl)
+    else:
+        yl0_a = np.atleast_1d(yl0_a)
+    return xl0_a, yl0_a
+
+
+def _fl_build_colors(flp, n_lines):
+    """Pop color/cmap from flp and return a list of n_lines colours."""
+    user_color = flp.pop('color', None)
+    user_cmap  = flp.pop('cmap',  None)
+    if user_cmap is not None:
+        cmap_obj = cm.get_cmap(user_cmap)
+        return [cmap_obj(k / max(n_lines - 1, 1)) for k in range(n_lines)]
+    if user_color is not None:
+        return [user_color] * n_lines
+    prop_cycle = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    return [prop_cycle[k % len(prop_cycle)] for k in range(n_lines)]
+
+
+def _fl_insert_nans(h, v, L_h, L_v):
+    """Insert NaN at the union of periodic wrap-around positions in h and v.
+
+    Both arrays receive NaNs at the same indices so they stay the same length.
+    """
+    break_idx = set()
+    if L_h is not None:
+        L = L_h[1] - L_h[0]
+        break_idx |= set((np.where(np.abs(np.diff(h)) > L / 2)[0] + 1).tolist())
+    if L_v is not None:
+        L = L_v[1] - L_v[0]
+        break_idx |= set((np.where(np.abs(np.diff(v)) > L / 2)[0] + 1).tolist())
+    for bi in sorted(break_idx, reverse=True):
+        h = np.insert(h, bi, np.nan)
+        v = np.insert(v, bi, np.nan)
+    return h, v
+
+
+def _fl_draw(ax, xfl, yfl, zfl, cut_dir, L_periodicity, line_colors, flp):
+    """Plot all field lines on ax, inserting NaN breaks at periodic wraps."""
+    dir_to_idx = {'x': 0, 'y': 1, 'z': 2}
+    coord_map  = {'x': xfl, 'y': yfl, 'z': zfl}
+    hcoord = coord_map[cut_dir[0]]
+    vcoord = coord_map[cut_dir[1]]
+    L_h = L_periodicity[dir_to_idx[cut_dir[0]]]
+    L_v = L_periodicity[dir_to_idx[cut_dir[1]]]
+    line_idx = 0
+    for i in range(xfl.shape[0]):
+        for j in range(xfl.shape[1]):
+            c = line_colors[line_idx];  line_idx += 1
+            h, v = _fl_insert_nans(
+                hcoord[i, j].astype(float).copy(),
+                vcoord[i, j].astype(float).copy(),
+                L_h, L_v,
+            )
+            ax.plot(h, v, color=c, **flp)
+            ax.plot(hcoord[i, j,  0], vcoord[i, j,  0], '.', color=c)
+            ax.plot(hcoord[i, j, -1], vcoord[i, j, -1], 'x', color=c)
+
+
 def plot_1D(simulation,cdirection='x',ccoords=[0.0,0.0,0.0],fieldnames='phi',
             time_frames=None, xlim=[], ylim=[], xscale='', yscale = '', periodicity = 0, grid = False,
             figout = [], errorbar = False, show_title = True, show_legend = True, close_fig = False,
@@ -278,7 +356,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
                 xlim=[], ylim=[], clim=[], colorscale = 'linear', show_title=True,
                 figout=[],cutout=[], val_out=[], frames_to_plot = None, cmap_period=1,
                 close_fig=False, aspect='auto', figsize=None, fig_dpi=None,
-                quiver_params=None):
+                quiver_params=None, field_line_params=None):
     """
     quiver_params : dict or list of dict or None
         Optional quiver overlay per subplot.  A single dict is broadcast to all
@@ -310,6 +388,16 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
         quiver_list = list(quiver_params)
         if len(quiver_list) == 1:
             quiver_list = quiver_list * nfields
+
+    # Normalise field_line_params to a per-subplot list
+    if field_line_params is None:
+        field_line_list = [None] * nfields
+    elif isinstance(field_line_params, dict):
+        field_line_list = [field_line_params] * nfields
+    else:
+        field_line_list = list(field_line_params)
+        if len(field_line_list) == 1:
+            field_line_list = field_line_list * nfields
 
     fields, fig, axs = fig_tools.setup_figure(fieldnames, figsize=figsize, fig_dpi=fig_dpi)
     for field_index, (ax, field) in enumerate(zip(axs, fields)):
@@ -380,6 +468,33 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
                 qp.setdefault('scale', 1.25*max_val)  # Default scale based on max vector magnitude
                 Y, X = np.meshgrid(frame.new_grids[1], frame.new_grids[0])
                 ax.quiver(X, Y, np.squeeze(qdata_1), np.squeeze(qdata_2), **qp)
+                
+        # Optionally overlay field lines for this subplot
+        flp = field_line_list[field_index]
+        if flp is not None:
+            flp = dict(flp)  # shallow copy to avoid mutating caller's dict
+            dBx_fieldname  = flp.pop('dBx_fieldname',  'dB_perp_x')
+            dBy_fieldname  = flp.pop('dBy_fieldname',  'dB_perp_y')
+            Bmag_fieldname = flp.pop('Bmag_fieldname', 'Bmag')
+            periodicity    = flp.pop('periodicity', (False, True, False))
+            flp.setdefault('linestyle', '-')
+            tf_fl = time_frame[-1]
+            dBx_frame  = Frame(simulation, dBx_fieldname,  tf=tf_fl, load=True, normalize=False)
+            dBy_frame  = Frame(simulation, dBy_fieldname,  tf=tf_fl, load=True, normalize=False)
+            Bmag_frame = Frame(simulation, Bmag_fieldname, tf=tf_fl, load=True, normalize=False)
+            grids = dBx_frame.new_grids
+            xl0_a, yl0_a = _fl_build_seeds(flp, grids)
+            line_colors   = _fl_build_colors(flp, len(xl0_a) * len(yl0_a))
+            L_periodicity = [None if not p else (grids[i][0], grids[i][-1])
+                             for i, p in enumerate(periodicity)]
+            xfl, yfl, zfl = math_tools.field_line_tracer(
+                xl0_a, yl0_a, grids[2],
+                interp_dBx=dBx_frame.eval_interp,
+                interp_dBy=dBy_frame.eval_interp,
+                interp_Bmag=Bmag_frame.eval_interp,
+                L_periodicity=L_periodicity,
+            )
+            _fl_draw(ax, xfl, yfl, zfl, cut_dir, L_periodicity, line_colors, flp)
 
     fig.tight_layout()
     figout.append(fig)
@@ -811,6 +926,3 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=None, fie
 
     # Compiling the movie images
     fig_tools.compile_movie(frameFileList, movieName, rmFrames=True)
- 
-def make_movie(plot_function, frames, **kwargs):
-    return
