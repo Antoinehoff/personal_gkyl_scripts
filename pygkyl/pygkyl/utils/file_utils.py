@@ -66,7 +66,7 @@ def find_available_frames(simulation,dataname='field'):
             return frames
 
         if len(matched_files) == 0:
-            print("No %s file found."%dataname)
+            # print("No %s file found."%dataname)
             return frames
 
         number_re = re.compile(r"_([0-9]+)\.gkyl$")
