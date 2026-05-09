@@ -96,7 +96,7 @@ class Normalization:
             symbol = r'$r/a$'
             units  = ''
         elif norm in ['major radius','x/R']:
-            scale  = self.simulation.geom_param.R_axis
+            scale  = 1/self.simulation.geom_param.R0
             shift  = 0
             for spec in self.simulation.species.values():
                 if key == 'gradlogn%s'%spec.nshort:
