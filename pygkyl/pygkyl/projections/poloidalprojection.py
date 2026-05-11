@@ -55,7 +55,7 @@ class PoloidalProjection:
   def setup(self, simulation: Simulation, timeFrame=0, nzInterp=16, phiTor=0, Rlim = [], rholim = [],
             intMethod='trapz32',figSize = (8,9), zExt=True, gridCheck=False, TSBC=True, dpi=150,
             nodefilename = ''):
-
+    timeFrame = timeFrame[0] if isinstance(timeFrame, list) else timeFrame
     # Store simulation and a link to geometry objects
     self.sim = simulation
     self.geom = simulation.geom_param

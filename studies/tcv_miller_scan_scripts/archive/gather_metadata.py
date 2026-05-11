@@ -173,7 +173,7 @@ def process_scan(args_tuple):
         
         sim_frames = pygkyl.file_utils.find_available_frames(simulation, 'field')
         if len(sim_frames) == 0:
-            raise ValueError(f"No frames found for simulation {scanidx}")
+            raise ValueError(f"No frames found for simulation {scanidx}, please verify path (ls {simdir}/{fileprefix}*).")
         
         last_frame = frame_idx if frame_idx >= 0 else sim_frames[-1]
         first_frame = max(0, last_frame - frame_navg)  # Ensure non-negative

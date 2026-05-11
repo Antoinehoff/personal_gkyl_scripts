@@ -991,7 +991,7 @@ class Simulation:
     
     def plot_poloidal_projection(self, fieldName='phi', frameIdx=None, outFileName='',
                                  nzInterp=32, colorMap='inferno', colorScale='lin',
-                                 showInset=True, showLimiter=True, showLCFS=True, showAxis=True,
+                                 showInset=True, showLimiter=True, showLCFS=True, showAxis=True, fluctuation='',
                                  showVessel=False, limiterColor='gray', cutoutLimiter=False, xlim=[], ylim=[], clim=[],
                                  logScaleFloor=1e-3, figout=[], closeFig=False, figDpi=150, figSize=None):
         """
@@ -1007,6 +1007,8 @@ class Simulation:
             Output filename for saving. Default: ''
         nzInterp : int, optional
             Number of z interpolation points. Default: 32
+        fluctuation : str, optional
+            Fluctuation type ('', 'tavg', 'tavg_relative'). Default: ''
         colorMap : str, optional
             Colormap name. Default: 'inferno'
         colorScale : str, optional
@@ -1053,7 +1055,7 @@ class Simulation:
                    showInset=showInset, showLimiter=showLimiter, showLCFS=showLCFS, 
                    showAxis=showAxis, showVessel=showVessel, limiterColor=limiterColor, 
                    cutoutLimiter=cutoutLimiter, colorScale=colorScale, xlim=xlim, ylim=ylim,
-                   clim=clim, logScaleFloor=logScaleFloor, figout=figout,
+                   clim=clim, logScaleFloor=logScaleFloor, figout=figout, fluctuation=fluctuation,
                    close_fig=closeFig, fig_dpi=figDpi, figsize=figSize)
     
     def plot_flux_surface_projection(self, rho=0.9, fieldName='phi', frameIdx=None, Nint=32,
@@ -1250,7 +1252,7 @@ class Simulation:
             with ctx.Pool(processes=n_workers) as pool:
                 for tf in pool.imap_unordered(_fork_render_worker, worker_args):
                     completed[0] += 1
-                    sys.stdout.write(f"\rProcessed frame {tf} ({completed[0]}/{total_frames})...")
+                    sys.stdout.write(f"\rProcessed frame {completed[0]}/{total_frames}...")
                     sys.stdout.flush()
         else:
             # --- Sequential execution ---
