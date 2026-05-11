@@ -120,7 +120,8 @@ def compile_movie(frameFileList,movieName,extension='gif',rmFrames=False,
     '''
     Compiles a movie from a list of frames.
 
-    Parameters:
+    Parameters
+    ----------
     frameFileList : list
         The list of frame files.
     movieName : str
@@ -148,8 +149,9 @@ def compile_movie(frameFileList,movieName,extension='gif',rmFrames=False,
 def get_figdatadict(fig):
     """
     Get data from all curves in a figure
-    
-    Parameters:
+
+    Parameters
+    ----------
     fig : matplotlib.figure.Figure
         The figure containing the curves.
     """
@@ -233,44 +235,167 @@ def add_figout_plot(fname, axis, subplotidx=0, curveidx = 0, format = '', label 
     axis.set_ylabel(fdict[subplotidx]['ylabel'])
     return axis
 
-def compare_figouts(file1,file2,name1='',name2='',clr1='',clr2='',plot_idx=0,lnums='all'):
-    if file1[-4:] == '.pkl':
-        file1 = file1[:-4]
-    if file2[-4:] == '.pkl':
-        file2 = file2[:-4]
-    fdict1 = load_figout(file1)    
-    fdict2 = load_figout(file2)
-    ax1 = fdict1[plot_idx]    
-    ax2 = fdict2[plot_idx]
-    lnums,fig,axs = setup_figure(lnums)
-    for ax,lnum in zip(axs,lnums):
-        for lnums_sub in lnum:
-            if not isinstance(lnums_sub,list):
-                lnums_sub = [lnums_sub]
-            il = 0
-            for l_ in ax1['curves']:
-                if lnums_sub[0]=='all' or il in lnums_sub:
-                    ax.plot(l_['xdata'], l_['ydata'], label=name1)
-                il += 1
-            il = 0
-            for l_ in ax2['curves']:    
-                if lnums_sub[0]=='all' or il in lnums_sub:
-                    ax.plot(l_['xdata'], l_['ydata'], label=name2)
-                    ylabel = l_['label']
-                il += 1
-        finalize_plot(ax,fig,xlabel=ax1['xlabel'],ylabel=ylabel,legend=True)
+def compare_figouts(files, names=None, colors=None, linestyles=None, plot_idx=None,
+                    xlim=None, ylim=None, figsize=None, fig_dpi=None, figout=None,
+                    close_fig=False):
+    """
+    Overlay curves from multiple saved figout files onto a shared set of subplots.
+    Each file is assigned one color (auto-cycled when not specified), so all curves
+    from the same simulation share a color and are distinguishable from other simulations.
+
+    When ``names`` are provided, curve symbols are moved to the y-axis label so that
+    the legend only shows the simulation name, keeping it compact.
+    When ``names`` are omitted, labels fall back to the original ``symbol + filename``
+    format so the legend remains self-contained.
+
+    By default, linestyles are cycled by curve index within each subplot so that
+    the same field (e.g. ``ne``) always gets the same linestyle across all files.
+    Pass ``linestyles`` to override with one linestyle per file instead.
+
+    Parameters
+    ----------
+    files : str or list of str
+        One or more pickle file paths produced by save_figout.
+    names : str or list of str, optional
+        One label per file shown in the legend.  When provided, the y-axis
+        displays the field symbol instead, keeping the legend uncluttered.
+        When omitted, names default to the base filename and are appended to
+        the curve symbol in the legend.
+    colors : str or list of str, optional
+        One color per file. Defaults to matplotlib's prop_cycle.
+    linestyles : str or list of str, optional
+        One linestyle per file (e.g. '-', '--', ':').  When omitted, linestyles
+        are cycled by curve index within each subplot so the same field always
+        gets the same linestyle across all files.
+    plot_idx : int or list of int, optional
+        Subplot index or indices to include. Defaults to all subplots.
+    xlim : list, optional
+        x-axis limits applied to all subplots.
+    ylim : list, optional
+        y-axis limits applied to all subplots.
+    figsize : list, optional
+        Figure size [width, height] per subplot cell.
+    fig_dpi : int, optional
+        Figure DPI.
+    figout : list, optional
+        List to append the resulting figure to.
+    close_fig : bool, optional
+        Close the figure after appending to figout. Useful in scripts to avoid
+        double display in Jupyter notebooks.
+
+    Returns
+    ----------
+    fig : matplotlib.figure.Figure
+    """
+    _default_linestyles = ['-', '--', ':', '-.']
+
+    if figout is None:
+        figout = []
+    if isinstance(files, str):
+        files = [files]
+    files = [f[:-4] if f.endswith('.pkl') else f for f in files]
+    nfiles = len(files)
+
+    # Track whether the caller supplied names explicitly
+    user_provided_names = names is not None
+
+    # Auto-derive names from basenames when not supplied
+    if names is None:
+        names = [os.path.basename(f) for f in files]
+    elif isinstance(names, str):
+        names = [names]
+    names = list(names) + [os.path.basename(files[i]) for i in range(len(names), nfiles)]
+
+    # Auto-assign one color per file from prop_cycle
+    prop_cycle_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+    if colors is None:
+        colors = [prop_cycle_colors[i % len(prop_cycle_colors)] for i in range(nfiles)]
+    elif isinstance(colors, str):
+        colors = [colors]
+    colors = list(colors) + [prop_cycle_colors[i % len(prop_cycle_colors)]
+                              for i in range(len(colors), nfiles)]
+
+    # Per-file linestyle override: None means auto-cycle by curve index instead
+    per_file_ls = None
+    if linestyles is not None:
+        if isinstance(linestyles, str):
+            linestyles = [linestyles]
+        per_file_ls = list(linestyles) + ['-'] * (nfiles - len(linestyles))
+
+    fdicts = [[a for a in load_figout(f) if a['curves']] for f in files]
+
+    # Select subplot indices from the first file's axes
+    if plot_idx is not None:
+        indices = [plot_idx] if isinstance(plot_idx, int) else list(plot_idx)
+    else:
+        indices = list(range(len(fdicts[0])))
+
+    naxes = len(indices)
+    fsz = figsize if figsize else default_figsz
+    dpi = fig_dpi if fig_dpi else default_fig_dpi
+    ncol = 1 if naxes == 1 else 2
+    nrow = naxes // ncol + naxes % ncol
+    fig, axs = plt.subplots(nrow, ncol, figsize=(fsz[0]*ncol, fsz[1]*nrow), dpi=dpi)
+    if naxes == 1:
+        axs = [axs]
+    else:
+        axs = axs.flatten()
+
+    for ax, idx in zip(axs, indices):
+        ref_ax = fdicts[0][idx]
+        for fi, (fdict, name, color) in enumerate(zip(fdicts, names, colors)):
+            if idx >= len(fdict):
+                continue
+            curves = fdict[idx]['curves']
+            for ci, l_ in enumerate(curves):
+                # Linestyle: per-file override or auto-cycle by curve index
+                ls = per_file_ls[fi] if per_file_ls is not None else _default_linestyles[ci % len(_default_linestyles)]
+                # When names are user-supplied: legend shows only the name and
+                # the symbol goes on the y-axis; otherwise keep symbol+name together.
+                lbl = name if user_provided_names else (l_['label'] + ' ' + name)
+                ax.plot(l_['xdata'], l_['ydata'], color=color, linestyle=ls, label=lbl)
+
+        # Y-axis: show the field symbol when names are user-supplied, full ylabel otherwise
+        if user_provided_names and ref_ax['curves']:
+            ylabel = ref_ax['curves'][0]['label']
+        else:
+            ylabel = ref_ax['ylabel']
+        ax.set_xlabel(ref_ax['xlabel'])
+        ax.set_ylabel(ylabel)
+        if xlim:
+            ax.set_xlim(xlim)
+        if ylim:
+            ax.set_ylim(ylim)
+        # Deduplicate legend entries (multiple curves share the same name per file)
+        handles, labels = ax.get_legend_handles_labels()
+        seen = {}
+        for h, l in zip(handles, labels):
+            seen.setdefault(l, h)
+        k = 1 if len(seen) <= 4 else 2 if len(seen) <= 10 else 3
+        ax.legend(seen.values(), seen.keys(), ncol=k)
+
+    for ax in axs[naxes:]:
+        ax.set_visible(False)
+
+    fig.tight_layout()
+    figout.append(fig)
+    if close_fig:
+        plt.close(fig)
+    return fig
 
 def figdatadict_get_data(filename, fieldname):
     """
     Get x and y data from a figure data dictionary.
 
-    Parameters:
+    Parameters
+    ----------
     filename : str
         The file name to extract data for.
     fieldname : str
         The field name to extract data for.
-    
-    Returns:
+
+    Returns
+    ----------
     xdata : list
         The x data.
     ydata : list
@@ -326,7 +451,8 @@ def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
     '''
     Finalize a plot with labels, limits, and other settings.
 
-    Parameters:
+    Parameters
+    ----------
     ax : matplotlib.axes.Axes
         The axes to finalize.
     fig : matplotlib.figure.Figure
@@ -384,12 +510,14 @@ def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
 def optimize_str_format(value):
     """
     Optimize the string format of a value for better readability.
-    
-    Parameters:
+
+    Parameters
+    ----------
     value : float
         The value to format.
-    
-    Returns:
+
+    Returns
+    ----------
     str
         The formatted string.
     """
