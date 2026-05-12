@@ -302,6 +302,8 @@ class DataParam:
             ['y', r'$y$', 'm'],
             ['z', r'$z$', ''],
             ['ky', r'$k_y$', '1/m'],
+            ['ktheta', r'$k_\theta$', '1/m'],
+            ['omega', r'$\omega$', 'rad/s'],
             ['wavelen', r'$\lambda$', 'm'],
             ['vpar', r'$v_\parallel$', 'm/s'],
             ['mu', r'$\mu$', 'J/T'],

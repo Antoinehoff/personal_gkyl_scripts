@@ -913,7 +913,132 @@ class Simulation:
                    figout=figout, colorscale=colorScale, show_title=showTitle,
                    cmap_period=cmapPeriod, close_fig=closeFig, data_dict=dataDict,
                    figsize=figSize)
-    
+
+    def plot_toroidal_spectrum(self, fieldName='phi', cutCoords=None,
+                               twindow=None, xlim=[], ylim=[], clim=[],
+                               cmap='inferno', figout=None, closeFig=False,
+                               figSize=None, figDpi=None, dataDict={}):
+        """
+        Plot the toroidal (ky, omega) power spectrum of a field.
+
+        Slices the field along the binormal *y* direction at the specified
+        (x, z) cut, accumulates data over *twindow* frames, and renders the
+        2D FFT as a log-scale colour map with normalised axes
+        ``ky * rho_i`` and ``omega * R/cs``.
+
+        Parameters
+        ----------
+        fieldName : str, optional
+            Field name.  Default: ``'phi'``.
+        cutCoords : list of float or None, optional
+            ``[x0, z0]`` cut coordinates in SI units.  Default: ``[0.0, 0.0]``.
+        twindow : list of int or None, optional
+            Frame indices.  Defaults to all available frames.
+        xlim : list, optional
+            Wavenumber axis limits.  Default: ``[]``.
+        ylim : list, optional
+            Frequency axis limits.  Default: ``[]``.
+        clim : list, optional
+            Colour limits ``[vmin, vmax]``.  Default: ``[]``.
+        cmap : str, optional
+            Colormap.  Default: ``'inferno'``.
+        figout : list or None, optional
+            List to append the figure to.  Default: ``None``.
+        closeFig : bool, optional
+            Close the figure after creation.  Default: ``False``.
+        figSize : tuple or None, optional
+            Figure size ``(width, height)`` in inches.  Default: ``None``.
+        figDpi : int or None, optional
+            Figure DPI.  Default: ``None``.
+        dataDict : dict, optional
+            Dictionary to store ``(k_norm, omega_norm, power)`` tuples.
+            Default: ``{}``.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+
+        Examples
+        --------
+        >>> sim.plot_toroidal_spectrum(fieldName='phi', cutCoords=[0.05, 0.0],
+        ...                            twindow=range(50, 200))
+        """
+        from ..utils.plot_utils import plot_toroidal_spectrum as plot
+        plot(simulation=self, fieldname=fieldName,
+             cut_coords=cutCoords, twindow=twindow,
+             xlim=xlim, ylim=ylim, clim=clim, cmap=cmap,
+             figout=figout, close_fig=closeFig,
+             figsize=figSize, fig_dpi=figDpi, data_dict=dataDict)
+
+    def plot_poloidal_spectrum(self, fieldName='phi', cutX=0.0,
+                               twindow=None, polproj=None,
+                               exbCorrection=False,
+                               xlim=[], ylim=[], clim=[],
+                               cmap='inferno', figout=None, closeFig=False,
+                               figSize=None, figDpi=None, dataDict={}):
+        """
+        Plot the poloidal (ktheta, omega) power spectrum of a field.
+
+        Projects the field onto the (R, Z) poloidal plane, extracts a 1D
+        cut at radial position *cutX*, resamples onto a uniform arc-length
+        grid, and renders the 2D FFT as a log-scale colour map with normalised
+        axes ``ktheta * rho_i`` and ``omega * R/cs``.
+
+        Parameters
+        ----------
+        fieldName : str, optional
+            Field name.  Default: ``'phi'``.
+        cutX : float, optional
+            Physical radial coordinate for the poloidal cut [m].
+            Default: ``0.0``.
+        twindow : list of int or None, optional
+            Frame indices.  Defaults to all available frames.
+        polproj : PoloidalProjection or None, optional
+            Pre-configured poloidal projection.  Built automatically if
+            ``None``.
+        exbCorrection : bool, optional
+            Apply ExB Doppler-shift correction before the time FFT.
+            Default: ``False``.
+        xlim : list, optional
+            Wavenumber axis limits.  Default: ``[]``.
+        ylim : list, optional
+            Frequency axis limits.  Default: ``[]``.
+        clim : list, optional
+            Colour limits ``[vmin, vmax]``.  Default: ``[]``.
+        cmap : str, optional
+            Colormap.  Default: ``'inferno'``.
+        figout : list or None, optional
+            List to append the figure to.  Default: ``None``.
+        closeFig : bool, optional
+            Close the figure after creation.  Default: ``False``.
+        figSize : tuple or None, optional
+            Figure size ``(width, height)`` in inches.  Default: ``None``.
+        figDpi : int or None, optional
+            Figure DPI.  Default: ``None``.
+        dataDict : dict, optional
+            Dictionary to store ``(k_norm, omega_norm, power)`` tuples.
+            Default: ``{}``.
+
+        Returns
+        -------
+        fig : matplotlib.figure.Figure
+
+        Examples
+        --------
+        >>> sim.plot_poloidal_spectrum(fieldName='phi', cutX=0.025,
+        ...                            twindow=range(50, 200))
+        >>> sim.plot_poloidal_spectrum(fieldName='phi', cutX=0.025,
+        ...                            twindow=range(50, 200),
+        ...                            exbCorrection=True, ylim=[-8, 8])
+        """
+        from ..utils.plot_utils import plot_poloidal_spectrum as plot
+        plot(simulation=self, fieldname=fieldName,
+             cut_x=cutX, twindow=twindow,
+             polproj=polproj, exb_correction=exbCorrection,
+             xlim=xlim, ylim=ylim, clim=clim, cmap=cmap,
+             figout=figout, close_fig=closeFig,
+             figsize=figSize, fig_dpi=figDpi, data_dict=dataDict)
+
     def plot_integrated_moment(self, fieldName='ne', xlim=[], ylim=[], ddt=False,
                               figout=[], twindow=[], dataDict={}, closeFig=False, figSize=None):
         """

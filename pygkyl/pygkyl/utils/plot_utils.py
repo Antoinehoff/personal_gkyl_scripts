@@ -928,4 +928,222 @@ def make_2D_movie(simulation, cut_dir='xy', cut_coord=0.0, time_frames=None, fie
     movieName+='_ylim_%2.2d_%2.2d'%(ylim[0],ylim[1]) if ylim else ''
 
     # Compiling the movie images
-    fig_tools.compile_movie(frameFileList, movieName, rmFrames=True)
+
+
+# ---------------------------------------------------------------------------
+# Spectrogram utilities
+# ---------------------------------------------------------------------------
+
+def _centers_to_edges(c):
+    """Convert a 1-D array of bin *centres* to bin *edges* (length N+1).
+
+    The output is compatible with ``pcolormesh`` ``shading='flat'``.
+    """
+    dc = np.diff(c)
+    edges = np.empty(len(c) + 1)
+    edges[1:-1] = c[:-1] + 0.5 * dc
+    edges[0]    = c[0]  - 0.5 * dc[0]
+    edges[-1]   = c[-1] + 0.5 * dc[-1]
+    return edges
+
+
+def _plot_spectrum(k, omega, power, k_label, omega_label, clabel, title,
+                   xlim=None, ylim=None, clim=None, cmap='inferno',
+                   fig=None, ax=None, figsize=None, fig_dpi=None):
+    """
+    Render a (k, omega) power-spectrum 2D colour map.
+
+    Parameters
+    ----------
+    k : ndarray, shape (Nk,)
+        Wavenumber axis (one-sided, normalised).
+    omega : ndarray, shape (Nomega,)
+        Frequency axis (zero-centred, normalised).
+    power : ndarray, shape (Nk, Nomega)
+        Power spectral density (linear scale; log colour-map applied here).
+    k_label, omega_label, clabel, title : str
+        Axis / colour-bar labels and figure title.
+    xlim, ylim, clim : list or None
+        Axis and colour limits.
+    cmap : str, optional
+        Matplotlib colour-map name.  Default: ``'inferno'``.
+    fig, ax : optional
+        Existing figure/axes to plot into.  Created if *None*.
+    figsize, fig_dpi : optional
+        Passed to :func:`~pygkyl.tools.fig_tools.setup_figure` when creating
+        a new figure.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    """
+    if fig is None or ax is None:
+        _, fig, axs = fig_tools.setup_figure('phi', figsize=figsize,
+                                             fig_dpi=fig_dpi)
+        ax = axs[0]
+
+    vmax = np.nanmax(power[power > 0]) if np.any(power > 0) else 1.0
+    vmin = np.power(10.0, np.log10(vmax) - 4.0)
+
+    if clim and len(clim) == 2:
+        vmin, vmax = clim[0], clim[1]
+
+    # pcolormesh with shading='flat' requires edge-based coordinate arrays
+    # (length N+1); convert the FFT centre arrays to edges.
+    k_edges     = _centers_to_edges(k)
+    omega_edges = _centers_to_edges(omega)
+
+    fig = fig_tools.plot_2D(
+        fig, ax,
+        x=k_edges, y=omega_edges, z=power,
+        xlim=xlim, ylim=ylim,
+        vmin=vmin, vmax=vmax,
+        xlabel=k_label, ylabel=omega_label,
+        clabel=clabel, title=title,
+        cmap=cmap, colorscale='log',
+    )
+    return fig
+
+
+def plot_toroidal_spectrum(simulation, fieldname='phi', cut_coords=None,
+                           twindow=None, xlim=[], ylim=[], clim=[],
+                           cmap='inferno', figout=None, close_fig=False,
+                           figsize=None, fig_dpi=None, data_dict={}):
+    """
+    Plot the toroidal (ky, omega) power spectrum of a field.
+
+    Calls :func:`~pygkyl.utils.data_utils.get_toroidal_spectrum` to build the
+    spectrum and then renders it as a log-scale colour map.
+
+    Parameters
+    ----------
+    simulation : Simulation
+        The simulation object.
+    fieldname : str, optional
+        Field name.  Default: ``'phi'``.
+    cut_coords : list of float, optional
+        ``[x0, z0]`` cut coordinates in SI units.  Default: ``[0.0, 0.0]``.
+    twindow : list of int, optional
+        Frame indices to use.  Defaults to all available frames.
+    xlim, ylim : list, optional
+        Wavenumber and frequency axis limits.
+    clim : list, optional
+        Colour limits ``[vmin, vmax]``.
+    cmap : str, optional
+        Colormap.  Default: ``'inferno'``.
+    figout : list or None, optional
+        List to append the figure to.  Default: ``None``.
+    close_fig : bool, optional
+        Close figure after creation.  Default: ``False``.
+    figsize, fig_dpi : optional
+        Figure size and DPI.
+    data_dict : dict, optional
+        Dictionary to store ``(k_norm, omega_norm, power)`` under *fieldname*.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    """
+    if figout is None:
+        figout = []
+    if cut_coords is None:
+        cut_coords = [0.0, 0.0]
+    if twindow is None:
+        twindow = simulation.data_param.get_available_frames(simulation)['field']
+        if not isinstance(twindow, list):
+            twindow = list(twindow)
+
+    k_norm, omega_norm, power, k_label, omega_label, vlabel, slicetitle = \
+        data_utils.get_toroidal_spectrum(simulation, fieldname, cut_coords, twindow)
+
+    data_dict[fieldname] = (k_norm, omega_norm, power)
+
+    fig = _plot_spectrum(
+        k_norm, omega_norm, power,
+        k_label=k_label, omega_label=omega_label,
+        clabel=vlabel, title=slicetitle,
+        xlim=xlim or None, ylim=ylim or None,
+        clim=clim or None,
+        cmap=cmap, figsize=figsize, fig_dpi=fig_dpi,
+    )
+    figout.append(fig)
+    if close_fig:
+        plt.close(fig)
+
+
+def plot_poloidal_spectrum(simulation, fieldname='phi', cut_x=0.0,
+                           twindow=None, polproj=None, exb_correction=False,
+                           xlim=[], ylim=[], clim=[], cmap='inferno',
+                           figout=None, close_fig=False,
+                           figsize=None, fig_dpi=None, data_dict={}):
+    """
+    Plot the poloidal (ktheta, omega) power spectrum of a field.
+
+    Calls :func:`~pygkyl.utils.data_utils.get_poloidal_spectrum` to build the
+    spectrum and renders it as a log-scale colour map.  If *polproj* is not
+    provided, a :class:`~pygkyl.projections.PoloidalProjection` is
+    constructed and set up automatically using the first available frame.
+
+    Parameters
+    ----------
+    simulation : Simulation
+        The simulation object.
+    fieldname : str, optional
+        Field name.  Default: ``'phi'``.
+    cut_x : float, optional
+        Physical radial cut coordinate [m].  Default: ``0.0``.
+    twindow : list of int, optional
+        Frame indices to use.  Defaults to all available frames.
+    polproj : PoloidalProjection or None, optional
+        Pre-configured poloidal projection.  Built automatically if ``None``.
+    exb_correction : bool, optional
+        Apply ExB Doppler correction.  Default: ``False``.
+    xlim, ylim : list, optional
+        Wavenumber and frequency axis limits.
+    clim : list, optional
+        Colour limits ``[vmin, vmax]``.
+    cmap : str, optional
+        Colormap.  Default: ``'inferno'``.
+    figout : list or None, optional
+        List to append the figure to.  Default: ``None``.
+    close_fig : bool, optional
+        Close figure after creation.  Default: ``False``.
+    figsize, fig_dpi : optional
+        Figure size and DPI.
+    data_dict : dict, optional
+        Dictionary to store ``(k_norm, omega_norm, power)`` under *fieldname*.
+
+    Returns
+    -------
+    fig : matplotlib.figure.Figure
+    """
+    if figout is None:
+        figout = []
+    if twindow is None:
+        twindow = simulation.data_param.get_available_frames(simulation)['field']
+        if not isinstance(twindow, list):
+            twindow = list(twindow)
+
+    if polproj is None:
+        polproj = PoloidalProjection()
+        polproj.setup(simulation, timeFrame=twindow[0])
+
+    k_norm, omega_norm, power, k_label, omega_label, slicetitle = \
+        data_utils.get_poloidal_spectrum(simulation, fieldname, cut_x,
+                                         twindow, polproj,
+                                         exb_correction=exb_correction)
+
+    data_dict[fieldname] = (k_norm, omega_norm, power)
+
+    fig = _plot_spectrum(
+        k_norm, omega_norm, power,
+        k_label=k_label, omega_label=omega_label,
+        clabel=simulation.normalization.dict[fieldname + 'symbol'],
+        title=slicetitle,
+        xlim=xlim or None, ylim=ylim or None,
+        clim=clim or None,
+        cmap=cmap, figsize=figsize, fig_dpi=fig_dpi,
+    )
+    figout.append(fig)
+    if close_fig:
+        plt.close(fig)
