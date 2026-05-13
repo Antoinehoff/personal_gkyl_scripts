@@ -70,7 +70,8 @@ def setup_figure(fieldnames,figsize=None,fig_dpi=None):
 
 def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
             xlabel='', ylabel='', clabel='', title='', cmap_period=1,
-            cmap='viridis', colorscale='linear', plot_type='pcolormesh', aspect='auto'):
+            cmap='viridis', colorscale='linear', plot_type='pcolormesh', aspect='auto',
+            normalize=False):
     z = np.squeeze(z)
     
     if colorscale == 'log':
@@ -80,6 +81,17 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
     else:
         norm = mcolors.Normalize(vmin=vmin, vmax=vmax)
         
+    if normalize:
+        amp = np.max(np.abs(z))
+        z /= amp
+        amp_txt = f'%.2e '%amp
+        # find the spot where '[' is in clabel and insert the amplitude there
+        if '[' in clabel:      
+            idx = clabel.find('[') +1
+            clabel = clabel[:idx] + amp_txt + clabel[idx:]
+        else:
+            clabel = clabel + amp_txt
+
     if plot_type == 'pcolormesh':
         x,y = math_tools.custom_meshgrid(x,y)
         im = ax.pcolormesh(x, y, z, cmap=cmap, norm=norm)
@@ -112,7 +124,7 @@ def plot_2D(fig,ax,x,y,z, xlim=None, ylim=None, clim=None, vmin=None,vmax=None,
     
     cbar = fig.colorbar(im, ax=ax)
     finalize_plot(ax,fig,xlabel=xlabel,ylabel=ylabel,title=title,xlim=xlim,ylim=ylim,
-                  cbar=cbar,clabel=clabel,clim=clim,pcm=im)
+                  cbar=cbar,clabel=clabel,clim=clim,pcm=im,normalize=normalize)
     return fig
 
 def compile_movie(frameFileList,movieName,extension='gif',rmFrames=False,
@@ -237,7 +249,7 @@ def add_figout_plot(fname, axis, subplotidx=0, curveidx = 0, format = '', label 
 
 def compare_figouts(files, names=None, colors=None, linestyles=None, plot_idx=None,
                     xlim=None, ylim=None, figsize=None, fig_dpi=None, figout=None,
-                    close_fig=False):
+                    close_fig=False, labels=None):
     """
     Overlay curves from multiple saved figout files onto a shared set of subplots.
     Each file is assigned one color (auto-cycled when not specified), so all curves
@@ -282,6 +294,8 @@ def compare_figouts(files, names=None, colors=None, linestyles=None, plot_idx=No
     close_fig : bool, optional
         Close the figure after appending to figout. Useful in scripts to avoid
         double display in Jupyter notebooks.
+    labels : list, optional
+        Override labels for each curve in the format [[subplot1_curve1, subplot1_curve2, ...], [subplot2_curve1, ...], ...].
 
     Returns
     ----------
@@ -341,6 +355,7 @@ def compare_figouts(files, names=None, colors=None, linestyles=None, plot_idx=No
     else:
         axs = axs.flatten()
 
+    il = 0
     for ax, idx in zip(axs, indices):
         ref_ax = fdicts[0][idx]
         for fi, (fdict, name, color) in enumerate(zip(fdicts, names, colors)):
@@ -353,7 +368,12 @@ def compare_figouts(files, names=None, colors=None, linestyles=None, plot_idx=No
                 # When names are user-supplied: legend shows only the name and
                 # the symbol goes on the y-axis; otherwise keep symbol+name together.
                 lbl = name if user_provided_names else (l_['label'] + ' ' + name)
+                try:
+                    lbl = labels[il]
+                except:
+                    lbl = lbl
                 ax.plot(l_['xdata'], l_['ydata'], color=color, linestyle=ls, label=lbl)
+                il += 1
 
         # Y-axis: show the field symbol when names are user-supplied, full ylabel otherwise
         if user_provided_names and ref_ax['curves']:
@@ -447,7 +467,7 @@ def figdatadict_get_data(filename, fieldname):
 
 def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
                   cbar=None, xlabel='',ylabel='',clabel='', title='', pcm = None,
-                  cmap=None, legend=False, figout=[], aspect='', grid=False):
+                  cmap=None, legend=False, figout=[], aspect='', grid=False, normalize=False):
     '''
     Finalize a plot with labels, limits, and other settings.
 
@@ -483,6 +503,8 @@ def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
         Whether to show the grid.
     figout : list, optional
         The list of figures to append to.
+    normalize : bool, optional
+        Whether the data was normalized (used to adjust colorbar label).
     '''
     if xlim: ax.set_xlim(xlim)
     if ylim: ax.set_ylim(ylim)
@@ -504,6 +526,15 @@ def finalize_plot(ax,fig, xlim=None, ylim=None, clim=None, xscale='', yscale='',
     if title: ax.set_title(title)
     if aspect: ax.set_aspect(aspect)
     if grid: ax.grid(True)
+    if normalize:
+        if cbar: cbar.remove()
+        # add a vertical text showing the normalization factor
+        ax.text(1.02, 0.5, clabel, transform=ax.transAxes, rotation=270, va='center', ha='left')
+        # adapt clim
+        if pcm:
+            norm = mcolors.Normalize(vmin=-1, vmax=1)
+            pcm.set_norm(norm)
+            pcm.set_clim([-1,1])
     fig.tight_layout()
     figout.append(fig)
 

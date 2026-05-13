@@ -309,8 +309,8 @@ class PoloidalProjection:
       proj_zExt_lo = np.zeros((self.dimsC[0],self.dimsC[1]), dtype=np.double)
       proj_zExt_up = np.zeros((self.dimsC[0],self.dimsC[1]), dtype=np.double)
 
-      proj_zExt_lo = evalDGfunc(grid = [self.meshC[0], self.meshC[1], -np.pi])
-      proj_zExt_up = evalDGfunc(grid = [self.meshC[0], self.meshC[1], np.pi])
+      proj_zExt_lo = evalDGfunc(coords = [self.meshC[0], self.meshC[1], -np.pi])
+      proj_zExt_up = evalDGfunc(coords = [self.meshC[0], self.meshC[1], np.pi])
           
       field_ex = np.zeros(self.dimsC + np.array([0,0,2]))
       field_ex[:,:,1:-1] = field[self.ix0:self.ix1,:,:]

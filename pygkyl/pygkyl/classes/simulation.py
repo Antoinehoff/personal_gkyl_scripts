@@ -771,7 +771,7 @@ class Simulation:
                 plotType='pcolormesh', xlim=[], ylim=[], clim=[], aspect='auto',
                 colorScale='linear', showTitle=True, figout=[], cutOut=[], figSize=None, 
                 figDpi=None, valOut=[], framesToPlot=None, cmapPeriod=1, closeFig=False,
-                quiverParams=None, fieldLineParams=None):
+                quiverParams=None, fieldLineParams=None, normalize=False):
         """
         Plot 2D cut of the simulation domain for given field(s).
         
@@ -825,6 +825,8 @@ class Simulation:
         fieldLineParams : dict or None, optional
             Parameters for field line tracer
             e.g., {'xl0_a': [1.3, 1.325, 1.35, 1.375], 'yl0_a': [-0.1, 0.0, 0.1], 'color': 'white', 'linestyle': '-'}).
+        normalize : bool, optional
+            Whether to normalize the field values for plotting. Default: False
         Returns
         -------
         None
@@ -845,7 +847,7 @@ class Simulation:
                    cutout=cutOut, val_out=valOut, frames_to_plot=framesToPlot,
                    cmap_period=cmapPeriod, close_fig=closeFig, aspect=aspect,
                    figsize=figSize, fig_dpi=figDpi, quiver_params=quiverParams,
-                   field_line_params=fieldLineParams)
+                   field_line_params=fieldLineParams,normalize=normalize)
     
     def plot_1D_time_evolution(self, cutDir='x', cutCoords=[0.0,0.0,0.0], fieldName='phi',
                                frameIndices=None, spaceTime=False, cmap='inferno',

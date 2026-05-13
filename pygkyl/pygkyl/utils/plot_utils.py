@@ -356,7 +356,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
                 xlim=[], ylim=[], clim=[], colorscale = 'linear', show_title=True,
                 figout=[],cutout=[], val_out=[], frames_to_plot = None, cmap_period=1,
                 close_fig=False, aspect='auto', figsize=None, fig_dpi=None,
-                quiver_params=None, field_line_params=None):
+                quiver_params=None, field_line_params=None, normalize=False):
     """
     quiver_params : dict or list of dict or None
         Optional quiver overlay per subplot.  A single dict is broadcast to all
@@ -450,6 +450,7 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
             vmax=vmax,
             plot_type=plot_type,
             aspect=aspect,
+            normalize=normalize,
         )
 
         # Optionally overlay quiver arrows for this subplot
