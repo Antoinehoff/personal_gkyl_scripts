@@ -569,7 +569,7 @@ class DataParam:
             
             #normalized radial density gradient
             name       = 'gradlogn%s'%(s_)
-            symbol     = r'$-\nabla \ln n_{%s}$'%(s_)
+            symbol     = r'$-\nabla \log n_{%s}$'%(s_)
             units      = '1/m'
             field2load = ['n%s'%(s_)]
             def receipe_gradn(gdata_list):
@@ -581,14 +581,14 @@ class DataParam:
 
             #normalized radial temperature gradient
             name       = 'gradlogT%s'%(s_)
-            symbol     = r'-\nabla \ln T_{%s}$'%(s_)
+            symbol     = r'$-\nabla \log T_{%s}$'%(s_)
             units      = '1/m'
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_gradT(gdata_list):
-                temp = pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1])/3.0
+                temp = receipe_Ttots(gdata_list)
                 temp[temp <= 0] = np.nan # avoid log(0)
                 grids = pgkyl_.get_grid(gdata_list[0])
-                return -np.gradient(np.log(temp), grids[0][:-1], axis=0)
+                return -np.gradient(temp, grids[0][:-1], axis=0)/temp
             default_qttes.append([name,symbol,units,field2load,receipe_gradT])
 
             #Kinetic energy density speciewise: Wkins = int dv3 1/2 ms vpar^2 + mus B

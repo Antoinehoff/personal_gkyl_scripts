@@ -60,6 +60,7 @@ class Frame:
         self.dimensionality = None
         self.DG_basis = None
         self.velmap_file = None
+        self.exist = True
         self.process_field_name()  # this initializes the above attributes
 
         self.time = None
@@ -132,7 +133,9 @@ class Frame:
                 name_tf = subdataname
             else:
                 name_tf = '%s_%d' % (subdataname, self.tf)
-            self.filenames.append("%s-%s.gkyl" % (self.simulation.data_param.fileprefix, name_tf))
+            filename = "%s-%s.gkyl" % (self.simulation.data_param.fileprefix, name_tf)
+            self.filenames.append(filename)
+            self.exist = self.exist and file_utils.does_file_exist(filename)
             self.comp.append(self.simulation.data_param.file_info_dict[subname + 'comp'])
             self.gnames = copy.deepcopy(self.simulation.data_param.file_info_dict[subname + 'gnames'])
         self.gsymbols = [self.simulation.normalization.dict[key + 'symbol'] for key in self.gnames]

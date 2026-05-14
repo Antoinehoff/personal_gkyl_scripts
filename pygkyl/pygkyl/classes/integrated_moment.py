@@ -1,4 +1,5 @@
 from ..interfaces import pgkyl_interface as pgkyl_
+from ..utils import file_utils
 import numpy as np
 
 class IntegratedMoment:
@@ -39,6 +40,8 @@ class IntegratedMoment:
     issource = False
     src = ''
     fdot = ''
+    filelist = []
+    exist = True
 
     def __init__(self, simulation, name, load=True, ddt=False):
         '''
@@ -59,6 +62,7 @@ class IntegratedMoment:
         self.process_name(name)
         self.detect_momtype()
         self.set_units_and_labels()
+        self.set_file_list()
 
         if load: self.load()
         if ddt or self.fdot: self.ddt()
@@ -270,3 +274,23 @@ class IntegratedMoment:
         if name[-1] == 'e': self.spec_s = 'elc'
         elif name[-1] == 'i': self.spec_s = 'ion'
         elif name[-3:] == 'tot': self.spec_s = ['elc','ion']
+        
+    def set_file_list(self):
+        self.filelist = []
+        species_list = self.spec_s if isinstance(self.spec_s,list) else [self.spec_s]        
+        for s_ in species_list:
+            for bf_ in self.bflux_list:
+                f_ = self.simulation.data_param.fileprefix+'-'+s_+self.src+bf_+self.fdot+'_integrated_'
+                if not pgkyl_.file_exists(f_+'moms.gkyl'):
+                    f_ += self.momtype+'Moments.gkyl'
+                    if not pgkyl_.file_exists(f_):
+                        # in 2x2v, z is called y for these files
+                        f_ = f_.replace('bflux_z','bflux_y')
+                else:
+                    f_ += 'moms.gkyl'
+                    
+                if not pgkyl_.file_exists(f_):
+                    print('File ' + f_ + ' does not exist.')
+                
+                self.filelist.append(f_)
+                self.exist = self.exist and file_utils.does_file_exist(f_)
