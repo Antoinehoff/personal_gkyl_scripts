@@ -16,6 +16,7 @@ class IntegratedMoment:
     - ntot: total number density
     - Hs: Hamiltonian
     - Htot: total Hamiltonian
+    - dt: time step (not an integrated moment but same data structure)
     - you can add 'src_' in front of the name to get the source term of the integrated moment
     - you can add 'bflux_d_e_' to get the boundary flux d=x,y,z,total direction at the e=u,l,total edge
     """
@@ -106,7 +107,7 @@ class IntegratedMoment:
                 def receipe(x): return x[:,0]
                 scale = [1.0 for s in spec_s]      
                 vunits = 'particles'
-                symbol = r'$\bar n_{tot}$'  
+                symbol = r'$\bar n_{tot}$'
             else:
                 print(self.momname + ' is not available as integrated moment.')
                 print('The available fields are: ns, upars, Tpars, tperps, Ts, Ws, Wtot, ntot. (for s=i,e).')
@@ -136,7 +137,12 @@ class IntegratedMoment:
                 def receipe(x): return x[:,0]
                 scale = [1.0 for s in spec_s]      
                 vunits = 'particles'
-                symbol = r'$\bar n_{tot}$'    
+                symbol = r'$\bar n_{tot}$'
+            elif self.momname in ['dt']:
+                def receipe(x): return x[:,0]
+                scale = simulation.normalization.dict['tscale']
+                vunits = 's'
+                symbol = r'$\Delta t$'
             else:
                 print(self.momname + ' is not available as integrated moment.')
                 print('The available fields are: ns, upars, Hs, Htot, ntot. (for s=i,e).')
@@ -270,3 +276,6 @@ class IntegratedMoment:
         if name[-1] == 'e': self.spec_s = 'elc'
         elif name[-1] == 'i': self.spec_s = 'ion'
         elif name[-3:] == 'tot': self.spec_s = ['elc','ion']
+        if 'dt' in name:
+            self.momname = 'dt'
+            self.spec_s = 'ion' # just to have a species to load the time array, it won't be used for the values
