@@ -192,6 +192,29 @@ class Simulation:
         """
         return self.get_c_s()/self.species['ion'].omega_c
     
+    def get_gyro_bohm_particle_flux(self, spec='ion'):
+        """
+        Calculate and return the gyro-Bohm reference particle flux:
+        Gamma_gB = n0 * c_s * (rho_s / R0)^2
+        """
+        c_s   = self.get_c_s()
+        rho_s = self.get_rho_s()
+        n0    = self.species[spec].n0
+        R     = self.geom_param.R0
+        return n0 * c_s * (rho_s / R)**2
+
+    def get_gyro_bohm_heat_flux(self, spec='ion'):
+        """
+        Calculate and return the gyro-Bohm reference heat flux:
+        Q_gB = n0 * T0 * c_s * (rho_s / R0)^2
+        """
+        c_s   = self.get_c_s()
+        rho_s = self.get_rho_s()
+        n0    = self.species[spec].n0
+        T0    = self.species[spec].T0
+        R     = self.geom_param.R0
+        return n0 * T0 * c_s * (rho_s / R)**2
+
     def get_filename(self,fieldname,tf):
         dataname = self.data_param.file_info_dict[fieldname+'file']
         return "%s-%s_%d.gkyl"%(self.data_param.fileprefix,dataname,tf)

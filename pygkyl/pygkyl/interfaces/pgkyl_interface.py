@@ -108,7 +108,7 @@ def get_cells(Gdata):
             return [cells[0], 2, cells[1], cells[2], cells[3]]
         elif len(cells) == 3:
             return [2, 2, cells[0], cells[1], cells[2]]
-    elif Gdata.ctx['basis_type'] == 'serendipity': # configuration space
+    elif Gdata.ctx['basis_type'] in ['serendipity', 'nodal']: # configuration space
         if len(cells) == 3:
             return cells
         elif len(cells) == 2:

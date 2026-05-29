@@ -54,7 +54,9 @@ class DataParam:
             'b_x', 'b_y', 'b_z', 'Jacobian', 'Bmag', 
             'g_xx', 'g_xy', 'g_xz', 'g_yy', 'g_yz', 'g_zz',
             'gxx', 'gxy', 'gxz', 'gyy', 'gyz', 'gzz', 
-            'alpha_gyraze', 'bxy_angle']
+            'alpha_gyraze', 'bxy_angle', 'nodesint',
+            'nodes_R', 'nodes_phi', 'nodes_Z',
+            'nodes_x', 'nodes_y', 'nodes_z']
         
         
     def set_data_file_dict(self, checkfiles=True):
@@ -71,6 +73,11 @@ class DataParam:
         '''
         file_dict = {}
         gnames   = ['x','y','z','vpar','mu']
+        
+        # nodes
+        file_dict['nodesint'+'file'] = 'nodesint'
+        file_dict['nodesint'+'comp'] = 0
+        file_dict['nodesint'+'gnames'] = gnames[0:3]
 
         # add equilibrium info
         # Magnetic field amplitude
@@ -326,6 +333,7 @@ class DataParam:
             ['gyy', r'$g^{yy}$', ''],
             ['gyz', r'$g^{yz}$', ''],
             ['gzz', r'$g^{zz}$', ''],
+            ['nodesint', r'nodes', 'a.u.']
             ]
         species_kinetic_list = [s for s in species.values() if not s.is_fluid]
         species_fluid_list = [s for s in species.values() if s.is_fluid]
@@ -385,7 +393,60 @@ class DataParam:
             default_qttes[i].append([default_qttes[i][0]])
             default_qttes[i].append(identity)
             
-        #-Drift velocities
+        #-Geometric related quantities, drift velocities
+        name = 'bxy_angle'
+        symbol = r'$\alpha$'
+        units = r'$^{\circ}$'
+        field2load = ['g_zz','gzz']
+        def receipe_bxy_angle(gdata_list):
+            g_zz = pgkyl_.get_values(gdata_list[0])
+            gzz = pgkyl_.get_values(gdata_list[1])
+            alpha = np.arcsin(1/np.sqrt(g_zz*gzz))
+            return alpha * 180/np.pi # convert to degrees
+        default_qttes.append([name,symbol,units,field2load,receipe_bxy_angle])
+        
+        for i_,d_ in enumerate(['x','y','z']):
+            name       = 'nodes_%s'%d_
+            symbol     = r'$%s_n$'%d_
+            units      = 'a.u.'
+            field2load = ['nodesint']
+            def receipe_nodes(gdata_list,i=i_):
+                node_val = pgkyl_.get_values(gdata_list[0])
+                node_d = node_val[...,i]
+                # put back the additional axis with size 1
+                node_d = np.expand_dims(node_d, axis=-1)
+                return node_d
+            default_qttes.append([name,symbol,units,field2load,receipe_nodes])
+    
+        # Nodes in Cylindrical coordinates, 
+        name       = 'nodes_R'
+        symbol     = r'$R$'
+        units      = 'm'
+        field2load = ['nodesint']
+        def receipe_nodes_R(gdata_list):
+            Xn = receipe_nodes(gdata_list,i=0)
+            Yn = receipe_nodes(gdata_list,i=1)
+            return np.sqrt(Xn**2 + Yn**2)
+        default_qttes.append([name,symbol,units,field2load,receipe_nodes_R])
+        
+        name       = 'nodes_phi'
+        symbol     = r'$\phi$'
+        units      = r'$^{\circ}$'
+        field2load = ['nodesint']
+        def receipe_nodes_theta(gdata_list):
+            Xn = receipe_nodes(gdata_list,i=0)
+            Yn = receipe_nodes(gdata_list,i=1)
+            return np.arctan2(Yn, Xn) * 180/np.pi # convert to degrees
+        default_qttes.append([name,symbol,units,field2load,receipe_nodes_theta])
+
+        name       = 'nodes_Z'
+        symbol     = r'$Z$'
+        units      = r'm'
+        field2load = ['nodesint']
+        def receipe_nodes_z(gdata_list):
+            return receipe_nodes(gdata_list,i=2)
+        default_qttes.append([name,symbol,units,field2load,receipe_nodes_z])
+
         #- The following are vector fields quantities that we treat component wise
         directions = ['x','y','z'] #directions array
         for i_ in range(len(directions)):
@@ -512,8 +573,7 @@ class DataParam:
                     return sExB/cs
                 default_qttes.append([name,symbol,units,field2load,receipe_normsExB])
 
-        #-We define now composed quantities as pressures and fluxes 
-        # for each species present in the simulation
+        #-We define now moment related quantities for each species present in the simulation
         for spec in species_kinetic_list:
             s_ = spec.nshort
 
@@ -534,9 +594,9 @@ class DataParam:
             symbol     = r'$T_{%s}$'%(s_)
             units      = 'J/kg' # T is stored as T/m in gkeyll
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
-            def receipe_Ttots(gdata_list):
+            def receipe_M2s(gdata_list):
                 return 1/3 * (pgkyl_.get_values(gdata_list[0]) + 2 * pgkyl_.get_values(gdata_list[1]))
-            default_qttes.append([name,symbol,units,field2load,receipe_Ttots])
+            default_qttes.append([name,symbol,units,field2load,receipe_M2s])
             
             # Parallel heat flux moment
             name      = 'qparpar%s'%(s_)
@@ -585,7 +645,7 @@ class DataParam:
             units      = '1/m'
             field2load = ['Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_gradT(gdata_list):
-                temp = receipe_Ttots(gdata_list)
+                temp = receipe_M2s(gdata_list)
                 temp[temp <= 0] = np.nan # avoid log(0)
                 grids = pgkyl_.get_grid(gdata_list[0])
                 return -np.gradient(temp, grids[0][:-1], axis=0)/temp
@@ -598,7 +658,7 @@ class DataParam:
             field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_Wkins(gdata_list,m=spec.m):
                 dens = pgkyl_.get_values(gdata_list[0])
-                Ttot = receipe_Ttots(gdata_list[1:3])
+                Ttot = receipe_M2s(gdata_list[1:3])
                 return dens*m*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_Wkins])
 
@@ -634,7 +694,7 @@ class DataParam:
                 qphi = q*pgkyl_.get_values(gdata_list[0])
                 dens = pgkyl_.get_values(gdata_list[1])
                 upar = pgkyl_.get_values(gdata_list[2])
-                Ttot = receipe_Ttots(gdata_list[3:5])
+                Ttot = receipe_M2s(gdata_list[3:5])
                 return dens*(m*np.power(upar,2)/2 + m*Ttot + qphi)
             default_qttes.append([name,symbol,units,field2load,receipe_Ws])
 
@@ -653,7 +713,7 @@ class DataParam:
             units = 'J/kg/m$^{3}$'
             field2load = ['n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_)]
             def receipe_ptots(gdata_list):
-                Ttot = receipe_Ttots(gdata_list[1:3])
+                Ttot = receipe_M2s(gdata_list[1:3])
                 return 1.5*pgkyl_.get_values(gdata_list[0])*Ttot
             default_qttes.append([name,symbol,units,field2load,receipe_ptots])
 
@@ -683,7 +743,7 @@ class DataParam:
             def receipe_betas(gdata_list,m=spec.m):
                 mu0 = 4.0*np.pi*1e-7
                 dens = pgkyl_.get_values(gdata_list[0])
-                Ttot = receipe_Ttots(gdata_list[1:3])
+                Ttot = receipe_M2s(gdata_list[1:3])
                 Bmag = pgkyl_.get_values(gdata_list[3])
                 return 100 * dens * m*Ttot* 2*mu0/np.power(Bmag,2)
             default_qttes.append([name,symbol,units,field2load,receipe_betas])
@@ -722,13 +782,29 @@ class DataParam:
             field2load = ['src_HM_H%s'%(s_),'phi','src_n%s'%(s_)]
             def receipe_src_Ts(gdata_list,q=spec.q):
                 """
-                Source temperature density: T = 2/3 Edot / ndot
+                Source temperature: T = 2/3 Edot / ndot, converted to eV
                 """
                 Edot = receipe_src_Ps(gdata_list,q=q)
                 ndot = pgkyl_.get_values(gdata_list[2])
-                return 2/3 * Edot / ndot
+                return 2/3 * Edot / ndot / phys_tools.elementary_charge  # J -> eV
             default_qttes.append([name,symbol,units,field2load,receipe_src_Ts])
-
+            
+        #-Definition of composite quantities that are dependent on multiple moments and/or fields.
+        # Sound speed c_s = sqrt(T_e/m_i)
+        name = 'c_s'
+        symbol = r'$c_s$'
+        units = r'm/s'
+        field2load = ['Tpare','Tperpe']
+        def receipe_c_s(gdata_list):
+            Te = receipe_M2s([gdata_list[0],gdata_list[1]])
+            mi = [s_.m for s_ in species_kinetic_list if s_.nshort == 'i'][0]
+            me = [s_.m for s_ in species_kinetic_list if s_.nshort == 'e'][0]
+            return np.sqrt(Te * me / mi)
+        default_qttes.append([name,symbol,units,field2load,receipe_c_s])
+        
+        for spec in species_kinetic_list:
+            s_ = spec.nshort
+            
             # Larmor radius
             name = 'rho%s'%(s_)
             symbol = r'$\rho_{%s}$'%(s_)
@@ -737,8 +813,9 @@ class DataParam:
             def receipe_rhos(gdata_list,q=spec.q,m=spec.m):
                 """
                 Larmor radius: rho = sqrt(m Tperp) / (|q| B)
+                T is stored as T/m_s [J/kg] in gkeyll, so T[J] = T_data * m
                 """
-                Tperp = pgkyl_.get_values(gdata_list[0]) * phys_tools.kB
+                Tperp = pgkyl_.get_values(gdata_list[0]) * m
                 Bmag = pgkyl_.get_values(gdata_list[1])
                 # remove unphysical values
                 Tperp[Tperp <= 0] = np.nan # avoid sqrt(negative values)
@@ -746,6 +823,32 @@ class DataParam:
                 qfact = np.abs(1/q) if np.abs(q) > 0 else 0
                 return np.sqrt(m * Tperp) * qfact / Bmag
             default_qttes.append([name,symbol,units,field2load,receipe_rhos])
+            
+            # Local gyro-Bohm particle flux : GgB = n c_s (rho_s/R)^2
+            name = 'pflux_gB%s'%(s_)
+            symbol = r'$n_{%s} c_s (\rho_{%s}/R)^2$'%(s_,s_)
+            units = r'm$^{-2}$ s$^{-1}$'
+            field2load = [
+                'n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'Bmag','Tpare','Tperpe','nodesint']
+            def receipe_GammagBs(gdata_list,q=spec.q,m=spec.m):
+                rho = receipe_rhos([gdata_list[2],gdata_list[3]],q=q,m=m)
+                n = pgkyl_.get_values(gdata_list[0])
+                c_s = receipe_c_s([gdata_list[4],gdata_list[5]])
+                radius = receipe_nodes_R([gdata_list[6]])
+                return n * c_s * rho**2/radius**2
+            default_qttes.append([name,symbol,units,field2load,receipe_GammagBs])
+            
+            # Local gyro-Bohm heat flux: QgB = n T c_s (rho_s/R)^2
+            name = 'hflux_gB%s'%(s_)
+            symbol = r'$n_{%s} T_{%s} c_s (\rho_{%s}/R)^2$'%(s_,s_,s_)
+            units = r'W/m$^2$'
+            field2load = [
+                'n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'Bmag','Tpare','Tperpe','nodesint']
+            def receipe_QgBs(gdata_list,q=spec.q,m=spec.m):
+                gammagB = receipe_GammagBs(gdata_list,q=q,m=m)
+                Temp = receipe_M2s([gdata_list[1],gdata_list[2]])*m
+                return gammagB * Temp
+            default_qttes.append([name,symbol,units,field2load,receipe_QgBs])
             
             for rpec in species_kinetic_list:
                 if rpec.is_neutral:
@@ -761,9 +864,9 @@ class DataParam:
                               'Bmag']
                 def receipe_nu(gdata_list,qs=spec.q,ms=spec.m,qr=rpec.q,mr=rpec.m):
                     ns = pgkyl_.get_values(gdata_list[0])
-                    Ts = receipe_Ttots(gdata_list[1:3])*ms
+                    Ts = receipe_M2s(gdata_list[1:3])*ms
                     nr = pgkyl_.get_values(gdata_list[3])
-                    Tr = receipe_Ttots(gdata_list[4:6])*mr
+                    Tr = receipe_M2s(gdata_list[4:6])*mr
                     Bmag = pgkyl_.get_values(gdata_list[6])
                     return phys_tools.collision_freq(ns, qs, ms, Ts, nr, qr, mr, Tr, Bmag)
                 default_qttes.append([name,symbol,units,field2load,receipe_nu])
@@ -856,7 +959,7 @@ class DataParam:
                 # (temperature from J/kg to J)
                 def receipe_ExB_hflux_s(gdata_list,i=i_,m=spec.m):
                     density = pgkyl_.get_values(gdata_list[0])
-                    Ttot    = receipe_Ttots(gdata_list=gdata_list[1:3])
+                    Ttot    = receipe_M2s(gdata_list=gdata_list[1:3])
                     vE      = receipe_vExB(gdata_list=gdata_list[3:],i=i)
                     return density * m*Ttot * vE
                 default_qttes.append([name,symbol,units,field2load,receipe_ExB_hflux_s])
@@ -884,7 +987,7 @@ class DataParam:
                 # because of the phi derivative
                 def receipe_gradB_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
                     density = pgkyl_.get_values(gdata_list[0])
-                    Ttot    = receipe_Ttots(gdata_list=gdata_list[1:3])
+                    Ttot    = receipe_M2s(gdata_list=gdata_list[1:3])
                     vgB     = receipe_vgB(gdata_list=gdata_list[2:],i=i,q=q,m=m)
                     return density * m*Ttot * vgB
                 default_qttes.append([name,symbol,units,field2load,receipe_gradB_hflux_s])
@@ -893,8 +996,8 @@ class DataParam:
                 name       = 'pflux_%s%s'%(ci_,s_)
                 symbol     = r'$\Gamma_{%s,%s}$'%(ci_,s_)
                 units      = r's$^{-1}$m$^{-2}$'
-                field2load = ['n%s'%s_,'Tperp%s'%(s_),'phi',
-                              'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                field2load = [
+                    'n%s'%s_,'Tperp%s'%(s_),'phi','b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 def receipe_pflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
                     pExBlist = copy.deepcopy(gdata_list)
                     pExBlist.pop(1) # remove Tperp
@@ -904,13 +1007,13 @@ class DataParam:
                     pgB   = receipe_gradB_pflux_s(gdata_list=pgBlist,i=i,q=q,m=m)
                     return pExB + pgB
                 default_qttes.append([name,symbol,units,field2load,receipe_pflux_s])
-                
+                                
                 # speciewise total heat flux
                 name       = 'hflux_%s%s'%(ci_,s_)
                 symbol     = r'$Q_{%s,%s}$'%(ci_,s_)
                 units      = r'J s$^{-1}$m$^{-2}$'
-                field2load = ['n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_),'phi',
-                              'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
+                field2load = [
+                    'n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_),'phi','b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 def receipe_hflux_s(gdata_list,i=i_,q=spec.q,m=spec.m):
                     QExB = receipe_ExB_hflux_s(gdata_list=gdata_list,i=i,m=m)
                     QgBlist = copy.deepcopy(gdata_list)
@@ -943,7 +1046,7 @@ class DataParam:
                               'b_%s'%cj_,'b_%s'%ck_,'Bmag','Jacobian']
                 def receipe_chi(gdata_list,i=i_,q=spec.q,m=spec.m):
                     hflux = receipe_hflux_s(gdata_list=gdata_list,i=i,q=q,m=m)
-                    temp = receipe_Ttots(gdata_list=gdata_list[1:3]) * m # convert from J/kg to J
+                    temp = receipe_M2s(gdata_list=gdata_list[1:3]) * m # convert from J/kg to J
                     dens = pgkyl_.get_values(gdata_list[0])
                     temp[temp <= 0] = np.nan # avoid log(0)
                     grids = pgkyl_.get_grid(gdata_list[0])
@@ -954,10 +1057,41 @@ class DataParam:
                     return chi
                 default_qttes.append([name,symbol,units,field2load,receipe_chi])
                 
+            # Local gyro-Bohm normalized radial particle flux:
+            name = 'pflux_norm_x%s'%(s_)
+            symbol = r'$\Gamma_{x,%s}/ n_{%s} c_s (\rho_{%s}/R)^2$'%(s_,s_,s_)
+            units = r''
+            field2load_pflux = [
+                'n%s'%s_,'Tperp%s'%(s_),'phi','b_y','b_z','Bmag','Jacobian']  # fixed for x-direction
+            field2load_gBflux = [
+                'n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'Bmag','Tpare','Tperpe','nodesint']
+            field2load = field2load_pflux + field2load_gBflux
+            def receipe_pflux_norm_x(gdata_list,q=spec.q,m=spec.m):
+                pflux = receipe_pflux_s(gdata_list=gdata_list[:len(field2load_pflux)],i=0,q=q,m=m)
+                gammagB = receipe_GammagBs(gdata_list=gdata_list[len(field2load_pflux):],q=q,m=m)
+                norm_flux = pflux/gammagB
+                return norm_flux
+            default_qttes.append([name,symbol,units,field2load,receipe_pflux_norm_x])
+            
+            # Local gyro-Bohm normalized radial heat flux:
+            name = 'hflux_norm_x%s'%(s_)
+            symbol = r'$Q_{x,%s}/ n_{%s} T_{%s} c_s (\rho_{%s}/R)^2$'%(s_,s_,s_,s_)
+            units = r''
+            field2load_hflux = [
+                'n%s'%s_,'Tpar%s'%(s_),'Tperp%s'%(s_),'phi','b_y','b_z','Bmag','Jacobian']  # fixed for x-direction
+            field2load_gBflux = [
+                'n%s'%(s_),'Tpar%s'%(s_),'Tperp%s'%(s_),'Bmag','Tpare','Tperpe','nodesint']
+            field2load = field2load_hflux + field2load_gBflux
+            def receipe_hflux_norm_x(gdata_list,q=spec.q,m=spec.m):
+                hflux = receipe_hflux_s(gdata_list=gdata_list[:len(field2load_hflux)],i=0,q=q,m=m)
+                QgB = receipe_QgBs(gdata_list=gdata_list[len(field2load_hflux):],q=q,m=m)
+                norm_flux = hflux/QgB
+                return norm_flux
+            default_qttes.append([name,symbol,units,field2load,receipe_hflux_norm_x])
+
         # Fluid species diagnostics
         for spec in species_fluid_list:
             s_ = spec.nshort
-
             # neutral fluid density
             name      = 'nfluid%s'%(s_)
             symbol    = r'$n_{%s}$'%(s_)
@@ -1013,7 +1147,6 @@ class DataParam:
             default_qttes.append([name,symbol,units,field2load,receipe_cx_reacts])
 
         # Species independent quantities
-
         # total M2 kinetic energy density
         name       = 'WkinM2'
         symbol     = r'$W_{k,M2}$'
@@ -1026,7 +1159,7 @@ class DataParam:
             fout = 0.0
             k = 0
             for spec in species_list:
-                fout += receipe_WkinM2s(gdata_list=gdata_list[0+k], m=spec.m)
+                fout += receipe_WkinM2s(gdata_list=[gdata_list[0+k]], m=spec.m)
                 k += 1
             return fout
         default_qttes.append([name,symbol,units,field2load,receipe_WkinM2])
@@ -1073,13 +1206,13 @@ class DataParam:
         units      = '' # T is stored as T/m in gkeyll
         field2load = ['Tpare','Tperpe','Tpari','Tperpi']
         def receipe_Tratio(gdata_list,species_=species_kinetic_list):
-            Te = (pgkyl_.get_values(gdata_list[0]) + 2.0*pgkyl_.get_values(gdata_list[1]))/3.0
-            Ti = (pgkyl_.get_values(gdata_list[2]) + 2.0*pgkyl_.get_values(gdata_list[3]))/3.0
+            Te = receipe_M2s([gdata_list[0],gdata_list[1]])
+            Ti = receipe_M2s([gdata_list[2],gdata_list[3]])
             me = [s_.m for s_ in species_kinetic_list if s_.nshort == 'e'][0]
             mi = [s_.m for s_ in species_kinetic_list if s_.nshort == 'i'][0]
             return Ti*mi/(Te*me)
         default_qttes.append([name,symbol,units,field2load,receipe_Tratio])
-        
+
         # Bohm normalized speed u_pari / c_s
         name      = 'upari_cs'
         symbol    = r'$u_{\parallel i}/c_s$'
@@ -1112,7 +1245,7 @@ class DataParam:
             i_s = 0
             for spec in species_list:
                 n_s = pgkyl_.get_values(gdata_list[0+i_s])
-                T_s = receipe_Ttots([gdata_list[1+i_s],gdata_list[2+i_s]])
+                T_s = receipe_M2s([gdata_list[1+i_s],gdata_list[2+i_s]])
                 T_s[T_s <= 0] = np.nan # avoid unphysical values
                 denom += (spec.q/e)**2 * n_s/T_s
                 i_s += 3
@@ -1121,17 +1254,6 @@ class DataParam:
             denom[denom <= 0] = np.nan # avoid div by 0
             return np.sqrt(num/denom)
         default_qttes.append([name,symbol,units,field2load,receipe_lambdaD])
-        
-        name = 'bxy_angle'
-        symbol = r'$\alpha$'
-        units = r'$^{\circ}$'
-        field2load = ['g_zz','gzz']
-        def receipe_bxy_angle(gdata_list):
-            g_zz = pgkyl_.get_values(gdata_list[0])
-            gzz = pgkyl_.get_values(gdata_list[1])
-            alpha = np.arcsin(1/np.sqrt(g_zz*gzz))
-            return alpha * 180/np.pi # convert to degrees
-        default_qttes.append([name,symbol,units,field2load,receipe_bxy_angle])
         
         # GYRAZE gamma factor, gamma = 1/B sqrt(m_e n_e/eps0) = rho_e/Lambda_d, eq. 9 of https://arxiv.org/2508.09067
         name = 'gamma_gyraze'
@@ -1299,14 +1421,13 @@ class DataParam:
         symbol     = r'$W_{E}$'
         units      = r'J/m$^3$'
         field2load = ['phi']
-        # The receipe depends on the direction 
-        # because of the phi derivative
+        # Use the electrostatic field only (Welf = 1/2 eps0 |E_es|^2)
         def receipe_Welf(gdata_list):
             eps0 = 8.854e-12 # Vacuum permittivity in F⋅m−1
             fout = 0.0
-            # compute the norm of the electric field
+            # compute the norm of the electrostatic electric field
             for i_ in range(3):
-                fout += np.power(receipe_Ei(gdata_list,i=i_),2)
+                fout += np.power(receipe_Ei_es(gdata_list,i=i_),2)
             # multiply by 1/2 eps0
             fout *= 0.5*eps0
             return fout
@@ -1607,7 +1728,7 @@ class DataParam:
         default_units_dict['names'] = names
 
         # add default colormap for each fields
-        positive_fields = ['Bmag','pow_src','rhoe_lambdaD',
+        positive_fields = ['Bmag','pow_src','rhoe_lambdaD', 'nodes_r',
                            'flan_imp_density','flan_imp_counts'] # spec. indep
         
         spec_dep_fields = ['M0','M2','M2par','M2perp',

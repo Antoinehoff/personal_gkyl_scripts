@@ -63,7 +63,7 @@ class Frame:
         self.exist = True
         self.process_field_name()  # this initializes the above attributes
 
-        self.time = None
+        self.time = -1
         self.tsymbol = ''
         self.tunits = ''
         self.Gdata = []
@@ -236,13 +236,20 @@ class Frame:
         self.Gdata = []
         for (f_, c_) in zip(self.filenames, self.comp):
             dg, Gdata = pgkyl_.get_dg_and_gdata(f_, polyorder=self.polyorder, polytype=self.polytype)
-            # this is dumb but I can't figure out how to avoid the double interpolation
-            # without messing up the xNodal attribute
-            self.xNodal, _ = dg.interpolate(c_, overwrite=False)
-            dg.interpolate(c_, overwrite=True)
+            # Select if we have a DG representation or not. Some files like intnodes have already nodal values, so we don't want to interpolate those.
+            if Gdata.num_comps == Gdata.num_dims:
+                grids = Gdata.get_grid()
+                self.xNodal = [ np.array(g) for g in grids ]
+                Gdata.ctx['basis_type'] = 'nodal'
+                self.time = -1 if self.time < 0 else self.time
+            else:
+                # this is dumb but I can't figure out how to avoid the double interpolation
+                # without messing up the xNodal attribute
+                self.xNodal, _ = dg.interpolate(c_, overwrite=False)
+                dg.interpolate(c_, overwrite=True)
+                self.time = Gdata.ctx['time'] if self.time < 0 else self.time
             self.Gdata.append(Gdata)
-            if Gdata.ctx['time']:
-                self.time = Gdata.ctx['time']
+            
             
         #.Centered mesh creation
         gridsN = self.xNodal # nodal grids
