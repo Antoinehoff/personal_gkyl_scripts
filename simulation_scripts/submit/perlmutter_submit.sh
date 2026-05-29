@@ -21,6 +21,10 @@ LAST_FRAME=-1
 JOB_NAME=$(basename $(pwd))
 #.Executable name
 INPUT_FILE="gkeyll.c"
+#.Work directory
+WORK_DIR="wk"
+#.Base path for work and history directories
+BASE_PATH=$(pwd)
 
 # help function
 show_help() {
@@ -37,10 +41,12 @@ show_help() {
     echo "  -h          Display this help and exit"
     echo "  -a ACCOUNT  Account to use (default: $ACCOUNT)"
     echo "  -i INPUTC   C Input file name (default: gkeyll.c)"
+    echo "  -w WORKDIR  Work directory (default: wk)"
+    echo "  --prefix PATH  Base path for work and history directories (default: current dir)"
     echo "  --nprocs NPROCS  Number of processes (overrides auto-detection)"
 }
-# check the following options : -q -n -t -h -N -r -d -a -j -p -i -- --nprocs
-while getopts ":q:n:t:r:N:d:ja:phi:-:" opt; do
+# check the following options : -q -n -t -h -N -r -d -a -j -p -i -w -- --nprocs --prefix
+while getopts ":q:n:t:r:N:d:ja:phi:w:-:" opt; do
     case ${opt} in
         q )
             QOS=$OPTARG
@@ -67,8 +73,8 @@ while getopts ":q:n:t:r:N:d:ja:phi:-:" opt; do
             ;;
         j )
             # Auto-detect job dependency
-            if [ -d "history" ]; then
-                LATEST_JOB_FILE=$(ls -t history/job_id_*.txt 2>/dev/null | head -1)
+            if [ -d "$BASE_PATH/history" ]; then
+                LATEST_JOB_FILE=$(ls -t "$BASE_PATH"/history/job_id_*.txt 2>/dev/null | head -1)
                 if [ -n "$LATEST_JOB_FILE" ] && [ -f "$LATEST_JOB_FILE" ]; then
                     AUTO_DEPENDENCY=$(cat "$LATEST_JOB_FILE" 2>/dev/null | grep -o '[0-9]\+' | head -1)
                     if [ -n "$AUTO_DEPENDENCY" ]; then
@@ -93,12 +99,19 @@ while getopts ":q:n:t:r:N:d:ja:phi:-:" opt; do
         i )
             INPUT_FILE=$OPTARG
             ;;
+        w )
+            WORK_DIR=$OPTARG
+            ;;
         - )
             case $OPTARG in
                 nprocs | numprocs )
                     # Extract the value from the next position in the argument list
                     TOTAL_GPUS="${!OPTIND}"
                     # Manually increment the getopts index to skip the value we just grabbed
+                    OPTIND=$(( OPTIND + 1 ))
+                    ;;
+                prefix )
+                    BASE_PATH="${!OPTIND}"
                     OPTIND=$(( OPTIND + 1 ))
                     ;;
                 * )
@@ -118,6 +131,10 @@ while getopts ":q:n:t:r:N:d:ja:phi:-:" opt; do
     esac
 done
 
+#.Resolve absolute paths for work and history directories
+WORK_DIR_ABS="$BASE_PATH/$WORK_DIR"
+HISTORY_DIR="$BASE_PATH/history"
+
 #.Check if the input file exists
 if [ ! -f "$INPUT_FILE" ]; then
     echo "Error: Input file '$INPUT_FILE' not found!"
@@ -126,7 +143,6 @@ fi
 
 #.Get the executable name from the input file (strip .c)
 EXEC_NAME=$(basename "$INPUT_FILE" .c)
-GKYLEXE="gkeyll"
 
 #.AUXILIARY SLURM VARIABLES
 #.Calculate total number of GPUs (nodes * GPUs per node) if not overridden
@@ -198,7 +214,7 @@ seconds=$((seconds * 90 / 100))
 RUNTIME_OPT="-o max_run_time=$seconds"
 
 #.Run command - will be modified at runtime if auto-detecting
-RUNCMD="srun -u -n $TOTAL_GPUS ./$GKYLEXE -g -M $GPU_OPTS $RESTART_OPT"
+RUNCMD="srun -u -n $TOTAL_GPUS ./$EXEC_NAME -g -M $GPU_OPTS $RESTART_OPT"
 SCRIPTNAME="slurm_script_$FRAME_SUFFIX.sh"
 # Generate the SLURM script
 cat <<EOT > $SCRIPTNAME
@@ -246,11 +262,14 @@ fi
 
 LAST_FRAME=\$(sh \$UTIL_SCRIPT .)
 
+# Ensure history directory exists on compute node
+mkdir -p "$HISTORY_DIR"
+
 # Create links to the actual SLURM output files
-ln -sf "../wk/$OUTPUT" "../history/output_sf_\$LAST_FRAME.out"
-ln -sf "../wk/$ERROR" "../history/error_sf_\$LAST_FRAME.out"
-cp "../wk/$INPUT" "../history/gkeyll_sf_\$LAST_FRAME.c"
-cp "../wk/$SCRIPTNAME" "../history/slurm_script_sf_\$LAST_FRAME.sh"
+ln -sf "$WORK_DIR_ABS/$OUTPUT" "$HISTORY_DIR/output_sf_\$LAST_FRAME.out"
+ln -sf "$WORK_DIR_ABS/$ERROR" "$HISTORY_DIR/error_sf_\$LAST_FRAME.out"
+cp "$WORK_DIR_ABS/$INPUT" "$HISTORY_DIR/gkeyll_sf_\$LAST_FRAME.c"
+cp "$WORK_DIR_ABS/$SCRIPTNAME" "$HISTORY_DIR/slurm_script_sf_\$LAST_FRAME.sh"
 
 # Set restart options based on detected frame
 if (( LAST_FRAME > 0 )); then
@@ -266,7 +285,7 @@ else
     RESTART_OPT=""
 fi
 
-SRUNCMD="srun -u -n $TOTAL_GPUS ./$GKYLEXE -g -M $GPU_OPTS \$RESTART_OPT $RUNTIME_OPT"
+SRUNCMD="srun -u -n $TOTAL_GPUS ./$EXEC_NAME -g -M $GPU_OPTS \$RESTART_OPT $RUNTIME_OPT"
 
 echo "Running command: \$SRUNCMD"
 eval \$SRUNCMD
@@ -293,24 +312,28 @@ fi
 read -p "Proceed and submit the job? ((y)/n) " proceed
 
 if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
+    if [ ! -f "$INPUT_FILE" ]; then
+        echo "Error: Input file '$INPUT_FILE' not found!"
+        exit 1
+    fi
     module load $MODULES
     # make only if there is no job dependency
     if [ -z "$DEPENDENCY_JOB_ID" ]; then
         echo "Compiling the executable..."
         make
-        cp $EXEC_NAME wk/$GKYLEXE
+        cp "$EXEC_NAME" "$WORK_DIR_ABS/$EXEC_NAME" 2>/dev/null || echo "Warning: Could not copy executable (likely busy/running). Using existing executable."
     fi
-    echo "mkdir -p history"
-    mkdir -p history
-    echo "mkdir -p wk"
-    mkdir -p wk
-    echo "cp $INPUT_FILE wk/gkeyll_$FRAME_SUFFIX.c"
-    cp $INPUT_FILE wk/gkeyll_$FRAME_SUFFIX.c
-    echo "cp $SCRIPTNAME wk/$SCRIPTNAME"
-    cp $SCRIPTNAME wk/$SCRIPTNAME
+    echo "mkdir -p $HISTORY_DIR"
+    mkdir -p $HISTORY_DIR
+    echo "mkdir -p $WORK_DIR_ABS"
+    mkdir -p $WORK_DIR_ABS
+    echo "cp $INPUT_FILE $WORK_DIR_ABS/gkeyll_$FRAME_SUFFIX.c"
+    cp $INPUT_FILE $WORK_DIR_ABS/gkeyll_$FRAME_SUFFIX.c
+    echo "cp $SCRIPTNAME $WORK_DIR_ABS/$SCRIPTNAME"
+    cp $SCRIPTNAME $WORK_DIR_ABS/$SCRIPTNAME
     rm $SCRIPTNAME
     
-    cd wk    
+    cd $WORK_DIR_ABS    
     echo "Submitting job to Perlmutter..."
     # Submit job and capture the job ID
     SUBMIT_OUTPUT=$(sbatch $SCRIPTNAME)
@@ -319,8 +342,8 @@ if [[ "$proceed" == "" || "$proceed" == "y" ]]; then
     echo "$SUBMIT_OUTPUT"
     
     # Save job ID to file for reference
-    echo "Saving job ID to history/job_id_${JOB_ID}.txt"
-    echo "$JOB_ID" > "../history/job_id_${JOB_ID}.txt"
+    echo "Saving job ID to $HISTORY_DIR/job_id_${JOB_ID}.txt"
+    echo "$JOB_ID" > "$HISTORY_DIR/job_id_${JOB_ID}.txt"
 else
     echo "Operation canceled."
 fi
