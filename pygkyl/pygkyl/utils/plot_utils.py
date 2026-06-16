@@ -25,7 +25,7 @@ import numpy as np
 from .. utils import file_utils
 from ..classes import Frame, IntegratedMoment, TimeSerie
 from ..interfaces import pgkyl_interface as pg_int
-from ..projections import FluxSurfProjection, PoloidalProjection
+from ..projections import FluxSurfProjection, PoloidalProjection, TorusProjection
 from ..tools import fig_tools, math_tools
 from ..utils import data_utils
 
@@ -218,8 +218,17 @@ def _load_loss_field(simulation, fieldname):
         raise ValueError(f"Cannot find field '{fieldname}' in the simulation data.")
     return intmom.values, intmom.time, intmom.vunits, intmom.tunits
 
+def _denormalize(data,dataname,norm):
+    shift = norm.dict[dataname + 'shift']
+    scale = norm.dict[dataname + 'scale']
+    return (data + shift) * scale
 
-def _fl_build_seeds(flp, grids):
+def _normalize(data,dataname,norm):
+    shift = norm.dict[dataname + 'shift']
+    scale = norm.dict[dataname + 'scale']
+    return data/scale - shift
+
+def _fl_build_seeds(flp, grids, norm):
     """Pop seed parameters from flp and return (xl0_a, yl0_a) in 3D (x,y) space."""
     xl0_a   = flp.pop('xl0_a', None)
     yl0_a   = flp.pop('yl0_a', None)
@@ -235,12 +244,14 @@ def _fl_build_seeds(flp, grids):
         xl0_a = np.linspace(xlmin, xlmax, nxl)
     else:
         xl0_a = np.atleast_1d(xl0_a)
+        xl0_a = _denormalize(xl0_a,'x',norm)
     if yl0_a is None:
         ylmin = ylmin_a if ylmin_a is not None else grids[1][1]
         ylmax = ylmax_a if ylmax_a is not None else grids[1][-2]
         yl0_a = np.linspace(ylmin, ylmax, nyl)
     else:
         yl0_a = np.atleast_1d(yl0_a)
+        yl0_a = _denormalize(yl0_a,'y',norm)
     return xl0_a, yl0_a
 
 
@@ -478,13 +489,14 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
             dBy_fieldname  = flp.pop('dBy_fieldname',  'dB_perp_y')
             Bmag_fieldname = flp.pop('Bmag_fieldname', 'Bmag')
             periodicity    = flp.pop('periodicity', (False, True, False))
+            amplify_factor = flp.pop('amplify_factor', 1.0)
             flp.setdefault('linestyle', '-')
             tf_fl = time_frame[-1]
-            dBx_frame  = Frame(simulation, dBx_fieldname,  tf=tf_fl, load=True, normalize=False)
-            dBy_frame  = Frame(simulation, dBy_fieldname,  tf=tf_fl, load=True, normalize=False)
-            Bmag_frame = Frame(simulation, Bmag_fieldname, tf=tf_fl, load=True, normalize=False)
+            dBx_frame  = Frame(simulation, dBx_fieldname,  tf=tf_fl, load=True)
+            dBy_frame  = Frame(simulation, dBy_fieldname,  tf=tf_fl, load=True)
+            Bmag_frame = Frame(simulation, Bmag_fieldname, tf=tf_fl, load=True)
             grids = dBx_frame.new_grids
-            xl0_a, yl0_a = _fl_build_seeds(flp, grids)
+            xl0_a, yl0_a = _fl_build_seeds(flp, grids, simulation.normalization)
             line_colors   = _fl_build_colors(flp, len(xl0_a) * len(yl0_a))
             L_periodicity = [None if not p else (grids[i][0], grids[i][-1])
                              for i, p in enumerate(periodicity)]
@@ -494,7 +506,15 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
                 interp_dBy=dBy_frame.eval_interp,
                 interp_Bmag=Bmag_frame.eval_interp,
                 L_periodicity=L_periodicity,
+                amplify_factor=amplify_factor,
             )
+            # Normalize field line coordinates
+            xfl = _normalize(xfl, 'x', simulation.normalization)
+            yfl = _normalize(yfl, 'y', simulation.normalization)
+            zfl = _normalize(zfl, 'z', simulation.normalization)
+            L_periodicity[0] = None if L_periodicity[0] is None else _normalize(L_periodicity[0], 'x', simulation.normalization)
+            L_periodicity[1] = None if L_periodicity[1] is None else _normalize(L_periodicity[1], 'y', simulation.normalization)
+            L_periodicity[2] = None if L_periodicity[2] is None else _normalize(L_periodicity[2], 'z', simulation.normalization)
             _fl_draw(ax, xfl, yfl, zfl, cut_dir, L_periodicity, line_colors, flp)
 
     fig.tight_layout()
@@ -608,7 +628,46 @@ def flux_surface_proj(simulation, rho=0.9, fieldName='phi', timeFrame=None, Nint
     fsproj.setup(simulation, rho=rho, timeFrame=timeFrame,
                  Nint=Nint)
     fsproj.plot(fieldName=fieldName, timeFrame=timeFrame, figout=figout, close_fig=close_fig, clim=clim, figsize=figsize, fig_dpi=fig_dpi)
-    
+
+
+def torus_proj(simulation, fieldName='phi', timeFrame=None,
+               phiLim=None, rhoLim=None, imgSize=(800, 600),
+               Nint_polproj=16, Nint_fsproj=32,
+               fluctuation='', colorMap=None, clim=None, logScale=False,
+               cameraSettings=None, filePrefix='', save_html=False,
+               jupyter_backend='none', t0=0.0, tref=1e-3, font_size=12,
+               show_vessel=True, adjust_vessel=True, show_limiter=True,
+               background_color='white', torproj=None):
+    """Create a single-frame 3D torus projection and save a PNG.
+
+    If *torproj* is supplied (a pre-configured ``TorusProjection`` instance),
+    setup is skipped and that object is used directly — useful when calling
+    this repeatedly without rebuilding the projection grids each time.
+    """
+    if timeFrame is None:
+        timeFrame = simulation.data_param.get_available_frames(simulation)['field'][-1]
+    if phiLim is None:
+        phiLim = [0, np.pi]
+    if rhoLim is None:
+        rhoLim = [0.8, 1.5]
+
+    if torproj is None:
+        torproj = TorusProjection()
+        torproj.background_color = background_color
+        torproj.show_vessel      = show_vessel
+        torproj.adjust_vessel    = adjust_vessel
+        torproj.show_limiter     = show_limiter
+        torproj.setup(simulation, timeFrame=timeFrame,
+                      Nint_polproj=Nint_polproj, Nint_fsproj=Nint_fsproj,
+                      phiLim=phiLim, rhoLim=rhoLim,
+                      imgSize=imgSize, t0=t0, tref=tref, font_size=font_size)
+
+    torproj.plot(fieldName=fieldName, timeFrame=timeFrame,
+                 filePrefix=filePrefix, colorMap=colorMap, fluctuation=fluctuation,
+                 logScale=logScale, clim=clim, jupyter_backend=jupyter_backend,
+                 save_html=save_html, cameraSettings=cameraSettings)
+
+
 #--- Time independent or time series plot routines
   
 def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fieldnames='phi',
@@ -622,6 +681,8 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
         twindow = simulation.data_param.get_available_frames(simulation)['field']
         twindow = [twindow[0], twindow[-1]]
     if not isinstance(twindow, list): twindow = [twindow]
+    if xlim: xlim = [xlim] if not isinstance(xlim[0], list) else xlim
+    if ylim: ylim = [ylim] if not isinstance(ylim[0], list) else ylim
     if clim: clim = [clim] if not isinstance(clim[0], list) else clim
     cmap0 = cmap if cmap else simulation.data_param.field_info_dict[fieldnames_list[0]+'colormap']
     fields, fig, axs = fig_tools.setup_figure(fieldnames, figsize=figsize)
@@ -637,26 +698,35 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
                     values = 100.0 * values / average_data[:, np.newaxis]
                     vlabel = re.sub(r'\(.*?\)', '', vlabel)
                     vlabel = vlabel + ' (\%)'
+            elif 'yavg' in fluctuation:
+                average_data = np.mean(values, axis=0)
+                vlabel = r'$\delta$' + vlabel
+                values -= average_data[np.newaxis, :]
+                if 'relative' in fluctuation:
+                    values = 100.0 * values / average_data[np.newaxis, :]
+                    vlabel = re.sub(r'\(.*?\)', '', vlabel)
+                    vlabel = vlabel + ' (\%)'
             else:
                 raise ValueError("Fluctuation type '%s' not recognized. Use 'tavg' or 'tavg_relative'." % fluctuation)
         cs = 'log' if fourier_y else colorscale
         if space_time:
-            if (cmap0 == 'bwr' or fluctuation) and not fourier_y:
-                cmap_name = 'bwr'
+            cmap_name = cmap0
+            if (fluctuation) and not fourier_y:
                 vmax = np.nanmax(np.abs(values))
                 vmin = -vmax
             else:
-                cmap_name = cmap0
-                vmax = np.nanmax(np.abs(values))
-                vmin = 0.0
+                vmax = np.nanmax(values)
+                vmin = np.nanmin(values)
             if cs == 'log' or fourier_y:
                 values[values <= 0] = np.nan
                 vmax = np.nanmax(values)
                 vmin = np.power(10, np.log10(vmax) - 4) if vmax > 0 else 1e-10
                 values = np.clip(values, vmin, None)
+            xlim_ = xlim[kf] if xlim else None
+            ylim_ = ylim[kf] if ylim else None
             clim_ = clim[kf] if clim else None
             fig = fig_tools.plot_2D(
-                fig, ax, x=x, y=t, z=values, xlim=xlim, ylim=ylim, clim=clim_,
+                fig, ax, x=x, y=t, z=values, xlim=xlim_, ylim=ylim_, clim=clim_,
                 xlabel=xlabel, ylabel=tlabel, clabel=vlabel, title=slicetitle if show_title else '',
                 cmap=cmap_name, vmin=vmin, vmax=vmax, colorscale=cs, plot_type=plot_type,
                 cmap_period=cmap_period
@@ -672,8 +742,10 @@ def plot_1D_time_evolution(simulation, cdirection='x', ccoords=[0.0,0.0,0.0], fi
             sm = plt.cm.ScalarMappable(cmap=colormap, norm=norm)
             sm.set_array([])
             cbar = fig.colorbar(sm, ax=ax)
+            xlim_ = xlim[kf] if xlim else None
+            ylim_ = ylim[kf] if ylim else None
             fig_tools.finalize_plot(ax, fig, title=slicetitle[:-2] if show_title else '',
-                                    xlim=xlim, ylim=ylim, figout=figout,
+                                    xlim=xlim_, ylim=ylim_, figout=figout,
                                     xlabel=xlabel, ylabel=vlabel, clabel=tlabel, cbar=cbar, yscale=yscale)
     if close_fig: plt.close(fig)
 

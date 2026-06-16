@@ -207,7 +207,7 @@ def smooth2D(array, kernel_size=3):
     return smoothed_array
 
 def field_line_tracer(xl0_a, yl0_a, zgrid, interp_dBx, interp_dBy, interp_Bmag,
-                      L_periodicity=(None, None, None)):
+                      L_periodicity=(None, None, None), amplify_factor=1.0):
     """
     Trace magnetic field lines given perpendicular field perturbations.
 
@@ -263,8 +263,8 @@ def field_line_tracer(xl0_a, yl0_a, zgrid, interp_dBx, interp_dBy, interp_Bmag,
                 x_prev = xfl[i, j, iz - 1]
                 y_prev = yfl[i, j, iz - 1]
                 z_prev = zfl[i, j, iz - 1]
-                dBx   = interp_dBx([x_prev, y_prev, z_prev])
-                dBy   = interp_dBy([x_prev, y_prev, z_prev])
+                dBx   = interp_dBx([x_prev, y_prev, z_prev]) * amplify_factor
+                dBy   = interp_dBy([x_prev, y_prev, z_prev]) * amplify_factor
                 Bmag  = interp_Bmag([x_prev, y_prev, z_prev])
                 dz = zgrid[iz] - zgrid[iz - 1]
                 xfl[i, j, iz] = x_prev + dBx / Bmag * dz
