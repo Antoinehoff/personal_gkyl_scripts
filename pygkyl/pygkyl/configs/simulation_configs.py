@@ -90,7 +90,8 @@ def get_tcv_pt_sim_config(simdir, fileprefix, **kwargs):
         qfit        = [497.3420166252413, -1408.736172826569, 
                        1331.4134861681464, -419.00692601227627],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
-        x_out       = x_out                 # SOL domain width
+        x_out       = x_out,                 # SOL domain width
+        geopref=kwargs.get('geopref','')
     )
     # Define the species
     simulation.add_species(Species(name='ion',
@@ -104,7 +105,10 @@ def get_tcv_pt_sim_config(simdir, fileprefix, **kwargs):
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( 
+        simdir = simdir, fileprefix = fileprefix, species = simulation.species,
+        geopref=kwargs.get('geopref','')
+)
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
@@ -181,7 +185,8 @@ def get_tcv_nt_sim_config(simdir, fileprefix, **kwargs):
         qfit        = [484.0615913225881, -1378.25993228584, 
                        1309.3099150729233, -414.13270311478726],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
-        x_out       = x_out                  # SOL domain width
+        x_out       = x_out,                  # SOL domain width
+        geopref=kwargs.get('geopref','')
     )
     # Define the species
     simulation.add_species(Species(name='ion',
@@ -195,7 +200,9 @@ def get_tcv_nt_sim_config(simdir, fileprefix, **kwargs):
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( 
+        simdir = simdir, fileprefix = fileprefix, species = simulation.species,
+        geopref=kwargs.get('geopref',''))
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
@@ -271,7 +278,8 @@ def get_d3d_pt_sim_config(simdir, fileprefix, **kwargs):
         qfit        = [407.582626469394, -2468.613680167604, 
                        4992.660489790657, -3369.710290916853],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
-        x_out       = x_out                  # SOL domain width
+        x_out       = x_out,                  # SOL domain width
+        geopref=kwargs.get('geopref','')
     )
     # Define the species
     simulation.add_species(Species(name='ion',
@@ -291,7 +299,9 @@ def get_d3d_pt_sim_config(simdir, fileprefix, **kwargs):
                 n0=1.0e19,
                 is_fluid=True))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( 
+        simdir = simdir, fileprefix = fileprefix, species = simulation.species,
+        geopref=kwargs.get('geopref',''))
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
@@ -361,7 +371,8 @@ def get_d3d_nt_sim_config(simdir, fileprefix, **kwargs):
         qfit        = [154.51071835546747, -921.8584472748003, 
                        1842.1077075366113, -1231.619813170522],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
-        x_out       = x_out                  # SOL domain width
+        x_out       = x_out,                  # SOL domain width
+        geopref=kwargs.get('geopref','')
     )
     # Define the species
     simulation.add_species(Species(name='ion',
@@ -381,7 +392,9 @@ def get_d3d_nt_sim_config(simdir, fileprefix, **kwargs):
                 n0=1.0e19,
                 is_fluid=True))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( 
+        simdir = simdir, fileprefix = fileprefix, species = simulation.species,
+        geopref=kwargs.get('geopref',''))
 
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
@@ -456,7 +469,8 @@ def get_nstxu_sim_config(simdir, fileprefix, **kwargs):
         qfit        = [154.51071835546747, -921.8584472748003, 
                        1842.1077075366113, -1231.619813170522],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
-        x_out       = x_out                 # SOL domain width
+        x_out       = x_out,                 # SOL domain width
+        geopref=kwargs.get('geopref','')
     )
 
     # Define the species
@@ -471,7 +485,7 @@ def get_nstxu_sim_config(simdir, fileprefix, **kwargs):
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species, geopref=kwargs.get('geopref',''))
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
@@ -530,7 +544,8 @@ def get_sparc_sim_config(simdir, fileprefix, **kwargs):
         delta       = 0.4,                 # Triangularity factor
         qfit        = [3.5],
         x_LCFS      = x_LCFS,                 # position of the LCFS (= core domain width)
-        x_out       = x_out                 # SOL domain width
+        x_out       = x_out,                 # SOL domain width
+        geopref=kwargs.get('geopref','')
     )
 
     # Define the species
@@ -545,7 +560,7 @@ def get_sparc_sim_config(simdir, fileprefix, **kwargs):
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species,geopref=kwargs.get('geopref',''))
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
@@ -597,7 +612,8 @@ def get_aug_sim_config(simdir, fileprefix, **kwargs):
         qfit        = [1.0],
         x_LCFS      = x_LCFS, # position of the LCFS (= core domain width)
         x_out       = x_out, # SOL domain width
-        geom_type   = 'efit'
+        geom_type   = 'efit',
+        geopref=kwargs.get('geopref','')
     )
 
     # Define the species
@@ -612,7 +628,7 @@ def get_aug_sim_config(simdir, fileprefix, **kwargs):
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species, geopref=kwargs.get('geopref',''))
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [
@@ -677,7 +693,8 @@ def get_west_sim_config(simdir, fileprefix, **kwargs):
         qfit        = [1.0],
         x_LCFS      = x_LCFS, # position of the LCFS (= core domain width)
         x_out       = x_out, # SOL domain width
-        geom_type   = 'efit'
+        geom_type   = 'efit',
+        geopref=kwargs.get('geopref','')
     )
 
     # Define the species
@@ -692,7 +709,7 @@ def get_west_sim_config(simdir, fileprefix, **kwargs):
                 T0=100*simulation.phys_param.eV, 
                 n0=2.0e19))
 
-    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species)
+    simulation.set_data_param( simdir = simdir, fileprefix = fileprefix, species = simulation.species,geopref=kwargs.get('geopref',''))
     
     # Add a custom poloidal projection inset to position the inset according to geometry.
     simulation.polprojInsets = [

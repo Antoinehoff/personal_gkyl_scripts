@@ -38,7 +38,7 @@ class GeomParam:
 
     """
     def __init__(self, R_axis=0.0, Z_axis=0.0, R_LCFSmid=0.0, B_axis=1.4, x_out = 0.08,
-                 a_shift=0.0, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile_R='default', 
+                 a_shift=0.0, kappa=1.0, delta=0.0, x_LCFS=0.0, geom_type='Miller', qprofile_R='default', geopref='',
                  qaxis = None, qlcfs = None, qfit = [], cdim = 3):
         self.B_axis     = B_axis
         self.R_axis     = R_axis
@@ -56,6 +56,7 @@ class GeomParam:
         self.qlcfs      = qlcfs
         self.qfit       = qfit
         self.cdim       = cdim # configuration space dimension
+        self.geopref   = geopref
         self.vol_frac   = None # Volume fraction
         self.tor_num    = None # Toroidal mode number
         
@@ -124,8 +125,9 @@ class GeomParam:
         self.Cy = self.r0/self.q0 if self.q0 != 0 else 0.0
         
     def load_metric(self,fileprefix):
+        geopref = self.geopref
         #-- load B (bmag)
-        fname = fileprefix+'-'+'bmag.gkyl'
+        fname = fileprefix+'-'+geopref+'bmag.gkyl'
         # check if fname exist
         if not os.path.exists(fname):
             raise Exception(f"File {fname} does not exist, please review simDir and filePrefix.")
@@ -153,7 +155,7 @@ class GeomParam:
         self.dBdz = mt.gradient(self.bmag, self.grids[2], axis=2)  # Derivative w.r.t z
 
         #-- Load b_x, b_y, and b_z
-        fname = fileprefix+'-'+'b_i.gkyl'
+        fname = fileprefix+'-'+geopref+'b_i.gkyl'
         self.b_i = []
         for i in range(3):
             Gdata = pg.data.GData(fname)
@@ -163,7 +165,7 @@ class GeomParam:
             self.b_i.append(tmp_[:,:,:,0])
 
         #-- Load Jacobian
-        fname = fileprefix+'-'+'jacobgeo.gkyl'
+        fname = fileprefix+'-'+geopref+'jacobgeo.gkyl'
         Gdata = pg.data.GData(fname)
         dg = pg.data.GInterpModal(Gdata,1,'ms')
         dg.interpolate(0,overwrite=True)

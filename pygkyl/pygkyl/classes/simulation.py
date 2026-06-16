@@ -100,7 +100,8 @@ class Simulation:
         self.phys_param = PhysParam(eps0=eps0, eV=eV, mp=mp, me=me)
     
     def set_geom_param(self, R_axis=None, Z_axis=None, R_LCFSmid=None, a_shift=None, kappa=None, B_axis = None,
-                       delta=None, x_LCFS=None, x_out = None, geom_type='Miller', qprofile_R='default', qfit = []):
+                       delta=None, x_LCFS=None, x_out = None, geom_type='Miller', qprofile_R='default', qfit = [],
+                       geopref=''):
         """
         Set geometric parameters related to the shape and size of the plasma (e.g., axis positions, LCFS).
         """
@@ -109,18 +110,18 @@ class Simulation:
             a_shift=a_shift, kappa=kappa, delta=delta, 
             x_LCFS=x_LCFS, geom_type=geom_type, B_axis=B_axis,
             x_out = x_out, qprofile_R=qprofile_R, qfit = qfit,
-            cdim = self.cdim
+            cdim = self.cdim, geopref=geopref
         )
 
     def set_data_param(self, simdir, fileprefix, expdatadir="", g0simdir="", simname="",
-                       wkdir = "", species = {}, set_num_param=True, get_available_frames=True):
+                       wkdir = "", species = {}, set_num_param=True, get_available_frames=True, geopref=''):
         """
         Set data parameters like directories for experimental and simulation data, file names, and options.
         """
         if simdir[-1] != '/': simdir += '/'
         self.data_param = DataParam(
             expdatadir=expdatadir, g0simdir=g0simdir, simname=simname, simdir=simdir, 
-            prefix=fileprefix, wkdir=wkdir, species=species
+            prefix=fileprefix, wkdir=wkdir, species=species, geopref=geopref,
         )
         self.datadir = self.data_param.datadir
         self.prefix = fileprefix
@@ -141,12 +142,15 @@ class Simulation:
         # Define file paths
         file1 = os.path.join(self.data_param.datadir, 'xyz.gkyl')
         file2 = self.data_param.fileprefix+'-nodes.gkyl'
+        file3 = self.data_param.fileprefix+'-geo_int_nodes.gkyl'
         # Check if 'xyz.gkyl' exists
         if os.path.isfile(file1):
             filename = file1
         # If not, check if 'nodes.gkyl' exists
         elif os.path.isfile(file2):
             filename = file2
+        elif os.path.isfile(file3):
+            filename = file3
         # If neither file is found, print a message
         else:
             raise FileNotFoundError("Neither 'xyz.gkyl' nor '%s' was found in directory: %s"%(file2, self.data_param.datadir))
@@ -1113,7 +1117,95 @@ class Simulation:
         return plot(simulation=self, rho=rho, fieldName=fieldName,
                    timeFrame=frameIdx, Nint=Nint, figout=figout,
                    close_fig=closeFig, clim=clim)
-    
+
+    def plot_torus_projection(self, fieldName='phi', frameIdx=None,
+                              phiLim=None, rhoLim=None, imgSize=(800, 600),
+                              fluctuation='', colorMap=None, clim=None, logScale=False,
+                              cameraSettings=None, filePrefix='', save_html=False,
+                              Nint_polproj=16, Nint_fsproj=32,
+                              show_vessel=True, adjust_vessel=True, show_limiter=True,
+                              background_color='white', t0=0.0, tref=1e-3, font_size=12,
+                              torproj=None):
+        """
+        Create a single-frame 3D torus projection and save a PNG.
+
+        Builds a ``TorusProjection`` on the fly (or reuses *torproj* if given),
+        then renders and saves the image.
+
+        Parameters
+        ----------
+        fieldName : str, optional
+            Field to plot. Default: 'phi'
+        frameIdx : int or None, optional
+            Time frame to plot. None uses the last available frame. Default: None
+        phiLim : list[float] or None, optional
+            Toroidal angles (rad) for poloidal cross-sections.
+            Default: [0, pi]
+        rhoLim : list[float] or None, optional
+            Radial values for flux-surface cuts.
+            Default: [0.8, 1.5]
+        imgSize : tuple[int, int], optional
+            Render window size in pixels (width, height). Default: (800, 600)
+        fluctuation : str or bool, optional
+            '' for raw field; 'tavg'/'yavg' [+'relative'] for fluctuations;
+            True is shorthand for 'yavg'. Default: ''
+        colorMap : str or None, optional
+            Colormap name. None pulls from sim.fields_info. Default: None
+        clim : list[float] or None, optional
+            Color limits [vmin, vmax]. None or [] -> auto. Default: None
+        logScale : bool, optional
+            Apply log color scaling. Default: False
+        cameraSettings : dict or None, optional
+            Dict with keys 'position', 'looking_at', 'zoom'.
+            None uses the simulation geometry default. Default: None
+        filePrefix : str, optional
+            Prefix added to output PNG (and HTML) filenames. Default: ''
+        save_html : bool, optional
+            Also export an interactive HTML file. Default: False
+        Nint_polproj : int, optional
+            Poloidal interpolation resolution. Default: 16
+        Nint_fsproj : int, optional
+            Flux-surface interpolation resolution. Default: 32
+        show_vessel : bool, optional
+            Render vessel geometry. Default: True
+        adjust_vessel : bool, optional
+            Scale vessel R to match the plasma extent. Default: True
+        show_limiter : bool, optional
+            Render limiter geometry. Default: True
+        background_color : str, optional
+            Scene background color. Default: 'white'
+        t0 : float, optional
+            Time offset added to the displayed time label (in units of tref). Default: 0.0
+        tref : float, optional
+            Reference time in seconds used to convert simulation time to the
+            label unit (default gives milliseconds). Default: 1e-3
+        font_size : int, optional
+            Base font size for text overlays. Default: 12
+        torproj : TorusProjection or None, optional
+            Pre-configured ``TorusProjection`` instance. When provided, *setup*
+            is skipped entirely (useful for repeated calls without rebuilding
+            the projection grids). Default: None
+
+        Examples
+        --------
+        >>> sim.plot_torus_projection(fieldName='ne', frameIdx=100,
+        ...     phiLim=[0, 3*np.pi/2], rhoLim=[0.8, 1.1],
+        ...     cameraSettings={'position': [2, 2, 1], 'looking_at': [0,0,0], 'zoom': 1})
+        >>> sim.plot_torus_projection(fieldName='ne', fluctuation='yavg relative',
+        ...     clim=[-0.5, 0.5], save_html=True)
+        """
+        from ..utils.plot_utils import torus_proj as plot
+        return plot(simulation=self, fieldName=fieldName, timeFrame=frameIdx,
+                    phiLim=phiLim, rhoLim=rhoLim, imgSize=imgSize,
+                    Nint_polproj=Nint_polproj, Nint_fsproj=Nint_fsproj,
+                    fluctuation=fluctuation, colorMap=colorMap, clim=clim,
+                    logScale=logScale, cameraSettings=cameraSettings,
+                    filePrefix=filePrefix, save_html=save_html,
+                    t0=t0, tref=tref, font_size=font_size,
+                    show_vessel=show_vessel, adjust_vessel=adjust_vessel,
+                    show_limiter=show_limiter, background_color=background_color,
+                    torproj=torproj)
+
     def plot_balance(self, balanceType='particle', species=['elc', 'ion'],
                     figout=[], rmLegend=False, figSize=(5,3.5), logAbs=False,
                     closeFig=False, data=[], xlim=None, ylim=None, msg=[]):

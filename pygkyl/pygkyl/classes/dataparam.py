@@ -33,7 +33,8 @@ class DataParam:
     - info: Displays the information of the directory parameters.
     """
     def __init__(self, expdatadir='', g0simdir='', simname='', simdir='', 
-                 prefix='', wkdir='', species = {}, checkfiles=True):
+                 prefix='', wkdir='', species = {}, checkfiles=True, geopref=''):
+        self.geopref = geopref
         self.expdatadir = expdatadir
         self.g0simdir = g0simdir
         self.simname = simname
@@ -73,6 +74,7 @@ class DataParam:
         '''
         file_dict = {}
         gnames   = ['x','y','z','vpar','mu']
+        geopref = self.geopref
         
         # nodes
         file_dict['nodesint'+'file'] = 'nodesint'
@@ -81,18 +83,18 @@ class DataParam:
 
         # add equilibrium info
         # Magnetic field amplitude
-        file_dict['Bmag'+'file']   = 'bmag'
+        file_dict['Bmag'+'file']   = geopref+'bmag'
         file_dict['Bmag'+'comp']   = 0
         file_dict['Bmag'+'gnames'] = gnames[0:3]
 
         # normalized b field
         for i_ in range(3):
-            file_dict['b_'+gnames[i_]+'file']   = 'b_i'
+            file_dict['b_'+gnames[i_]+'file']   = geopref+'b_i'
             file_dict['b_'+gnames[i_]+'comp']   = i_
             file_dict['b_'+gnames[i_]+'gnames'] = gnames[0:3]
 
         # Jacobian
-        file_dict['Jacobian'+'file']   = 'jacobgeo'
+        file_dict['Jacobian'+'file']   = geopref+'jacobgeo'
         file_dict['Jacobian'+'comp']   = 0
         file_dict['Jacobian'+'gnames'] = gnames[0:3]
 
@@ -103,11 +105,11 @@ class DataParam:
             for j_ in range(i_,3):
                 jname = gnames[j_]
                 gijname = 'g_'+iname+jname
-                file_dict[gijname+'file']   = 'g_ij'
+                file_dict[gijname+'file']   = geopref+'g_ij'
                 file_dict[gijname+'comp']   = counter_
                 file_dict[gijname+'gnames'] = gnames[0:3]
                 gijname = 'g'+iname+jname
-                file_dict[gijname+'file']   = 'gij'
+                file_dict[gijname+'file']   = geopref+'gij'
                 file_dict[gijname+'comp']   = counter_
                 file_dict[gijname+'gnames'] = gnames[0:3]
                 counter_ += 1
@@ -1257,7 +1259,7 @@ class DataParam:
         
         # GYRAZE gamma factor, gamma = 1/B sqrt(m_e n_e/eps0) = rho_e/Lambda_d, eq. 9 of https://arxiv.org/2508.09067
         name = 'gamma_gyraze'
-        symbol = r'$\gamma_{GYRAZE}$'
+        symbol = r'$\rho_e/\lambda_d$'
         units = r''
         field2load = ['ne','Bmag']
         def receipe_gamma_gyraze(gdata_list):
@@ -1270,7 +1272,7 @@ class DataParam:
         
         # GYRAZE alpha angle, impact angle of the magnetic field line on the sheath entrance.
         name = 'alpha_gyraze'
-        symbol = r'$\alpha_{GYRAZE}$'
+        symbol = r'$\alpha_b$'
         units = r'$^{\circ}$'
         field2load = ['g_zz','gzz']
         def receipe_alpha_gyraze(gdata_list):
@@ -1282,8 +1284,8 @@ class DataParam:
         
         # GYRAZE normalize phi
         name = 'phi_gyraze'
-        symbol = r'$\phi_{GYRAZE}$'
-        units = r''
+        symbol = r'$\phi$'
+        units = r'$T_e/e$'
         field2load = ['phi','Tpare','Tperpe']
         def receipe_phi_gyraze(gdata_list):
             me = phys_tools.electron_mass
