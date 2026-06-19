@@ -136,6 +136,10 @@ WORK_DIR_ABS="$BASE_PATH/$WORK_DIR"
 HISTORY_DIR="$BASE_PATH/history"
 
 #.Check if the input file exists
+#. First add ".c" if not already present
+if [[ "$INPUT_FILE" != *.c ]]; then
+    INPUT_FILE="${INPUT_FILE}.c"
+fi
 if [ ! -f "$INPUT_FILE" ]; then
     echo "Error: Input file '$INPUT_FILE' not found!"
     exit 1

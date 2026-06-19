@@ -11,33 +11,56 @@ Options:
   -d, --dim DIM          Dimensionality: 2d/2D/2 or 3d/3D/3 (default: 3d)
   -e, --exec NAME        Executable name (default: gkeyll)
   -n, --ngpu NUM         Number of GPUs to use (default: 4)
+  -G, --gpus IDX[,IDX]  Comma-separated GPU indices to use (skips auto-detection)
   -l, --log LOGNAME      Log file name (default: gkyl_run_gpu.log)
   -h, --help             Display this help message
   The remaining arguments are passed directly to the Gkeyll executable.
 
 Example:
-  $(basename "$0") -n 8 -d 2 -r 40 [To restart at frame 40]
+  $(basename "$0") -n 1 -d 2 input.lua          [auto-pick 1 free GPU, 2d decomp]
+  $(basename "$0") -n 1 -G 2 input.lua          [force GPU 2]
+  $(basename "$0") -n 2 -G 2,3 input.lua        [force GPUs 2 and 3]
+  $(basename "$0") -n 8 -d 2 -r 40              [restart at frame 40]
   $(basename "$0") --ngpu 16 --dim 3d --exec custom_gkeyll --log my_simulation.log
 
 EOF
 }
 
-ngpu=4  # Default value
+# Find $needed free GPUs by checking nvidia-smi for compute processes.
+# Prints a comma-separated list of free GPU indices, or exits with an error.
+get_free_gpus() {
+    local needed=$1
+    local free_gpus=()
+    local n_gpus
+    n_gpus=$(nvidia-smi --query-gpu=index --format=csv,noheader | wc -l)
 
-# Assuming 4 GPUs per node, calculate the number of nodes required.
-gpus_per_node=4
-nnodes=$(( (ngpu + gpus_per_node - 1) / gpus_per_node ))
+    for i in $(seq 0 $((n_gpus - 1))); do
+        local procs
+        procs=$(nvidia-smi --query-compute-apps=pid --format=csv,noheader -i "$i" 2>/dev/null)
+        if [[ -z "$procs" ]]; then
+            free_gpus+=("$i")
+        fi
+    done
 
-# Default decomposition direction
-decomp_dir="-e"
+    if [[ ${#free_gpus[@]} -lt $needed ]]; then
+        echo "Error: Need $needed free GPU(s), but only ${#free_gpus[@]} are free." >&2
+        nvidia-smi --query-gpu=index,gpu_name,memory.used --format=csv >&2
+        return 1
+    fi
 
-# Default executable name
+    local selected=("${free_gpus[@]:0:$needed}")
+    local IFS=','
+    echo "${selected[*]}"
+}
+
+ngpu=4          # Default number of GPUs
+gpus_per_node=4 # Perlmutter: 4 GPUs per node
+decomp_dir="-e" # Default: 3d decomposition
 executable="gkeyll"
-
-# Default log file name
 logname="gkyl_run_gpu.log"
+manual_gpus=""  # Empty means auto-detect
 
-# Parse arguments for dimensionality option
+# Parse arguments
 while [[ $# -gt 0 ]]; do
     case $1 in
         -h|--help)
@@ -63,6 +86,10 @@ while [[ $# -gt 0 ]]; do
             ngpu="$2"
             shift 2
             ;;
+        -G|--gpus)
+            manual_gpus="$2"
+            shift 2
+            ;;
         -l|--log)
             logname="$2"
             shift 2
@@ -73,9 +100,25 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# Use -N to specify the calculated number of nodes.
-# --ntasks is set to the number of GPUs, assuming one task per GPU.
-# CMD="srun -N $nnodes --ntasks=$ngpu --gpus-per-task=1 --gpu-bind=closest -u ./$executable -g -M $decomp_dir $ngpu $* | tee $logname"
-CMD="srun -u -n $ngpu ./$executable -g -M $decomp_dir $ngpu $* | tee $logname"
+# Compute node count after ngpu is known
+nnodes=$(( (ngpu + gpus_per_node - 1) / gpus_per_node ))
+
+# Determine which GPUs to use
+if [[ -n "$manual_gpus" ]]; then
+    cuda_devices="$manual_gpus"
+    echo "Using GPUs (manual): $cuda_devices"
+else
+    cuda_devices=$(get_free_gpus "$ngpu") || exit 1
+    echo "Using GPUs (auto): $cuda_devices"
+fi
+# Write a temporary wrapper that re-applies our GPU selection inside the srun step,
+# after Cray SLURM overwrites CUDA_VISIBLE_DEVICES in the step environment.
+tmpwrapper=$(mktemp /tmp/gkyl_gpu_wrap_XXXXXX.sh)
+trap "rm -f $tmpwrapper" EXIT
+printf '#!/bin/bash\nexport CUDA_VISIBLE_DEVICES=%s\nexec "$@"\n' "$cuda_devices" > "$tmpwrapper"
+chmod +x "$tmpwrapper"
+
+CMD="srun --overlap -u -n $ngpu $tmpwrapper ./$executable -g -M $decomp_dir $ngpu $* | tee $logname"
+echo "Using GPUs: $cuda_devices"
 echo "Executing command: $CMD"
 eval $CMD

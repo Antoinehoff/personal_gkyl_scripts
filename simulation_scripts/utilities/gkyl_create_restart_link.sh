@@ -1,10 +1,28 @@
 #!/bin/bash
 
-# filepath: /path/to/script.sh
+usage() {
+  echo "Usage: $0 [-h] [-r <frame>] <path-to-folder>"
+  echo ""
+  echo "  -h          Show this help message"
+  echo "  -r <frame>  Restart from the specified frame number (default: latest frame)"
+  echo "  <path-to-folder>  Path to the folder containing .gkyl files"
+  exit 0
+}
 
-# Check if a folder path is provided
+restart_frame=""
+
+while getopts ":hr:" opt; do
+  case $opt in
+    h) usage ;;
+    r) restart_frame="$OPTARG" ;;
+    \?) echo "Unknown option: -$OPTARG"; usage ;;
+    :) echo "Option -$OPTARG requires an argument."; usage ;;
+  esac
+done
+shift $((OPTIND - 1))
+
 if [ "$#" -ne 1 ]; then
-  echo "Usage: $0 <path-to-folder>"
+  echo "Usage: $0 [-h] [-r <frame>] <path-to-folder>"
   exit 1
 fi
 
@@ -18,7 +36,11 @@ if [[ ! -f "$UTIL_SCRIPT" ]]; then
   exit 1
 fi
 
-last_frame=$(bash "$UTIL_SCRIPT" "$folder_path")
+if [[ -n "$restart_frame" ]]; then
+  last_frame="$restart_frame"
+else
+  last_frame=$(bash "$UTIL_SCRIPT" "$folder_path")
+fi
 
 # Check if a valid frame was found
 if [[ "$last_frame" == "-1" ]]; then
