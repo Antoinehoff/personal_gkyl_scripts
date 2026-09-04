@@ -5,23 +5,25 @@ show_help() {
     cat << EOF
 Usage: $(basename "$0") [OPTIONS] [GKYL_ARGS]
 
-Run Gkeyll simulation on Perlmutter GPU nodes.
+Run Gkeyll simulation on a Perlmutter GPU interactive session.
+The script automatically detects free GPUs and creates a temporary slurm script to use them. 
+This allows to run multiple simulations in parallel on the same node without interfering with each other.
 
 Options:
-  -d, --dim DIM          Dimensionality: 2d/2D/2 or 3d/3D/3 (default: 3d)
+  -d, --dim DIM          Dimensionality: 1d/1D/1, 2d/2D/2 or 3d/3D/3 (default: 3d)
   -e, --exec NAME        Executable name (default: gkeyll)
   -n, --ngpu NUM         Number of GPUs to use (default: 4)
-  -G, --gpus IDX[,IDX]  Comma-separated GPU indices to use (skips auto-detection)
+  -G, --gpus IDX[,IDX]   Comma-separated GPU indices to use (skips auto-detection)
   -l, --log LOGNAME      Log file name (default: gkyl_run_gpu.log)
   -h, --help             Display this help message
   The remaining arguments are passed directly to the Gkeyll executable.
 
 Example:
   $(basename "$0") -n 1 -d 2 input.lua          [auto-pick 1 free GPU, 2d decomp]
-  $(basename "$0") -n 1 -G 2 input.lua          [force GPU 2]
-  $(basename "$0") -n 2 -G 2,3 input.lua        [force GPUs 2 and 3]
-  $(basename "$0") -n 8 -d 2 -r 40              [restart at frame 40]
-  $(basename "$0") --ngpu 16 --dim 3d --exec custom_gkeyll --log my_simulation.log
+  $(basename "$0") -n 1 -G 2                    [force GPU 2]
+  $(basename "$0") -n 2 -G 2,3 -e exec          [force GPUs 2 and 3]
+  $(basename "$0") -n 4 -d 2 -r 40              [restart gkeyll at frame 40]
+  $(basename "$0") --ngpu 4 --dim 3d --exec custom_gkeyll --log my_simulation.log [run a compiled .c input file]
 
 EOF
 }
@@ -53,11 +55,11 @@ get_free_gpus() {
     echo "${selected[*]}"
 }
 
-ngpu=4          # Default number of GPUs
+ngpu=4 # Default number of GPUs
 gpus_per_node=4 # Perlmutter: 4 GPUs per node
-decomp_dir="-e" # Default: 3d decomposition
-executable="gkeyll"
-logname="gkyl_run_gpu.log"
+decomp_dir="-e" # Default 3d decomposition
+executable="gkeyll" # Default executable name
+logname="gkyl_run_gpu.log" # Default log file name
 manual_gpus=""  # Empty means auto-detect
 
 # Parse arguments
@@ -68,12 +70,14 @@ while [[ $# -gt 0 ]]; do
             exit 0
             ;;
         -d|--dim)
-            if [[ "$2" == "2d" || "$2" == "2D" || "$2" == "2" ]]; then
+            if [[ "$2" == "1D" || "$2" == "1d" || "$2" == "1" ]]; then
+                decomp_dir="-c"
+            elif [[ "$2" == "2d" || "$2" == "2D" || "$2" == "2" ]]; then
                 decomp_dir="-d"
             elif [[ "$2" == "3d" || "$2" == "3D" || "$2" == "3" ]]; then
                 decomp_dir="-e"
             else
-                echo "Error: Invalid dimension '$2'. Use '2d' or '3d'."
+                echo "Error: Invalid dimension '$2'. Use '1d', '2d' or '3d'."
                 exit 1
             fi
             shift 2
@@ -111,6 +115,7 @@ else
     cuda_devices=$(get_free_gpus "$ngpu") || exit 1
     echo "Using GPUs (auto): $cuda_devices"
 fi
+
 # Write a temporary wrapper that re-applies our GPU selection inside the srun step,
 # after Cray SLURM overwrites CUDA_VISIBLE_DEVICES in the step environment.
 tmpwrapper=$(mktemp /tmp/gkyl_gpu_wrap_XXXXXX.sh)
