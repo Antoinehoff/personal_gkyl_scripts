@@ -512,9 +512,10 @@ def plot_2D_cut(simulation, cut_dir='xy', cut_coord=[0.0,0.0,0.0], time_frame=No
             xfl = _normalize(xfl, 'x', simulation.normalization)
             yfl = _normalize(yfl, 'y', simulation.normalization)
             zfl = _normalize(zfl, 'z', simulation.normalization)
-            L_periodicity[0] = None if L_periodicity[0] is None else _normalize(L_periodicity[0], 'x', simulation.normalization)
-            L_periodicity[1] = None if L_periodicity[1] is None else _normalize(L_periodicity[1], 'y', simulation.normalization)
-            L_periodicity[2] = None if L_periodicity[2] is None else _normalize(L_periodicity[2], 'z', simulation.normalization)
+            for i_fl, dname_fl in enumerate(['x', 'y', 'z']):
+                if L_periodicity[i_fl] is not None:
+                    L_periodicity[i_fl] = _normalize(np.asarray(L_periodicity[i_fl], dtype=float),
+                                                     dname_fl, simulation.normalization)
             _fl_draw(ax, xfl, yfl, zfl, cut_dir, L_periodicity, line_colors, flp)
 
     fig.tight_layout()
